@@ -148,20 +148,14 @@ class SpitzerIRS:
                                       position=position)
 
     def get_spectral_images(self):
-
-                          #  path, cal_path, dir_name, aor_number,
-                          #  pl_version, select_order, period,
-                          #  ephemeris, phases_eclipse):
-self.par['inst_mode']
-self.par['inst_order']
-self.par['obs_cal_version']
-self.par['obs_cal_path']
-
+        """
+        """
         # order mask
         order_mask_file_name = \
-             cal_path+pl_version+'/'+'IRSX_'+self.par['inst_mode']+'_' + \
-             self.par['obs_cal_version']+'_cal.omask.fits'
-        order_masks = fits.getdata(order_mask_file_name', ext=0)
+            self.par['obs_cal_path']+self.par['obs_cal_version']+'/' + \
+            'IRSX_'+self.par['inst_mode']+'_' + \
+            self.par['obs_cal_version']+'_cal.omask.fits'
+        order_masks = fits.getdata(order_mask_file_name, ext=0)
 
         if self.par['inst_order'] == '1':
             mask = np.ones(shape=order_masks.shape, dtype=np.dtype('Bool'))
@@ -199,15 +193,14 @@ self.par['obs_cal_path']
             # remove first row
             mask2[idx_row[np.logical_not(row_check)][0], :] = True
             mask = np.logical_and(mask1, mask2)
+
         # wavelength calibration
-        if select_order[0:2] == 'SL':
-            wave_cal = fits.getdata(cal_path+pl_version+'/' +
-                                    'IRSX_SL_S18.18.0_cal.wavsamp_wave.fits',
-                                    ext=0)
-        else:
-            wave_cal = fits.getdata(cal_path+pl_version+'/' +
-                                    'IRSX_LL_S18.18.0_cal.wavsamp_wave.fits',
-                                    ext=0)
+
+        wave_cal_name = \
+            self.par['obs_cal_path']+self.par['obs_cal_version'] + \
+            '/'+'IRSX_'+self.par['inst_mode']+'_' + \
+            self.par['obs_cal_version']+'_cal.wavsamp_wave.fits'
+        wave_cal = fits.getdata(wave_cal_name, ext=0)
 
         # make list of all spectral images
         def find(pattern, path):
@@ -218,7 +211,10 @@ self.par['obs_cal_path']
                         result.append(os.path.join(root, name))
             return sorted(result)
 
-        if select_order[0:2] == 'SL':
+self.par['obs_path']
+self.par['obs_id']
+self.par['obs_target_name']
+        if self.par['inst_mode'] == 'SL':
             path_to_files = path+dir_name+'/IRSX/'+pl_version+'/bcd/ch0/'
             data_files = find('SPITZER_S0*'+aor_number +
                               '*droop.fits', path_to_files)
@@ -230,7 +226,8 @@ self.par['obs_cal_path']
         # number of integrations
         nintegrations = len(data_files)
         if nintegrations < 2:
-            raise AssertionError("No Timeseries data found in dir "+path_to_files)
+            raise AssertionError("No Timeseries data found in dir " +
+                                 path_to_files)
 
         # read in the first image and get information on the observations
         # in the fits header the following relevant info is used:
@@ -280,17 +277,19 @@ self.par['obs_cal_path']
 
         # The time in the spitzer fits header is -2400000.5 and
         # it is the time at the start of the ramp
-        # As we are using fitted ramps, shift time by half ramp of length framtime
-        time = (time + 2400000.5) + (0.50 * framtime) / (24.0 * 3600.0)  # in days
+        # As we are using fitted ramps,
+        # shift time by half ramp of length framtime
+        time = (time + 2400000.5) + (0.50*framtime) / (24.0*3600.0)  # in days
         # orbital phase
-        phase = (time - ephemeris) / period
+        phase = (time - self.par['obj_ephemeris']) / self.par['obj_period']
         phase = phase - np.int(np.max(phase)) + 1.0
 
-        TSO = TSOSuite(data=data, wavelength=wave_cal, phase=phase,
-                         phases_eclipse=phases_eclipse, isRampFitted=True,
-                         isNodded=isNodded)
+        SpectralTimeSeries = SpectralDataTimeSeries(wavelength=wave_cal,
+                                                    data=data, time=phase,
+                                                    isRampFitted=True,
+                                                    isNodded=isNodded)
 
-        return TSO
+        return SpectralTimeSeries
 
 
 def fill_TSOtimeseries(path, cal_path, dir_name, aor_number, pl_version,
