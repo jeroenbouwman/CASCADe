@@ -74,6 +74,26 @@ class UnitDesc(object):
         del self.values[instance]
 
 
+class FlagDesc(object):
+    """
+    A descriptor for adding logical flags
+    """
+    def __init__(self, keyname):
+        self.default = None
+        self.values = WeakKeyDictionary()
+        self.keyname = keyname
+
+    def __get__(self, instance, owner):
+        return getattr(instance, "_"+self.keyname, None)
+
+    def __set__(self, instance, value):
+        setattr(instance, "_"+self.keyname, value)
+
+    def __delete__(self, instance):
+        delattr(instance, "_"+self.keyname)
+        del self.values[instance]
+
+
 class MeasurementDesc(object):
     """
     A descriptor for adding auxilary measurements,
@@ -167,12 +187,17 @@ class SpectralData(InstanceDescriptorMixin):
         for key, value in kwargs.items():
             # set auxilary data
             if "_unit" not in key:
-                if not hasattr(self, "_"+key+"_unit"):
-                    # if unit is not explicitly given, set property
-                    setattr(self, key+"_unit", UnitDesc(key+"_unit"))
-                    setattr(self, "_"+key+"_unit", None)
-                setattr(self, key, MeasurementDesc(key))
-                setattr(self, key, value)
+                # check if not boolean
+                if not isinstance(value, type(True)):
+                    if not hasattr(self, "_"+key+"_unit"):
+                        # if unit is not explicitly given, set property
+                        setattr(self, key+"_unit", UnitDesc(key+"_unit"))
+                        setattr(self, "_"+key+"_unit", None)
+                    setattr(self, key, MeasurementDesc(key))
+                    setattr(self, key, value)
+                else:
+                    setattr(self, key, FlagDesc(key))
+                    setattr(self, key, value)
 
     @property
     def wavelength(self):

@@ -2,15 +2,10 @@
 """
 CASCADe
 
-Spitzer specific
+Observatory and Instruments specific Module
 
 @author: bouwman
 """
-from __future__ import print_function
-from __future__ import division
-from __future__ import unicode_literals
-from __future__ import absolute_import
-
 import numpy as np
 from astropy.io import fits
 import os
@@ -18,26 +13,52 @@ import fnmatch
 import collections
 import ast
 from scipy.io.idl import readsav
+from abc import ABCMeta, abstractmethod, abstractproperty
 
-from ..TSO import TSOSuite
 from ..initialize import cascade_configuration
 from ..TSO import SpectralDataTimeSeries
 
 __all__ = ['Spitzer',
-           'SpitzerIRS',
-           'fill_TSOtimeseries']
+           'SpitzerIRS']
 
 
-class Spitzer:
+class ObservatoryBase(metaclass=ABCMeta):
+    @abstractproperty
+    def name(self):
+        pass
+
+    @abstractproperty
+    def location(self):
+        pass
+
+    @abstractproperty
+    def NAIF_ID(self):
+        pass
+
+    @abstractproperty
+    def observatory_instruments(self):
+        pass
+
+
+class InstrumentBase(metaclass=ABCMeta):
+    @abstractmethod
+    def load_data(self):
+        pass
+
+    @abstractmethod
+    def get_instrument_setup(self):
+        pass
+
+
+class Spitzer(ObservatoryBase):
     """
     """
-    valid_instruments = {'IRS'}
 
     def __init__(self):
         # check if cascade is initialized
         if cascade_configuration.isInitialized:
             # check if model is implemented and pick model
-            if cascade_configuration.instrument in self.valid_instruments:
+            if cascade_configuration.instrument in self.obsertatory_instruments:
                 if cascade_configuration.instrument == 'IRS':
                     factory = SpitzerIRS()
                     self.data = factory.data
@@ -50,8 +71,24 @@ class Spitzer:
             raise ValueError("CASCADe not initialized, \
                                  aborting creation of lightcurve")
 
+    @property
+    def name(self):
+        return "SPITZER"
 
-class SpitzerIRS:
+    @property
+    def location(self):
+        return "SPACE"
+
+    @property
+    def NAIF_ID(self):
+        return -79
+
+    @property
+    def observatory_instruments(self):
+        return{"IRS"}
+
+
+class SpitzerIRS(InstrumentBase):
     """
     """
     __valid_arrays = {'SL', 'LL'}
@@ -69,7 +106,7 @@ class SpitzerIRS:
             data = self.get_spectra()
         elif self.par.obs_data == 'SPECTRAL_IMAGE':
             data = self.get_spectral_images()
-        elif self.par.obs_data == 'SPECTRAL_ETECTOR_CUBE':
+        elif self.par.obs_data == 'SPECTRAL_DETECTOR_CUBE':
             data = self.get_detector_cubes()
         return data
 
@@ -195,7 +232,6 @@ class SpitzerIRS:
             mask = np.logical_and(mask1, mask2)
 
         # wavelength calibration
-
         wave_cal_name = \
             self.par['obs_cal_path']+self.par['obs_cal_version'] + \
             '/'+'IRSX_'+self.par['inst_mode']+'_' + \
@@ -211,17 +247,18 @@ class SpitzerIRS:
                         result.append(os.path.join(root, name))
             return sorted(result)
 
-self.par['obs_path']
-self.par['obs_id']
-self.par['obs_target_name']
-
+        # get data files
         if self.par['inst_mode'] == 'SL':
-            path_to_files = path+dir_name+'/IRSX/'+pl_version+'/bcd/ch0/'
-            data_files = find('SPITZER_S0*'+aor_number +
+            path_to_files = self.par['obs_path'] + \
+                self.par['obs_target_name'] + '/IRSX/' + \
+                self.par['obs_cal_version']+'/bcd/ch0/'
+            data_files = find('SPITZER_S0*'+self.par['obs_id'] +
                               '*droop.fits', path_to_files)
         else:
-            path_to_files = path+dir_name+'/IRSX/'+pl_version+'/bcd/ch2/'
-            data_files = find('SPITZER_S2*'+aor_number +
+            path_to_files = self.par['obs_path'] + \
+                self.par['obs_target_name'] + '/IRSX/' + \
+                self.par['obs_cal_version']+'/bcd/ch2/'
+            data_files = find('SPITZER_S2*'+self.par['obs_id'] +
                               '*droop.fits', path_to_files)
 
         # number of integrations
@@ -292,86 +329,96 @@ self.par['obs_target_name']
 
         return SpectralTimeSeries
 
+    def get_detector_cubes(self):
+        """
+        Get detector cube data
+        """
+        # order mask
+        # order mask
+        order_mask_file_name = \
+            self.par['obs_cal_path']+self.par['obs_cal_version']+'/' + \
+            'IRSX_'+self.par['inst_mode']+'_' + \
+            self.par['obs_cal_version']+'_cal.omask.fits'
+        order_masks = fits.getdata(order_mask_file_name, ext=0)
+    ####################
+    # ERROR need bug fix
+    ####################
+        mask = np.ones(shape=order_masks.shape, dtype=np.dtype('Bool'))
+        if select_order == 'SL1':
+            mask[order_masks == 1] = False
+        elif select_order == 'SL2':
+            mask[order_masks == 2] = False
+        else:
+            mask[order_masks == 3] = False
 
-def fill_TSOtimeseries(path, cal_path, dir_name, aor_number, pl_version,
-                       select_order, nintegrations, period, ephemeris,
-                       phases_eclipse):
-    # order mask
-    order_masks = fits.getdata(cal_path+pl_version+'/' +
-                               'IRSX_SL_S18.18.0_cal.omask.fits', ext=0)
-    mask = np.ones(shape=order_masks.shape, dtype=np.dtype('Bool'))
-####################
-# ERROR need bug fix
-####################
-    if select_order == 'SL1':
-        mask[order_masks == 1] = False
-    elif select_order == 'SL2':
-        mask[order_masks == 2] = False
-    else:
-        mask[order_masks == 3] = False
-    # wavelength calibration
-    wave_cal = fits.getdata(cal_path+pl_version+'/' +
-                            'IRSX_SL_S18.18.0_cal.wavsamp_wave.fits', ext=0)
+        # wavelength calibration
+        wave_cal_name = \
+            self.par['obs_cal_path']+self.par['obs_cal_version'] + \
+            '/'+'IRSX_'+self.par['inst_mode']+'_' + \
+            self.par['obs_cal_version']+'_cal.wavsamp_wave.fits'
+        wave_cal = fits.getdata(wave_cal_name, ext=0)
 
-    # make list of all spectral images
-    def find(pattern, path):
-        result = []
-        for root, dirs, files in os.walk(path):
-            for name in files:
-                if fnmatch.fnmatch(name, pattern):
-                    result.append(os.path.join(root, name))
-        return sorted(result)
+        # make list of all spectral images
+        def find(pattern, path):
+            result = []
+            for root, dirs, files in os.walk(path):
+                for name in files:
+                    if fnmatch.fnmatch(name, pattern):
+                        result.append(os.path.join(root, name))
+            return sorted(result)
 
-    path_to_files = path+dir_name+'/IRSX/'+pl_version+'/bcd/ch0/'
-    data_files = find('SPITZER_S0*'+aor_number+'*lnz.fits', path_to_files)
+        path_to_files = path+dir_name+'/IRSX/'+pl_version+'/bcd/ch0/'
+        data_files = find('SPITZER_S0*'+aor_number+'*lnz.fits', path_to_files)
 
-    # number of integrations
-    nintegrations = len(data_files)
-    if nintegrations < 2:
-        raise AssertionError("No Timeseries data found in dir "+path_to_files)
+        # number of integrations
+        nintegrations = len(data_files)
+        if nintegrations < 2:
+            raise AssertionError("No Timeseries data found in dir "+path_to_files)
 
-    # get the size of the spectral images
-    image_file = data_files[0]
-    spectral_image = fits.getdata(image_file, ext=0)
-    spectral_image = np.moveaxis(spectral_image, 0, -1)
-    npix, mpix, nframes = spectral_image.shape
-    # get deadtime etc. from fits header
-    deadtime = fits.getval(image_file, "DEADTIME", ext=0)
-    samptime = fits.getval(image_file, "SAMPTIME", ext=0)
-
-    # defime mask and fill with data  from order mask
-    mask = np.tile(mask.T, (nframes, nintegrations, 1, 1)).T
-
-    # get the data
-    image_cube = np.zeros((npix, mpix, nintegrations, nframes))
-    time = np.zeros((nintegrations))
-    for im, image_file in enumerate(data_files):
+        # get the size of the spectral images
+        image_file = data_files[0]
         spectral_image = fits.getdata(image_file, ext=0)
-        image_cube[:, :, im, :] = np.moveaxis(spectral_image, 0, -1)
-        time[im] = fits.getval(image_file, "BMJD_OBS", ext=0)
+        spectral_image = np.moveaxis(spectral_image, 0, -1)
+        npix, mpix, nframes = spectral_image.shape
+        # get deadtime etc. from fits header
+        deadtime = fits.getval(image_file, "DEADTIME", ext=0)
+        samptime = fits.getval(image_file, "SAMPTIME", ext=0)
 
-    data = np.ma.array(image_cube, mask=mask)
-    npix, mpix, nintegrations, nframes = data.shape
+        # defime mask and fill with data  from order mask
+        mask = np.tile(mask.T, (nframes, nintegrations, 1, 1)).T
 
-######################
-# ERROR need bug fix
-######################
-    delta_t = -1.0 * ((time[0] + 2400000.5) * 24.0 * 3600.0 -
-                      (time[30] + 2400000.5) * 24.0 * 3600.0) / 30.0
-    # delta time between frames in sec
-    delta_t_frame = (delta_t - deadtime - samptime) / (nframes-1)
-    time_per_frame = np.tile(time[:, None], (nframes)) + \
-        (np.linspace(0, nframes-1, num=nframes)*delta_t_frame +
-         deadtime-samptime) / (24.0*3600.0)  # in days
-    time_per_frame = (np.reshape(time_per_frame, (nframes*nintegrations)) +
-                      2400000.5)  # in days
-    # orbital phase
-    phase = ((time_per_frame - ephemeris) % period) / period
-    phase = phase.reshape(nintegrations, nframes)
+        # get the data
+        image_cube = np.zeros((npix, mpix, nintegrations, nframes))
+        time = np.zeros((nintegrations))
+        for im, image_file in enumerate(data_files):
+            spectral_image = fits.getdata(image_file, ext=0)
+            image_cube[:, :, im, :] = np.moveaxis(spectral_image, 0, -1)
+            time[im] = fits.getval(image_file, "BMJD_OBS", ext=0)
 
-####################
-# ERROR need bug fix
-####################
-    TSO = TSOSuite(data=data, wavelength=wave_cal, phase=phase,
-                     phases_eclipse=phases_eclipse, isRampFitted=False)
-    return TSO
+        data = np.ma.array(image_cube, mask=mask)
+        npix, mpix, nintegrations, nframes = data.shape
+
+    ######################
+    # ERROR need bug fix
+    ######################
+        delta_t = -1.0 * ((time[0] + 2400000.5) * 24.0 * 3600.0 -
+                          (time[30] + 2400000.5) * 24.0 * 3600.0) / 30.0
+        # delta time between frames in sec
+        delta_t_frame = (delta_t - deadtime - samptime) / (nframes-1)
+        time_per_frame = np.tile(time[:, None], (nframes)) + \
+            (np.linspace(0, nframes-1, num=nframes)*delta_t_frame +
+             deadtime-samptime) / (24.0*3600.0)  # in days
+        time_per_frame = (np.reshape(time_per_frame, (nframes*nintegrations)) +
+                          2400000.5)  # in days
+        # orbital phase
+        phase = ((time_per_frame - ephemeris) % period) / period
+        phase = phase.reshape(nintegrations, nframes)
+
+    ####################
+    # ERROR need bug fix
+    ####################
+        SpectralTimeSeries = SpectralDataTimeSeries(data=data,
+                                                    wavelength=wave_cal,
+                                                    time=phase,
+                                                    isRampFitted=False)
+        return SpectralTimeSeries
