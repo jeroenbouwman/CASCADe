@@ -214,6 +214,7 @@ class SpitzerIRS:
 self.par['obs_path']
 self.par['obs_id']
 self.par['obs_target_name']
+
         if self.par['inst_mode'] == 'SL':
             path_to_files = path+dir_name+'/IRSX/'+pl_version+'/bcd/ch0/'
             data_files = find('SPITZER_S0*'+aor_number +
