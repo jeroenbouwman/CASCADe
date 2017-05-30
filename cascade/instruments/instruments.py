@@ -14,6 +14,7 @@ import collections
 import ast
 from scipy.io.idl import readsav
 from abc import ABCMeta, abstractmethod, abstractproperty
+import astropy.units as u
 
 from ..initialize import cascade_configuration
 from ..TSO import SpectralDataTimeSeries
@@ -58,7 +59,7 @@ class Spitzer(ObservatoryBase):
         # check if cascade is initialized
         if cascade_configuration.isInitialized:
             # check if model is implemented and pick model
-            if cascade_configuration.instrument in self.obsertatory_instruments:
+            if cascade_configuration.instrument in self.observatory_instruments:
                 if cascade_configuration.instrument == 'IRS':
                     factory = SpitzerIRS()
                     self.data = factory.data
@@ -102,11 +103,11 @@ class SpitzerIRS(InstrumentBase):
 
     def load_data(self, par):
 
-        if self.par.obs_data == 'SPECTRUM':
+        if self.par["obs_data"] == 'SPECTRUM':
             data = self.get_spectra()
-        elif self.par.obs_data == 'SPECTRAL_IMAGE':
+        elif self.par["obs_data"] == 'SPECTRAL_IMAGE':
             data = self.get_spectral_images()
-        elif self.par.obs_data == 'SPECTRAL_DETECTOR_CUBE':
+        elif self.par["obs_data"] == 'SPECTRAL_DETECTOR_CUBE':
             data = self.get_detector_cubes()
         return data
 
@@ -116,8 +117,12 @@ class SpitzerIRS(InstrumentBase):
         """
         inst_mode = cascade_configuration.instrument_mode
         inst_order = cascade_configuration.instrument_order
-        obj_period = cascade_configuration.object_period
-        obj_ephemeris = cascade_configuration.object_ephemeris
+        obj_period = \
+            u.Quantity(cascade_configuration.object_period).to(u.day)
+        obj_period = obj_period.value
+        obj_ephemeris = \
+            u.Quantity(cascade_configuration.object_ephemeris).to(u.day)
+        obj_ephemeris = obj_ephemeris.value
         obs_mode = cascade_configuration.observations_mode
         obs_data = cascade_configuration.observations_data
         obs_path = cascade_configuration.observations_path

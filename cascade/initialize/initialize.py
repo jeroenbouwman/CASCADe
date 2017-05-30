@@ -61,8 +61,8 @@ def generate_default_initialization():
                         'object_inclination': '85.78 deg',
                         'object_eccentricity': '0.0041',
                         'object_omega': '90.0 deg',
-                        'object_period': '2.218575200 days',
-                        'object_ephemeris': '2454279.436714 days'}
+                        'object_period': '2.218575200 d',
+                        'object_ephemeris': '2454279.436714 d'}
     config['CATALOG'] = {'catalog_use_catalog': 'True',
                          'catalog_name': 'EXOPLANETS.ORG',
                          'catalog_update': 'True'}

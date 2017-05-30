@@ -347,10 +347,10 @@ class SpectralDataTimeSeries(SpectralData):
     time_unit
         physical unit of time data
     """
-    def __init__(self, wavelength=0.0, wavelength_unit=None,
-                 data=np.zeros((1, 1)), data_unit=None,
-                 uncertainty=np.zeros((1, 1)), mask=False,
-                 time=0.0, time_unit=u.day, **kwargs):
+    def __init__(self, wavelength=float("NaN"), wavelength_unit=None,
+                 data=np.array([[float("NaN")]]), data_unit=None,
+                 uncertainty=np.array([[float("NaN")]]), mask=False,
+                 time=float("NaN"), time_unit=None, **kwargs):
         self._time_unit = time_unit  # Do not change order
         self.time = time
         super(SpectralDataTimeSeries,

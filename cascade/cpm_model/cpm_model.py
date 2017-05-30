@@ -20,7 +20,16 @@ __all__ = ['solve_linear_equation']
 def solve_linear_equation(design_matrix, data, weights=None, cv_method='gcv',
                           reg_par={"lam0": 1.e-6, "lam1": 1.e2, "nlam": 60}):
     """
-    Solve linear system with TIKHONOV regularization
+    Solve linear system using SVD with TIKHONOV regularization
+
+   For details see:
+       PHD thesis by Diana Maria SIMA, "Regularization techniques in
+            Model Fitting and Parameter estimation", KU Leuven 2006
+       Hogg et al 2010, "Data analysis recipies: Fitting a model to data"
+       Rust & O'Leaary, "Residual periodograms for choosing regularization
+             parameters for ill-posed porblems"
+       Krakauer et al "Using generalized cross-validationto select parameters
+               in inversions for regional carbon fluxes"
 
     This routine solves the linear equation
 
@@ -44,7 +53,7 @@ def solve_linear_equation(design_matrix, data, weights=None, cv_method='gcv',
 
         cv_method:
             Method used to find optimal regularization parameter which can be:
-                "gvc" :  Generizalize Cross Validation
+                "gvc" :  Generizalize Cross Validation [RECOMMENDED!!!]
                 "b95" :  normalized cumulatative periodogram using 95% limit
                 "B100":  normalized cumulatative periodogram
 
@@ -93,15 +102,19 @@ def solve_linear_equation(design_matrix, data, weights=None, cv_method='gcv',
     lam_reg_array = 10**(np.log10(lam_reg0) +
                          np.linspace(0, ngrid_lam-1, ngrid_lam)*delta_lam)
     # can also specify this as powerlaw
-    # lam_reg_array = lam_reg1 * (1.0/10**delta_lam)**np.arange(ngrid_lam)
+    # lam_reg_array = /
+    #    np.flipud(lam_reg1 * (10**-delta_lam)**np.arange(ngrid_lam))
 
     gcv = []   # array to hold value of cross validation calculations
     b95 = []   # array to hold normalized cumulative periodogram results (95%)
     b100 = []  # array to hold normalized cumulative periodogram results (100%)
 
+    # loop over the grid of regularization parameter to find optimal value
     for i in range(ngrid_lam):
 
-        # Filter factors
+        # Filter factors, here we use the correct definition
+        # of the filter factor for ridge regression. In case of
+        # truncated SVD this has to be adapted.
         F = np.diag(sigma**2/(sigma**2 + lam_reg_array[i]**2))
 
         # calculate the general risidual vector (y-model), which can be
@@ -123,13 +136,14 @@ def solve_linear_equation(design_matrix, data, weights=None, cv_method='gcv',
         # generalized cross validation function to minimize
         gcv.append(sigma_hat_sqr / Tlam)
 
-        # periodogram of residuls
-        nperseg = 2**(np.int(np.log2(residual_reg.shape[0])))
-        freq, p_residual_spec = signal.welch(residual_reg,
-                                             fs=1.0, nperseg=nperseg,
-                                             noverlap=(nperseg // 2),
-                                             detrend=None, scaling='density')
         if cv_method != 'gcv':
+            # periodogram of residuls
+            nperseg = 2**(np.int(np.log2(residual_reg.shape[0])))
+            freq, p_residual_spec = \
+                signal.welch(residual_reg, fs=1.0, nperseg=nperseg,
+                             noverlap=(nperseg // 2),
+                             detrend=None, scaling='density')
+
             # calculate normalized cumulatative periodogram
             ncp = np.cumsum(p_residual_spec)
             ncp = ncp/ncp[-1]
@@ -153,6 +167,7 @@ def solve_linear_equation(design_matrix, data, weights=None, cv_method='gcv',
         idx_min_ncp_b100 = np.where(np.abs(b100 / np.min(b100) - 1) <
                                     np.finfo(b100.dtype).eps)[0][-1]
         idx_min_ncp = np.where(b95 >= 95.0)[0]
+        # select largest posible value
         if idx_min_ncp.size != 0:
             idx_min_ncp = idx_min_ncp[-1]
         else:
