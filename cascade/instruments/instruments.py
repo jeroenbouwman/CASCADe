@@ -23,21 +23,27 @@ __all__ = ['Observation', 'Spitzer',
            'SpitzerIRS']
 
 
-class Observation:
-
-    __valid_observatories = {"SPITZER"}
+class Observation(object):
+    """
+    This class handles the selection of the correct observatory and
+    instrument classes and loads the time series data to be analyzed
+    """
 
     def __init__(self):
-        observatory = self.get_observatory()
-        observations = self.do_observations(observatory)
+        observatory_name = self.get_observatory_name()
+        observations = self.do_observations(observatory_name)
         self.data = observations.data
         self.observatory = observations.name
         self.instrument = observations.instrument
 
-    def do_observations(self, observatory):
-        pass
+    @property
+    def __valid_observatories(self):
+        return {"SPITZER": Spitzer}
 
-    def get_observatory(self):
+    def do_observations(self, observatory):
+        return self.__valid_observatories[observatory]()
+
+    def get_observatory_name(self):
         if cascade_configuration.isInitialized:
             observatory = cascade_configuration.instrument_observatory
             if observatory not in self.__valid_observatories:
@@ -78,9 +84,15 @@ class InstrumentBase(metaclass=ABCMeta):
     def get_instrument_setup(self):
         pass
 
+    @abstractproperty
+    def name(self):
+        pass
+
 
 class Spitzer(ObservatoryBase):
     """
+    This observatory class defines the instuments and data handling for the
+    spectropgraphs of the Spitzer Space telescope
     """
 
     def __init__(self):
@@ -91,8 +103,9 @@ class Spitzer(ObservatoryBase):
                 if cascade_configuration.instrument == 'IRS':
                     factory = SpitzerIRS()
                     self.data = factory.data
+                    self.instrument = factory.name
             else:
-                raise ValueError("Spiter instrument not recognized, \
+                raise ValueError("Spitzer instrument not recognized, \
                                  check your init file for the following \
                                  valid instruments: {}. Aborting loading \
                                  instrument".format(self.valid_instruments))
@@ -119,6 +132,8 @@ class Spitzer(ObservatoryBase):
 
 class SpitzerIRS(InstrumentBase):
     """
+    This instrument class defines the properties of the IRS instrument of
+    the Spitzer Space Telescope
     """
     __valid_arrays = {'SL', 'LL'}
     __valid_orders = {'1', '2'}
@@ -128,6 +143,10 @@ class SpitzerIRS(InstrumentBase):
 
         self.par = self.get_instrument_setup()
         self.data = self.load_data(self.par)
+
+    @property
+    def name(self):
+        return "IRS"
 
     def load_data(self, par):
 

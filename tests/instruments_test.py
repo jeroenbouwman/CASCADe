@@ -8,6 +8,12 @@ cascade_param = \
     cascade.initialize.configurator(path+"cascade_test_cpm.ini",
                                     path+"cascade_test_object.ini",
                                     path+"cascade_test_data_spectral_images.ini")
-observatory = cascade.instruments.Spitzer()
 
+# Test on observatory level
+observatory = cascade.instruments.Spitzer()
 plt.imshow(observatory.data.data[:, :, 0])
+plt.show()
+# test on general interface level
+observation = cascade.instruments.Observation()
+plt.imshow(observation.data.data[:, :, 0])
+plt.show()
