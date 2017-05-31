@@ -6,8 +6,10 @@ CASCADe init file
 """
 
 __version__ = "0.1.0"
-__all__ = ['TSO', 'instruments', 'cpm_model', 'initialize', 'exoplanet_tools']
+__all__ = ['data_model', 'TSO', 'instruments', 'cpm_model',
+           'initialize', 'exoplanet_tools']
 
+from . import data_model
 from . import TSO
 from . import instruments
 from . import cpm_model

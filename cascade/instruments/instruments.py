@@ -17,10 +17,38 @@ from abc import ABCMeta, abstractmethod, abstractproperty
 import astropy.units as u
 
 from ..initialize import cascade_configuration
-from ..TSO import SpectralDataTimeSeries
+from ..data_model import SpectralDataTimeSeries
 
-__all__ = ['Spitzer',
+__all__ = ['Observation', 'Spitzer',
            'SpitzerIRS']
+
+
+class Observation:
+
+    __valid_observatories = {"SPITZER"}
+
+    def __init__(self):
+        observatory = self.get_observatory()
+        observations = self.do_observations(observatory)
+        self.data = observations.data
+        self.observatory = observations.name
+        self.instrument = observations.instrument
+
+    def do_observations(self, observatory):
+        pass
+
+    def get_observatory(self):
+        if cascade_configuration.isInitialized:
+            observatory = cascade_configuration.instrument_observatory
+            if observatory not in self.__valid_observatories:
+                raise ValueError("Observatory not recognized, \
+                                 check your init file for the following \
+                                 valid observatories: {}. Aborting loading \
+                                 observatory".format(self.valid_observatories))
+        else:
+            raise ValueError("CASCADe not initialized, \
+                                 aborting loading Observations")
+        return observatory
 
 
 class ObservatoryBase(metaclass=ABCMeta):
@@ -66,11 +94,11 @@ class Spitzer(ObservatoryBase):
             else:
                 raise ValueError("Spiter instrument not recognized, \
                                  check your init file for the following \
-                                 valid instruments: {}. Aborting creation of \
-                                 lightcurve".format(self.valid_instruments))
+                                 valid instruments: {}. Aborting loading \
+                                 instrument".format(self.valid_instruments))
         else:
             raise ValueError("CASCADe not initialized, \
-                                 aborting creation of lightcurve")
+                                 aborting loading Observatory")
 
     @property
     def name(self):
