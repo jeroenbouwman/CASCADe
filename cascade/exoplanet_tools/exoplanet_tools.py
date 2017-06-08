@@ -384,7 +384,7 @@ def get_calalog(catalog_name, update=True):
             try:
                 download_results = urllib.request.urlretrieve(url, path+file)
             except urllib.error.URLError as e:
-                raise urllib.error.URLError('Internet connection not working,'+
+                raise urllib.error.URLError('Network connection not working,' +
                                             ' check settings')
             files_downloaded.append(download_results[0])
         else:
@@ -571,12 +571,12 @@ class batman_model:
         arg_of_periastron = arg_of_periastron.value
         limb_darkening_coeff = ast.literal_eval(
             cascade_configuration.model_limb_darkening_coeff)
-        if not (cascade_configuration.observing_type in self.__valid_ttypes):
-            raise ValueError("Observing type not recognized, \
+        if not (cascade_configuration.observations_type in self.__valid_ttypes):
+            raise ValueError("Observations type not recognized, \
                      check your init file for the following \
                      valid types: {}. Aborting creation of \
                      lightcurve".format(self.__valid_ttypes))
-        if cascade_configuration.observing_type == 'ECLIPSE':
+        if cascade_configuration.observations_type == 'ECLIPSE':
             ttype = 'secondary'
         else:
             ttype = 'primary'
@@ -614,12 +614,12 @@ class batman_model:
         arg_of_periastron = arg_of_periastron.value
         limb_darkening_coeff = ast.literal_eval(
             cascade_configuration.model_limb_darkening_coeff)
-        if not (cascade_configuration.observing_type in self.__valid_ttypes):
-            raise ValueError("Observing type not recognized, \
+        if not (cascade_configuration.observations_type in self.__valid_ttypes):
+            raise ValueError("Observations type not recognized, \
                      check your init file for the following \
                      valid types: {}. Aborting creation of \
                      lightcurve".format(self.__valid_ttypes))
-        if cascade_configuration.observing_type == 'ECLIPSE':
+        if cascade_configuration.observations_type == 'ECLIPSE':
             ttype = 'secondary'
         else:
             ttype = 'primary'

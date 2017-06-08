@@ -16,6 +16,23 @@ __all__ = ['TSOSuite']
 
 class TSOSuite:
     """
+    Transit Spectroscopy Object class
+    This is the main class containing data and functionality to determine
+    the spectra of transiting systems.
+    """
+    def __init__(self, *init_files):
+        pass
+
+    def execute(self, command):
+        pass
+
+    @property
+    def __valid_commands(self):
+        {"inititalize", "reset"}
+
+
+class TSOSuiteOld:
+    """
     Time Series Object class
     This is the main class containing data and functionality to determine
     the spectra of transiting systems.

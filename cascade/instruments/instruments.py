@@ -358,6 +358,7 @@ class SpitzerIRS(InstrumentBase):
         image_cube = np.zeros((npix, mpix, nintegrations))
         time = np.zeros((nintegrations))
         for im, image_file in enumerate(data_files):
+            # WARNING fits data is single precision!!
             spectral_image = fits.getdata(image_file, ext=0)
             image_cube[:, :, im] = spectral_image
             time[im] = fits.getval(image_file, "BMJD_OBS", ext=0)

@@ -26,19 +26,19 @@ regularization_pararameters = {"lam0": 1.e-20, "lam1": 1.e4, "nlam": 150}
 
 parameters, error_parameters, optimal_regularization_parameter = \
      cascade.cpm_model.solve_linear_equation(A, b, cv_method='gcv',
-                                        reg_par=regularization_pararameters)
+                                             reg_par=regularization_pararameters)
 
 print(parameters, error_parameters, optimal_regularization_parameter)
 
 parameters, error_parameters, optimal_regularization_parameter = \
      cascade.cpm_model.solve_linear_equation(A, b, cv_method='b100',
-                                        reg_par=regularization_pararameters)
+                                             reg_par=regularization_pararameters)
 
 print(parameters, error_parameters, optimal_regularization_parameter)
 
 parameters, error_parameters, optimal_regularization_parameter = \
      cascade.cpm_model.solve_linear_equation(A, b, cv_method='b95',
-                                        reg_par=regularization_pararameters)
+                                             reg_par=regularization_pararameters)
 
 print(parameters, error_parameters, optimal_regularization_parameter)
 
@@ -50,13 +50,13 @@ b = b + np.random.normal(0.0, 0.01, size=b.size)
 
 parameters, error_parameters, optimal_regularization_parameter = \
      cascade.cpm_model.solve_linear_equation(A, b, cv_method='gcv',
-                                        reg_par=regularization_pararameters)
+                                           reg_par=regularization_pararameters)
 
 print(parameters, error_parameters, optimal_regularization_parameter)
 
 parameters, error_parameters, optimal_regularization_parameter = \
      cascade.cpm_model.solve_linear_equation(A, b, cv_method='b100',
-                                        reg_par=regularization_pararameters)
+                                           reg_par=regularization_pararameters)
 
 print(parameters, error_parameters, optimal_regularization_parameter)
 
@@ -109,26 +109,29 @@ def linear_regression(data, power, models_to_plot, cv_method='gcv',
     return ret
 
 # Initialize a dataframe to store the results:
-col = ['rss', 'intercept'] + ['coef_x_%d' % i for i in range(1,16)]
+col = ['rss', 'intercept'] + ['coef_x_%d' % i for i in range(1, 16)]
 ind = ['model_pow_%d' % i for i in range(1, 16)]
 coef_matrix_simple = pd.DataFrame(index=ind, columns=col)
 
 # Define the powers for which a plot is required:
-models_to_plot = {1:231,3:232,6:233,9:234,12:235,15:236}
+models_to_plot = {1: 231, 3: 232, 6: 233, 9: 234, 12: 235, 15: 236}
 
 regularization_pararameters = {"lam0": 1.e-20, "lam1": 1.e5, "nlam": 200}
 
 # Iterate through all powers and assimilate results
 for i in range(1, 16):
-    coef_matrix_simple.iloc[i-1,0:i+2] = linear_regression(data, power=i, models_to_plot=models_to_plot, reg_par=regularization_pararameters)
+    coef_matrix_simple.iloc[i-1, 0:i+2] = \
+        linear_regression(data, power=i, models_to_plot=models_to_plot,
+                          reg_par=regularization_pararameters)
 
 # Iterate through all powers and assimilate results
 for i in range(1, 16):
-    coef_matrix_simple.iloc[i-1,0:i+2] = linear_regression(data, power=i, models_to_plot=models_to_plot, cv_method='b100', reg_par=regularization_pararameters)
+    coef_matrix_simple.iloc[i-1, 0:i+2] = \
+        linear_regression(data, power=i, models_to_plot=models_to_plot,
+                          cv_method='b100', reg_par=regularization_pararameters)
 
 # Iterate through all powers and assimilate results
 for i in range(1, 16):
-    coef_matrix_simple.iloc[i-1,0:i+2] = linear_regression(data, power=i, models_to_plot=models_to_plot, cv_method='b95', reg_par=regularization_pararameters)
-
-
-
+    coef_matrix_simple.iloc[i-1, 0:i+2] = \
+        linear_regression(data, power=i, models_to_plot=models_to_plot,
+                          cv_method='b95', reg_par=regularization_pararameters)

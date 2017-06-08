@@ -65,10 +65,16 @@ def solve_linear_equation(design_matrix, data, weights=None, cv_method='gcv',
                 nlam : number of grid points
     """
     # precondition regressors
-    pc_matrix = np.diag(1.0 / np.linalg.norm(design_matrix, axis=0))
+    if design_matrix.dtype != 'float64':
+        pc_matrix = \
+           np.diag(1.0/np.linalg.norm(design_matrix, axis=0)).astype('float64')
+    else:
+        pc_matrix = np.diag(1.0/np.linalg.norm(design_matrix, axis=0))
     pc_design_matrix = np.dot(design_matrix, pc_matrix)
 
     # add weights
+    if data.dtype != 'float64':
+        data = data.astype('float64')
     if not isinstance(weights, type(None)):
         weighted_pc_design_matrix = np.dot(np.diag(np.sqrt(weights)),
                                            pc_design_matrix)
