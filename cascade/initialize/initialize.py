@@ -34,6 +34,8 @@ def generate_default_initialization():
                      'cpm_lam0': '1.0e-6',
                      'cpm_lam1': '1.0e2',
                      'cpm_nlam': '60',
+                     'cpm_sigma': '3.0',
+                     'cpm_nfilter': '5',
                      'cpm_nextraction': '5',
                      'cpm_DeltaPix': '9',
                      'cpm_nrebin': '1'}

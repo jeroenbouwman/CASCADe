@@ -7,9 +7,16 @@ Created on Sun Jul 10 16:14:19 2016
 import numpy as np
 from scipy import interpolate
 from astropy.stats import sigma_clip
+from types import SimpleNamespace
+import os.path
+import ast
 
 from ..cpm_model import solve_linear_equation
 from ..exoplanet_tools import lightcuve
+from ..initialize import configurator
+from ..initialize import default_initialization_path
+from ..initialize import cascade_configuration
+from ..instruments import Observation
 
 __all__ = ['TSOSuite']
 
@@ -20,15 +27,420 @@ class TSOSuite:
     This is the main class containing data and functionality to determine
     the spectra of transiting systems.
     """
-    def __init__(self, *init_files):
-        pass
-
-    def execute(self, command):
-        pass
+    def __init__(self, *init_files, path=None):
+        if path is None:
+            path = default_initialization_path
+        if len(init_files) != 0:
+            init_files_path = []
+            for file in init_files:
+                init_files_path.append(path+file)
+            self.cascade_parameters = configurator(*init_files_path)
+        else:
+            self.cascade_parameters = cascade_configuration
 
     @property
     def __valid_commands(self):
-        {"inititalize", "reset"}
+        return {"initialize": self.initialize_TSO, "reset": self.reset_TSO,
+                "load_data": self.load_data,
+                "subtract_background": self.subtract_background,
+                "sigma_clip_data": self.sigma_clip_data,
+                "define_eclipse_model": self.define_eclipse_model,
+                "determine_source_position": self.determine_source_position,
+                "set_extraction_mask": self.set_extraction_mask}
+
+    def execute(self, command, *init_files, path=None):
+        """
+        Excecute specified command
+        """
+        if command not in self.__valid_commands:
+                raise ValueError("Command not recognized, \
+                                 check your data reduction command for the \
+                                 following valid commans: {}. Aborting \
+                                 command".format(self.__valid_commands.keys()))
+        else:
+            if command == "initialize":
+                self.__valid_commands[command](*init_files, path=path)
+            else:
+                self.__valid_commands[command]()
+
+    def initialize_TSO(self, *init_files, path=None):
+        """
+        Initialize TSO object
+        """
+        if path is None:
+            path = default_initialization_path
+        if len(init_files) != 0:
+            init_files_path = []
+            for file in init_files:
+                init_files_path.append(path+file)
+                if not os.path.isfile(path+file):
+                    raise FileNotFoundError('ini file {} does not \
+                                            excist. Aborting \
+                                            initialization'.format(path+file))
+            self.cascade_parameters = configurator(*init_files_path)
+        else:
+            self.cascade_parameters = cascade_configuration
+
+    def reset_TSO(self):
+        """
+        Reset initialization of TSO object
+        """
+        self.cascade_parameters.reset()
+
+    def load_data(self):
+        """
+        Load Data from file
+        """
+        self.observation = Observation()
+
+    def subtract_background(self):
+        """
+        Subtract median background from science observations
+        """
+        try:
+            obs_has_backgr = ast.literal_eval(self.cascade_parameters.
+                                              observations_has_background)
+            if not obs_has_backgr:
+                print("Background subtraction not needed: returning")
+                return
+        except:
+            raise AttributeError("backgound switch not defined. \
+                                 Aborting background subtraction")
+        try:
+            background = self.observation.dataset_background
+        except AttributeError:
+            raise AttributeError("No Background data found. \
+                                 Aborting background subtraction")
+        try:
+            sigma = float(self.cascade_parameters.cpm_sigma)
+        except AttributeError:
+            raise AttributeError("Sigma clip value not defined. \
+                                 Aborting background subtraction")
+        # mask cosmic hits
+        input_background_data = np.ma.array(background.data.data.value,
+                                            mask=background.mask)
+        sigma_cliped_mask = \
+            self.sigma_clip_data_cosmic(input_background_data, sigma)
+        # update mask
+        updated_mask = np.ma.mask_or(background.mask, sigma_cliped_mask)
+        background.mask = updated_mask
+        # calculate median (over time) background
+        median_background = np.ma.median(background.data,
+                                         axis=background.data.ndim-1)
+        median_background = np.ma.array(median_background.data *
+                                        background.data_unit,
+                                        mask=median_background.mask)
+        # tile to format of science data
+        tiling = (tuple([(background.data.shape)[-1]]) +
+                  tuple(np.ones(background.data.ndim-1).astype(int)))
+        median_background = np.tile(median_background.T, tiling).T
+
+        # subtract background
+        # update TSOtimeseries object with background subtracted data
+        self.observation.dataset.data = self.observation.dataset.data -\
+            median_background
+        self.observation.dataset.isBackgroundSubtracted = True
+
+    @staticmethod
+    def sigma_clip_data_cosmic(data, sigma):
+        """
+        Sigma Clip in time.
+        Input:
+            data
+            mask
+            sigma
+        Output
+            updated mask
+        """
+        # time axis always the last axis in data,
+        # or the first in the transposed array
+        filtered_data = sigma_clip(data.T, sigma=sigma, axis=0)
+        sigma_clip_mask = filtered_data.mask.T
+        return sigma_clip_mask
+
+    def sigma_clip_data(self):
+        """
+        Perform sigma clip on science data to flag bad data.
+        """
+        try:
+            data_in = self.observation.dataset
+        except AttributeError:
+            raise AttributeError("No Valid data found. \
+                                 Aborting sigma clip on data.")
+        try:
+            sigma = float(self.cascade_parameters.cpm_sigma)
+        except AttributeError:
+            raise AttributeError("Sigma clip value not defined. \
+                                 Aborting sigma clip on data.")
+        try:
+            nfilter = int(self.cascade_parameters.cpm_nfilter)
+            if (nfilter % 2 == 0):  # even
+                nfilter += 1
+        except AttributeError:
+            raise AttributeError("Filter length for sigma clip not defined. \
+                                 Aborting sigma clip on data.")
+
+        # mask cosmic hits
+        temp_data = np.ma.array(data_in.data.data.value, mask=data_in.mask)
+        sigma_cliped_mask = self.sigma_clip_data_cosmic(temp_data, sigma)
+        # update mask
+        updated_mask = np.ma.mask_or(data_in.mask, sigma_cliped_mask)
+        data_in.mask = updated_mask
+
+        dim = data_in.data.shape
+        ndim = data_in.data.ndim
+        mask = data_in.mask.copy()
+
+        for il in range(0+(nfilter-1)//2, dim[0]-(nfilter-1)//2):
+            filter_index = \
+                [slice(il - (nfilter-1)//2, il+(nfilter-1)//2+1, None)] + \
+                [slice(None)]*(ndim-1)
+            # reformat to masked array without quantity
+            temp_data = np.ma.array(data_in.data.data.value, mask=data_in.mask)
+            # median along time axis
+            temp_data = np.ma.median(temp_data[filter_index].T, axis=0)
+            # filter in box in the wavelength direction
+            temp_data = sigma_clip(temp_data, sigma=sigma, axis=ndim-2)
+            # specra:  tiling=(dim[1], 1)
+            # spectral images:  tiling=(dim[2], 1, 1)
+            # spectral data cubes: tiling=(dim[3], 1, 1, 1)
+            tiling = dim[ndim-1:] + tuple(np.ones(ndim-1).astype(int))
+            mask_new = np.tile(temp_data.mask, tiling)
+            # add to mask
+            mask[filter_index] = np.ma.mask_or(mask[filter_index], mask_new.T)
+        # update mask and set flag
+        updated_mask = np.ma.mask_or(data_in.mask, mask)
+        self.observation.dataset.mask = mask
+        self.observation.dataset.isSigmaCliped = True
+
+    def define_eclipse_model(self):
+        """
+        This function defines the light curve model used to analize the
+        transit or eclipse.
+        """
+        # define ligthcurve model
+        lc_model = lightcuve()
+
+        # interpoplate light curve model to observed phases
+        f = interpolate.interp1d(lc_model.lc[0], lc_model.lc[1])
+        # use interpolation function returned by `interp1d`
+        lcmodel_obs = f(self.observation.dataset.time.data.value)
+
+        self.model = SimpleNamespace()
+        self.model.light_curve = lc_model
+        self.model.light_curve_interpolated = lcmodel_obs
+        self.model.transittype = lc_model.par['transittype']
+
+    def determine_source_position(self):
+        """
+        This function determines the position of the source in the slit
+        over time and the spectral trace.
+        """
+        try:
+            position = self.observation.dataset.position
+            spectral_trace = self.observation.spectral_trace
+        except:
+            print("Position and trace are not both defined yet. Calculating.")
+        else:
+            print("Position and trace already set in dataset. \
+                  Using that in further analysis.")
+            try:
+                self.cpm
+            except AttributeError:
+                self.cpm = SimpleNamespace()
+            self.cpm.spectral_trace = \
+                spectral_trace['positional_pixel'].value
+            self.cpm.position = position.data.value
+            self.cpm.median_position = np.median(self.cpm.position)
+            return
+        try:
+            data_in = self.observation.dataset
+        except AttributeError:
+            raise AttributeError("No Valid data found. \
+                                 Aborting position determination")
+        try:
+            sigma_clip_flag = self.observation.dataset.isSigmaCliped
+        except AttributeError:
+            raise AttributeError("Data not sigma clipped, which can result \
+                                 in wrong positions")
+        else:
+            if not sigma_clip_flag:
+                raise AssertionError("Data not sigma clipped, \
+                                     which can result in wrong positions")
+        try:
+            ramp_fitted_flag = self.observation.dataset.isRampFitted
+        except AttributeError:
+            raise AttributeError("type of data not properly set, \
+                                 or not consistent with spectral images \
+                                 or cubes. Aborting position determination")
+        if not ramp_fitted_flag:
+            # detector cubes, last idex is time,
+            # prelast index samples up the ramp
+            ndim = data_in.data.ndim
+            dim = data_in.data.shape
+            selection1 = \
+                [slice(None)]*(ndim-2) + \
+                [slice(1, dim[-2]-1, None)] + \
+                [slice(None)]
+            selection0 = \
+                [slice(None)]*(ndim-2) + \
+                [slice(0, dim[-2]-2, None)] + \
+                [slice(None)]
+            data_use = np.ma.median(data_in.data[selection1] -
+                                    data_in.data[selection0], axis=ndim-2)
+        else:
+            data_use = np.ma.array(data_in.data.data.value,
+                                   mask=data_in.data.mask)
+
+        npix, mpix, nintegrations = data_use.shape
+        # check if data is nodded or not
+        if self.observation.dataset.isNodded:
+            time_idx = [np.arange(nintegrations//2).astype(int),
+                        np.arange(nintegrations//2).astype(int) +
+                        nintegrations//2]
+        else:
+            time_idx = [np.arange(nintegrations).astype(int)]
+        # determine source position in time and source trace for
+        # each nod seperately.
+        pos_list = []
+        trace_list = []
+        median_pos_list = []
+        for inod in time_idx:
+            nint_use = inod.shape[0]
+            pos_trace = np.ma.zeros((npix))
+            pos = np.ma.zeros((nint_use))
+
+            prof_temp = np.ma.median(data_use[:, :, inod], axis=2)
+            grid_temp = np.linspace(0, mpix-1, num=mpix)
+            array_temp = np.ma.array(grid_temp, dtype=np.dtype('Float64'))
+            tile_temp = np.tile(array_temp, (npix, 1))
+            pos_trace = np.ma.sum(prof_temp * tile_temp, axis=1) / \
+                np.ma.sum(prof_temp, axis=1)
+            weight = np.ma.swapaxes(np.tile(array_temp,
+                                            (nint_use, npix, 1)).T, 0, 1)
+
+            pos = np.ma.median((np.ma.sum(data_use[:, :, inod] *
+                                          weight, axis=1) /
+                                np.ma.sum(data_use[:, :, inod], axis=1)) /
+                               np.tile(pos_trace[:, None], (1, nint_use)),
+                               axis=0)
+            # add 0.5 pix to shift position to center of pixel
+            pos_trace = pos_trace+0.5
+
+            pos_slit = pos * np.ma.median(pos_trace) - np.ma.median(pos_trace)
+            pos_list.append(pos_slit.data)
+            trace_list.append(pos_trace.data)
+            median_pos_list.append(np.ma.median(pos_trace))
+
+        pos_slit = np.asarray([item for sublist in pos_list
+                               for item in sublist],
+                              dtype=np.dtype('Float64'))
+        median_pos = np.asarray(median_pos_list,
+                                dtype=np.dtype('Float64'))
+        # if nodded combine traces.
+        if len(trace_list) == 2:
+            pos_trace = np.squeeze(np.mean(trace_list, axis=0))
+        else:
+            pos_trace = np.squeeze(np.asarray(trace_list,
+                                              dtype=np.dtype('Float64')))
+        try:
+            self.cpm
+        except AttributeError:
+            self.cpm = SimpleNamespace()
+        self.cpm.spectral_trace = pos_trace
+        self.cpm.position = pos_slit
+        self.cpm.median_position = median_pos
+
+    def set_extraction_mask(self):
+        """
+        Set mask which defines the area of interest within which
+        a transit signal will be determined.
+        """
+        try:
+            nExtractionWidth = self.cascade_parameters.cpm_nextraction
+        except AttributeError:
+            raise AttributeError("The width of the extraction mask \
+                                 is not define. Check the initialiation \
+                                 of the TSO object. \
+                                 Aborting setting extraction mask")
+        try:
+            spectral_trace = self.cpm.spectral_trace
+            median_position = self.cpm.median_position
+        except AttributeError:
+            raise AttributeError("No spectral trace or source position \
+                                 found. Aborting setting extraction mask")
+        try:
+            data_in = self.observation.dataset
+        except AttributeError:
+            raise AttributeError("No Valid data found. \
+                                 Aborting setting extraction mask")
+
+        dim = data_in.data.shape
+        ndim = data_in.data.ndim
+        mask = data_in.mask.copy()
+
+        ndim_extractionMask = min((2, ndim-1))
+
+        if ndim_extractionMask == 1:
+            pass
+        else:
+            pass
+
+
+        if self.isRampFitted:
+            npix, mpix, nintegrations = self.data.shape
+        else:
+            npix, mpix, nintegrations, nframes = self.data.shape
+        if isinstance(nExtractionWidth, type(None)):
+            if self.isRampFitted:
+                ExtractionMask = np.all(self.data.mask, axis=2)
+            else:
+                ExtractionMask = np.all(np.all(self.data.mask, axis=3), axis=2)
+        elif self.trace.shape[0] == 0:
+            if self.isRampFitted:
+                ExtractionMask = np.all(self.data.mask, axis=2)
+            else:
+                ExtractionMask = np.all(np.all(self.data.mask, axis=3), axis=2)
+        else:
+            if self.isNodded:
+                time_idx = [np.arange(nintegrations//2).astype(int),
+                            np.arange(nintegrations//2).astype(int) +
+                            nintegrations // 2]
+            else:
+                time_idx = [np.arange(nintegrations).astype(int)]
+            extraction_mask = np.ones((npix, mpix), dtype=np.dtype('Bool'))
+            nod_associated_pixels = []
+            for inod in time_idx:
+                zero_point_trace = \
+                    np.median(self.trace[np.nonzero(self.trace)])
+                zero_point_source = np.median(self.position[
+                            inod[np.nonzero(self.position[inod])]])
+                trace_use = self.trace.copy()
+                trace_use = trace_use-zero_point_trace + zero_point_source
+                if not isinstance(nExtractionWidth, type(1)):
+                    nExtractionWidth = np.rint(nExtractionWidth)
+                if (nExtractionWidth % 2 == 0):  # even
+                    nExtractionWidth += 1
+                ix = np.tile(np.arange(npix)[:, None].astype(int),
+                             (1, nExtractionWidth))
+                iy = np.tile((np.arange(nExtractionWidth) -
+                              nExtractionWidth // 2).astype(int), (npix, 1))
+                iy = np.rint(trace_use).astype(int)[:, None] + iy
+                iy = np.clip(iy, 0, mpix - 1)
+                extraction_mask[ix, iy] = False
+                nod_associated_pixels.append(
+                     [i for i in zip(np.reshape(ix, npix * nExtractionWidth),
+                                     np.reshape(iy, npix * nExtractionWidth))])
+            if self.isRampFitted:
+                ExtractionMask = np.logical_or(extraction_mask,
+                                               np.all(self.data.mask, axis=2))
+            else:
+                ExtractionMask = np.logical_or(extraction_mask,
+                                               np.all(np.all(self.data.mask,
+                                                             axis=3), axis=2))
+            if self.isNodded:
+                self.nod_associated_pixels = nod_associated_pixels
+        self.extraction_mask = ExtractionMask
 
 
 class TSOSuiteOld:

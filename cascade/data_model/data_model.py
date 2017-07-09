@@ -90,7 +90,7 @@ class MeasurementDesc(object):
     setting the properties for the the measurement and unit
     """
     def __init__(self, keyname):
-        self.default = 0.0
+        self.default = float("NaN")
         self.values = WeakKeyDictionary()
         self.keyname = keyname
 
@@ -100,9 +100,17 @@ class MeasurementDesc(object):
             unit_out = unit
         else:
             unit_out = u.dimensionless_unscaled
-        return np.ma.array(getattr(instance, "_"+self.keyname,
-                                   self.default)*unit_out,
-                           mask=getattr(instance, "_mask"))
+        mask = getattr(instance, "_mask")
+        value = getattr(instance, "_"+self.keyname, self.default)
+        if (mask.shape == ()) or (mask.shape == value.shape):
+            value_out = value
+        else:
+            ntile = len(value.shape)
+            tiling = getattr(instance, "_data").shape[:-ntile] + \
+                tuple(np.ones(ntile).astype(int))
+            value_out = np.tile(value, tiling)
+
+        return np.ma.array(value_out*unit_out, mask=mask)
 
     def __set__(self, instance, value):
         if isinstance(value, u.Quantity):
@@ -195,11 +203,19 @@ class SpectralData(InstanceDescriptorMixin):
             unit_out = self._wavelength_unit
         else:
             unit_out = u.dimensionless_unscaled
-        if self._wavelength.shape == ():
-            return np.ma.array(np.array([self._wavelength]) * unit_out,
+        if (self.mask.shape == ()) or (self.mask.shape ==
+                                       self._wavelength.shape):
+            wavelength_out = self._wavelength
+        else:
+            ntile = len(self._wavelength.shape)
+            tiling = ((self._data.shape)[::-1])[:-ntile] + \
+                tuple(np.ones(ntile).astype(int))
+            wavelength_out = np.tile(self._wavelength.T, tiling).T
+        if wavelength_out.shape == ():
+            return np.ma.array(np.array([wavelength_out]) * unit_out,
                                mask=self.mask)
         else:
-            return np.ma.array(self._wavelength * unit_out, mask=self.mask)
+            return np.ma.array(wavelength_out * unit_out, mask=self.mask)
 
     @wavelength.setter
     def wavelength(self, value):
@@ -251,17 +267,23 @@ class SpectralData(InstanceDescriptorMixin):
 
     @data.setter
     def data(self, value):
-        if isinstance(value, u.Quantity):
-            if self._data_unit is not None:
-                self._data = np.array(((value).to(self._data_unit)).value)
-            else:
-                self._data = np.array(value.value)
-                self._data_unit = value.unit
+        if isinstance(value, np.ma.masked_array):
+            data_in = value.data
+            mask_in = value.mask
+            self._mask = mask_in
         else:
-            if np.array(value).shape != ():
-                self._data = np.array(value)
+            data_in = value
+        if isinstance(data_in, u.Quantity):
+            if self._data_unit is not None:
+                self._data = np.array(((data_in).to(self._data_unit)).value)
             else:
-                self._data = np.array([value])
+                self._data = np.array(data_in.value)
+                self._data_unit = data_in.unit
+        else:
+            if np.array(data_in).shape != ():
+                self._data = np.array(data_in)
+            else:
+                self._data = np.array([data_in])
 
     @property
     def uncertainty(self):
@@ -273,22 +295,32 @@ class SpectralData(InstanceDescriptorMixin):
             return np.ma.array(np.array([self._uncertainty]) * unit_out,
                                mask=self.mask)
         else:
-            return np.ma.array(self._uncertainty * unit_out, mask=self.mask)
+            if np.all(np.isnan(self._uncertainty)):
+                return np.ma.array(self._uncertainty * unit_out)
+            else:
+                return np.ma.array(self._uncertainty * unit_out,
+                                   mask=self.mask)
 
     @uncertainty.setter
     def uncertainty(self, value):
-        if isinstance(value, u.Quantity):
+        if isinstance(value, np.ma.masked_array):
+            data_in = value.data
+            mask_in = value.mask
+            self._mask = mask_in
+        else:
+            data_in = value
+        if isinstance(data_in, u.Quantity):
             if self._data_unit is not None:
                 self._uncertainty = \
-                    np.array(((value).to(self._data_unit)).value)
+                    np.array(((data_in).to(self._data_unit)).value)
             else:
-                self._uncertainty = np.array(value.value)
-                self._data_unit = value.unit
+                self._uncertainty = np.array(data_in.value)
+                self._data_unit = data_in.unit
         else:
-            if np.array(value).shape != ():
-                self._uncertainty = np.array(value)
+            if np.array(data_in).shape != ():
+                self._uncertainty = np.array(data_in)
             else:
-                self._uncertainty = np.array([value])
+                self._uncertainty = np.array([data_in])
 
     @property
     def data_unit(self):
@@ -355,11 +387,18 @@ class SpectralDataTimeSeries(SpectralData):
             unit_out = self._time_unit
         else:
             unit_out = u.dimensionless_unscaled
-        if self._time.shape == ():
-            return np.ma.array(np.array([self._time]) * unit_out,
+        if (self.mask.shape == ()) or (self.mask.shape == self._time.shape):
+            time_out = self._time
+        else:
+            ntile = len(self._time.shape)
+            tiling = (self._data.shape)[:-ntile] + \
+                tuple(np.ones(ntile).astype(int))
+            time_out = np.tile(self._time, tiling)
+        if time_out == ():
+            return np.ma.array(np.array([time_out]) * unit_out,
                                mask=self.mask)
         else:
-            return np.ma.array(self._time * unit_out, mask=self.mask)
+            return np.ma.array(time_out * unit_out, mask=self.mask)
 
     @time.setter
     def time(self, value):

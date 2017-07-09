@@ -12,8 +12,7 @@ tso = cascade.TSO.TSOSuite()
 path = cascade.initialize.default_initialization_path
 tso = cascade.TSO.TSOSuite("cascade_test_cpm.ini",
                            "cascade_test_object.ini",
-                           "cascade_test_data_spectra.ini", path=path)
-
+                           "cascade_test_data_spectral_images.ini", path=path)
 print(tso.cascade_parameters)
 print(cascade.initialize.cascade_configuration)
 print(tso.cascade_parameters.isInitialized)
@@ -30,30 +29,31 @@ print(tso.cascade_parameters.isInitialized)
 tso = cascade.TSO.TSOSuite()
 path = cascade.initialize.default_initialization_path
 tso.execute("initialize", "cascade_test_cpm.ini", "cascade_test_object.ini",
-            "cascade_test_data_spectra.ini", path=path)
+            "cascade_test_data_spectral_images.ini", path=path)
 print(tso.cascade_parameters)
 print(cascade.initialize.cascade_configuration)
 print(tso.cascade_parameters.isInitialized)
 
 # load data
 tso.execute("load_data")
-plt.imshow(tso.observation.dataset.data[:, :])
+plt.imshow(tso.observation.dataset.data[:, :, 0])
 plt.show()
-
+plt.imshow(tso.observation.dataset_background.data[:, :,  0])
+plt.show()
 
 plt.imshow(tso.observation.dataset._wavelength)
 plt.show()
-plt.imshow(tso.observation.dataset.wavelength[:, :])
+plt.imshow(tso.observation.dataset.wavelength[:, :, 0])
 plt.show()
 
 with quantity_support():
-    plt.plot(tso.observation.dataset.time.data[80, :],
-             tso.observation.dataset.data.data[80, :])
+    plt.plot(tso.observation.dataset.time.data[80, 18, :],
+             tso.observation.dataset.data.data[80, 18, :])
     plt.show()
 
 with quantity_support():
-    plt.plot(tso.observation.dataset.wavelength.data[:, 0],
-             tso.observation.dataset.data.data[:, 0])
+    plt.plot(tso.observation.dataset.wavelength.data[:, 18, 0],
+             tso.observation.dataset.data.data[:, 18, 0])
     plt.show()
 
 print(tso.observation.dataset.time.data.shape)
@@ -62,35 +62,35 @@ print(tso.observation.dataset.time.data.unit)
 
 # subtract background
 tso.execute("subtract_background")
-plt.imshow(tso.observation.dataset.data[:, :])
+plt.imshow(tso.observation.dataset.data[:, :, 0])
 plt.show()
 
-plt.imshow(tso.observation.dataset.mask)
+plt.imshow(tso.observation.dataset.mask.any(axis=2))
 plt.show()
 
 with quantity_support():
-    plt.plot(tso.observation.dataset.time[80, :],
-             tso.observation.dataset.data[80, :])
+    plt.plot(tso.observation.dataset.time[80, 18, :],
+             tso.observation.dataset.data[80, 18, :])
     plt.show()
 
 # sigma clip data
 tso.execute("sigma_clip_data")
-plt.imshow(tso.observation.dataset.data[:, :])
+plt.imshow(np.ma.median(tso.observation.dataset.data[:, :, :], axis=2))
 plt.show()
-plt.imshow(tso.observation.dataset.mask[:, :])
+plt.imshow(tso.observation.dataset.mask[:, :, :].all(axis=2))
 plt.show()
 with quantity_support():
-    plt.plot(tso.observation.dataset.time[80, :],
-             tso.observation.dataset.data[80, :])
+    plt.plot(tso.observation.dataset.time[80, 18, :],
+             tso.observation.dataset.data[80, 18, :])
     plt.show()
 
 # eclipse model
 tso.execute("define_eclipse_model")
-plt.imshow(tso.model.light_curve_interpolated[:, :])
+plt.imshow(tso.model.light_curve_interpolated[:, 0, :])
 plt.show()
 with quantity_support():
-    plt.plot(tso.observation.dataset.time.data[80, :],
-             tso.model.light_curve_interpolated[80, :])
+    plt.plot(tso.observation.dataset.time.data[80, 18, :],
+             tso.model.light_curve_interpolated[80, 18, :])
     plt.show()
 
 # determine position of source from data set
@@ -98,22 +98,23 @@ tso.execute("determine_source_position")
 with quantity_support():
     plt.plot(tso.observation.spectral_trace['wavelength_pixel'],
              tso.observation.spectral_trace['positional_pixel'])
+    plt.plot(tso.cpm.spectral_trace)
     plt.show()
 with quantity_support():
     plt.plot(tso.observation.spectral_trace['wavelength_pixel'],
              tso.observation.spectral_trace['wavelength'])
     plt.show()
-with quantity_support():
-    plt.plot(tso.observation.dataset.time[80, :],
-             tso.observation.dataset.position[80, :])
 
 plt.plot(tso.cpm.spectral_trace)
 plt.show()
-plt.plot(tso.cpm.position[80, :])
+plt.plot(tso.cpm.position)
 plt.show()
 
-# set the extraction area
-tso.execute("set_extraction_mask")
+plt.plot(tso.observation.spectral_trace['wavelength_pixel'].value,
+         tso.observation.spectral_trace['positional_pixel'].value -
+         tso.cpm.spectral_trace)
+axes = plt.gca()
+axes.set_ylim([-1, 1])
+plt.show()
 
-
-
+#plt.plot(tso.cpm.position-np.median(tso.cpm.spectral_trace))

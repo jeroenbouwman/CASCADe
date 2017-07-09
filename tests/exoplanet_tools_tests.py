@@ -1,6 +1,17 @@
 # -*- coding: utf-8 -*-
 import cascade
 import matplotlib.pyplot as plt
+import numpy as np
+from astropy.visualization import quantity_support
+import astropy.units as u
+
+wave = np.arange(4, 15, 0.05) * u.micron
+temp = 300 * u.K
+flux = cascade.exoplanet_tools.Planck(wave, temp)
+
+with quantity_support():
+    plt.plot(wave, flux)
+    plt.show()
 
 # test downloading catalog
 ct = cascade.exoplanet_tools.parse_database('EXOPLANETS.ORG', update=True)

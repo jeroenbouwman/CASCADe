@@ -17,7 +17,8 @@ import astropy.units as u
 from astropy.units import cds
 from astropy import constants as const
 # import uncertainties
-# from astropy.analytic_functions import blackbody_nu
+from astropy.analytic_functions import blackbody_nu
+from functools import wraps
 # from astropy.time import Time
 # from astropy.utils.data import download_file, clear_download_cache
 # from astropy.constants import M_jup, M_sun, R_jup, R_sun
@@ -30,7 +31,7 @@ import batman
 from ..initialize import cascade_configuration
 
 __all__ = ['Vmag', 'Kmag', 'Rho_jup', 'Rho_jup', 'KmagToJy', 'JytoKmag',
-           'SurfaceGravity', 'ScaleHeight', 'TransitDepth',
+           'SurfaceGravity', 'ScaleHeight', 'TransitDepth', 'Planck',
            'EquilibriumTemperature', 'get_calalog', 'parse_database',
            'extract_exoplanet_data', 'lightcuve', 'batman_model']
 
@@ -209,6 +210,34 @@ exoplanets_table_units = collections.OrderedDict(
     TTLOWER=u.day)
 
 
+# decorrator function to check and handel masked Quantities
+# such as:  masked_quantity = np.ma.array([1,2,3,4]*u.micron,
+# mask=[True, False, True, False])
+def masked_array_input(func):
+    """
+    If one of the input arguments is wavelength or flux, the array can be
+    a masked Quantaty, masing out ony 'bad' data. This decorrator checks for
+    masked arrays and upon finding the first masked array, passes the data
+    and stores the mask to be used to create a masked Quantaty after the
+    function returns.
+    """
+    @wraps(func)
+    def __wrapper(*args, **kwargs):
+        is_masked = False
+        arg_list = list(args)
+        for i, arg in enumerate(list(args)):
+            if isinstance(arg, np.ma.core.MaskedArray):
+                arg_list[i] = arg.data
+                mask_store = arg.mask
+                is_masked = True
+                break
+        if is_masked:
+            return np.ma.array(func(*arg_list, **kwargs), mask=mask_store)
+        else:
+            return func(*arg_list, **kwargs)
+    return __wrapper
+
+
 @u.quantity_input
 def KmagToJy(magnitude: Kmag, system='Johnson'):
     """Convert Kband Magnitudes to Jy"""
@@ -253,6 +282,26 @@ def JytoKmag(flux: u.Jy, system='Johnson'):
         magnitude = flux.to(u.Jy)
 
     return magnitude
+
+
+@masked_array_input
+@u.quantity_input
+def Planck(wavelength: u.micron, temperature: u.K):
+    """
+    This function calculates the emisison from a Black Body.
+
+    Input:
+    ------
+    wavelength
+        Input wavelength in units of microns or equivalent
+    temperature
+        Input temperature in units of Kelvin or equivalent
+
+    Output:
+    -------
+    B_nu in cgs units [ erg/s/cm2/Hz/sr]
+    """
+    return blackbody_nu(wavelength, temperature)
 
 
 @u.quantity_input
