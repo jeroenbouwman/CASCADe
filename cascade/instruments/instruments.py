@@ -696,7 +696,7 @@ class SpitzerIRS(InstrumentBase):
         wave_pixel_grid = np.arange(dim[0]) * u.pix
 
         if self.par["obs_data"] == 'SPECTRUM':
-            position_pixel_grid = np.ones_like(wave_pixel_grid)
+            position_pixel_grid = np.zeros_like(wave_pixel_grid)
             spectral_trace = \
                 collections.OrderedDict(wavelength_pixel=wave_pixel_grid,
                                         positional_pixel=position_pixel_grid,

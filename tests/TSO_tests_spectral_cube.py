@@ -98,7 +98,9 @@ with quantity_support():
 tso.execute("determine_source_position")
 with quantity_support():
     plt.plot(tso.observation.spectral_trace['wavelength_pixel'],
-             tso.observation.spectral_trace['positional_pixel'])
+             tso.observation.spectral_trace['positional_pixel']-
+             np.median(tso.observation.spectral_trace['positional_pixel']))
+    plt.plot(tso.cpm.spectral_trace)
     plt.show()
 with quantity_support():
     plt.plot(tso.observation.spectral_trace['wavelength_pixel'],
@@ -107,13 +109,21 @@ with quantity_support():
 
 plt.plot(tso.cpm.spectral_trace)
 plt.show()
-plt.plot(tso.cpm.position)
+plt.plot(tso.observation.dataset.time.data.value[80, 18, 15, :],
+         tso.cpm.position[80, 18, 15, :])
 plt.show()
 
 plt.plot(tso.observation.spectral_trace['wavelength_pixel'].value,
          tso.observation.spectral_trace['positional_pixel'].value -
-         tso.cpm.spectral_trace)
+         (tso.cpm.spectral_trace+tso.cpm.median_position))
 axes = plt.gca()
 axes.set_ylim([-1, 1])
+plt.show()
+
+# set the extraction area
+tso.execute("set_extraction_mask")
+
+print(tso.cpm.extraction_mask.shape)
+plt.imshow(tso.cpm.extraction_mask)
 plt.show()
 

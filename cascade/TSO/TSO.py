@@ -235,7 +235,35 @@ class TSOSuite:
         """
         This function determines the position of the source in the slit
         over time and the spectral trace.
+
+        We check if trace and position are already set, if not, determine them
+        from the data by deriving the "center of light" of the dispersed
+        light.
+
+        Output:
+            spectral_trace:
+                The trace of the dispersed light on the detector normalized
+                to its median position. In case the data are extracted spectra,
+                the trace is zero.
+            position:
+                Postion of the source on the detector in the cross dispersion
+                directon as a function of time, normalized to the
+                median position.
+            median_position:
+                median source position.
         """
+        try:
+            data_in = self.observation.dataset
+            dim = self.observation.dataset.data.shape
+            ndim = self.observation.dataset.data.ndim
+        except AttributeError:
+            raise AttributeError("No Valid data found. \
+                                 Aborting position determination")
+        try:
+            isNodded = self.observation.dataset.isNodded
+        except AttributeError:
+            raise AttributeError("Observational strategy not properly set. \
+                                 Aborting position determination")
         try:
             position = self.observation.dataset.position
             spectral_trace = self.observation.spectral_trace
@@ -248,16 +276,32 @@ class TSOSuite:
                 self.cpm
             except AttributeError:
                 self.cpm = SimpleNamespace()
-            self.cpm.spectral_trace = \
-                spectral_trace['positional_pixel'].value
-            self.cpm.position = position.data.value
-            self.cpm.median_position = np.median(self.cpm.position)
+            finally:
+                temp0 = np.median(spectral_trace['positional_pixel'].value)
+                if isNodded:
+                    new_shape = dim[:-1] + (dim[-1]//2, 2)
+                    axis_selection = tuple(np.arange(ndim).astype(int))
+                    temp1 = np.median(np.reshape(position.data.value,
+                                                 new_shape),
+                                      axis=(axis_selection))
+                    normalized_pos = position.data.value.copy()
+                    nod_index = [slice(None)]*(ndim-1) + \
+                        [slice(0, dim[-1]//2 - 1, None)]
+                    normalized_pos[nod_index] = \
+                        normalized_pos[nod_index] - temp1[0]
+                    nod_index = [slice(None)]*(ndim-1) + \
+                        [slice(dim[-1]//2, dim[-1] - 1, None)]
+                    normalized_pos[nod_index] = \
+                        normalized_pos[nod_index] - temp1[1]
+                else:
+                    temp1 = np.array([np.median(position.data.value)])
+                    normalized_pos = position.data.value.copy()
+                    normalized_pos = normalized_pos - temp1
+                self.cpm.spectral_trace = \
+                    spectral_trace['positional_pixel'].value - temp0
+                self.cpm.position = normalized_pos
+                self.cpm.median_position = temp0 + temp1
             return
-        try:
-            data_in = self.observation.dataset
-        except AttributeError:
-            raise AttributeError("No Valid data found. \
-                                 Aborting position determination")
         try:
             sigma_clip_flag = self.observation.dataset.isSigmaCliped
         except AttributeError:
@@ -274,10 +318,9 @@ class TSOSuite:
                                  or not consistent with spectral images \
                                  or cubes. Aborting position determination")
         if not ramp_fitted_flag:
-            # detector cubes, last idex is time,
-            # prelast index samples up the ramp
-            ndim = data_in.data.ndim
-            dim = data_in.data.shape
+            # determine ramp slope from 2 point difference and collapse image
+            # in detector cubes, last idex is time,
+            # and the prelast index samples up the ramp
             selection1 = \
                 [slice(None)]*(ndim-2) + \
                 [slice(1, dim[-2]-1, None)] + \
@@ -288,13 +331,17 @@ class TSOSuite:
                 [slice(None)]
             data_use = np.ma.median(data_in.data[selection1] -
                                     data_in.data[selection0], axis=ndim-2)
+            time_in = self.observation.dataset.time.data.value
+            time_use = np.ma.median(time_in, axis=ndim-2)
         else:
             data_use = np.ma.array(data_in.data.data.value,
                                    mask=data_in.data.mask)
+            time_in = self.observation.dataset.time.data.value
+            time_use = time_in
 
         npix, mpix, nintegrations = data_use.shape
         # check if data is nodded or not
-        if self.observation.dataset.isNodded:
+        if isNodded:
             time_idx = [np.arange(nintegrations//2).astype(int),
                         np.arange(nintegrations//2).astype(int) +
                         nintegrations//2]
@@ -329,8 +376,9 @@ class TSOSuite:
 
             pos_slit = pos * np.ma.median(pos_trace) - np.ma.median(pos_trace)
             pos_list.append(pos_slit.data)
-            trace_list.append(pos_trace.data)
             median_pos_list.append(np.ma.median(pos_trace))
+            pos_trace = pos_trace - np.ma.median(pos_trace)
+            trace_list.append(pos_trace.data)
 
         pos_slit = np.asarray([item for sublist in pos_list
                                for item in sublist],
@@ -343,21 +391,33 @@ class TSOSuite:
         else:
             pos_trace = np.squeeze(np.asarray(trace_list,
                                               dtype=np.dtype('Float64')))
+
+        # make sure position is given on time grid acociated with data
+        f = interpolate.interp1d(time_use[0, 0, :], pos_slit,
+                                 fill_value='extrapolate')
+        pos_slit_interpolated = f(time_in)
+
         try:
             self.cpm
         except AttributeError:
             self.cpm = SimpleNamespace()
-        self.cpm.spectral_trace = pos_trace
-        self.cpm.position = pos_slit
-        self.cpm.median_position = median_pos
+        finally:
+            self.cpm.spectral_trace = pos_trace
+            self.cpm.position = pos_slit_interpolated
+            self.cpm.median_position = median_pos
 
     def set_extraction_mask(self):
         """
         Set mask which defines the area of interest within which
-        a transit signal will be determined.
+        a transit signal will be determined. The mask is set along the
+        spectral trace with a pixel width of nExtractionWidth
+
+        Output:
+            In case data are Spectra : 1D mask
+            In case data are Spectral images or cubes: 2D mask
         """
         try:
-            nExtractionWidth = self.cascade_parameters.cpm_nextraction
+            nExtractionWidth = int(self.cascade_parameters.cpm_nextraction)
         except AttributeError:
             raise AttributeError("The width of the extraction mask \
                                  is not define. Check the initialiation \
@@ -381,66 +441,31 @@ class TSOSuite:
 
         ndim_extractionMask = min((2, ndim-1))
 
-        if ndim_extractionMask == 1:
-            pass
-        else:
-            pass
+        select_axis = tuple(np.arange(ndim))
 
+        ExtractionMask = np.all(mask, axis=select_axis[ndim_extractionMask:])
 
-        if self.isRampFitted:
-            npix, mpix, nintegrations = self.data.shape
-        else:
-            npix, mpix, nintegrations, nframes = self.data.shape
-        if isinstance(nExtractionWidth, type(None)):
-            if self.isRampFitted:
-                ExtractionMask = np.all(self.data.mask, axis=2)
-            else:
-                ExtractionMask = np.all(np.all(self.data.mask, axis=3), axis=2)
-        elif self.trace.shape[0] == 0:
-            if self.isRampFitted:
-                ExtractionMask = np.all(self.data.mask, axis=2)
-            else:
-                ExtractionMask = np.all(np.all(self.data.mask, axis=3), axis=2)
-        else:
-            if self.isNodded:
-                time_idx = [np.arange(nintegrations//2).astype(int),
-                            np.arange(nintegrations//2).astype(int) +
-                            nintegrations // 2]
-            else:
-                time_idx = [np.arange(nintegrations).astype(int)]
-            extraction_mask = np.ones((npix, mpix), dtype=np.dtype('Bool'))
-            nod_associated_pixels = []
-            for inod in time_idx:
-                zero_point_trace = \
-                    np.median(self.trace[np.nonzero(self.trace)])
-                zero_point_source = np.median(self.position[
-                            inod[np.nonzero(self.position[inod])]])
-                trace_use = self.trace.copy()
-                trace_use = trace_use-zero_point_trace + zero_point_source
-                if not isinstance(nExtractionWidth, type(1)):
-                    nExtractionWidth = np.rint(nExtractionWidth)
-                if (nExtractionWidth % 2 == 0):  # even
-                    nExtractionWidth += 1
-                ix = np.tile(np.arange(npix)[:, None].astype(int),
-                             (1, nExtractionWidth))
-                iy = np.tile((np.arange(nExtractionWidth) -
-                              nExtractionWidth // 2).astype(int), (npix, 1))
-                iy = np.rint(trace_use).astype(int)[:, None] + iy
-                iy = np.clip(iy, 0, mpix - 1)
-                extraction_mask[ix, iy] = False
-                nod_associated_pixels.append(
-                     [i for i in zip(np.reshape(ix, npix * nExtractionWidth),
-                                     np.reshape(iy, npix * nExtractionWidth))])
-            if self.isRampFitted:
-                ExtractionMask = np.logical_or(extraction_mask,
-                                               np.all(self.data.mask, axis=2))
-            else:
-                ExtractionMask = np.logical_or(extraction_mask,
-                                               np.all(np.all(self.data.mask,
-                                                             axis=3), axis=2))
-            if self.isNodded:
-                self.nod_associated_pixels = nod_associated_pixels
-        self.extraction_mask = ExtractionMask
+        if ndim_extractionMask != 1:
+            idx_mask_y = np.tile(np.arange(np.max((1, nExtractionWidth))).
+                                 astype(int), (dim[0], 1)) - \
+                np.max((1, nExtractionWidth))//2
+
+            idx_mask_x = \
+                np.tile(np.arange(dim[0]).astype(int),
+                        (np.max((1, nExtractionWidth)), 1)).T
+
+            extraction_mask = np.ones_like(ExtractionMask).astype(bool)
+
+            for ipos in median_position:
+                idx_mask_y_shifted = \
+                    np.tile(np.rint(spectral_trace + ipos),
+                            (np.max((1, nExtractionWidth)), 1)).T + idx_mask_y
+                extraction_mask[idx_mask_x.astype(int).reshape(-1),
+                                idx_mask_y_shifted.astype(int).reshape(-1)] = \
+                    False
+                ExtractionMask = np.logical_or(extraction_mask, ExtractionMask)
+
+        self.cpm.extraction_mask = ExtractionMask
 
 
 class TSOSuiteOld:

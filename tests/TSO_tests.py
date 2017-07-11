@@ -106,7 +106,7 @@ with quantity_support():
 with quantity_support():
     plt.plot(tso.observation.dataset.time[80, :],
              tso.observation.dataset.position[80, :])
-
+    plt.show()
 plt.plot(tso.cpm.spectral_trace)
 plt.show()
 plt.plot(tso.cpm.position[80, :])
@@ -115,5 +115,8 @@ plt.show()
 # set the extraction area
 tso.execute("set_extraction_mask")
 
+print(tso.cpm.extraction_mask.shape)
+plt.plot(tso.cpm.extraction_mask)
+plt.show()
 
 
