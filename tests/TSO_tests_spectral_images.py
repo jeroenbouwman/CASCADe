@@ -122,9 +122,32 @@ plt.show()
 # set the extraction area
 tso.execute("set_extraction_mask")
 
-print(tso.cpm.extraction_mask.shape)
-plt.imshow(tso.cpm.extraction_mask)
+print(tso.cpm.extraction_mask[0].shape)
+plt.imshow(tso.cpm.extraction_mask[0])
 plt.show()
 
+# setup regressors
+tso.execute("select_regressors")
+print(len(tso.cpm.regressor_list))
+print(len(tso.cpm.regressor_list[0]))
+print(len(tso.cpm.regressor_list[0][50]))
+print(len(tso.cpm.regressor_list[0][50][1]))
+print(len(tso.cpm.regressor_list[0][50][1][0]))
+print(tso.cpm.regressor_list[0][50])
 
-#plt.plot(tso.cpm.position-np.median(tso.cpm.spectral_trace))
+# setup of regression matrix
+tso.execute("setup_design_matrix")
+print(tso.cpm.design_matrix[0][0][0].shape)
+print(tso.cpm.design_matrix[0][1][1].shape)
+mask = tso.cpm.design_matrix[0][50][0].mask
+plt.imshow(mask)
+plt.show()
+data_masked = np.ma.mask_cols(tso.cpm.design_matrix[0][50][0])
+plt.imshow(data_masked)
+plt.show()
+#number of good measurements for regressor.
+plt.plot(np.ma.count(tso.cpm.design_matrix[0][50][0], axis=1))
+plt.show()
+#number of gooed regressors in time
+plt.plot(np.ma.count(tso.cpm.design_matrix[0][50][0], axis=0))
+plt.show()

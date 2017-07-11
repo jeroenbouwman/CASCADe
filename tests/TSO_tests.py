@@ -115,8 +115,20 @@ plt.show()
 # set the extraction area
 tso.execute("set_extraction_mask")
 
-print(tso.cpm.extraction_mask.shape)
-plt.plot(tso.cpm.extraction_mask)
+print(tso.cpm.extraction_mask[0].shape)
+plt.plot(tso.cpm.extraction_mask[0])
 plt.show()
 
+# setup regressors
+tso.execute("select_regressors")
+print(len(tso.cpm.regressor_list))
+print(len(tso.cpm.regressor_list[0]))
+print(len(tso.cpm.regressor_list[0][0]))
+print(tso.cpm.regressor_list[0][0])
+print(tso.cpm.regressor_list[0][0][0])
+print(tso.cpm.regressor_list[0][0][1])
 
+# setup of regression matrix
+tso.execute("setup_design_matrix")
+print(tso.cpm.design_matrix[0][0][0].shape)
+print(tso.cpm.design_matrix[0][1][1].shape)
