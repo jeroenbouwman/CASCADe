@@ -38,7 +38,11 @@ def generate_default_initialization():
                      'cpm_nfilter': '5',
                      'cpm_nextraction': '5',
                      'cpm_DeltaPix': '9',
-                     'cpm_nrebin': '1'}
+                     'cpm_nrebin': '1',
+                     'cpm_add_time': 'True',
+                     'cpm_add_postition': 'True',
+                     'cpm_clip_percentile_time': '0.01',
+                     'cpm_clip_percentile_regressors': '0.01'}
     config['INSTRUMENT'] = {'instrument_observatory': 'SPITZER',
                             'instrument': 'IRS',
                             'instrument_mode': 'SL',

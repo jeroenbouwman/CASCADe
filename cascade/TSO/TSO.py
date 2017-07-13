@@ -10,6 +10,7 @@ from astropy.stats import sigma_clip
 from types import SimpleNamespace
 import os.path
 import ast
+from astropy.convolution import Gaussian2DKernel, interpolate_replace_nans
 
 from ..cpm_model import solve_linear_equation
 from ..exoplanet_tools import lightcuve
@@ -48,7 +49,7 @@ class TSOSuite:
                 "determine_source_position": self.determine_source_position,
                 "set_extraction_mask": self.set_extraction_mask,
                 "select_regressors": self.select_regressors,
-                "setup_design_matrix": self.setup_design_matrix}
+                "calibrate_timeseries": self.calibrate_timeseries}
 
     def execute(self, command, *init_files, path=None):
         """
@@ -461,7 +462,7 @@ class TSOSuite:
             ExtractionMaskperNod = []
             for ipos in median_position:
                 idx_mask_y_shifted = \
-                    np.tile(np.rint(spectral_trace + ipos),
+                    np.tile(np.rint(spectral_trace + ipos).astype(int),
                             (np.max((1, nExtractionWidth)), 1)).T + idx_mask_y
                 idx_fix = idx_mask_y_shifted < 0
                 idx_mask_y_shifted[idx_fix] = 0
@@ -558,7 +559,68 @@ class TSOSuite:
 
         self.cpm.regressor_list = regressor_list_nod
 
-    def setup_design_matrix(self):
+    @staticmethod
+    def get_design_matrix(data_in, regressor_selection, nrebin, clip=False,
+                          clip_pctl_time=0.01, clip_pctl_regressors=0.01):
+        """
+        Return the design matrix based on the data set itself
+        """
+        dim = data_in.data.shape
+        data_unit = data_in.data.unit
+        (il, ir), (idx_cal, trace) = regressor_selection
+        ncal = len(idx_cal)
+        design_matrix = data_in[idx_cal, trace, :].copy()
+        design_matrix = design_matrix.reshape(ncal//nrebin, nrebin, dim[-1], 1)
+        design_matrix = np.ma.median((np.ma.median(design_matrix, axis=3)),
+                                     axis=1)
+        if clip:
+            sorted_matrix = np.ma.sort(design_matrix, axis=0)
+
+            # clip the worst data along time axis
+            # number of good measurements at a given time
+            number_of_bad_data = np.ma.count(sorted_matrix, axis=0)
+            idx_bad = np.argsort(number_of_bad_data)
+            nclip = np.rint(dim[1]*clip_pctl_time).astype(int)
+            idx_clip_time = idx_bad[:nclip]
+            # clip the worst regressors
+            # number of good measurements for regressor.
+            number_of_bad_data = np.ma.count(sorted_matrix, axis=1)
+            idx_bad = np.argsort(number_of_bad_data)
+            nclip = np.rint(dim[0]*clip_pctl_regressors).astype(int)
+            idx_clip_regressor = idx_bad[:nclip]
+
+            # define kernel used to replace bad data
+            kernel = Gaussian2DKernel(stddev=1)
+            # set masked data to NaN and sort data to signal value
+
+            np.ma.set_fill_value(sorted_matrix, float("NaN"))
+            # create a "reconstructed" image with NaNs replaced by
+            # interpolated values
+            cleaned_matrix = interpolate_replace_nans(sorted_matrix.filled(),
+                                                      kernel)
+            cleaned_mask = np.ma.make_mask_none(cleaned_matrix.shape)
+            cleaned_mask[:, idx_clip_time] = True
+            cleaned_mask[idx_clip_regressor, :] = True
+            design_matrix = np.ma.array(cleaned_matrix*data_unit,
+                                        mask=cleaned_mask)
+        return design_matrix
+
+    def reshape_data(self, data_in):
+        """
+        Reshape the time series data to a uniform dimentional shape
+        """
+        dim = data_in.shape
+        ndim = data_in.ndim
+        if ndim == 2:
+            data_out = np.ma.expand_dims(data_in, axis=1)
+        elif ndim == 4:
+            data_out = np.ma.reshape(data_in,
+                                     (dim[0], dim[1], dim[2]*dim[3]))
+        else:
+            data_out = data_in
+        return data_out
+
+    def return_all_design_matrices(self, clip=False):
         """
         Setup the regression matrix based on the sub set of the data slected
         to be used as calibrators.
@@ -580,145 +642,215 @@ class TSOSuite:
                                  Check the initialiation of the TSO object. \
                                  Aborting setting regressors")
 
-        dim = data_in.data.shape
-        ndim = data_in.data.ndim
-        if ndim == 2:
-            data_use = np.ma.expand_dims(data_in.data, axis=1)
-        elif ndim == 4:
-            data_use = np.ma.reshape(data_in.data,
-                                     (dim[0], dim[1], dim[2]*dim[3]))
-        else:
-            data_use = data_in.data
-        dim_use = data_use.shape
+        data_use = self.reshape_data(data_in.data)
         design_matrix_list_nod = []
         for regressor_list in regressor_list_nods:
             design_matrix_list = []
             for regressor_selection in regressor_list:
-                (il, ir), (idx_cal, trace) = regressor_selection
-                ncal = len(idx_cal)
-#            # select data to be calibrated (x = phase, y=signal)
-#            x = np.ma.array(self.phase).copy()
-                y = data_use[il, ir, :].copy()
-#            # if error on data is known one could in principle use
-#            # weighted least square. Here we set all weights to 1
-#            weights = np.ones(len(y))
-
-                # Setup design matrix A based on time series
-                # at other wavelengths [idx_cal]
-                A_temp = data_use[idx_cal, trace, :].copy()
-                A_temp = A_temp.reshape(ncal//nrebin, nrebin, dim_use[-1], 1)
-                A_temp = np.ma.median((np.ma.median(A_temp, axis=3)), axis=1)
-
-                # mask any bad data
-                mask_use = np.ma.mask_cols(A_temp)
-                if np.ma.all(mask_use.mask):
-                    raise AssertionError("No umasked regressors found, il=" +
-                                         str(il) + "ir=" + str(ir))
-                if mask_use.mask.ndim != 0:
-                    mask_use = np.ma.logical_or(mask_use.mask[0, :], y.mask)
-                else:
-                    mask_use = y.mask
-                idx_use = np.where(np.logical_not(mask_use))[0]
-
-#                nadd = 4
-#                # check number of regressors (< nintegrations), remove bad one
-#                while (len(idx_use)-nadd-2 < A_temp.shape[0]):
-#                    A_temp = data_use[idx_cal, trace, :].copy()
-#
-#                    number_good_pixels = np.ma.count(A_temp, axis=1)
-#                    idx_good_pix = np.argsort(number_good_pixels)
-#                    idx_good_pix = np.sort(idx_good_pix[nrebin:])
-#                    idx_cal = idx_cal[idx_good_pix]
-#                    trace = trace[idx_good_pix]
-#                    ncal = len(idx_cal)
-#
-#                    A_temp = A_temp[idx_good_pix, :]
-#                    A_temp = A_temp.reshape(ncal//nrebin, nrebin,
-#                                            dim_use[-1], 1)
-#                    A_temp = np.ma.median((np.ma.median(A_temp, axis=3)),
-#                                          axis=1)
-#
-#                    mask_use = np.ma.mask_cols(A_temp)
-#                    if mask_use.mask.ndim != 0:
-#                        mask_use = np.ma.logical_or(mask_use.mask[0, :],
-#                                                    y.mask)
-#                    else:
-#                        mask_use = y.mask
-#                    idx_use = np.where(np.logical_not(mask_use))[0]
-
-                design_matrix_list.append([A_temp, idx_use])
-#            # get source position and lightcurve model as aditional regressors
-#            pos_slit = np.ma.array(self.position)
-#            lcmodel_obs = np.ma.array(self.eclipse_model)
-#            # if the observations are noddded, only half lightcurve model
-#            # can be fitted (nod halfway through data sequence)
-#            if self.isNodded:
-#                lcmodel_obs1 = lcmodel_obs.copy()
-#                if is_first_nod:
-#                    lcmodel_obs1[nintegrations//2:] = 0.0
-#                else:
-#                    lcmodel_obs1[:nintegrations//2] = 0.0
-#                lcmodel_obs = lcmodel_obs1
-#            # add other regressors: constant, time, position along slit,
-#            # lightcure model
-#            A = np.vstack((A_temp, np.ones_like(x), x, pos_slit,
-#                           lcmodel_obs)).T
-#            # use only not masked data
-#            A = A[idx_use, :]
-#            x = x[idx_use]
-#            y = y[idx_use]
-#            weights = weights[idx_use]
+                regressor_matrix = \
+                    self.get_design_matrix(data_use, regressor_selection,
+                                           nrebin, clip=clip)
+                design_matrix_list.append([regressor_matrix])
             design_matrix_list_nod.append(design_matrix_list)
         self.cpm.design_matrix = design_matrix_list_nod
 
-    def calculate_planetary_spectrum(self):
+    def calibrate_timeseries(self):
         """
-        Setup the regression matrix based on the sub set of the data slected
-        to be used as calibrators.
+        Calibrate the ligth curve data
         """
         try:
             data_in = self.observation.dataset
         except AttributeError:
             raise AttributeError("No Valid data found. \
-                                 Aborting calculation of planetary spectrum")
+                                 Aborting time series calibration")
         try:
-            design_matrix_nods  = self.cpm.design_matrix
+            regressor_list_nods = self.cpm.regressor_list
         except AttributeError:
-            raise AttributeError("No design matrix list found. \
-                                 Aborting calculation of planetary spectrum")
-        dim = data_in.data.shape
-        ndim = data_in.data.ndim
-        if ndim == 2:
-            data_use = np.ma.expand_dims(data_in.data, axis=1)
-        elif ndim == 4:
-            data_use = np.ma.reshape(data_in.data,
-                                     (dim[0], dim[1], dim[2]*dim[3]))
-        else:
-            data_use = data_in.data
-        dim_use = data_use.shape
+            raise AttributeError("No regressor selection list found. \
+                                 Aborting time series calibration")
+        try:
+            ExtractionMask_nods = self.cpm.extraction_mask
+        except AttributeError:
+            raise AttributeError("No extraction mask found. \
+                                 Aborting time series calibration")
+        try:
+            nrebin = int(self.cascade_parameters.cpm_nrebin)
+        except AttributeError:
+            raise AttributeError("The rebin factor regressors is not defined. \
+                                 Check the initialiation of the TSO object. \
+                                 Aborting time series calibration")
+        try:
+            add_time = ast.literal_eval(self.cascade_parameters.cpm_add_time)
+            add_position = \
+                ast.literal_eval(self.cascade_parameters.cpm_add_postition)
+        except AttributeError:
+            raise AttributeError("The switches for aditional regression \
+                                 parameters are not defined. \
+                                 Check the initialiation of the TSO object. \
+                                 Aborting time series calibration")
+        try:
+            position = self.cpm.position
+        except AttributeError:
+            raise AttributeError("No source position found \
+                                Aborting time series calibration")
+        try:
+            clip_pctl_time = \
+                float(self.cascade_parameters.cpm_clip_percentile_time)
+            clip_pctl_regressors = \
+                float(self.cascade_parameters.cpm_clip_percentile_regressors)
+        except AttributeError:
+            raise AttributeError("The clipping percentiles for the cleaning \
+                                 of the design matrix are not defined. \
+                                 Check the initialiation of the TSO object. \
+                                 Aborting time series calibration")
+        try:
+            lightcurve_model = self.model.light_curve_interpolated
+        except AttributeError:
+            raise AttributeError("No lightcurve model defined. \
+                                 Aborting time series calibration")
 
-        for design_matrix_list in design_matrix_nods:
+# ##############
+# BUG FIX: check if masked quantity
+#          check for nan and replace fill value
+#################
 
-            for design_matrix in design_matrix_list:
-                A_temp, idx_use = design_matrix
+        # reshape input data to general 3D shape.
+        data_use = self.reshape_data(data_in.data)
+        time_use = self.reshape_data(data_in.time)
+        position_use = self.reshape_data(position)
+        lightcurve_model_use = self.reshape_data(lightcurve_model)
 
-                # select data to be calibrated (x = phase, y=signal)
-                x = np.ma.array(self.phase).copy()
+        nlambda, nspatial, ntime = data_use.shape
+        nnods = len(ExtractionMask_nods)
+
+        # number of additional regressors
+        nadd = 1
+        if add_time:
+            nadd += 2
+        if add_position:
+            nadd += 1
+
+        # loop over nods
+        for ExtractionMask, regressor_list in zip(ExtractionMask_nods,
+                                                  regressor_list_nods):
+#################################################
+# BUG FIX: need to store these results per nod
+################################################
+
+            # create arrays to store results
+            data_driven_image = \
+                np.ma.array(np.zeros(shape=(nlambda, nspatial),
+                                     dtype=np.dtype('Float64')),
+                            mask=ExtractionMask)
+            error_data_driven_image = \
+                np.ma.array(np.zeros(shape=(nlambda, nspatial),
+                                     dtype=np.dtype('Float64')),
+                            mask=ExtractionMask)
+            optimal_regularization_parameter = \
+                np.ma.array(np.zeros(shape=(nlambda, nspatial),
+                                     dtype=np.dtype('Float64')),
+                            mask=ExtractionMask)
+            fitted_parameters = \
+                np.ma.array(np.zeros(shape=(nlambda+nadd, nlambda, nspatial),
+                                     dtype=np.dtype('Float64')),
+                            mask=np.tile(ExtractionMask,
+                                         (nlambda+nadd, 1, 1)))
+
+            # loop over pixels
+            for regressor_selection in regressor_list:
+                (il, ir), (idx_cal, trace) = regressor_selection
+
+                regressor_matrix = \
+                    self.get_design_matrix(data_use, regressor_selection,
+                                           nrebin, clip=True,
+                                           clip_pctl_time=clip_pctl_time,
+                                           clip_pctl_regressors=clip_pctl_regressors)
+                # remove bad regressors
+                idx_cut = np.all(regressor_matrix.mask, axis=1)
+                regressor_matrix = regressor_matrix[~idx_cut, :]
+
+                # select data and aditional regressors (x = phase, y=signal,
+                # z = ligthcurve model, r = position)
+                x = time_use[il, ir, :].copy()
                 y = data_use[il, ir, :].copy()
-                # if error on data is known one could in principle use
-                # weighted least square. Here we set all weights to 1
+                np.ma.set_fill_value(y, 0.0)
+# ############
+# BUG FIX : need model for nods
+# ############################
+                z = lightcurve_model_use[il, ir, :].copy()
+                r = position_use[il, ir, :].copy()
+
+                idx_bad_time = \
+                    np.logical_or(y.mask,
+                                  np.all(regressor_matrix.mask, axis=0))
                 weights = np.ones(len(y))
+                weights[idx_bad_time] = 1.e-8
 
                 # add other regressors: constant, time, position along slit,
                 # lightcure model
-                A = np.vstack((A_temp, np.ones_like(x), x, pos_slit,
-                               lcmodel_obs)).T
-                # use only not masked data
-                A = A[idx_use, :]
-                x = x[idx_use]
-                y = y[idx_use]
-                weights = weights[idx_use]
+                if add_time and add_position:
+                    design_matrix = np.vstack((regressor_matrix,
+                                               np.ones_like(x), x, r, z)).T
+                elif add_time:
+                    design_matrix = np.vstack((regressor_matrix,
+                                               np.ones_like(x), x, z)).T
+                elif add_position:
+                    design_matrix = np.vstack((regressor_matrix, r, z)).T
+                else:
+                    design_matrix = np.vstack((regressor_matrix, z)).T
 
+                # solve linear Eq.
+                P, Perr, opt_reg_par = \
+                    solve_linear_equation(design_matrix.data,
+                                          y.filled().value, weights)
+                # store results
+                optimal_regularization_parameter.data[il, ir] = opt_reg_par
+########
+# needs bug fix to store errors
+#######
+                nregressors = regressor_matrix.shape[0]
+                fitted_parameters.data[idx_cal, il, ir] = \
+                    np.repeat(P[0:nregressors], nrebin) // nrebin
+                fitted_parameters.data[nlambda:, il, ir] = P[len(P)-nadd:]
+
+                ##################################
+                # calculate the spectrum!!!!!!!!!#
+                ##################################
+                # Here we only need to use the fittted model not the actual
+                # data anymore. First, define model fit without lightcurve model
+                Ptemp = P.copy()
+                Ptemp[-1] = 0.0
+                # Then calculate the calibrated normalized lightcurve
+                # for eiter eclipse or transit
+                if self.model.transittype == 'secondary':
+                    # eclipse is normalized to stellar flux
+                    calibrated_lightcurve = 1.0 - np.dot(design_matrix.data, Ptemp) / \
+                                                    np.dot(design_matrix.data, P)
+                else:
+                    # transit is normalized to flux-baseline outside transit
+                    calibrated_lightcurve = np.dot(design_matrix.data, P) / \
+                                            np.dot(design_matrix.data, Ptemp) - 1.0
+                # fit again for final normalized transit/eclipse depth
+                P_final, Perr_final, opt_reg_par_final = \
+                    solve_linear_equation(z[:, None],
+                                          calibrated_lightcurve, weights)
+                # transit/eclipse signal
+                data_driven_image.data[il, ir] = P_final[0]
+                # combine errors of lightcurve calibration and transit/eclipse fit
+                error_data_driven_image.data[il, ir] = \
+                    np.sqrt((Perr_final[0])**2 +
+                            ((Perr[-1]/P[-1]) * data_driven_image.data[il, ir])**2)
+
+        try:
+            self.calibration_results
+        except AttributeError:
+            self.calibration_results = SimpleNamespace()
+        finally:
+            self.calibration_results.parameters = fitted_parameters
+            self.calibration_results.regularization = \
+                optimal_regularization_parameter
+            self.calibration_results.signal = data_driven_image
+            self.calibration_results.error_signal = error_data_driven_image
 
 
 class TSOSuiteOld:

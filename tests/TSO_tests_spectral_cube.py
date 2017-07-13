@@ -154,3 +154,28 @@ plt.plot(np.ma.count(tso.cpm.design_matrix[0][50][0], axis=0))
 axes = plt.gca()
 axes.set_xlim([2200,2900])
 plt.show()
+
+import seaborn as sns
+import scipy.stats
+sns.distplot(scipy.stats.trim1(np.ma.count(tso.cpm.design_matrix[0][50][0], axis=0), proportiontocut=0.05, tail='left') )
+
+import seaborn as sns
+import scipy.stats
+sns.distplot(scipy.stats.trim1(np.ma.count(tso.cpm.design_matrix[0][50][0], axis=1), proportiontocut=0.05, tail='left') )
+
+from scipy.stats.mstats import trim
+print(trim(np.ma.count(tso.cpm.design_matrix[0][50][0], axis=1),(0.05,0.0),relative=True))
+
+from astropy.convolution import Gaussian2DKernel, interpolate_replace_nans
+# We smooth with a Gaussian kernel with stddev=1
+# It is a 9x9 array
+kernel = Gaussian2DKernel(stddev=1)
+
+idx = where(mask)
+data_masked[idx] = float(np.nan)
+
+# create a "reconstructed" image with NaNs replaced by interpolated values
+reconstructed_image = interpolate_replace_nans(data_masked, kernel)
+plt.plot(reconstructed_image)
+plt.show()
+
