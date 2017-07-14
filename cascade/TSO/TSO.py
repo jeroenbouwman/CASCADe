@@ -760,6 +760,9 @@ class TSOSuite:
             for regressor_selection in regressor_list:
                 (il, ir), (idx_cal, trace) = regressor_selection
 
+#############
+# BUG FIX: need to adjust idx_cal for mask and sort
+##########################
                 regressor_matrix = \
                     self.get_design_matrix(data_use, regressor_selection,
                                            nrebin, clip=True,
@@ -806,11 +809,15 @@ class TSOSuite:
                 # store results
                 optimal_regularization_parameter.data[il, ir] = opt_reg_par
 ########
-# needs bug fix to store errors
-#######
+# BUG FIX: needs bug fix to store errors
+##################
+
+########
+# BUG FIX: need changing idx_cal after clip
+##################
                 nregressors = regressor_matrix.shape[0]
-                fitted_parameters.data[idx_cal, il, ir] = \
-                    np.repeat(P[0:nregressors], nrebin) // nrebin
+#                fitted_parameters.data[idx_cal, il, ir] = \
+#                    np.repeat(P[0:nregressors], nrebin) // nrebin
                 fitted_parameters.data[nlambda:, il, ir] = P[len(P)-nadd:]
 
                 ##################################
