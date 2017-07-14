@@ -164,10 +164,9 @@ ax.set_ylabel('Wavelength')
 # calculate median spectrum over imaging array    ##
 # to extract the spectral signature of the planet ##
 ###################################################
-wave_use_image = tso.observation.dataset.wavelength[:,:,15,0]
-#extraction_mask = TSOdata.get_ExtractionMask()
-#masked_wave_use_image = np.ma.array(wave_use_image, mask=extraction_mask)
-masked_wave_use_image = np.ma.array(wave_use_image.data.value, mask=wave_use_image.mask)
+wave_use_image = tso.observation.dataset.wavelength.data.value[:,:,15,0]
+extraction_mask = tso.cpm.extraction_mask[0]
+masked_wave_use_image = np.ma.array(wave_use_image, mask=extraction_mask)
 
 npix,mpix = masked_wave_use_image.shape
 av = np.ma.average(tso.calibration_results.signal, axis=1,

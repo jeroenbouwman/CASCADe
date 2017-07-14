@@ -801,7 +801,9 @@ class TSOSuite:
                     design_matrix = np.vstack((regressor_matrix, r, z)).T
                 else:
                     design_matrix = np.vstack((regressor_matrix, z)).T
-
+###################################
+# BUG FIX: needs to pass regularization grid parameters
+############################
                 # solve linear Eq.
                 P, Perr, opt_reg_par = \
                     solve_linear_equation(design_matrix.data,
