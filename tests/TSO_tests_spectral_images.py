@@ -87,18 +87,18 @@ with quantity_support():
 
 # eclipse model
 tso.execute("define_eclipse_model")
-plt.imshow(tso.model.light_curve_interpolated[:, 0, :])
+plt.imshow(tso.model.light_curve_interpolated[0][:, 0, :])
 plt.show()
 with quantity_support():
     plt.plot(tso.observation.dataset.time.data[80, 18, :],
-             tso.model.light_curve_interpolated[80, 18, :])
+             tso.model.light_curve_interpolated[0][80, 18, :])
     plt.show()
 
 # determine position of source from data set
 tso.execute("determine_source_position")
 with quantity_support():
     plt.plot(tso.observation.spectral_trace['wavelength_pixel'],
-             tso.observation.spectral_trace['positional_pixel']-
+             tso.observation.spectral_trace['positional_pixel'] -
              np.median(tso.observation.spectral_trace['positional_pixel']))
     plt.plot(tso.cpm.spectral_trace)
     plt.show()
@@ -137,7 +137,21 @@ print(len(tso.cpm.regressor_list[0][50][1][0]))
 print(tso.cpm.regressor_list[0][50])
 
 # setup of regression matrix
-tso.return_all_design_matrices()
+tso.return_all_design_matrices(center_matrix=True)
+print(tso.cpm.design_matrix[0][0][0].shape)
+mask = tso.cpm.design_matrix[0][50][0].mask
+if mask.shape != ():
+    plt.imshow(mask)
+    plt.show()
+data_masked = tso.cpm.design_matrix[0][50][0]
+plt.imshow(data_masked)
+plt.show()
+
+B, lambdas = cascade.cpm_model.return_PCR(data_masked.data.T, 36)
+plt.plot(B[:, 0:36])
+plt.show()
+
+tso.return_all_design_matrices(clip=True, center_matrix=True)
 print(tso.cpm.design_matrix[0][0][0].shape)
 mask = tso.cpm.design_matrix[0][50][0].mask
 plt.imshow(mask)
@@ -146,15 +160,9 @@ data_masked = tso.cpm.design_matrix[0][50][0]
 plt.imshow(data_masked)
 plt.show()
 
-tso.return_all_design_matrices(clip=True)
-print(tso.cpm.design_matrix[0][0][0].shape)
-mask = tso.cpm.design_matrix[0][50][0].mask
-plt.imshow(mask)
+B, lambdas = cascade.cpm_model.return_PCR(data_masked.data.T, 36)
+plt.plot(B[:, 0:36])
 plt.show()
-data_masked = tso.cpm.design_matrix[0][50][0]
-plt.imshow(data_masked)
-plt.show()
-
 
 # create calibrated time series and derive planetary signal
 tso.execute("calibrate_timeseries")
@@ -165,13 +173,13 @@ plt.show()
 
 extent = [0, 127, 15.5, 7.5]
 delta_lam = 15.5-7.5
-image = (tso.calibration_results.signal/
+image = (tso.calibration_results.signal /
          tso.calibration_results.error_signal**2).copy()
 fig, ax = plt.subplots(figsize=(6, 6))
 for item in ([ax.title, ax.xaxis.label, ax.yaxis.label] +
              ax.get_xticklabels() + ax.get_yticklabels()):
     item.set_fontsize(20)
-#plt.cm.Reds
+# plt.cm.Reds
 cmap = plt.cm.gist_heat
 cmap.set_bad('black', 1.)
 ax.imshow(np.ma.abs(image), origin='lower', aspect='auto',
@@ -184,34 +192,36 @@ ax.set_ylabel('Wavelength')
 # calculate median spectrum over imaging array    ##
 # to extract the spectral signature of the planet ##
 ###################################################
-wave_use_image = tso.observation.dataset.wavelength.data.value[:,:,0]
+wave_use_image = tso.observation.dataset.wavelength.data.value[:, :, 0]
 extraction_mask = tso.cpm.extraction_mask[0]
 masked_wave_use_image = np.ma.array(wave_use_image, mask=extraction_mask)
 
-npix,mpix = masked_wave_use_image.shape
+npix, mpix = masked_wave_use_image.shape
 av = np.ma.average(tso.calibration_results.signal, axis=1,
                    weights=(np.ma.ones((npix, mpix)) /
                             tso.calibration_results.error_signal)**2)
-av_error = np.ma.ones((npix)) / np.ma.sum((np.ma.ones((npix, mpix)) /
-                                          tso.calibration_results.error_signal)**2, axis=1)
+av_error = np.ma.ones((npix)) / \
+    np.ma.sum((np.ma.ones((npix, mpix)) /
+               tso.calibration_results.error_signal)**2, axis=1)
 av_error = np.ma.sqrt(av_error)
 av_wave = np.ma.average(masked_wave_use_image, axis=1,
                         weights=(np.ma.ones((npix, mpix)) /
                                  tso.calibration_results.error_signal)**2)
 
 median_eclipse_depth = 0.00435   # SL1
+median_eclipse_depth = 0.0039   # SL1
 spectrum = (av * (1.0 + median_eclipse_depth) +
             median_eclipse_depth)
 error_spectrum = av_error * (1.0 + median_eclipse_depth)
 
 path_old = '/home/bouwman/SST_OBSERVATIONS/projects_HD189733/REDUCED_DATA/'
 spec_instr_model_ian = ascii.read(path_old+'results_ian.dat', data_start=1)
-fig, ax = plt.subplots(figsize=(10, 6))
+fig, ax = plt.subplots(figsize=(7, 4))
 for item in ([ax.title, ax.xaxis.label, ax.yaxis.label] +
              ax.get_xticklabels() + ax.get_yticklabels()):
     item.set_fontsize(20)
 ax.plot(spec_instr_model_ian['lam_micron'], spec_instr_model_ian['depthA'],
-            color="r", lw=2, alpha=0.8)
+        color="r", lw=2, alpha=0.8)
 ax.errorbar(spec_instr_model_ian['lam_micron'],
             spec_instr_model_ian['depthA'],
             yerr=spec_instr_model_ian['errorA'],

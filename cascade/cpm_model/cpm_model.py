@@ -14,7 +14,7 @@ import numpy as np
 from scipy.linalg import svd
 from scipy import signal
 
-__all__ = ['solve_linear_equation']
+__all__ = ['solve_linear_equation', 'return_PCR']
 
 
 def solve_linear_equation(design_matrix, data, weights=None, cv_method='gcv',
@@ -217,3 +217,27 @@ def solve_linear_equation(design_matrix, data, weights=None, cv_method='gcv',
 
     # return fitted parameters, error on parameters and optimal regularization
     return fit_parameters, err_fit_parameters, lam_reg
+
+
+def return_PCR(design_matrix, n_components=None, variance_prior_scaling=1.):
+    """ Perform principal component regression with marginalization.
+        To marginalize over the eigen-lightcurves we need to solve
+        x = (A.T V^(-1) A)^(-1) * (A.T V^(-1) y), where V = C + B.T Lambda B,
+        with B matrix containing the eigenlightcurves and lambda
+        the median squared amplitudes of the eigenlightcurves.
+    """
+    if n_components is None:
+        n_components = design_matrix.shape[1]
+
+    if design_matrix.dtype != 'float64':
+        design_matrix = design_matrix.astype('float64')
+
+    U, S, _ = svd(design_matrix, full_matrices=False)
+    # If matrix is (time, pixels), then U zero dimension is also
+    # time dimension, 1st is eigenvector
+
+    B = U[:, :n_components].copy()
+    lambdas = variance_prior_scaling * \
+        np.median(np.square(np.dot(B.T, design_matrix)), axis=1)
+
+    return B, lambdas

@@ -11,6 +11,7 @@ from types import SimpleNamespace
 import os.path
 import ast
 from astropy.convolution import Gaussian2DKernel, interpolate_replace_nans
+from functools import reduce
 
 from ..cpm_model import solve_linear_equation
 from ..exoplanet_tools import lightcuve
@@ -106,7 +107,7 @@ class TSOSuite:
             if not obs_has_backgr:
                 print("Background subtraction not needed: returning")
                 return
-        except:
+        except AttributeError:
             raise AttributeError("backgound switch not defined. \
                                  Aborting background subtraction")
         try:
@@ -221,6 +222,11 @@ class TSOSuite:
         This function defines the light curve model used to analize the
         transit or eclipse.
         """
+        try:
+            isNodded = self.observation.dataset.isNodded
+        except AttributeError:
+            raise AttributeError("Observational strategy not properly set. \
+                                 Aborting position determination")
         # define ligthcurve model
         lc_model = lightcuve()
 
@@ -229,9 +235,19 @@ class TSOSuite:
         # use interpolation function returned by `interp1d`
         lcmodel_obs = f(self.observation.dataset.time.data.value)
 
+        if isNodded:
+            ntime = len(lcmodel_obs)
+            mask_nod1 = np.ones(ntime)
+            mask_nod1[ntime//2:] = 0.
+            mask_nod2 = np.ones(ntime)
+            mask_nod2[:ntime//2] = 0.
+            lcmodel_list = [lcmodel_obs*mask_nod1, lcmodel_obs*mask_nod2]
+        else:
+            lcmodel_list = [lcmodel_obs]
+
         self.model = SimpleNamespace()
         self.model.light_curve = lc_model
-        self.model.light_curve_interpolated = lcmodel_obs
+        self.model.light_curve_interpolated = lcmodel_list
         self.model.transittype = lc_model.par['transittype']
 
     def determine_source_position(self):
@@ -270,7 +286,7 @@ class TSOSuite:
         try:
             position = self.observation.dataset.position
             spectral_trace = self.observation.spectral_trace
-        except:
+        except AttributeError:
             print("Position and trace are not both defined yet. Calculating.")
         else:
             print("Position and trace already set in dataset. \
@@ -561,7 +577,8 @@ class TSOSuite:
 
     @staticmethod
     def get_design_matrix(data_in, regressor_selection, nrebin, clip=False,
-                          clip_pctl_time=0.01, clip_pctl_regressors=0.01):
+                          clip_pctl_time=0.01, clip_pctl_regressors=0.01,
+                          center_matrix=False):
         """
         Return the design matrix based on the data set itself
         """
@@ -574,7 +591,9 @@ class TSOSuite:
         design_matrix = np.ma.median((np.ma.median(design_matrix, axis=3)),
                                      axis=1)
         if clip:
-            sorted_matrix = np.ma.sort(design_matrix, axis=0)
+            median_signal = np.ma.median(design_matrix, axis=1)
+            idx_sort = np.ma.argsort(median_signal)
+            sorted_matrix = design_matrix[idx_sort, :]
 
             # clip the worst data along time axis
             # number of good measurements at a given time
@@ -603,24 +622,44 @@ class TSOSuite:
             cleaned_mask[idx_clip_regressor, :] = True
             design_matrix = np.ma.array(cleaned_matrix*data_unit,
                                         mask=cleaned_mask)
+
+        if center_matrix:
+            mean_dm = np.ma.mean(design_matrix, axis=1)
+            design_matrix = design_matrix - mean_dm[:, np.newaxis]
         return design_matrix
 
     def reshape_data(self, data_in):
         """
         Reshape the time series data to a uniform dimentional shape
         """
-        dim = data_in.shape
-        ndim = data_in.ndim
-        if ndim == 2:
-            data_out = np.ma.expand_dims(data_in, axis=1)
-        elif ndim == 4:
-            data_out = np.ma.reshape(data_in,
-                                     (dim[0], dim[1], dim[2]*dim[3]))
+        if isinstance(data_in, list):
+            data_list = []
+            for data in data_in:
+                dim = data.shape
+                ndim = data.ndim
+                if ndim == 2:
+                    data_out = np.ma.expand_dims(data, axis=1)
+                elif ndim == 4:
+                    data_out = np.ma.reshape(data,
+                                             (dim[0], dim[1], dim[2]*dim[3]))
+                else:
+                    data_out = data
+                data_list.append(data_out)
+            data_out = data_list
         else:
-            data_out = data_in
+            dim = data_in.shape
+            ndim = data_in.ndim
+            if ndim == 2:
+                data_out = np.ma.expand_dims(data_in, axis=1)
+            elif ndim == 4:
+                data_out = np.ma.reshape(data_in,
+                                         (dim[0], dim[1], dim[2]*dim[3]))
+            else:
+                data_out = data_in
         return data_out
 
-    def return_all_design_matrices(self, clip=False):
+    def return_all_design_matrices(self, clip=False,
+                                   center_matrix=False):
         """
         Setup the regression matrix based on the sub set of the data slected
         to be used as calibrators.
@@ -649,7 +688,8 @@ class TSOSuite:
             for regressor_selection in regressor_list:
                 regressor_matrix = \
                     self.get_design_matrix(data_use, regressor_selection,
-                                           nrebin, clip=clip)
+                                           nrebin, clip=clip,
+                                           center_matrix=center_matrix)
                 design_matrix_list.append([regressor_matrix])
             design_matrix_list_nod.append(design_matrix_list)
         self.cpm.design_matrix = design_matrix_list_nod
@@ -708,6 +748,14 @@ class TSOSuite:
         except AttributeError:
             raise AttributeError("No lightcurve model defined. \
                                  Aborting time series calibration")
+        try:
+            cv_method = self.cascade_parameters.cpm_cv_method
+            reg_par = {"lam0": float(self.cascade_parameters.cpm_lam0),
+                       "lam1": float(self.cascade_parameters.cpm_lam1),
+                       "nlam": int(self.cascade_parameters.cpm_nlam)}
+        except AttributeError:
+            raise AttributeError("Regularization parameters not found. \
+                                 Aborting time series calibration")
 
 # ##############
 # BUG FIX: check if masked quantity
@@ -721,7 +769,6 @@ class TSOSuite:
         lightcurve_model_use = self.reshape_data(lightcurve_model)
 
         nlambda, nspatial, ntime = data_use.shape
-        nnods = len(ExtractionMask_nods)
 
         # number of additional regressors
         nadd = 1
@@ -730,39 +777,43 @@ class TSOSuite:
         if add_position:
             nadd += 1
 
-        # loop over nods
-        for ExtractionMask, regressor_list in zip(ExtractionMask_nods,
-                                                  regressor_list_nods):
-#################################################
-# BUG FIX: need to store these results per nod
-################################################
+        # all detector area used to extract signal
+        Combined_ExtractionMask = reduce(lambda x, y: x*y, ExtractionMask_nods)
 
-            # create arrays to store results
-            data_driven_image = \
-                np.ma.array(np.zeros(shape=(nlambda, nspatial),
-                                     dtype=np.dtype('Float64')),
-                            mask=ExtractionMask)
-            error_data_driven_image = \
-                np.ma.array(np.zeros(shape=(nlambda, nspatial),
-                                     dtype=np.dtype('Float64')),
-                            mask=ExtractionMask)
-            optimal_regularization_parameter = \
-                np.ma.array(np.zeros(shape=(nlambda, nspatial),
-                                     dtype=np.dtype('Float64')),
-                            mask=ExtractionMask)
-            fitted_parameters = \
-                np.ma.array(np.zeros(shape=(nlambda+nadd, nlambda, nspatial),
-                                     dtype=np.dtype('Float64')),
-                            mask=np.tile(ExtractionMask,
-                                         (nlambda+nadd, 1, 1)))
+        # create arrays to store results
+        data_driven_image = \
+            np.ma.array(np.zeros(shape=(nlambda, nspatial),
+                                 dtype=np.dtype('Float64')),
+                        mask=Combined_ExtractionMask)
+        error_data_driven_image = \
+            np.ma.array(np.zeros(shape=(nlambda, nspatial),
+                                 dtype=np.dtype('Float64')),
+                        mask=Combined_ExtractionMask)
+        optimal_regularization_parameter = \
+            np.ma.array(np.zeros(shape=(nlambda, nspatial),
+                                 dtype=np.dtype('Float64')),
+                        mask=Combined_ExtractionMask)
+        fitted_parameters = \
+            np.ma.array(np.zeros(shape=(nadd, nlambda, nspatial),
+                                 dtype=np.dtype('Float64')),
+                        mask=np.tile(Combined_ExtractionMask,
+                                     (nadd, 1, 1)))
+        error_fitted_parameters = \
+            np.ma.array(np.zeros(shape=(nadd, nlambda, nspatial),
+                                 dtype=np.dtype('Float64')),
+                        mask=np.tile(Combined_ExtractionMask,
+                                     (nadd, 1, 1)))
+
+        # loop over nods
+        for inod, (ExtractionMask, regressor_list) in \
+                enumerate(zip(ExtractionMask_nods, regressor_list_nods)):
 
             # loop over pixels
+            # regressor list contains tuples ;isting pixel indx and
+            # the indici of the calibration pixels
             for regressor_selection in regressor_list:
-                (il, ir), (idx_cal, trace) = regressor_selection
+                (il, ir), _ = regressor_selection
 
-#############
-# BUG FIX: need to adjust idx_cal for mask and sort
-##########################
                 regressor_matrix = \
                     self.get_design_matrix(data_use, regressor_selection,
                                            nrebin, clip=True,
@@ -777,10 +828,8 @@ class TSOSuite:
                 x = time_use[il, ir, :].copy()
                 y = data_use[il, ir, :].copy()
                 np.ma.set_fill_value(y, 0.0)
-# ############
-# BUG FIX : need model for nods
-# ############################
-                z = lightcurve_model_use[il, ir, :].copy()
+
+                z = lightcurve_model_use[inod][il, ir, :].copy()
                 r = position_use[il, ir, :].copy()
 
                 idx_bad_time = \
@@ -801,54 +850,52 @@ class TSOSuite:
                     design_matrix = np.vstack((regressor_matrix, r, z)).T
                 else:
                     design_matrix = np.vstack((regressor_matrix, z)).T
-###################################
-# BUG FIX: needs to pass regularization grid parameters
-############################
+
                 # solve linear Eq.
                 P, Perr, opt_reg_par = \
                     solve_linear_equation(design_matrix.data,
-                                          y.filled().value, weights)
+                                          y.filled().value, weights,
+                                          cv_method=cv_method,
+                                          reg_par=reg_par)
                 # store results
                 optimal_regularization_parameter.data[il, ir] = opt_reg_par
-########
-# BUG FIX: needs bug fix to store errors
-##################
-
-########
-# BUG FIX: need changing idx_cal after clip
-##################
-                nregressors = regressor_matrix.shape[0]
-#                fitted_parameters.data[idx_cal, il, ir] = \
-#                    np.repeat(P[0:nregressors], nrebin) // nrebin
-                fitted_parameters.data[nlambda:, il, ir] = P[len(P)-nadd:]
+                fitted_parameters.data[:, il, ir] = P[len(P)-nadd:]
+                error_fitted_parameters.data[:, il, ir] = Perr[len(P)-nadd:]
 
                 ##################################
                 # calculate the spectrum!!!!!!!!!#
                 ##################################
                 # Here we only need to use the fittted model not the actual
-                # data anymore. First, define model fit without lightcurve model
+                # data. First, define model fit without lightcurve model
                 Ptemp = P.copy()
                 Ptemp[-1] = 0.0
                 # Then calculate the calibrated normalized lightcurve
                 # for eiter eclipse or transit
                 if self.model.transittype == 'secondary':
                     # eclipse is normalized to stellar flux
-                    calibrated_lightcurve = 1.0 - np.dot(design_matrix.data, Ptemp) / \
-                                                    np.dot(design_matrix.data, P)
+                    calibrated_lightcurve = 1.0 - np.dot(design_matrix.data,
+                                                         Ptemp) / \
+                                                    np.dot(design_matrix.data,
+                                                           P)
                 else:
                     # transit is normalized to flux-baseline outside transit
                     calibrated_lightcurve = np.dot(design_matrix.data, P) / \
-                                            np.dot(design_matrix.data, Ptemp) - 1.0
+                                            np.dot(design_matrix.data,
+                                                   Ptemp) - 1.0
                 # fit again for final normalized transit/eclipse depth
                 P_final, Perr_final, opt_reg_par_final = \
                     solve_linear_equation(z[:, None],
-                                          calibrated_lightcurve, weights)
+                                          calibrated_lightcurve, weights,
+                                          cv_method=cv_method,
+                                          reg_par=reg_par)
                 # transit/eclipse signal
                 data_driven_image.data[il, ir] = P_final[0]
-                # combine errors of lightcurve calibration and transit/eclipse fit
+                # combine errors of lightcurve calibration and
+                # transit/eclipse fit
                 error_data_driven_image.data[il, ir] = \
                     np.sqrt((Perr_final[0])**2 +
-                            ((Perr[-1]/P[-1]) * data_driven_image.data[il, ir])**2)
+                            ((Perr[-1]/P[-1]) *
+                             data_driven_image.data[il, ir])**2)
 
         try:
             self.calibration_results
@@ -856,755 +903,8 @@ class TSOSuite:
             self.calibration_results = SimpleNamespace()
         finally:
             self.calibration_results.parameters = fitted_parameters
+            self.calibration_results.error_parameters = error_fitted_parameters
             self.calibration_results.regularization = \
                 optimal_regularization_parameter
             self.calibration_results.signal = data_driven_image
             self.calibration_results.error_signal = error_data_driven_image
-
-
-class TSOSuiteOld:
-    """
-    Time Series Object class
-    This is the main class containing data and functionality to determine
-    the spectra of transiting systems.
-    """
-    def __init__(self, data=None, wavelength=None, phase=None, position=None,
-                 trace=None, phases_eclipse=None,  eclipse_model=None,
-                 transittype=None, isBackgroundSubtracted=False,
-                 isSigmaCliped=False, extraction_mask=None,
-                 isRampFitted=None, isNodded=None, nod_associated_pixels=None,
-                 fit_results={}):
-        if not isinstance(data, type(None)):
-            try:
-                ndim = data.ndim  # is an multidimensional array
-                dummy = 1 // max(ndim-2, 0)  # at least 3 dimensions
-                dummy = 1 // min(ndim-5, 0)  # at most 4
-            except (AttributeError, ZeroDivisionError):
-                print("Data not a valid type for timeseries class")
-                return
-            if ndim == 3:
-                isRampFitted = True
-            else:
-                isRampFitted = False
-        else:
-            if isinstance(isRampFitted, type(True)):
-                if isRampFitted:
-                    shape = (0, 0, 0)
-                    shape2 = (0)
-                else:
-                    shape = (0, 0, 0, 0)
-                    shape2 = (0, 0)
-                data = np.ma.array(np.zeros(shape=shape,
-                                   dtype=np.dtype('Float64')),
-                                   mask=np.zeros(shape=shape,
-                                   dtype=np.dtype('Bool')))
-                wavelength = np.zeros(shape=shape2, dtype=np.dtype('Float64'))
-                phase = np.zeros(shape=shape2, dtype=np.dtype('Float64'))
-                position = np.zeros(shape=shape2, dtype=np.dtype('Float64'))
-                trace = np.zeros(shape=(0), dtype=np.dtype('Float64'))
-                phases_eclipse = [0.0, 0.0, 0.0, 0.0]
-                eclipse_model = np.zeros(shape=shape2,
-                                         dtype=np.dtype('Float64'))
-                isBackgroundSubtracted = False
-                isSigmaCliped = False
-                extraction_mask = None
-        self.data = data
-        self.wavelength = wavelength
-        self.phase = phase
-        self.position = position
-        self.trace = trace
-        self.phases_eclipse = phases_eclipse
-        self._eclipse_model = eclipse_model
-        self.transittype = transittype
-        self.isBackgroundSubtracted = isBackgroundSubtracted
-        self.isSigmaCliped = isSigmaCliped
-        self.extraction_mask = extraction_mask
-        self.isRampFitted = isRampFitted
-        self.isNodded = isNodded
-        self.nod_associated_pixels = nod_associated_pixels
-        self.fit_results = fit_results
-
-    def set_masked_data(self, data):
-        try:
-            assert isinstance(data, np.ma.core.MaskedArray)
-            ndim = data.ndim  # is an multidimensional array
-            dummy = 1 // max(ndim-2, 0)  # at least 3 dimensions
-            dummy = 1 // min(ndim-5, 0)  # at most 4
-        except (AttributeError, ZeroDivisionError):
-            print("Data not a valid type for timeseries class")
-            return
-        except AssertionError:
-            print("Data not of numpy masked array class")
-            return
-        self.data = data
-        self.wavelength = np.zeros(shape=data.shape[0:2],
-                                   dtype=np.dtype('Float64'))
-        self.phase = np.zeros(shape=data.shape[2:ndim],
-                              dtype=np.dtype('Float64'))
-        self.position = np.zeros(shape=data.shape[2:ndim],
-                                 dtype=np.dtype('Float64'))
-        self.trace = np.zeros(shape=data.shape[0], dtype=np.dtype('Float64'))
-        self.eclipse_model = np.zeros(shape=data.shape[2:ndim],
-                                      dtype=np.dtype('Float64'))
-        self.isBackgroundSubtracted = False
-        self.isSigmaCliped = False
-        if ndim == 3:
-            self.isRampFitted = True
-        else:
-            self.isRampFitted = False
-        self.fit_results = {}
-
-    def set_data(self, data):
-        try:
-            ndim = data.ndim  # is an multidimensional array
-            dummy = 1 // max(ndim-2, 0)  # at least 3 dimensions
-            dummy = 1 // min(ndim-5, 0)  # at most 4
-        except (AttributeError, ZeroDivisionError):
-            print("Data not a valid type for timeseries class")
-            return
-        self.data = np.ma.array(data, dtype=np.dtype('Float64'),
-                                mask=np.zeros(shape=data.shape,
-                                dtype=np.dtype('Bool')))
-        self.wavelength = np.zeros(shape=data.shape[0:2],
-                                   dtype=np.dtype('Float64'))
-        self.phase = np.zeros(shape=data.shape[2:ndim],
-                              dtype=np.dtype('Float64'))
-        self.position = np.zeros(shape=data.shape[2:ndim],
-                                 dtype=np.dtype('Float64'))
-        self.trace = np.zeros(shape=data.shape[0], dtype=np.dtype('Float64'))
-        self.eclipse_model = np.zeros(shape=data.shape[2:ndim],
-                                      dtype=np.dtype('Float64'))
-        self.isBackgroundSubtracted = False
-        self.isSigmaCliped = False
-        if ndim == 3:
-            self.isRampFitted = True
-        else:
-            self.isRampFitted = False
-        self.fit_results = {}
-
-    def update_data(self, data):
-        if not self.data.shape == data.shape:
-            raise AssertionError("Updated data has not the same \
-                                 shape as the old data; Aborting")
-        self.data.data = data
-
-    def update_masked_data(self, data):
-        if not self.data.shape == data.shape:
-            raise AssertionError("Updated data has not the same \
-                                 shape as the old data; Aborting")
-        self.data = data
-
-    def set_mask(self, mask):
-        if not self.data.shape == mask.shape:
-            raise AssertionError("New mask has not the same shape \
-                                 as the data; Aborting")
-        self.data.mask = mask
-
-    def set_in_mask(self, mask):
-        self.data.mask = np.ma.mask_or(self.data.mask, mask)
-
-    def set_wavelength(self, wavelength):
-        if not self.data.shape[0:2] == wavelength.shape:
-            raise AssertionError("New wavelength grid is not consistent \
-                                 with shape of data; Aborting")
-        self.wavelength = wavelength
-
-    def set_phase(self, phase):
-        ndim = self.data.ndim
-        if not self.data.shape[2:ndim] == phase.shape:
-            raise AssertionError("New phase grid is not consistent with \
-                                 shape of data; Aborting")
-        self.phase = phase
-
-    def set_position(self, position):
-        ndim = self.data.ndim
-        if not self.data.shape[2:ndim] == position.shape:
-            raise AssertionError("New source positions are inconsistent \
-                                 with shape of data; Aborting")
-        self.position = position
-
-    def set_trace(self, trace):
-        if not self.data.shape[0] == trace.shape[0]:
-            raise AssertionError("New trace positions are inconsistent \
-                                 with shape of data; Aborting")
-        self.trace = trace
-
-    def set_phases_eclipse(self, phases_eclipse):
-        if not self.phases_eclipse.__len__() == phases_eclipse.__len__():
-            raise AssertionError("phases of eclipse must contain 4 elements")
-        self.phases_eclipse = phases_eclipse
-
-    def set_BackgroundSubtractionFlag(self, bit):
-        if not isinstance(bit, bool):
-            raise AssertionError("Bit not of boolian class")
-        self.isBackgroundSubtracted = bit
-
-    def set_SigmaClipFlag(self, bit):
-        if not isinstance(bit, bool):
-            raise AssertionError("Bit not of boolian class")
-        self.isSigmaCliped = bit
-
-    def set_ExtractionMask(self, nExtractionWidth=None):
-        if not isinstance(self.isRampFitted, type(True)):
-            raise AssertionError("type of TSOSuite not properly set, \
-                                 aborting")
-        if isinstance(self.trace, type(None)):
-            raise AssertionError("Can not define Extraction mask as source \
-                                 trace is not set")
-        if self.trace.shape[0] < 2:
-            raise AssertionError("Can not define Extraction mask as source \
-                                 trace is not set")
-        if self.isRampFitted:
-            npix, mpix, nintegrations = self.data.shape
-        else:
-            npix, mpix, nintegrations, nframes = self.data.shape
-        if isinstance(nExtractionWidth, type(None)):
-            if self.isRampFitted:
-                ExtractionMask = np.all(self.data.mask, axis=2)
-            else:
-                ExtractionMask = np.all(np.all(self.data.mask, axis=3), axis=2)
-        elif self.trace.shape[0] == 0:
-            if self.isRampFitted:
-                ExtractionMask = np.all(self.data.mask, axis=2)
-            else:
-                ExtractionMask = np.all(np.all(self.data.mask, axis=3), axis=2)
-        else:
-            if self.isNodded:
-                time_idx = [np.arange(nintegrations//2).astype(int),
-                            np.arange(nintegrations//2).astype(int) +
-                            nintegrations // 2]
-            else:
-                time_idx = [np.arange(nintegrations).astype(int)]
-            extraction_mask = np.ones((npix, mpix), dtype=np.dtype('Bool'))
-            nod_associated_pixels = []
-            for inod in time_idx:
-                zero_point_trace = \
-                    np.median(self.trace[np.nonzero(self.trace)])
-                zero_point_source = np.median(self.position[
-                            inod[np.nonzero(self.position[inod])]])
-                trace_use = self.trace.copy()
-                trace_use = trace_use-zero_point_trace + zero_point_source
-                if not isinstance(nExtractionWidth, type(1)):
-                    nExtractionWidth = np.rint(nExtractionWidth)
-                if (nExtractionWidth % 2 == 0):  # even
-                    nExtractionWidth += 1
-                ix = np.tile(np.arange(npix)[:, None].astype(int),
-                             (1, nExtractionWidth))
-                iy = np.tile((np.arange(nExtractionWidth) -
-                              nExtractionWidth // 2).astype(int), (npix, 1))
-                iy = np.rint(trace_use).astype(int)[:, None] + iy
-                iy = np.clip(iy, 0, mpix - 1)
-                extraction_mask[ix, iy] = False
-                nod_associated_pixels.append(
-                     [i for i in zip(np.reshape(ix, npix * nExtractionWidth),
-                                     np.reshape(iy, npix * nExtractionWidth))])
-            if self.isRampFitted:
-                ExtractionMask = np.logical_or(extraction_mask,
-                                               np.all(self.data.mask, axis=2))
-            else:
-                ExtractionMask = np.logical_or(extraction_mask,
-                                               np.all(np.all(self.data.mask,
-                                                             axis=3), axis=2))
-            if self.isNodded:
-                self.nod_associated_pixels = nod_associated_pixels
-        self.extraction_mask = ExtractionMask
-
-    def get_data(self):
-        return self.data.data
-
-    def get_masked_data(self):
-        return self.data
-
-    def get_mask(self):
-        return self.data.mask
-
-    def get_wavelength(self):
-        return self.wavelength
-
-    def get_phase(self):
-        return self.phase
-
-    def get_position(self):
-        return self.position
-
-    def get_trace(self):
-        return self.trace
-
-    def get_phases_eclipse(self):
-        return self.phases_eclipse
-
-    def get_BackgroundSubtractionFlag(self):
-        return self.isBackgroundSubtracted
-
-    def get_SigmaClipFlag(self):
-        return self.isSigmaCliped
-
-    def get_ExtractionMask(self):
-        if isinstance(self.extraction_mask, type(None)):
-            return np.ma.all(np.ma.all(self.get_mask(), axis=3), axis=2)
-        else:
-            return self.extraction_mask
-
-    def get_fitresults(self):
-        return self.fit_results
-
-    def sigma_clip_data_cosmic(self, sigma=None):
-        if not isinstance(self.isRampFitted, type(True)):
-            raise AssertionError("type of TSOSuite not properly set, \
-                                 aborting")
-        ndim = self.data.ndim
-        if sigma is None:
-            sigma = 3.0
-        filtered_data = sigma_clip(self.data.data.T, sigma=sigma,
-                                   axis=ndim-3)
-        mask = filtered_data.mask.T
-        self.set_in_mask(mask)
-
-    def sigma_clip_data(self, sigma=None, nfilter=None):
-        if sigma is None:
-            sigma = 3.0
-        if nfilter is None:
-            nfilter = 11
-        self.sigma_clip_data_cosmic(sigma)
-        dim = self.data.data.shape
-        mask = self.data.mask.copy()
-        if (nfilter % 2 == 0):  # even
-            nfilter += 1
-        if self.isRampFitted:
-            for il in range(0+(nfilter-1)//2, dim[0]-(nfilter-1)//2):
-                filter_index = np.array(range(nfilter), dtype=int) + \
-                               il - (nfilter-1)//2
-                temp_data = np.ma.median(self.data[filter_index, :, :].T,
-                                         axis=0)
-                temp_data = sigma_clip(temp_data, sigma=sigma, axis=1)
-                mask_new = np.tile(temp_data.mask, (dim[2], 1, 1))
-                mask[filter_index, :, :] = \
-                    np.ma.mask_or(mask[filter_index, :, :],
-                                  mask_new.T)
-        else:
-            for il in range(0+(nfilter-1)//2, dim[0]-(nfilter-1)//2):
-                filter_index = np.array(range(nfilter), dtype=int) + \
-                               il - (nfilter-1)//2
-                temp_data = np.ma.median(self.data[filter_index, :, :, -1].T,
-                                         axis=0)
-                temp_data = sigma_clip(temp_data, sigma=sigma, axis=1)
-                mask_new = np.tile(temp_data.mask, (dim[3], dim[2], 1, 1))
-                mask[filter_index, :, :, :] = \
-                    np.ma.mask_or(mask[filter_index, :, :, :],
-                                  mask_new.T)
-        self.set_in_mask(mask)
-        self.set_SigmaClipFlag(True)
-
-    def subract_background(self, Background, sigma):
-        if not isinstance(Background, TSOSuite):
-            raise AssertionError("Background data is not instance \
-                                 of TSOSuite class")
-        if not isinstance(self.isRampFitted, type(True)):
-            raise AssertionError("type of TSOSuite not properly set, \
-                                 aborting")
-        if not self.isRampFitted == Background.isRampFitted:
-            raise AssertionError("type of TSOSuite data of the \
-                                 background data is not equal to that \
-                                 of the data set")
-        if self.isRampFitted:
-            npix, mpix, nintegrations = self.data.shape
-            npix_bakgr, mpix_bakgr, nintegrations_bakgr = Background.data.shape
-            if (npix != npix_bakgr) or (mpix != npix_bakgr):
-                raise AssertionError("Background data shape not compatable \
-                                     with target data")
-        else:
-            npix, mpix, nintegrations, nframes = self.data.shape
-            npix_bakgr, mpix_bakgr, nintegrations_bakgr, nframes_bakgr = \
-                Background.data.shape
-            if (npix != npix_bakgr) or (mpix != npix_bakgr) or \
-                    (nframes != nframes_bakgr):
-                raise AssertionError("Background data shape not compatable \
-                                     with target data")
-        # mask cosmic hits
-        Background.sigma_clip_data_cosmic(sigma)
-        # calculate median (over time) background
-        Median_Data_Background = np.ma.median(Background.data, axis=2)
-        # tile to format of science data
-        if self.isRampFitted:
-            Median_Data_Background = np.tile(Median_Data_Background.T,
-                                             (nintegrations, 1, 1)).T
-        else:
-            Median_Data_Background = \
-                np.ma.swapaxes(np.tile(Median_Data_Background.T,
-                                       (nintegrations, 1, 1, 1)), 0, 1).T
-        # subtract background
-        # update TSOSuite object with background subtracted data
-        self.data = self.data - Median_Data_Background
-        self.set_BackgroundSubtractionFlag(True)
-
-    def determine_source_position(self):
-        if not self.isSigmaCliped:
-            raise AssertionError("Data not sigma clipped, which can result \
-                                 in wrong positions")
-        if not isinstance(self.isRampFitted, type(True)):
-            raise AssertionError("type of TSOSuite not properly set, \
-                                 aborting")
-        # determine source position for ramp fitted data
-        if self.isRampFitted:
-            npix, mpix, nintegrations = self.data.shape
-            # check if data is nodded or not
-            if self.isNodded:
-                time_idx = [np.arange(nintegrations//2).astype(int),
-                            np.arange(nintegrations//2).astype(int) +
-                            nintegrations//2]
-            else:
-                time_idx = [np.arange(nintegrations).astype(int)]
-            # determine source position in time and source trace for
-            # each nod seperately.
-            pos_list = []
-            trace_list = []
-            for inod in time_idx:
-                nint_use = inod.shape[0]
-                pos_trace = np.ma.zeros((npix))
-                pos = np.ma.zeros((nint_use))
-
-                prof_temp = np.ma.median(self.data[:, :, inod], axis=2)
-                grid_temp = np.linspace(0, mpix-1, num=mpix)
-                array_temp = np.ma.array(grid_temp, dtype=np.dtype('Float64'))
-                tile_temp = np.tile(array_temp, (npix, 1))
-                pos_trace = np.ma.sum(prof_temp * tile_temp, axis=1) / \
-                    np.ma.sum(prof_temp, axis=1)
-                weight = np.ma.swapaxes(np.tile(array_temp,
-                                                (nint_use, npix, 1)).T, 0, 1)
-
-                pos = np.ma.median((np.ma.sum(self.data[:, :, inod] *
-                                              weight, axis=1) /
-                                    np.ma.sum(self.data[:, :, inod], axis=1)) /
-                                   np.tile(pos_trace[:, None], (1, nint_use)),
-                                   axis=0)
-                pos_slit = pos * np.ma.median(pos_trace)
-                pos_list.append(pos_slit.data)
-                trace_list.append(pos_trace.data)
-
-            pos_slit = np.asarray([item for sublist in pos_list
-                                   for item in sublist],
-                                  dtype=np.dtype('Float64'))
-            # if nodded combine traces.
-            if len(trace_list) == 2:
-                pos_trace = np.squeeze(np.mean(trace_list, axis=0))
-            else:
-                pos_trace = np.squeeze(np.asarray(trace_list,
-                                                  dtype=np.dtype('Float64')))
-###############
-#   TEST!!
-###############
-            # pos_trace[:] = np.median(pos_trace)
-
-            self.set_position(pos_slit)
-            self.set_trace(pos_trace)
-        else:
-            ###################################################
-            # determine source position for data at frame level
-            ###################################################
-            npix, mpix, nintegrations, nframes = self.data.shape
-##############
-# need bug fix
-##############
-            # Determine the source position and trace
-            frame_start = 10
-            pos_trace = np.ma.zeros((npix, nframes-frame_start))
-            pos = np.ma.zeros((nintegrations, nframes-frame_start))
-            for iframe in range(frame_start, nframes):
-                prof_temp = np.ma.median(self.data[:, :, :, iframe], axis=2)
-                tile_temp = \
-                    np.tile(np.ma.array(np.linspace(0, mpix-1, num=mpix),
-                                        dtype=np.dtype('Float64')), (npix, 1))
-                pos_trace[:, iframe-frame_start] = \
-                    np.ma.sum(prof_temp * tile_temp, axis=1) / \
-                    np.ma.sum(prof_temp, axis=1)
-                tile_temp = \
-                    np.tile(np.ma.array(np.linspace(0, mpix-1, num=mpix),
-                                        dtype=np.dtype('Float64')),
-                            (nintegrations, npix, 1))
-                weight = np.ma.swapaxes(tile_temp.T, 0, 1)
-                tile_temp = \
-                    np.tile(pos_trace[:, iframe-frame_start, None],
-                            (1, nintegrations))
-                pos[:, iframe-frame_start] = \
-                    np.ma.median((np.ma.sum(self.data[:, :, :, iframe] *
-                                            weight, axis=1) /
-                                  np.ma.sum(self.data[:, :, :, iframe],
-                                            axis=1)) / tile_temp, axis=0)
-
-            pos_trace_med = np.ma.median(pos_trace, axis=1)
-
-            pos_slit = np.ma.median(pos, axis=1) * np.ma.median(pos_trace)
-            # need to interpolate to 16 frames
-            iframe = frame_start + (nframes-frame_start)//2
-            f = interpolate.interp1d(np.hstack((self.phase[0, 0],
-                                                self.phase[:, iframe],
-                                                self.phase[-1, -1])),
-                                     np.hstack((pos_slit[0], pos_slit,
-                                                pos_slit[-1])))
-            pos_slit_frames = f(self.phase)
-
-            self.set_position(pos_slit_frames)
-            self.set_trace(pos_trace_med.data)
-
-    @property
-    def eclipse_model(self):
-        return self._eclipse_model
-
-    @eclipse_model.setter
-    def eclipse_model(self, eclipse_model):
-        ndim = self.data.ndim
-        if not self.data.shape[2:ndim] == eclipse_model.shape:
-            raise AssertionError("Eclipse model has inconsistent shape \
-                                 compared to data array; Aborting")
-        self._eclipse_model = eclipse_model
-
-    def define_eclipse_model(self):
-        """
-        This function defines the light curve model used to analize the
-        transit or eclipse. We use the batman package to calculate the
-        light curves.We assume here a symmetric transit signal, that the
-        secondary transit is at phase 0.5 and primary transit at 0.0.
-        """
-
-        if not isinstance(self.isRampFitted, type(True)):
-            raise AssertionError("type of TSOSuite not properly set, \
-                                 aborting")
-
-        dim = self.data.shape
-
-        # define ligthcurve model
-        lc_model = lightcuve()
-        # interpoplate light curve model to observed phases
-        f = interpolate.interp1d(lc_model[0], lc_model[1])
-        # use interpolation function returned by `interp1d`
-        lcmodel_obs = f(self.phase)
-        if not self.isRampFitted:
-            # we are using ramps not fitted slopes,
-            # so multily with ramp function
-            lcmodel_obs = lcmodel_obs * np.linspace(0, 1, num=dim[3]+1)[1:]
-
-        self.eclipse_model = lcmodel_obs
-        self.transittype = lc_model.par['transittype']
-
-    def calculate_planetary_spectrum(self, DeltaPix=7, nrebin=3):
-        """
-        This is the main function using the causal pixel model to calibrate
-        the time series and to extract the transitsignal at pixel level.
-
-        Input
-        -----
-
-        Deltapix : minimum distance between pixel of interest and
-                   calibration pixels
-
-        nrebin : rebin factor of caliratin pixels.
-
-        Output
-        ------
-
-        fit_results : dictionary containing all relevant results:
-
-        {
-        'transit': data_driven_image,
-                            # image with transit signal
-        'error_transit': error_data_driven_image,
-                            # image with error on transit signal
-        'parameters': Pstore,
-                            # fit parameters of causal pixel model
-        'regularization': reg_par_store}
-                            # optimal regularization parameter
-        }
-        """
-
-        if not isinstance(self.isRampFitted, type(True)):
-            raise AssertionError("type of TSOSuite not properly set, \
-                                 aborting")
-        if self.isRampFitted:
-            npix, mpix, nintegrations = self.data.shape
-        else:
-            npix, mpix, nintegrations, nframes = self.data.shape
-
-        # all pixels of interest defined by the extraction mask
-        idx_pixels = np.where(np.logical_not(self.extraction_mask))
-        # index in wavelength and spatial direction for pixels of interest
-        idx_all_wave = (idx_pixels[0][:])
-        idx_all_spatial = (idx_pixels[1][:])
-
-        # index of all pixels in the wavelength direction
-        idx_all = np.arange(npix)
-
-        # number of aditional regressors apart from data points
-        # (time, position, lightcurve model etc.)
-        nadd = 4
-        # array to store pixel model fit parameters
-        # Pstore = np.zeros((npix+nadd, npix))
-        # array to store regularization parameter
-        # reg_par_store = np.zeros(npix)
-
-        # create arrays to store results
-        data_driven_image = np.ma.array(np.zeros(shape=(npix, mpix),
-                                                 dtype=np.dtype('Float64')),
-                                        mask=self.extraction_mask)
-        error_data_driven_image = \
-            np.ma.array(np.zeros(shape=(npix, mpix),
-                                 dtype=np.dtype('Float64')),
-                        mask=self.extraction_mask)
-        reg_par_store = np.ma.array(np.zeros(shape=(npix, mpix),
-                                             dtype=np.dtype('Float64')),
-                                    mask=self.extraction_mask)
-        Pstore = np.ma.array(np.zeros(shape=(npix+nadd, npix, mpix),
-                                      dtype=np.dtype('Float64')),
-                             mask=np.tile(self.extraction_mask,
-                                          (npix+nadd, 1, 1)))
-
-        # loop over all not masked data in the extraction window
-        for il, ir in zip(idx_all_wave, idx_all_spatial):
-
-            # define wavelength range to use for calibration
-            il_cal_min = max(il-DeltaPix, 0)
-            il_cal_max = min(il+DeltaPix, npix-1)
-            idx_cal = idx_all[np.where(((idx_all < il_cal_min) |
-                                        (idx_all > il_cal_max)))]
-
-            # trace at source position
-            trace = np.rint(self.trace).astype(int)
-            trace = trace - (trace[il] - ir)
-            trace = trace[idx_cal]
-
-            # get all pixels following trace within Extraction Aperture
-            index_in_aperture = \
-                np.logical_not(self.extraction_mask[idx_cal, trace])
-            trace = trace[index_in_aperture]
-            idx_cal = idx_cal[index_in_aperture]
-
-            # check if number of calibration pixels can be rebinned
-            # by factor nrebin
-            if (len(idx_cal) % nrebin) != 0:
-                ncut = -(len(idx_cal) % nrebin)
-                idx_cal = idx_cal[:ncut]
-                trace = trace[:ncut]
-            ncal = len(idx_cal)
-
-            # in case we have nodded observations, check to which nod the pixel
-            # which is fitted belongs.
-            if self.isNodded:
-                # check list of pixels belongin to first nod
-                if (il, ir) in self.nod_associated_pixels[0]:
-                    is_first_nod = True
-                elif (il, ir) in self.nod_associated_pixels[1]:
-                    # check second nod
-                    is_first_nod = False
-                else:
-                    raise AssertionError("No corresponding nod found")
-
-            # select data to be calibrated (x = phase, y=signal)
-            x = np.ma.array(self.phase).copy()
-            y = self.data[il, ir, :].copy()
-            # if error on data is known one could in principle use
-            # weighted least square. Here we set all weights to 1
-            weights = np.ones(len(y))
-
-            #############################################################
-            # Fit lightcuve with regressors build out of the data itself.#
-            #############################################################
-            # Setup design matrix A based on time series
-            # at other wavelengths [idx_cal]
-            A_temp = self.data[idx_cal, trace, :].copy()
-            A_temp = A_temp.reshape(ncal//nrebin, nrebin, nintegrations, 1)
-            A_temp = np.ma.median((np.ma.median(A_temp, axis=3)), axis=1)
-            # mask any bad data
-            mask_use = np.ma.mask_cols(A_temp)
-            if np.ma.all(mask_use.mask):
-                raise AssertionError("No umasked regressors found, il=" +
-                                     str(il) + "ir=" + str(ir))
-            if mask_use.mask.ndim != 0:
-                mask_use = np.ma.logical_or(mask_use.mask[0, :], y.mask)
-            else:
-                mask_use = y.mask
-            idx_use = np.where(np.logical_not(mask_use))[0]
-
-            # check number of regressors (< nintegrations), remove bad one
-            while (len(idx_use)-nadd-2 < A_temp.shape[0]):
-                A_temp = self.data[idx_cal, trace, :].copy()
-                number_good_pixels = np.ma.count(A_temp, axis=1)
-                idx_good_pix = np.argsort(number_good_pixels)
-                idx_good_pix = np.sort(idx_good_pix[nrebin:])
-                idx_cal = idx_cal[idx_good_pix]
-                trace = trace[idx_good_pix]
-                ncal = len(idx_cal)
-                A_temp = A_temp[idx_good_pix, :]
-                A_temp = A_temp.reshape(ncal//nrebin, nrebin, nintegrations, 1)
-                A_temp = np.ma.median((np.ma.median(A_temp, axis=3)), axis=1)
-                mask_use = np.ma.mask_cols(A_temp)
-                if mask_use.mask.ndim != 0:
-                    mask_use = np.ma.logical_or(mask_use.mask[0, :], y.mask)
-                else:
-                    mask_use = y.mask
-                idx_use = np.where(np.logical_not(mask_use))[0]
-
-            # get source position and lightcurve model as aditional regressors
-            pos_slit = np.ma.array(self.position)
-            lcmodel_obs = np.ma.array(self.eclipse_model)
-            # if the observations are noddded, only half lightcurve model
-            # can be fitted (nod halfway through data sequence)
-            if self.isNodded:
-                lcmodel_obs1 = lcmodel_obs.copy()
-                if is_first_nod:
-                    lcmodel_obs1[nintegrations//2:] = 0.0
-                else:
-                    lcmodel_obs1[:nintegrations//2] = 0.0
-                lcmodel_obs = lcmodel_obs1
-            # add other regressors: constant, time, position along slit,
-            # lightcure model
-            A = np.vstack((A_temp, np.ones_like(x), x, pos_slit,
-                           lcmodel_obs)).T
-            # use only not masked data
-            A = A[idx_use, :]
-            x = x[idx_use]
-            y = y[idx_use]
-            weights = weights[idx_use]
-            lcmodel_obs_final_fit = (lcmodel_obs.copy())[idx_use]
-            # solve linear Eq.
-            P, Perr, opt_reg_par = \
-                solve_linear_equation(A.data, y.data, weights)
-            # store results
-            reg_par_store.data[il, ir] = opt_reg_par
-########
-# needs bug fix to store errors
-#######
-            Pstore.data[idx_cal, il, ir] = \
-                np.repeat(P[0:len(idx_cal) // nrebin], nrebin) // nrebin
-            Pstore.data[npix:, il, ir] = P[len(P)-nadd:]
-
-            ##################################
-            # calculate the spectrum!!!!!!!!!#
-            ##################################
-            # Here we only need to use the fittted model not the actual
-            # data anymore. First, define model fit without lightcurve model
-            Ptemp = P.copy()
-            Ptemp[-1] = 0.0
-            # Then calculate the calibrated normalized lightcurve
-            # for eiter eclipse or transit
-            if self.transittype == 'secondary':
-                # eclipse is normalized to stellar flux
-                calibrated_lightcurve = 1.0 - np.dot(A.data, Ptemp) / \
-                                                np.dot(A.data, P)
-            else:
-                # transit is normalized to flux-baseline outside transit
-                calibrated_lightcurve = np.dot(A.data, P) / \
-                                        np.dot(A.data, Ptemp) - 1.0
-            # fit again for final normalized transit/eclipse depth
-            P_final, Perr_final, opt_reg_par_final = \
-                solve_linear_equation(lcmodel_obs_final_fit.data[:, None],
-                                      calibrated_lightcurve, weights)
-            # transit/eclipse signal
-            data_driven_image.data[il, ir] = P_final[0]
-            # combine errors of lightcurve calibration and transit/eclipse fit
-            error_data_driven_image.data[il, ir] = \
-                np.sqrt((Perr_final[0])**2 +
-                        ((Perr[-1]/P[-1]) * data_driven_image.data[il, ir])**2)
-        #
-        self.fit_results = {'transit': data_driven_image,
-                            'error_transit': error_data_driven_image,
-                            'parameters': Pstore,
-                            'regularization': reg_par_store}
