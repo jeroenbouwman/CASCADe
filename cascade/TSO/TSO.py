@@ -284,8 +284,8 @@ class TSOSuite:
             raise AttributeError("Observational strategy not properly set. \
                                  Aborting position determination")
         try:
-            position = self.observation.dataset.position
             spectral_trace = self.observation.spectral_trace
+            position = self.observation.dataset.position
         except AttributeError:
             print("Position and trace are not both defined yet. Calculating.")
         else:
@@ -421,7 +421,15 @@ class TSOSuite:
         except AttributeError:
             self.cpm = SimpleNamespace()
         finally:
-            self.cpm.spectral_trace = pos_trace
+            try:
+                spectral_trace = self.observation.spectral_trace
+            except AttributeError:
+                print("Using calculated trace")
+                self.cpm.spectral_trace = pos_trace
+            else:
+                temp0 = np.median(spectral_trace['positional_pixel'].value)
+                self.cpm.spectral_trace = \
+                    spectral_trace['positional_pixel'].value - temp0
             self.cpm.position = pos_slit_interpolated
             self.cpm.median_position = median_pos
 
@@ -659,6 +667,8 @@ class TSOSuite:
         return data_out
 
     def return_all_design_matrices(self, clip=False,
+                                   clip_pctl_time=0.01,
+                                   clip_pctl_regressors=0.01,
                                    center_matrix=False):
         """
         Setup the regression matrix based on the sub set of the data slected
@@ -689,6 +699,8 @@ class TSOSuite:
                 regressor_matrix = \
                     self.get_design_matrix(data_use, regressor_selection,
                                            nrebin, clip=clip,
+                                           clip_pctl_time=clip_pctl_time,
+                                           clip_pctl_regressors=clip_pctl_regressors,
                                            center_matrix=center_matrix)
                 design_matrix_list.append([regressor_matrix])
             design_matrix_list_nod.append(design_matrix_list)

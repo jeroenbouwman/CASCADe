@@ -87,11 +87,11 @@ with quantity_support():
 
 # eclipse model
 tso.execute("define_eclipse_model")
-plt.imshow(tso.model.light_curve_interpolated[:, 0, 15, :])
+plt.imshow(tso.model.light_curve_interpolated[0][:, 0, 15, :])
 plt.show()
 with quantity_support():
     plt.plot(tso.observation.dataset.time.data[80, 18, 15, :],
-             tso.model.light_curve_interpolated[80, 18, 15, :])
+             tso.model.light_curve_interpolated[0][80, 18, 15, :])
     plt.show()
 
 # determine position of source from data set
@@ -186,7 +186,7 @@ error_spectrum = av_error * (1.0 + median_eclipse_depth)
 
 path_old = '/home/bouwman/SST_OBSERVATIONS/projects_HD189733/REDUCED_DATA/'
 spec_instr_model_ian = ascii.read(path_old+'results_ian.dat', data_start=1)
-fig, ax = plt.subplots(figsize=(10, 6))
+fig, ax = plt.subplots(figsize=(7, 4))
 for item in ([ax.title, ax.xaxis.label, ax.yaxis.label] +
              ax.get_xticklabels() + ax.get_yticklabels()):
     item.set_fontsize(20)

@@ -151,7 +151,12 @@ B, lambdas = cascade.cpm_model.return_PCR(data_masked.data.T, 36)
 plt.plot(B[:, 0:36])
 plt.show()
 
-tso.return_all_design_matrices(clip=True, center_matrix=True)
+clip_pctl_regressors = float(tso.cascade_parameters.cpm_clip_percentile_regressors)
+clip_pctl_time = float(tso.cascade_parameters.cpm_clip_percentile_time)
+tso.return_all_design_matrices(clip=True,
+                               clip_pctl_time=clip_pctl_time,
+                               clip_pctl_regressors=clip_pctl_regressors,
+                               center_matrix=True)
 print(tso.cpm.design_matrix[0][0][0].shape)
 mask = tso.cpm.design_matrix[0][50][0].mask
 plt.imshow(mask)
@@ -209,7 +214,7 @@ av_wave = np.ma.average(masked_wave_use_image, axis=1,
                                  tso.calibration_results.error_signal)**2)
 
 median_eclipse_depth = 0.00435   # SL1
-median_eclipse_depth = 0.0039   # SL1
+median_eclipse_depth = 0.00395   # SL1
 spectrum = (av * (1.0 + median_eclipse_depth) +
             median_eclipse_depth)
 error_spectrum = av_error * (1.0 + median_eclipse_depth)
