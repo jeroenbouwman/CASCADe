@@ -12,6 +12,7 @@ import os.path
 import ast
 from astropy.convolution import Gaussian2DKernel, interpolate_replace_nans
 from functools import reduce
+import astropy.units as u
 
 from ..cpm_model import solve_linear_equation
 from ..exoplanet_tools import lightcuve
@@ -50,7 +51,8 @@ class TSOSuite:
                 "determine_source_position": self.determine_source_position,
                 "set_extraction_mask": self.set_extraction_mask,
                 "select_regressors": self.select_regressors,
-                "calibrate_timeseries": self.calibrate_timeseries}
+                "calibrate_timeseries": self.calibrate_timeseries,
+                "extract_spectrum": self.extract_spectrum}
 
     def execute(self, command, *init_files, path=None):
         """
@@ -920,3 +922,83 @@ class TSOSuite:
                 optimal_regularization_parameter
             self.calibration_results.signal = data_driven_image
             self.calibration_results.error_signal = error_data_driven_image
+
+    def extract_spectrum(self):
+        """
+        Extract the planetary spectrum from the calibrated ligth curve data
+        """
+        try:
+            calibrated_signal = self.calibration_results.signal
+            calibrated_error = self.calibration_results.error_signal
+        except AttributeError:
+            raise AttributeError("No calibrated data found. \
+                                 Aborting extraction of planetary spectrum")
+        try:
+            median_eclipse_depth = \
+                float(self.cascade_parameters.observations_median_signal)
+        except AttributeError:
+            raise AttributeError("No median signal depth defined. \
+                                 Aborting extraction of planetary spectrum")
+        try:
+            transittype = self.model.transittype
+        except AttributeError:
+            raise AttributeError("Type of observaton unknown. \
+                                 Aborting extraction of planetary spectrum")
+        try:
+            planet_radius = \
+                (u.Quantity(self.cascade_parameters.object_radius).to(u.m) /
+                 u.Quantity(self.cascade_parameters.
+                            object_radius_host_star).to(u.m))
+            planet_radius = planet_radius.decompose().value
+        except AttributeError:
+            raise AttributeError("Planet or Stellar radius not defined. \
+                                 Aborting extraction of planetary spectrum")
+
+        calibrated_weighted_image = calibrated_signal/calibrated_error**2
+
+        extraction_mask = calibrated_signal.mask
+
+        ndim = self.observation.dataset.wavelength.data.ndim
+        selection1 = [slice(None)]*(ndim-1)+[0]
+        wavelength_image = \
+            np.ma.array(self.observation.dataset.wavelength.
+                        data.value[selection1], mask=extraction_mask)
+        if wavelength_image.ndim == 1:
+            wavelength_image = wavelength_image[:, None]
+
+        npix, mpix = wavelength_image.shape
+
+        weighted_signal = np.ma.average(calibrated_signal, axis=1,
+                                        weights=(np.ma.ones((npix, mpix)) /
+                                                 calibrated_error)**2)
+        weighted_signal_error = np.ma.ones((npix)) / \
+            np.ma.sum((np.ma.ones((npix, mpix)) /
+                       calibrated_error)**2, axis=1)
+        weighted_signal_error = np.ma.sqrt(weighted_signal_error)
+
+        weighted_signal_wavelength = \
+            np.ma.average(wavelength_image, axis=1,
+                          weights=(np.ma.ones((npix, mpix)) /
+                                   calibrated_error)**2)
+
+        if transittype == 'secondary':
+            # Eclipse
+            spectrum = (weighted_signal * (1.0 + median_eclipse_depth) +
+                        median_eclipse_depth)
+            error_spectrum = weighted_signal_error * \
+                (1.0 + median_eclipse_depth)
+        else:
+            # transit
+            # correction_spectrum = (correction_sampling/planet_radius_rstar**2 + 1)
+            spectrum = (weighted_signal*(1.0 - planet_radius**2) +
+                        planet_radius**2)  # / correction_spectrum
+            error_spectrum = weighted_signal_error*(1.0 - planet_radius**2)  # /correction_spectrum
+
+        try:
+            self.exoplanet_spectrum
+        except AttributeError:
+            self.exoplanet_spectrum = SimpleNamespace()
+        self.exoplanet_spectrum.weighted_image = calibrated_weighted_image
+        self.exoplanet_spectrum.wavelength = weighted_signal_wavelength
+        self.exoplanet_spectrum.data = spectrum
+        self.exoplanet_spectrum.error = error_spectrum

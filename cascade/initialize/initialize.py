@@ -57,7 +57,8 @@ def generate_default_initialization():
                               'observations_target_name': '',
                               'observations_has_background': 'True',
                               'observations_background_id': '',
-                              'observations_background_name': ''}
+                              'observations_background_name': '',
+                              'observations_median_signal': ''}
     config['AUXILARY'] = {'auxilary_path': '',
                           'auxilary_data': ''}
     config['OBJECT'] = {'object_name': 'HD 189733 b',
