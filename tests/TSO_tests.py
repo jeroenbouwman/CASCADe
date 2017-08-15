@@ -201,3 +201,7 @@ axes.set_xlim([7.5, 15.5])
 axes.set_ylim([-0.00, 0.008])
 ax.set_ylabel('Fp/Fstar')
 ax.set_xlabel('Wavelength')
+
+# save planetary signal
+tso.execute("save_results")
+

@@ -13,6 +13,8 @@ import ast
 from astropy.convolution import Gaussian2DKernel, interpolate_replace_nans
 from functools import reduce
 import astropy.units as u
+from astropy.io import fits
+import os
 
 from ..cpm_model import solve_linear_equation
 from ..exoplanet_tools import lightcuve
@@ -52,7 +54,8 @@ class TSOSuite:
                 "set_extraction_mask": self.set_extraction_mask,
                 "select_regressors": self.select_regressors,
                 "calibrate_timeseries": self.calibrate_timeseries,
-                "extract_spectrum": self.extract_spectrum}
+                "extract_spectrum": self.extract_spectrum,
+                "save_results": self.save_results}
 
     def execute(self, command, *init_files, path=None):
         """
@@ -1002,3 +1005,32 @@ class TSOSuite:
         self.exoplanet_spectrum.wavelength = weighted_signal_wavelength
         self.exoplanet_spectrum.data = spectrum
         self.exoplanet_spectrum.error = error_spectrum
+
+    def save_results(self):
+        """
+        Save results
+        """
+        try:
+            results = self.exoplanet_spectrum
+        except AttributeError:
+            raise AttributeError("No results defined \
+                                 Aborting saving results")
+        try:
+            save_path = self.cascade_parameters.cascade_save_path
+            os.makedirs(save_path, exist_ok=True)
+        except AttributeError:
+            raise AttributeError("No save path defined\
+                                 Aborting saving results")
+        try:
+            observations_id = self.cascade_parameters.observations_id
+        except AttributeError:
+            raise AttributeError("No uniq id defined for observation \
+                                 Aborting saving results")
+
+        tbhdu = fits.BinTableHDU.from_columns(
+                [fits.Column(name='Wavelength', format='E',
+                             array=results.wavelength),
+                 fits.Column(name='Flux', format='E', array=results.data),
+                 fits.Column(name='Error', format='E', array=results.error)])
+        tbhdu.writeto(save_path+observations_id+'_exoplanet_spectra.fits',
+                      clobber=True)
