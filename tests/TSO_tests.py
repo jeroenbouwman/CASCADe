@@ -13,7 +13,7 @@ tso = cascade.TSO.TSOSuite()
 path = cascade.initialize.default_initialization_path
 tso = cascade.TSO.TSOSuite("cascade_test_cpm.ini",
                            "cascade_test_object.ini",
-                           "cascade_test_data_spectra.ini", path=path)
+                           "cascade_test_data_spectra2.ini", path=path)
 
 print(tso.cascade_parameters)
 print(cascade.initialize.cascade_configuration)
@@ -31,7 +31,7 @@ print(tso.cascade_parameters.isInitialized)
 tso = cascade.TSO.TSOSuite()
 path = cascade.initialize.default_initialization_path
 tso.execute("initialize", "cascade_test_cpm.ini", "cascade_test_object.ini",
-            "cascade_test_data_spectra.ini", path=path)
+            "cascade_test_data_spectra2.ini", path=path)
 print(tso.cascade_parameters)
 print(cascade.initialize.cascade_configuration)
 print(tso.cascade_parameters.isInitialized)
@@ -182,26 +182,64 @@ fig, ax = plt.subplots(figsize=(7, 4))
 for item in ([ax.title, ax.xaxis.label, ax.yaxis.label] +
              ax.get_xticklabels() + ax.get_yticklabels()):
     item.set_fontsize(20)
-ax.plot(spec_instr_model_ian['lam_micron'], spec_instr_model_ian['depthA'],
+ax.plot(spec_instr_model_ian['lam_micron'], spec_instr_model_ian['depthB'],
         color="r", lw=2, alpha=0.8)
 ax.errorbar(spec_instr_model_ian['lam_micron'],
-            spec_instr_model_ian['depthA'],
-            yerr=spec_instr_model_ian['errorA'],
+            spec_instr_model_ian['depthB'],
+            yerr=spec_instr_model_ian['errorB'],
             fmt=".k", color="r", lw=2,
             alpha=0.8, ecolor="r")
-
 ax.plot(tso.exoplanet_spectrum.wavelength,
         tso.exoplanet_spectrum.data, lw=3, alpha=0.7, color='blue')
 ax.errorbar(tso.exoplanet_spectrum.wavelength,
             tso.exoplanet_spectrum.data, yerr=tso.exoplanet_spectrum.error,
             fmt=".k", color='blue', lw=3, alpha=0.7, ecolor='blue', mfc='blue')
-
 axes = plt.gca()
 axes.set_xlim([7.5, 15.5])
 axes.set_ylim([-0.00, 0.008])
 ax.set_ylabel('Fp/Fstar')
 ax.set_xlabel('Wavelength')
+plt.show()
 
 # save planetary signal
 tso.execute("save_results")
 
+cal_signal_depth = float(tso.cascade_parameters.cpm_calibration_signal_depth)
+mean_eclipse_depth = float(tso.cascade_parameters.observations_median_signal)
+
+plt.plot(tso.calibration_results.calibrated_time_series[50, :].T)
+plt.show()
+
+plt.plot(tso.exoplanet_spectrum.wavelength,
+         tso.calibration_results.calibration_signal *
+         (1+cal_signal_depth)+cal_signal_depth)
+axes = plt.gca()
+axes.set_ylim([cal_signal_depth*0.0, cal_signal_depth*5])
+plt.show()
+
+plt.plot(tso.exoplanet_spectrum.wavelength,
+         (tso.calibration_results.calibration_signal *
+          (1+cal_signal_depth)+cal_signal_depth)/cal_signal_depth)
+axes = plt.gca()
+axes.set_ylim([0.0, 2.5])
+plt.show()
+
+plt.imshow(np.log10((tso.calibration_results.calibration_signal *
+           (1+cal_signal_depth)+cal_signal_depth) /
+           (tso.calibration_results.error_calibration_signal *
+            (1+cal_signal_depth)/cal_signal_depth)**2))
+plt.show()
+
+plt.plot(tso.exoplanet_spectrum.wavelength,
+         tso.exoplanet_spectrum.calibration_correction)
+plt.errorbar(tso.exoplanet_spectrum.wavelength,
+             tso.exoplanet_spectrum.calibration_correction,
+             yerr=tso.exoplanet_spectrum.calibration_correction_error)
+plt.show()
+
+plt.plot(tso.exoplanet_spectrum.wavelength,
+         (mean_eclipse_depth-tso.exoplanet_spectrum.calibration_correction) /
+         tso.exoplanet_spectrum.calibration_correction_error)
+plt.plot(tso.exoplanet_spectrum.wavelength,
+         tso.exoplanet_spectrum.data/tso.exoplanet_spectrum.error)
+plt.show()

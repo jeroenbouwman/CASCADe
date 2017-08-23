@@ -42,7 +42,9 @@ def generate_default_initialization():
                      'cpm_add_time': 'True',
                      'cpm_add_postition': 'True',
                      'cpm_clip_percentile_time': '0.01',
-                     'cpm_clip_percentile_regressors': '0.01'}
+                     'cpm_clip_percentile_regressors': '0.01',
+                     'cpm_add_calibration_signal': 'True',
+                     'cpm_calibration_signal_depth': '0.02'}
     config['INSTRUMENT'] = {'instrument_observatory': 'SPITZER',
                             'instrument': 'IRS',
                             'instrument_mode': 'SL',

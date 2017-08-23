@@ -13,7 +13,8 @@ import ast
 from astropy.convolution import Gaussian2DKernel, interpolate_replace_nans
 from functools import reduce
 import astropy.units as u
-from astropy.io import fits
+from astropy.table import Table
+from astropy.table import MaskedColumn
 import os
 
 from ..cpm_model import solve_linear_equation
@@ -225,7 +226,8 @@ class TSOSuite:
     def define_eclipse_model(self):
         """
         This function defines the light curve model used to analize the
-        transit or eclipse.
+        transit or eclipse. We define both the actual trasit/eclipse signal
+        as wel as an calibration signal.
         """
         try:
             isNodded = self.observation.dataset.isNodded
@@ -234,11 +236,34 @@ class TSOSuite:
                                  Aborting position determination")
         # define ligthcurve model
         lc_model = lightcuve()
+        times_during_transit = lc_model.lc[0][~np.isclose(lc_model.lc[1], 0.0)]
+        Tstart = times_during_transit[0]
+        Tend = times_during_transit[-1]
 
         # interpoplate light curve model to observed phases
         f = interpolate.interp1d(lc_model.lc[0], lc_model.lc[1])
         # use interpolation function returned by `interp1d`
         lcmodel_obs = f(self.observation.dataset.time.data.value)
+
+        # define a calibration signal which can be used to inject a
+        # artificial signal into the data. The shape of the calibration
+        # signal is a box car.
+        lcmodel_cal = np.zeros_like(lcmodel_obs)
+        ndim = lcmodel_cal.ndim
+        selection1 = [slice(1)]*(ndim-1)+[slice(None)]
+        time_cal = np.squeeze(self.observation.dataset.time.
+                              data.value[selection1])
+        # select data befor transit
+        idx = np.where(time_cal < Tstart)[0]
+        # inject signal of half the the duration of the transit
+        time_frac = 0.5*(Tend-Tstart)/(time_cal[idx[-1]]-time_cal[idx[0]])
+        nsignal_cal = np.max((np.rint(idx.size*time_frac).astype(int), 2))
+        # place calibration signal in the midel of the time sequence before the
+        # actual transit.
+        idx_start = (idx.size - nsignal_cal)//2
+        selection1 = [slice(None)]*(ndim-1) + \
+            [slice(idx_start, idx_start+nsignal_cal)]
+        lcmodel_cal[selection1] = -1.0
 
         if isNodded:
             ntime = len(lcmodel_obs)
@@ -247,12 +272,16 @@ class TSOSuite:
             mask_nod2 = np.ones(ntime)
             mask_nod2[:ntime//2] = 0.
             lcmodel_list = [lcmodel_obs*mask_nod1, lcmodel_obs*mask_nod2]
+            lcmodel_cal_list = [lcmodel_cal*mask_nod1, lcmodel_cal*mask_nod2]
         else:
             lcmodel_list = [lcmodel_obs]
+            lcmodel_cal_list = [lcmodel_cal]
 
         self.model = SimpleNamespace()
         self.model.light_curve = lc_model
+        self.model.transit_timing = [Tstart, Tend]
         self.model.light_curve_interpolated = lcmodel_list
+        self.model.calibration_signal = lcmodel_cal_list
         self.model.transittype = lc_model.par['transittype']
 
     def determine_source_position(self):
@@ -740,6 +769,9 @@ class TSOSuite:
             add_time = ast.literal_eval(self.cascade_parameters.cpm_add_time)
             add_position = \
                 ast.literal_eval(self.cascade_parameters.cpm_add_postition)
+            add_calibration_signal = \
+                ast.literal_eval(self.cascade_parameters.
+                                 cpm_add_calibration_signal)
         except AttributeError:
             raise AttributeError("The switches for aditional regression \
                                  parameters are not defined. \
@@ -749,6 +781,13 @@ class TSOSuite:
             position = self.cpm.position
         except AttributeError:
             raise AttributeError("No source position found \
+                                Aborting time series calibration")
+        try:
+            calibration_signal = self.model.calibration_signal
+            calibration_signal_depth = float(self.cascade_parameters.
+                                             cpm_calibration_signal_depth)
+        except AttributeError:
+            raise AttributeError("No calibration signal defined \
                                 Aborting time series calibration")
         try:
             clip_pctl_time = \
@@ -784,6 +823,7 @@ class TSOSuite:
         time_use = self.reshape_data(data_in.time)
         position_use = self.reshape_data(position)
         lightcurve_model_use = self.reshape_data(lightcurve_model)
+        calibration_signal_use = self.reshape_data(calibration_signal)
 
         nlambda, nspatial, ntime = data_use.shape
 
@@ -792,6 +832,8 @@ class TSOSuite:
         if add_time:
             nadd += 2
         if add_position:
+            nadd += 1
+        if add_calibration_signal:
             nadd += 1
 
         # all detector area used to extract signal
@@ -803,6 +845,14 @@ class TSOSuite:
                                  dtype=np.dtype('Float64')),
                         mask=Combined_ExtractionMask)
         error_data_driven_image = \
+            np.ma.array(np.zeros(shape=(nlambda, nspatial),
+                                 dtype=np.dtype('Float64')),
+                        mask=Combined_ExtractionMask)
+        calibration_image = \
+            np.ma.array(np.zeros(shape=(nlambda, nspatial),
+                                 dtype=np.dtype('Float64')),
+                        mask=Combined_ExtractionMask)
+        error_calibration_image = \
             np.ma.array(np.zeros(shape=(nlambda, nspatial),
                                  dtype=np.dtype('Float64')),
                         mask=Combined_ExtractionMask)
@@ -820,6 +870,11 @@ class TSOSuite:
                                  dtype=np.dtype('Float64')),
                         mask=np.tile(Combined_ExtractionMask,
                                      (nadd, 1, 1)))
+        calibrated_time_series = \
+            np.ma.array(np.zeros(shape=(nlambda, nspatial, ntime),
+                                 dtype=np.dtype('Float64')),
+                        mask=np.tile(Combined_ExtractionMask.T,
+                                     (ntime, 1, 1)).T)
 
         # loop over nods
         for inod, (ExtractionMask, regressor_list) in \
@@ -839,12 +894,22 @@ class TSOSuite:
                 # remove bad regressors
                 idx_cut = np.all(regressor_matrix.mask, axis=1)
                 regressor_matrix = regressor_matrix[~idx_cut, :]
+                # ad calibration signal to all regressors
+                if add_calibration_signal:
+                    temp_cal = np.tile(calibration_signal_use[inod][il, ir, :],
+                                       (regressor_matrix.shape[0], 1))
+                    regressor_matrix = regressor_matrix + \
+                        regressor_matrix*calibration_signal_depth*temp_cal
 
                 # select data and aditional regressors (x = phase, y=signal,
                 # z = ligthcurve model, r = position)
                 x = time_use[il, ir, :].copy()
                 y = data_use[il, ir, :].copy()
                 np.ma.set_fill_value(y, 0.0)
+
+                if add_calibration_signal:
+                    zcal = calibration_signal_use[inod][il, ir, :].copy()
+                    y = y + y*calibration_signal_depth*zcal
 
                 z = lightcurve_model_use[inod][il, ir, :].copy()
                 r = position_use[il, ir, :].copy()
@@ -857,16 +922,15 @@ class TSOSuite:
 
                 # add other regressors: constant, time, position along slit,
                 # lightcure model
-                if add_time and add_position:
-                    design_matrix = np.vstack((regressor_matrix,
-                                               np.ones_like(x), x, r, z)).T
-                elif add_time:
-                    design_matrix = np.vstack((regressor_matrix,
-                                               np.ones_like(x), x, z)).T
-                elif add_position:
-                    design_matrix = np.vstack((regressor_matrix, r, z)).T
-                else:
-                    design_matrix = np.vstack((regressor_matrix, z)).T
+                design_matrix = regressor_matrix
+                if add_time:
+                    design_matrix = np.vstack((design_matrix,
+                                               np.ones_like(x), x))
+                if add_position:
+                    design_matrix = np.vstack((design_matrix, r))
+                if add_calibration_signal:
+                    design_matrix = np.vstack((design_matrix, zcal))
+                design_matrix = np.vstack((design_matrix, z)).T
 
                 # solve linear Eq.
                 P, Perr, opt_reg_par = \
@@ -885,7 +949,10 @@ class TSOSuite:
                 # Here we only need to use the fittted model not the actual
                 # data. First, define model fit without lightcurve model
                 Ptemp = P.copy()
-                Ptemp[-1] = 0.0
+                if add_calibration_signal:
+                    Ptemp[-2:] = 0.0
+                else:
+                    Ptemp[-1] = 0.0
                 # Then calculate the calibrated normalized lightcurve
                 # for eiter eclipse or transit
                 if self.model.transittype == 'secondary':
@@ -899,20 +966,34 @@ class TSOSuite:
                     calibrated_lightcurve = np.dot(design_matrix.data, P) / \
                                             np.dot(design_matrix.data,
                                                    Ptemp) - 1.0
+                calibrated_time_series.data[il, ir, :] = calibrated_lightcurve
                 # fit again for final normalized transit/eclipse depth
+                if add_calibration_signal:
+                    final_lc_model = np.vstack([zcal, z]).T
+                else:
+                    final_lc_model = z[:, None]
                 P_final, Perr_final, opt_reg_par_final = \
-                    solve_linear_equation(z[:, None],
+                    solve_linear_equation(final_lc_model,
                                           calibrated_lightcurve, weights,
                                           cv_method=cv_method,
                                           reg_par=reg_par)
                 # transit/eclipse signal
-                data_driven_image.data[il, ir] = P_final[0]
+                data_driven_image.data[il, ir] = P_final[-1]
                 # combine errors of lightcurve calibration and
                 # transit/eclipse fit
                 error_data_driven_image.data[il, ir] = \
-                    np.sqrt((Perr_final[0])**2 +
+                    np.sqrt((Perr_final[-1])**2 +
                             ((Perr[-1]/P[-1]) *
                              data_driven_image.data[il, ir])**2)
+                # fit results to the injected calibration signal
+                if add_calibration_signal:
+                    calibration_image.data[il, ir] = P_final[-2]
+                    # combine errors of lightcurve calibration and
+                    # transit/eclipse fit
+                    error_calibration_image.data[il, ir] = \
+                        np.sqrt((Perr_final[-2])**2 +
+                                ((Perr[-2]/P[-2]) *
+                                 calibration_image.data[il, ir])**2)
 
         try:
             self.calibration_results
@@ -925,11 +1006,46 @@ class TSOSuite:
                 optimal_regularization_parameter
             self.calibration_results.signal = data_driven_image
             self.calibration_results.error_signal = error_data_driven_image
+            self.calibration_results.calibration_signal = calibration_image
+            self.calibration_results.error_calibration_signal = \
+                error_calibration_image
+            self.calibration_results.calibrated_time_series = \
+                calibrated_time_series
 
     def extract_spectrum(self):
         """
         Extract the planetary spectrum from the calibrated ligth curve data
         """
+        try:
+            add_calibration_signal = \
+                ast.literal_eval(self.cascade_parameters.
+                                 cpm_add_calibration_signal)
+        except AttributeError:
+            raise AttributeError("The switch for using a calibration \
+                                 signal is not defined. \
+                                 Check the initialiation of the TSO object. \
+                                 Aborting extraction of planetary spectrum")
+        if add_calibration_signal:
+            try:
+                cal_signal_depth = float(self.cascade_parameters.
+                                         cpm_calibration_signal_depth)
+            except AttributeError:
+                raise AttributeError("The the depth of the calibration \
+                                     signal is not defined. Check the \
+                                     initialiation of the TSO object. \
+                                     Aborting extraction of planetary \
+                                     spectrum")
+            try:
+                calibrated_cal_signal = self.calibration_results.\
+                    calibration_signal
+                calibrated_cal_signal_error = self.calibration_results.\
+                    error_calibration_signal
+            except AttributeError:
+                raise AttributeError("The the extracted calibration \
+                                     signal is not defined. Check the \
+                                     initialiation of the TSO object. \
+                                     Aborting extraction of planetary \
+                                     spectrum")
         try:
             calibrated_signal = self.calibration_results.signal
             calibrated_error = self.calibration_results.error_signal
@@ -983,6 +1099,16 @@ class TSOSuite:
             np.ma.average(wavelength_image, axis=1,
                           weights=(np.ma.ones((npix, mpix)) /
                                    calibrated_error)**2)
+        if add_calibration_signal:
+            weighted_cal_signal = \
+                np.ma.average(calibrated_cal_signal, axis=1,
+                              weights=(np.ma.ones((npix, mpix)) /
+                                       calibrated_cal_signal_error)**2)
+
+            weighted_cal_signal_error = np.ma.ones((npix)) / \
+                np.ma.sum((np.ma.ones((npix, mpix)) /
+                           calibrated_cal_signal_error)**2, axis=1)
+            weighted_cal_signal_error = np.ma.sqrt(weighted_cal_signal_error)
 
         if transittype == 'secondary':
             # Eclipse
@@ -990,13 +1116,51 @@ class TSOSuite:
                         median_eclipse_depth)
             error_spectrum = weighted_signal_error * \
                 (1.0 + median_eclipse_depth)
+
+            # Calibration
+            if add_calibration_signal:
+                scaled_weighted_cal_signal = \
+                    (weighted_cal_signal*(1.0+cal_signal_depth) +
+                     cal_signal_depth)
+                scaled_weighted_cal_signal_error = \
+                    (weighted_cal_signal_error *
+                     (1.0+cal_signal_depth))
+                calibration_correction = \
+                    (median_eclipse_depth - median_eclipse_depth /
+                     (scaled_weighted_cal_signal/cal_signal_depth))
+                calibration_correction_error = \
+                    (scaled_weighted_cal_signal_error /
+                     scaled_weighted_cal_signal)*(median_eclipse_depth /
+                                                  (scaled_weighted_cal_signal /
+                                                   cal_signal_depth))
+                spectrum = spectrum - calibration_correction
+                error_spectrum = np.sqrt(error_spectrum**2 +
+                                         calibration_correction_error**2)
         else:
             # transit
-            # correction_spectrum = (correction_sampling/planet_radius_rstar**2 + 1)
             spectrum = (weighted_signal*(1.0 - planet_radius**2) +
-                        planet_radius**2)  # / correction_spectrum
-            error_spectrum = weighted_signal_error*(1.0 - planet_radius**2)  # /correction_spectrum
+                        planet_radius**2)
+            error_spectrum = weighted_signal_error*(1.0 - planet_radius**2)
 
+            # Calibration
+            if add_calibration_signal:
+                scaled_weighted_cal_signal = \
+                    (weighted_cal_signal*(1.0-cal_signal_depth**2) +
+                     cal_signal_depth**2)
+                scaled_weighted_cal_signal_error = \
+                    (weighted_cal_signal_error *
+                     (1.0-cal_signal_depth**2))
+                calibration_correction = \
+                    (median_eclipse_depth - median_eclipse_depth /
+                     (scaled_weighted_cal_signal/cal_signal_depth))
+                calibration_correction_error = \
+                    (scaled_weighted_cal_signal_error /
+                     scaled_weighted_cal_signal)*(median_eclipse_depth /
+                                                  (scaled_weighted_cal_signal /
+                                                   cal_signal_depth))
+                spectrum = spectrum - calibration_correction
+                error_spectrum = np.sqrt(error_spectrum**2 +
+                                         calibration_correction_error**2)
         try:
             self.exoplanet_spectrum
         except AttributeError:
@@ -1005,6 +1169,11 @@ class TSOSuite:
         self.exoplanet_spectrum.wavelength = weighted_signal_wavelength
         self.exoplanet_spectrum.data = spectrum
         self.exoplanet_spectrum.error = error_spectrum
+        if add_calibration_signal:
+            self.exoplanet_spectrum.calibration_correction = \
+                calibration_correction
+            self.exoplanet_spectrum.calibration_correction_error = \
+                calibration_correction_error
 
     def save_results(self):
         """
@@ -1027,10 +1196,12 @@ class TSOSuite:
             raise AttributeError("No uniq id defined for observation \
                                  Aborting saving results")
 
-        tbhdu = fits.BinTableHDU.from_columns(
-                [fits.Column(name='Wavelength', format='E',
-                             array=results.wavelength),
-                 fits.Column(name='Flux', format='E', array=results.data),
-                 fits.Column(name='Error', format='E', array=results.error)])
-        tbhdu.writeto(save_path+observations_id+'_exoplanet_spectra.fits',
-                      clobber=True)
+        t = Table()
+        col = MaskedColumn(data=results.wavelength, name='Wavelength')
+        t.add_column(col)
+        col = MaskedColumn(data=results.data, name='Flux')
+        t.add_column(col)
+        col = MaskedColumn(data=results.error, name='Error')
+        t.add_column(col)
+        t.write(save_path+observations_id+'_exoplanet_spectra.fits',
+                format='fits', overwrite=True)

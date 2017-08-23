@@ -93,6 +93,9 @@ with quantity_support():
     plt.plot(tso.observation.dataset.time.data[80, 18, :],
              tso.model.light_curve_interpolated[0][80, 18, :])
     plt.show()
+# calibration signal
+plt.imshow(tso.model.calibration_signal[0][:, 0, :])
+plt.show()
 
 # determine position of source from data set
 tso.execute("determine_source_position")
@@ -193,6 +196,7 @@ ax.imshow(np.ma.abs(tso.exoplanet_spectrum.weighted_image),
 ax.set_aspect(128.0 / delta_lam)
 ax.set_xlabel('Pixel Number Spatial Direction')
 ax.set_ylabel('Wavelength')
+plt.show()
 
 path_old = '/home/bouwman/SST_OBSERVATIONS/projects_HD189733/REDUCED_DATA/'
 spec_instr_model_ian = ascii.read(path_old+'results_ian.dat', data_start=1)
@@ -206,19 +210,62 @@ ax.errorbar(spec_instr_model_ian['lam_micron'],
             spec_instr_model_ian['depthA'],
             yerr=spec_instr_model_ian['errorA'],
             fmt=".k", color="r", lw=2,
-            alpha=0.8, ecolor="r")
-
+            alpha=0.8, ecolor="r",
+            markeredgecolor='r', fillstyle='full', markersize=10,
+            markerfacecolor='r')
 ax.plot(tso.exoplanet_spectrum.wavelength,
         tso.exoplanet_spectrum.data, lw=3, alpha=0.7, color='blue')
 ax.errorbar(tso.exoplanet_spectrum.wavelength,
             tso.exoplanet_spectrum.data, yerr=tso.exoplanet_spectrum.error,
-            fmt=".k", color='blue', lw=3, alpha=0.7, ecolor='blue', mfc='blue')
-
+            fmt=".k", color='blue', lw=3, alpha=0.7, ecolor='blue',
+            markerfacecolor='blue',
+            markeredgecolor='blue', fillstyle='full', markersize=10)
 axes = plt.gca()
 axes.set_xlim([7.5, 15.5])
 axes.set_ylim([-0.00, 0.008])
 ax.set_ylabel('Fp/Fstar')
 ax.set_xlabel('Wavelength')
+plt.show()
 
 # save planetary signal
 tso.execute("save_results")
+
+cal_signal_depth = float(tso.cascade_parameters.cpm_calibration_signal_depth)
+mean_eclipse_depth = float(tso.cascade_parameters.observations_median_signal)
+
+plt.plot(tso.calibration_results.calibrated_time_series[50, 17:21, :].T)
+plt.show()
+
+plt.plot(tso.exoplanet_spectrum.wavelength,
+         tso.calibration_results.calibration_signal *
+         (1+cal_signal_depth)+cal_signal_depth)
+axes = plt.gca()
+axes.set_ylim([cal_signal_depth*0.0, cal_signal_depth*5])
+plt.show()
+
+plt.plot(tso.exoplanet_spectrum.wavelength,
+         (tso.calibration_results.calibration_signal *
+          (1+cal_signal_depth)+cal_signal_depth)/cal_signal_depth)
+axes = plt.gca()
+axes.set_ylim([0.0, 2.5])
+plt.show()
+
+plt.imshow(np.log10((tso.calibration_results.calibration_signal *
+           (1+cal_signal_depth)+cal_signal_depth) /
+           (tso.calibration_results.error_calibration_signal *
+            (1+cal_signal_depth)/cal_signal_depth)**2))
+plt.show()
+
+plt.plot(tso.exoplanet_spectrum.wavelength,
+         tso.exoplanet_spectrum.calibration_correction)
+plt.errorbar(tso.exoplanet_spectrum.wavelength,
+             tso.exoplanet_spectrum.calibration_correction,
+             yerr=tso.exoplanet_spectrum.calibration_correction_error)
+plt.show()
+
+plt.plot(tso.exoplanet_spectrum.wavelength,
+         (mean_eclipse_depth-tso.exoplanet_spectrum.calibration_correction) /
+         tso.exoplanet_spectrum.calibration_correction_error)
+plt.plot(tso.exoplanet_spectrum.wavelength,
+         tso.exoplanet_spectrum.data/tso.exoplanet_spectrum.error)
+plt.show()
