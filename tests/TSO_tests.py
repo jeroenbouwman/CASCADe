@@ -204,6 +204,9 @@ plt.show()
 # save planetary signal
 tso.execute("save_results")
 
+# plot planetary signal
+tso.execute("plot_results")
+
 cal_signal_depth = float(tso.cascade_parameters.cpm_calibration_signal_depth)
 mean_eclipse_depth = float(tso.cascade_parameters.observations_median_signal)
 

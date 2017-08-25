@@ -13,7 +13,7 @@ tso = cascade.TSO.TSOSuite()
 path = cascade.initialize.default_initialization_path
 tso = cascade.TSO.TSOSuite("cascade_test_cpm.ini",
                            "cascade_test_object.ini",
-                           "cascade_test_data_spectral_images.ini", path=path)
+                           "cascade_test_data_spectral_images2.ini", path=path)
 print(tso.cascade_parameters)
 print(cascade.initialize.cascade_configuration)
 print(tso.cascade_parameters.isInitialized)
@@ -30,7 +30,7 @@ print(tso.cascade_parameters.isInitialized)
 tso = cascade.TSO.TSOSuite()
 path = cascade.initialize.default_initialization_path
 tso.execute("initialize", "cascade_test_cpm.ini", "cascade_test_object.ini",
-            "cascade_test_data_spectral_images.ini", path=path)
+            "cascade_test_data_spectral_images2.ini", path=path)
 print(tso.cascade_parameters)
 print(cascade.initialize.cascade_configuration)
 print(tso.cascade_parameters.isInitialized)
@@ -229,6 +229,9 @@ plt.show()
 
 # save planetary signal
 tso.execute("save_results")
+
+# plot planetary signal
+tso.execute("plot_results")
 
 cal_signal_depth = float(tso.cascade_parameters.cpm_calibration_signal_depth)
 mean_eclipse_depth = float(tso.cascade_parameters.observations_median_signal)

@@ -16,6 +16,7 @@ import astropy.units as u
 from astropy.table import Table
 from astropy.table import MaskedColumn
 import os
+from matplotlib import pyplot as plt
 
 from ..cpm_model import solve_linear_equation
 from ..exoplanet_tools import lightcuve
@@ -56,7 +57,8 @@ class TSOSuite:
                 "select_regressors": self.select_regressors,
                 "calibrate_timeseries": self.calibrate_timeseries,
                 "extract_spectrum": self.extract_spectrum,
-                "save_results": self.save_results}
+                "save_results": self.save_results,
+                "plot_results": self.plot_results}
 
     def execute(self, command, *init_files, path=None):
         """
@@ -1205,3 +1207,122 @@ class TSOSuite:
         t.add_column(col)
         t.write(save_path+observations_id+'_exoplanet_spectra.fits',
                 format='fits', overwrite=True)
+
+    def plot_results(self):
+        """
+        Plot the extracted planetary spectrum and scaled signal on the
+        detector.
+        """
+        try:
+            results = self.exoplanet_spectrum
+        except AttributeError:
+            raise AttributeError("No results defined \
+                                 Aborting plotting results")
+        try:
+            save_path = self.cascade_parameters.cascade_save_path
+            os.makedirs(save_path, exist_ok=True)
+        except AttributeError:
+            raise AttributeError("No save path defined\
+                                 Aborting plotting results")
+        try:
+            observations_id = self.cascade_parameters.observations_id
+        except AttributeError:
+            raise AttributeError("No uniq id defined for observation \
+                                 Aborting plotting results")
+        try:
+            add_calibration_signal = \
+                ast.literal_eval(self.cascade_parameters.
+                                 cpm_add_calibration_signal)
+        except AttributeError:
+            raise AttributeError("The switch for using a calibration \
+                                 signal is not defined. \
+                                 Check the initialiation of the TSO object. \
+                                 Aborting plotting results")
+        try:
+            median_eclipse_depth = \
+                float(self.cascade_parameters.observations_median_signal)
+        except AttributeError:
+            raise AttributeError("No median signal depth defined. \
+                                 Aborting plotting results")
+
+        fig, ax = plt.subplots(figsize=(6, 6))
+        for item in ([ax.title, ax.xaxis.label, ax.yaxis.label] +
+                     ax.get_xticklabels() + ax.get_yticklabels()):
+            item.set_fontsize(20)
+        cmap = plt.cm.gist_heat
+        cmap.set_bad('black', 1.)
+        ax.imshow(np.ma.abs(results.weighted_image),
+                  origin='lower', aspect='auto',
+                  cmap=cmap, interpolation='none', vmin=0, vmax=1000)
+        ax.set_xlabel('Pixel Number Spatial Direction')
+        ax.set_ylabel('Pixel Number Wavelength Direction')
+        plt.show()
+        fig.savefig(save_path+observations_id+'_weighted_signal.png',
+                    bbox_inches='tight')
+
+        fig, ax = plt.subplots(figsize=(7, 4))
+        for item in ([ax.title, ax.xaxis.label, ax.yaxis.label] +
+                     ax.get_xticklabels() + ax.get_yticklabels()):
+            item.set_fontsize(20)
+        ax.plot(results.wavelength,
+                results.data, lw=3, alpha=0.7, color='blue')
+        ax.errorbar(results.wavelength,
+                    results.data,
+                    yerr=results.error,
+                    fmt=".k", color='blue', lw=3, alpha=0.7, ecolor='blue',
+                    markerfacecolor='blue', markeredgecolor='blue',
+                    fillstyle='full', markersize=10)
+        axes = plt.gca()
+        axes.set_xlim([0.95*np.ma.min(results.wavelength),
+                       1.05*np.ma.max(results.wavelength)])
+        axes.set_ylim([0.00, 2.0*np.ma.median(results.data)])
+        ax.set_ylabel('Fp/Fstar')
+        ax.set_xlabel('Wavelength')
+        plt.show()
+        fig.savefig(save_path+observations_id+'_exoplanet_spectra.png',
+                    bbox_inches='tight')
+
+        if add_calibration_signal:
+            fig, ax = plt.subplots(figsize=(7, 4))
+            for item in ([ax.title, ax.xaxis.label, ax.yaxis.label] +
+                         ax.get_xticklabels() + ax.get_yticklabels()):
+                item.set_fontsize(20)
+            ax.plot(results.wavelength,
+                    results.calibration_correction)
+            ax.errorbar(results.wavelength,
+                        results.calibration_correction,
+                        yerr=results.calibration_correction_error)
+            axes = plt.gca()
+            axes.set_xlim([0.95*np.ma.min(results.wavelength),
+                           1.05*np.ma.max(results.wavelength)])
+            axes.set_ylim([-1.0*np.ma.median(results.data),
+                           np.ma.median(results.data)])
+            ax.set_ylabel('Calibration correction to Fp/Fstar')
+            ax.set_xlabel('Wavelength')
+            plt.show()
+            fig.savefig(save_path+observations_id +
+                        '_calibration_correction.png', bbox_inches='tight')
+
+            fig, ax = plt.subplots(figsize=(7, 4))
+            for item in ([ax.title, ax.xaxis.label, ax.yaxis.label] +
+                         ax.get_xticklabels() + ax.get_yticklabels()):
+                item.set_fontsize(20)
+            ax.plot(results.wavelength,
+                    (median_eclipse_depth-results.calibration_correction) /
+                    results.calibration_correction_error)
+            ax.plot(results.wavelength,
+                    results.data/results.error)
+            axes = plt.gca()
+            axes.set_xlim([0.95*np.ma.min(results.wavelength),
+                           1.05*np.ma.max(results.wavelength)])
+            axes.set_ylim(
+                    [0.0,
+                     2.0*np.ma.median((median_eclipse_depth -
+                                       results.calibration_correction) /
+                                      results.calibration_correction_error)])
+            ax.set_ylabel('SNR')
+            ax.set_xlabel('Wavelength')
+            plt.show()
+            plt.show()
+            fig.savefig(save_path+observations_id +
+                        '_calibration_SNR.png', bbox_inches='tight')
