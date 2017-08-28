@@ -337,8 +337,9 @@ class SpitzerIRS(InstrumentBase):
         time = (time + 2400000.5) + (0.50*framtime) / (24.0*3600.0)  # in days
         # orbital phase
         phase = (time - self.par['obj_ephemeris']) / self.par['obj_period']
-        phase = phase - np.int(np.max(phase)) + 1.0
-
+        phase = phase - np.int(np.max(phase))
+        if np.max(phase) < 0.0:
+            phase = phase + 1.0
         #
         SpectralTimeSeries = SpectralDataTimeSeries(wavelength=wavelength,
                                                     data=data, time=phase,
@@ -462,7 +463,9 @@ class SpitzerIRS(InstrumentBase):
         time = (time + 2400000.5) + (0.50*framtime) / (24.0*3600.0)  # in days
         # orbital phase
         phase = (time - self.par['obj_ephemeris']) / self.par['obj_period']
-        phase = phase - np.int(np.max(phase)) + 1.0
+        phase = phase - np.int(np.max(phase))
+        if np.max(phase) < 0.0:
+            phase = phase + 1.0
 
         SpectralTimeSeries = SpectralDataTimeSeries(wavelength=wave_cal,
                                                     data=data, time=phase,
@@ -670,7 +673,9 @@ class SpitzerIRS(InstrumentBase):
         time = (time + 2400000.5) + (0.50*framtime) / (24.0*3600.0)  # in days
         # orbital phase
         phase = (time - self.par['obj_ephemeris']) / self.par['obj_period']
-        phase = phase - np.int(np.max(phase)) + 1.0
+        phase = phase - np.int(np.max(phase))
+        if np.max(phase) < 0.0:
+            phase = phase + 1.0
 
         # adjust time stamp for each sample up the ramp
         phase = np.tile(phase, (nframes, 1))
@@ -717,7 +722,7 @@ class SpitzerIRS(InstrumentBase):
             idx = np.where(order == 1)
         elif (self.par['inst_order'] == '2') or \
                 (self.par['inst_order'] == '3'):
-            idx = np.where((order == 2) or (order == 3))
+            idx = np.where((order == 2) | (order == 3))
         spatial_pos = spatial_pos[idx]
         wavelength_pos = wavelength_pos[idx]
         wavelength = wavelength[idx]

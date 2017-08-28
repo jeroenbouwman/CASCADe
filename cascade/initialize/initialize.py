@@ -39,6 +39,7 @@ def generate_default_initialization():
                      'cpm_nextraction': '5',
                      'cpm_DeltaPix': '9',
                      'cpm_nrebin': '1',
+                     'cpm_stdv_interpolation_kernel': '1.5',
                      'cpm_add_time': 'True',
                      'cpm_add_postition': 'True',
                      'cpm_clip_percentile_time': '0.01',

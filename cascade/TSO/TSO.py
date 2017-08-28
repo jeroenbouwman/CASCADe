@@ -622,7 +622,7 @@ class TSOSuite:
     @staticmethod
     def get_design_matrix(data_in, regressor_selection, nrebin, clip=False,
                           clip_pctl_time=0.01, clip_pctl_regressors=0.01,
-                          center_matrix=False):
+                          center_matrix=False, stdv_kernel=1.5):
         """
         Return the design matrix based on the data set itself
         """
@@ -653,7 +653,7 @@ class TSOSuite:
             idx_clip_regressor = idx_bad[:nclip]
 
             # define kernel used to replace bad data
-            kernel = Gaussian2DKernel(stddev=1)
+            kernel = Gaussian2DKernel(stddev=stdv_kernel)
             # set masked data to NaN and sort data to signal value
 
             np.ma.set_fill_value(sorted_matrix, float("NaN"))
@@ -726,6 +726,14 @@ class TSOSuite:
             raise AttributeError("The rebin factor regressors is not defined. \
                                  Check the initialiation of the TSO object. \
                                  Aborting setting regressors")
+        try:
+            stdv_kernel = \
+                float(self.cascade_parameters.cpm_stdv_interpolation_kernel)
+        except AttributeError:
+            raise AttributeError("The standard deviation of the interpolation\
+                                 kernel is not defined. \
+                                 Check the initialiation of the TSO object. \
+                                 Aborting getting of the design matrici")
 
         data_use = self.reshape_data(data_in.data)
         design_matrix_list_nod = []
@@ -737,7 +745,8 @@ class TSOSuite:
                                            nrebin, clip=clip,
                                            clip_pctl_time=clip_pctl_time,
                                            clip_pctl_regressors=clip_pctl_regressors,
-                                           center_matrix=center_matrix)
+                                           center_matrix=center_matrix,
+                                           stdv_kernel=stdv_kernel)
                 design_matrix_list.append([regressor_matrix])
             design_matrix_list_nod.append(design_matrix_list)
         self.cpm.design_matrix = design_matrix_list_nod
@@ -813,6 +822,14 @@ class TSOSuite:
                        "nlam": int(self.cascade_parameters.cpm_nlam)}
         except AttributeError:
             raise AttributeError("Regularization parameters not found. \
+                                 Aborting time series calibration")
+        try:
+            stdv_kernel = \
+                float(self.cascade_parameters.cpm_stdv_interpolation_kernel)
+        except AttributeError:
+            raise AttributeError("The standard deviation of the interpolation\
+                                 kernel is not defined. \
+                                 Check the initialiation of the TSO object. \
                                  Aborting time series calibration")
 
 # ##############
@@ -892,7 +909,8 @@ class TSOSuite:
                     self.get_design_matrix(data_use, regressor_selection,
                                            nrebin, clip=True,
                                            clip_pctl_time=clip_pctl_time,
-                                           clip_pctl_regressors=clip_pctl_regressors)
+                                           clip_pctl_regressors=clip_pctl_regressors,
+                                           stdv_kernel=stdv_kernel)
                 # remove bad regressors
                 idx_cut = np.all(regressor_matrix.mask, axis=1)
                 regressor_matrix = regressor_matrix[~idx_cut, :]
