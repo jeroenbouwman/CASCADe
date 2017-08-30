@@ -210,15 +210,15 @@ exoplanets_table_units = collections.OrderedDict(
     TTLOWER=u.day)
 
 
-# decorrator function to check and handel masked Quantities
+# decorator function to check and handel masked Quantities
 # such as:  masked_quantity = np.ma.array([1,2,3,4]*u.micron,
 # mask=[True, False, True, False])
 def masked_array_input(func):
     """
     If one of the input arguments is wavelength or flux, the array can be
-    a masked Quantaty, masing out ony 'bad' data. This decorrator checks for
+    a masked Quantity, masking out only 'bad' data. This decorator checks for
     masked arrays and upon finding the first masked array, passes the data
-    and stores the mask to be used to create a masked Quantaty after the
+    and stores the mask to be used to create a masked Quantity after the
     function returns.
     """
     @wraps(func)
