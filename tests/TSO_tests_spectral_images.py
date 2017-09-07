@@ -13,7 +13,7 @@ tso = cascade.TSO.TSOSuite()
 path = cascade.initialize.default_initialization_path
 tso = cascade.TSO.TSOSuite("cascade_test_cpm.ini",
                            "cascade_test_object.ini",
-                           "cascade_test_data_spectral_images2.ini", path=path)
+                           "cascade_test_data_spectral_images.ini", path=path)
 print(tso.cascade_parameters)
 print(cascade.initialize.cascade_configuration)
 print(tso.cascade_parameters.isInitialized)
@@ -30,7 +30,7 @@ print(tso.cascade_parameters.isInitialized)
 tso = cascade.TSO.TSOSuite()
 path = cascade.initialize.default_initialization_path
 tso.execute("initialize", "cascade_test_cpm.ini", "cascade_test_object.ini",
-            "cascade_test_data_spectral_images2.ini", path=path)
+            "cascade_test_data_spectral_images.ini", path=path)
 print(tso.cascade_parameters)
 print(cascade.initialize.cascade_configuration)
 print(tso.cascade_parameters.isInitialized)
@@ -159,7 +159,7 @@ clip_pctl_time = float(tso.cascade_parameters.cpm_clip_percentile_time)
 tso.return_all_design_matrices(clip=True,
                                clip_pctl_time=clip_pctl_time,
                                clip_pctl_regressors=clip_pctl_regressors,
-                               center_matrix=True)
+                               center_matrix=False)
 print(tso.cpm.design_matrix[0][0][0].shape)
 mask = tso.cpm.design_matrix[0][50][0].mask
 plt.imshow(mask)
@@ -205,21 +205,22 @@ for item in ([ax.title, ax.xaxis.label, ax.yaxis.label] +
              ax.get_xticklabels() + ax.get_yticklabels()):
     item.set_fontsize(20)
 ax.plot(spec_instr_model_ian['lam_micron'], spec_instr_model_ian['depthA'],
-        color="r", lw=2, alpha=0.8)
+        color="r", lw=2, alpha=0.9)
 ax.errorbar(spec_instr_model_ian['lam_micron'],
             spec_instr_model_ian['depthA'],
             yerr=spec_instr_model_ian['errorA'],
             fmt=".k", color="r", lw=2,
-            alpha=0.8, ecolor="r",
+            alpha=0.9, ecolor="r",
             markeredgecolor='r', fillstyle='full', markersize=10,
-            markerfacecolor='r')
+            markerfacecolor='r', zorder=3)
 ax.plot(tso.exoplanet_spectrum.wavelength,
-        tso.exoplanet_spectrum.data, lw=3, alpha=0.7, color='blue')
+        tso.exoplanet_spectrum.data, lw=3, alpha=0.5, color='blue')
 ax.errorbar(tso.exoplanet_spectrum.wavelength,
             tso.exoplanet_spectrum.data, yerr=tso.exoplanet_spectrum.error,
-            fmt=".k", color='blue', lw=3, alpha=0.7, ecolor='blue',
+            fmt=".k", color='blue', lw=3, alpha=0.5, ecolor='blue',
             markerfacecolor='blue',
-            markeredgecolor='blue', fillstyle='full', markersize=10)
+            markeredgecolor='blue', fillstyle='full', markersize=10,
+            zorder=4)
 axes = plt.gca()
 axes.set_xlim([7.5, 15.5])
 axes.set_ylim([-0.00, 0.008])

@@ -235,7 +235,13 @@ class TSOSuite:
             isNodded = self.observation.dataset.isNodded
         except AttributeError:
             raise AttributeError("Observational strategy not properly set. \
-                                 Aborting position determination")
+                                 Aborting definition of eclipse model.")
+        try:
+            cal_signal_pos = \
+                self.cascade_parameters.cpm_calibration_signal_position
+        except AttributeError:
+            raise AttributeError("Calibration signal parameters not set. \
+                                 Aborting definition of eclipse model.")
         # define ligthcurve model
         lc_model = lightcuve()
         times_during_transit = lc_model.lc[0][~np.isclose(lc_model.lc[1], 0.0)]
@@ -255,20 +261,29 @@ class TSOSuite:
         selection1 = [slice(1)]*(ndim-1)+[slice(None)]
         time_cal = np.squeeze(self.observation.dataset.time.
                               data.value[selection1])
-        # select data befor transit
-        idx = np.where(time_cal < Tstart)[0]
+        # select data before and after transit
+        idx_before = np.where(time_cal < Tstart)[0]
+        idx_after = np.where(time_cal > Tend)[0]
+        # check the duration of the time series out of transit
+        max_cal_points = np.min([len(idx_before), len(idx_after)])
         # inject signal of half the the duration of the transit
-        time_frac = 0.5*(Tend-Tstart)/(time_cal[idx[-1]]-time_cal[idx[0]])
-        nsignal_cal = np.max((np.rint(idx.size*time_frac).astype(int), 2))
-        # place calibration signal in the midel of the time sequence before the
-        # actual transit.
-        idx_start = (idx.size - nsignal_cal)//2
+        # place calibration signal in the midle of the time sequence before
+        # or after the actual transit.
+        idx_end = idx_before[-1] - max_cal_points//4
+        idx_start = idx_end - max_cal_points//2
         selection1 = [slice(None)]*(ndim-1) + \
-            [slice(idx_start, idx_start+nsignal_cal)]
-        lcmodel_cal[selection1] = -1.0
+            [slice(idx_start, idx_end)]
+        if cal_signal_pos != 'after':
+            lcmodel_cal[selection1] = -1.0
+        idx_start = idx_after[0] + max_cal_points//4
+        idx_end = idx_start + max_cal_points//2
+        selection2 = [slice(None)]*(ndim-1) + \
+            [slice(idx_start, idx_end)]
+        if cal_signal_pos != 'before':
+            lcmodel_cal[selection2] = -1.0
 
         if isNodded:
-            ntime = len(lcmodel_obs)
+            ntime = lcmodel_obs.shape[-1]
             mask_nod1 = np.ones(ntime)
             mask_nod1[ntime//2:] = 0.
             mask_nod2 = np.ones(ntime)
@@ -517,10 +532,11 @@ class TSOSuite:
                 np.tile(np.arange(dim[0]).astype(int),
                         (np.max((1, nExtractionWidth)), 1)).T
 
-            extraction_mask = np.ones_like(ExtractionMask[0]).astype(bool)
+#            extraction_mask = np.ones_like(ExtractionMask[0]).astype(bool)
 
             ExtractionMaskperNod = []
             for ipos in median_position:
+                extraction_mask = np.ones_like(ExtractionMask[0]).astype(bool)
                 idx_mask_y_shifted = \
                     np.tile(np.rint(spectral_trace + ipos).astype(int),
                             (np.max((1, nExtractionWidth)), 1)).T + idx_mask_y
@@ -832,11 +848,6 @@ class TSOSuite:
                                  Check the initialiation of the TSO object. \
                                  Aborting time series calibration")
 
-# ##############
-# BUG FIX: check if masked quantity
-#          check for nan and replace fill value
-#################
-
         # reshape input data to general 3D shape.
         data_use = self.reshape_data(data_in.data)
         time_use = self.reshape_data(data_in.time)
@@ -914,12 +925,16 @@ class TSOSuite:
                 # remove bad regressors
                 idx_cut = np.all(regressor_matrix.mask, axis=1)
                 regressor_matrix = regressor_matrix[~idx_cut, :]
-                # ad calibration signal to all regressors
+                # add calibration signal to all regressors
                 if add_calibration_signal:
                     temp_cal = np.tile(calibration_signal_use[inod][il, ir, :],
                                        (regressor_matrix.shape[0], 1))
+                    temp_cal = np.ma.masked_greater(temp_cal, -1.0)
                     regressor_matrix = regressor_matrix + \
-                        regressor_matrix*calibration_signal_depth*temp_cal
+                        (np.ma.median(regressor_matrix *
+                                      calibration_signal_depth*temp_cal,
+                                      axis=1) * temp_cal.data.T).T * \
+                        regressor_matrix.data.unit
 
                 # select data and aditional regressors (x = phase, y=signal,
                 # z = ligthcurve model, r = position)
@@ -929,7 +944,10 @@ class TSOSuite:
 
                 if add_calibration_signal:
                     zcal = calibration_signal_use[inod][il, ir, :].copy()
-                    y = y + y*calibration_signal_depth*zcal
+                    idx_temp = np.where(zcal > -1.0)
+                    temp_ma = np.ma.array(y*calibration_signal_depth*zcal)
+                    temp_ma.mask[idx_temp] = True
+                    y = y + np.ma.median(temp_ma)*zcal
 
                 z = lightcurve_model_use[inod][il, ir, :].copy()
                 r = position_use[il, ir, :].copy()
@@ -1107,6 +1125,10 @@ class TSOSuite:
 
         npix, mpix = wavelength_image.shape
 
+        #mask_temp = np.logical_or(self.cpm.extraction_mask[0],
+        #                               calibrated_signal.mask)
+        #calibrated_signal.mask = mask_temp
+        #calibrated_error.mask = mask_temp
         weighted_signal = np.ma.average(calibrated_signal, axis=1,
                                         weights=(np.ma.ones((npix, mpix)) /
                                                  calibrated_error)**2)
@@ -1120,6 +1142,10 @@ class TSOSuite:
                           weights=(np.ma.ones((npix, mpix)) /
                                    calibrated_error)**2)
         if add_calibration_signal:
+            #mask_temp = np.logical_or(self.cpm.extraction_mask[0],
+            #                           calibrated_cal_signal.mask)
+            #calibrated_cal_signal.mask = mask_temp
+            #calibrated_cal_signal_error.mask = mask_temp
             weighted_cal_signal = \
                 np.ma.average(calibrated_cal_signal, axis=1,
                               weights=(np.ma.ones((npix, mpix)) /
@@ -1165,17 +1191,17 @@ class TSOSuite:
             # Calibration
             if add_calibration_signal:
                 scaled_weighted_cal_signal = \
-                    (weighted_cal_signal*(1.0-cal_signal_depth**2) +
-                     cal_signal_depth**2)
+                    (weighted_cal_signal*(1.0-cal_signal_depth) +
+                     cal_signal_depth)
                 scaled_weighted_cal_signal_error = \
                     (weighted_cal_signal_error *
-                     (1.0-cal_signal_depth**2))
+                     (1.0-cal_signal_depth))
                 calibration_correction = \
-                    (median_eclipse_depth - median_eclipse_depth /
+                    (planet_radius**2 - planet_radius**2 /
                      (scaled_weighted_cal_signal/cal_signal_depth))
                 calibration_correction_error = \
                     (scaled_weighted_cal_signal_error /
-                     scaled_weighted_cal_signal)*(median_eclipse_depth /
+                     scaled_weighted_cal_signal)*(planet_radius**2 /
                                                   (scaled_weighted_cal_signal /
                                                    cal_signal_depth))
                 spectrum = spectrum - calibration_correction

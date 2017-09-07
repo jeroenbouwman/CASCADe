@@ -45,7 +45,8 @@ def generate_default_initialization():
                      'cpm_clip_percentile_time': '0.01',
                      'cpm_clip_percentile_regressors': '0.01',
                      'cpm_add_calibration_signal': 'True',
-                     'cpm_calibration_signal_depth': '0.02'}
+                     'cpm_calibration_signal_depth': '0.02',
+                     'cpm_calibration_signal_position': 'before'}
     config['INSTRUMENT'] = {'instrument_observatory': 'SPITZER',
                             'instrument': 'IRS',
                             'instrument_mode': 'SL',
@@ -67,6 +68,7 @@ def generate_default_initialization():
     config['OBJECT'] = {'object_name': 'HD 189733 b',
                         'object_radius': '1.151 Rjup',
                         'object_radius_host_star': '0.752 Rsun',
+                        'object_temperature_host_star': '5040.0 K',
                         'object_semi_major_axis': '0.03099 AU',
                         'object_inclination': '85.78 deg',
                         'object_eccentricity': '0.0041',

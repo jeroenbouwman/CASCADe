@@ -32,6 +32,7 @@ class Observation(object):
 
     def __init__(self):
         observatory_name = self.__get_observatory_name()
+        self.__check_observation_type()
         observations = self.__do_observations(observatory_name)
         self.dataset = observations.data
         if hasattr(observations, 'data_background'):
@@ -44,6 +45,10 @@ class Observation(object):
     def __valid_observatories(self):
         return {"SPITZER": Spitzer}
 
+    @property
+    def __valid_observation_type(self):
+        return {"TRANSIT", "ECLIPSE"}
+
     def __do_observations(self, observatory):
         return self.__valid_observatories[observatory]()
 
@@ -54,11 +59,25 @@ class Observation(object):
                 raise ValueError("Observatory not recognized, \
                                  check your init file for the following \
                                  valid observatories: {}. Aborting loading \
-                                 observatory".format(self.valid_observatories))
+                                 observatory".format(list(self.
+                                 __valid_observatories.keys())))
         else:
             raise ValueError("CASCADe not initialized, \
                                  aborting loading Observations")
         return observatory
+
+    def __check_observation_type(self):
+        if cascade_configuration.isInitialized:
+            observation_type = cascade_configuration.observations_type
+            if observation_type not in self.__valid_observation_type:
+                raise ValueError("Observation type not recognized, \
+                                 check your init file for the following \
+                                 valid observatories: {}. Aborting loading \
+                                 observatory".format(self.
+                                 __valid_observation_type))
+        else:
+            raise ValueError("CASCADe not initialized, \
+                                 aborting loading Observations")
 
 
 class ObservatoryBase(metaclass=ABCMeta):
@@ -146,6 +165,7 @@ class SpitzerIRS(InstrumentBase):
     __valid_arrays = {'SL', 'LL'}
     __valid_orders = {'1', '2'}
     __valid_data = {'SPECTRUM', 'SPECTRAL_IMAGE', 'SPECTRAL_DETECTOR_CUBE'}
+    __valid_observing_strategy = {'STARING', 'NODDED'}
 
     def __init__(self):
 
@@ -206,6 +226,11 @@ class SpitzerIRS(InstrumentBase):
 
         if not (obs_data in self.__valid_data):
             raise ValueError("Data type not recognized, \
+                     check your init file for the following \
+                     valid types: {}. \
+                     Aborting loading data".format(self.__valid_data))
+        if not (obs_mode in self.__valid_observing_strategy):
+            raise ValueError("Observational stategy not recognized, \
                      check your init file for the following \
                      valid types: {}. \
                      Aborting loading data".format(self.__valid_data))
