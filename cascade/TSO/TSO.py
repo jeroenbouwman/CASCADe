@@ -1288,6 +1288,11 @@ class TSOSuite:
         except AttributeError:
             raise AttributeError("No median signal depth defined. \
                                  Aborting plotting results")
+        try:
+            transittype = self.model.transittype
+        except AttributeError:
+            raise AttributeError("Type of observaton unknown. \
+                                 Aborting plotting results")
 
         fig, ax = plt.subplots(figsize=(6, 6))
         for item in ([ax.title, ax.xaxis.label, ax.yaxis.label] +
@@ -1319,8 +1324,13 @@ class TSOSuite:
         axes = plt.gca()
         axes.set_xlim([0.95*np.ma.min(results.wavelength),
                        1.05*np.ma.max(results.wavelength)])
-        axes.set_ylim([0.00, 2.0*np.ma.median(results.data)])
-        ax.set_ylabel('Fp/Fstar')
+        if transittype == 'secondary':
+            axes.set_ylim([0.00, 2.0*np.ma.median(results.data)])
+            ax.set_ylabel('Fp/Fstar')
+        else:
+            axes.set_ylim([np.ma.median(results.data)/1.2,
+                           1.2*np.ma.median(results.data)])
+            ax.set_ylabel('Transit Depth')
         ax.set_xlabel('Wavelength')
         plt.show()
         fig.savefig(save_path+observations_id+'_exoplanet_spectra.png',
