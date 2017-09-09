@@ -32,6 +32,18 @@ sd = cascade.data_model.SpectralData(wavelength=wave, data=flux,
                                      data_unit=new_data_unit)
 print(sd.data)
 
+mask = np.array([False, False, False, True, False, True])
+masked_wave = np.ma.array(wave, mask=mask)
+masked_flux = np.ma.array(flux, mask=mask)
+sd = cascade.data_model.SpectralData(wavelength=masked_wave,
+                                     data=masked_flux)
+print(sd.data)
+mask[0] = True
+sd = cascade.data_model.SpectralData(wavelength=masked_wave,
+                                     data=masked_flux,
+                                     mask = mask)
+print(sd.data)
+
 # with image data
 intensity = np.zeros((10, 10))
 intensity[:, 5] = 1.0

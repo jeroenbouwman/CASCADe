@@ -13,10 +13,13 @@ import ast
 from astropy.convolution import Gaussian2DKernel, interpolate_replace_nans
 from functools import reduce
 import astropy.units as u
+from astropy.units import cds
 from astropy.table import Table
 from astropy.table import MaskedColumn
 import os
 from matplotlib import pyplot as plt
+from astropy.visualization import quantity_support
+import copy
 
 from ..cpm_model import solve_linear_equation
 from ..exoplanet_tools import lightcuve
@@ -24,6 +27,9 @@ from ..initialize import configurator
 from ..initialize import default_initialization_path
 from ..initialize import cascade_configuration
 from ..instruments import Observation
+from ..data_model import SpectralData
+
+cds.enable()
 
 __all__ = ['TSOSuite']
 
@@ -1116,6 +1122,7 @@ class TSOSuite:
         extraction_mask = calibrated_signal.mask
 
         ndim = self.observation.dataset.wavelength.data.ndim
+        wavelength_unit = self.observation.dataset.wavelength.data.unit
         selection1 = [slice(None)]*(ndim-1)+[0]
         wavelength_image = \
             np.ma.array(self.observation.dataset.wavelength.
@@ -1182,6 +1189,7 @@ class TSOSuite:
                 spectrum = spectrum - calibration_correction
                 error_spectrum = np.sqrt(error_spectrum**2 +
                                          calibration_correction_error**2)
+
         else:
             # transit
             spectrum = (weighted_signal*(1.0 - planet_radius**2) +
@@ -1207,19 +1215,29 @@ class TSOSuite:
                 spectrum = spectrum - calibration_correction
                 error_spectrum = np.sqrt(error_spectrum**2 +
                                          calibration_correction_error**2)
+
+        exoplanet_spectrum = \
+            SpectralData(wavelength=weighted_signal_wavelength,
+                         wavelength_unit=wavelength_unit,
+                         data=spectrum,
+                         uncertainty=error_spectrum,
+                         data_unit=u.dimensionless_unscaled)
+        if add_calibration_signal:
+            calibration_correction_spectrum = \
+                SpectralData(wavelength=weighted_signal_wavelength,
+                             wavelength_unit=wavelength_unit,
+                             data=calibration_correction,
+                             uncertainty=calibration_correction_error,
+                             data_unit=u.dimensionless_unscaled)
         try:
             self.exoplanet_spectrum
         except AttributeError:
             self.exoplanet_spectrum = SimpleNamespace()
         self.exoplanet_spectrum.weighted_image = calibrated_weighted_image
-        self.exoplanet_spectrum.wavelength = weighted_signal_wavelength
-        self.exoplanet_spectrum.data = spectrum
-        self.exoplanet_spectrum.error = error_spectrum
+        self.exoplanet_spectrum.spectrum = exoplanet_spectrum
         if add_calibration_signal:
             self.exoplanet_spectrum.calibration_correction = \
-                calibration_correction
-            self.exoplanet_spectrum.calibration_correction_error = \
-                calibration_correction_error
+                calibration_correction_spectrum
 
     def save_results(self):
         """
@@ -1243,11 +1261,11 @@ class TSOSuite:
                                  Aborting saving results")
 
         t = Table()
-        col = MaskedColumn(data=results.wavelength, name='Wavelength')
+        col = MaskedColumn(data=results.spectrum.wavelength, name='Wavelength')
         t.add_column(col)
-        col = MaskedColumn(data=results.data, name='Flux')
+        col = MaskedColumn(data=results.spectrum.data, name='Flux')
         t.add_column(col)
-        col = MaskedColumn(data=results.error, name='Error')
+        col = MaskedColumn(data=results.spectrum.uncertainty, name='Error')
         t.add_column(col)
         t.write(save_path+observations_id+'_exoplanet_spectra.fits',
                 format='fits', overwrite=True)
@@ -1258,7 +1276,7 @@ class TSOSuite:
         detector.
         """
         try:
-            results = self.exoplanet_spectrum
+            results = copy.deepcopy(self.exoplanet_spectrum)
         except AttributeError:
             raise AttributeError("No results defined \
                                  Aborting plotting results")
@@ -1284,7 +1302,8 @@ class TSOSuite:
                                  Aborting plotting results")
         try:
             median_eclipse_depth = \
-                float(self.cascade_parameters.observations_median_signal)
+                (float(self.cascade_parameters.observations_median_signal) *
+                 u.dimensionless_unscaled).to(u.percent)
         except AttributeError:
             raise AttributeError("No median signal depth defined. \
                                  Aborting plotting results")
@@ -1293,6 +1312,10 @@ class TSOSuite:
         except AttributeError:
             raise AttributeError("Type of observaton unknown. \
                                  Aborting plotting results")
+
+        results.spectrum.data_unit = u.percent
+        if add_calibration_signal:
+            results.calibration_correction.data_unit = u.percent
 
         fig, ax = plt.subplots(figsize=(6, 6))
         for item in ([ax.title, ax.xaxis.label, ax.yaxis.label] +
@@ -1309,74 +1332,98 @@ class TSOSuite:
         fig.savefig(save_path+observations_id+'_weighted_signal.png',
                     bbox_inches='tight')
 
-        fig, ax = plt.subplots(figsize=(7, 4))
-        for item in ([ax.title, ax.xaxis.label, ax.yaxis.label] +
-                     ax.get_xticklabels() + ax.get_yticklabels()):
-            item.set_fontsize(20)
-        ax.plot(results.wavelength,
-                results.data, lw=3, alpha=0.7, color='blue')
-        ax.errorbar(results.wavelength,
-                    results.data,
-                    yerr=results.error,
-                    fmt=".k", color='blue', lw=3, alpha=0.7, ecolor='blue',
-                    markerfacecolor='blue', markeredgecolor='blue',
-                    fillstyle='full', markersize=10)
-        axes = plt.gca()
-        axes.set_xlim([0.95*np.ma.min(results.wavelength),
-                       1.05*np.ma.max(results.wavelength)])
-        if transittype == 'secondary':
-            axes.set_ylim([0.00, 2.0*np.ma.median(results.data)])
-            ax.set_ylabel('Fp/Fstar')
-        else:
-            axes.set_ylim([np.ma.median(results.data)/1.2,
-                           1.2*np.ma.median(results.data)])
-            ax.set_ylabel('Transit Depth')
-        ax.set_xlabel('Wavelength')
-        plt.show()
-        fig.savefig(save_path+observations_id+'_exoplanet_spectra.png',
-                    bbox_inches='tight')
+        # BUG FIX as errorbar does not support quantaties.
+        # also the calculations with masked quantities ,
+        # like subtraction of a constant quantity can lead to wrong results
+        err_temp = np.ma.array(results.spectrum.uncertainty.data.value,
+                               mask=results.spectrum.uncertainty.mask)
+        wav_temp = np.ma.array(results.spectrum.wavelength.data.value,
+                               mask=results.spectrum.wavelength.mask)
+        flux_temp = np.ma.array(results.spectrum.data.data.value,
+                                mask=results.spectrum.data.mask)
+
+        with quantity_support():
+            fig, ax = plt.subplots(figsize=(7, 4))
+            for item in ([ax.title, ax.xaxis.label, ax.yaxis.label] +
+                         ax.get_xticklabels() + ax.get_yticklabels()):
+                item.set_fontsize(20)
+            ax.plot(results.spectrum.wavelength, results.spectrum.data,
+                    lw=3, alpha=0.7, color='blue')
+            ax.errorbar(wav_temp, flux_temp, yerr=err_temp,
+                        fmt=".k", color='blue', lw=3, alpha=0.7, ecolor='blue',
+                        markerfacecolor='blue', markeredgecolor='blue',
+                        fillstyle='full', markersize=10)
+            axes = plt.gca()
+            axes.set_xlim([0.95*np.ma.min(wav_temp), 1.05*np.ma.max(wav_temp)])
+            if transittype == 'secondary':
+                axes.set_ylim([0.00, 2.0*np.ma.median(flux_temp)])
+                ax.set_ylabel('Fplanet/Fstar [{}]'.format(results.
+                              spectrum.data_unit))
+            else:
+                axes.set_ylim([np.ma.median(flux_temp)/1.2,
+                               1.2*np.ma.median(flux_temp)])
+                ax.set_ylabel('Transit Depth [{}]'.format(results.
+                              spectrum.data_unit))
+            ax.set_xlabel('Wavelength [{}]'.format(results.
+                          spectrum.wavelength_unit))
+            plt.show()
+            fig.savefig(save_path+observations_id+'_exoplanet_spectra.png',
+                        bbox_inches='tight')
 
         if add_calibration_signal:
-            fig, ax = plt.subplots(figsize=(7, 4))
-            for item in ([ax.title, ax.xaxis.label, ax.yaxis.label] +
-                         ax.get_xticklabels() + ax.get_yticklabels()):
-                item.set_fontsize(20)
-            ax.plot(results.wavelength,
-                    results.calibration_correction)
-            ax.errorbar(results.wavelength,
-                        results.calibration_correction,
-                        yerr=results.calibration_correction_error)
-            axes = plt.gca()
-            axes.set_xlim([0.95*np.ma.min(results.wavelength),
-                           1.05*np.ma.max(results.wavelength)])
-            axes.set_ylim([-1.0*np.ma.median(results.data),
-                           np.ma.median(results.data)])
-            ax.set_ylabel('Calibration correction to Fp/Fstar')
-            ax.set_xlabel('Wavelength')
-            plt.show()
-            fig.savefig(save_path+observations_id +
-                        '_calibration_correction.png', bbox_inches='tight')
+            # Bug FIX for errorbar not having quantaty support
+            wav_corr_temp = np.ma.array(results.calibration_correction.
+                                        wavelength.data.value, mask=results.
+                                        calibration_correction.mask)
+            cal_corr_temp = \
+                np.ma.array(results.calibration_correction.data.data.value,
+                            mask=results.calibration_correction.mask)
+            error_corr_temp = \
+                np.ma.array(results.calibration_correction.uncertainty.
+                            data.value,
+                            mask=results.calibration_correction.mask)
 
-            fig, ax = plt.subplots(figsize=(7, 4))
-            for item in ([ax.title, ax.xaxis.label, ax.yaxis.label] +
-                         ax.get_xticklabels() + ax.get_yticklabels()):
-                item.set_fontsize(20)
-            ax.plot(results.wavelength,
-                    (median_eclipse_depth-results.calibration_correction) /
-                    results.calibration_correction_error)
-            ax.plot(results.wavelength,
-                    results.data/results.error)
-            axes = plt.gca()
-            axes.set_xlim([0.95*np.ma.min(results.wavelength),
-                           1.05*np.ma.max(results.wavelength)])
-            axes.set_ylim(
-                    [0.0,
-                     2.0*np.ma.median((median_eclipse_depth -
-                                       results.calibration_correction) /
-                                      results.calibration_correction_error)])
-            ax.set_ylabel('SNR')
-            ax.set_xlabel('Wavelength')
-            plt.show()
-            plt.show()
-            fig.savefig(save_path+observations_id +
-                        '_calibration_SNR.png', bbox_inches='tight')
+            with quantity_support():
+                fig, ax = plt.subplots(figsize=(7, 4))
+                for item in ([ax.title, ax.xaxis.label, ax.yaxis.label] +
+                             ax.get_xticklabels() + ax.get_yticklabels()):
+                    item.set_fontsize(20)
+                ax.plot(results.calibration_correction.wavelength,
+                        results.calibration_correction.data)
+                ax.errorbar(wav_corr_temp, cal_corr_temp,
+                            yerr=error_corr_temp)
+                axes = plt.gca()
+                axes.set_xlim([0.95*np.ma.min(wav_corr_temp),
+                              1.05*np.max(wav_corr_temp)])
+                axes.set_ylim([-1.0*np.ma.median(flux_temp),
+                               np.ma.median(flux_temp)])
+                ax.set_ylabel('Calibration correction [{}]'.format(results.
+                              calibration_correction.data_unit))
+                ax.set_xlabel('Wavelength [{}]'.format(results.
+                              calibration_correction.wavelength_unit))
+                plt.show()
+                fig.savefig(save_path+observations_id +
+                            '_calibration_correction.png', bbox_inches='tight')
+
+            snr_cal = (median_eclipse_depth.value - cal_corr_temp) / \
+                error_corr_temp
+            snr_signal = flux_temp / err_temp
+
+            with quantity_support():
+                fig, ax = plt.subplots(figsize=(7, 4))
+                for item in ([ax.title, ax.xaxis.label, ax.yaxis.label] +
+                             ax.get_xticklabels() + ax.get_yticklabels()):
+                    item.set_fontsize(20)
+                ax.plot(results.spectrum.wavelength, snr_cal)
+                ax.plot(results.spectrum.wavelength, snr_signal)
+                axes = plt.gca()
+                axes.set_xlim([0.95*np.ma.min(wav_temp),
+                              1.05*np.ma.max(wav_temp)])
+                axes.set_ylim([0.0, 2.0*np.ma.median(snr_cal)])
+                ax.set_ylabel('SNR')
+                ax.set_xlabel('Wavelength [{}]'.format(results.
+                              calibration_correction.wavelength_unit))
+                plt.show()
+                plt.show()
+                fig.savefig(save_path+observations_id +
+                            '_calibration_SNR.png', bbox_inches='tight')

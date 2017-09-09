@@ -175,7 +175,9 @@ class SpectralData(InstanceDescriptorMixin):
         self._data_unit = data_unit  # Do not change init. order
         self.data = data
         self.uncertainty = uncertainty
-        self.mask = mask
+        if (not isinstance(data, np.ma.masked_array)) | \
+                (np.array(mask).shape == np.array(data).shape):
+            self.mask = mask
         # setting optional keyword parameters
         for key, value in kwargs.items():
             # check for unit argument

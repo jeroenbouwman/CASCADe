@@ -24,6 +24,7 @@ from functools import wraps
 # from astropy.constants import M_jup, M_sun, R_jup, R_sun
 from astropy.table import Table
 from astropy.table import join
+from scipy import interpolate
 import pandas
 import difflib
 import batman
@@ -33,6 +34,7 @@ from ..initialize import cascade_configuration
 __all__ = ['Vmag', 'Kmag', 'Rho_jup', 'Rho_jup', 'KmagToJy', 'JytoKmag',
            'SurfaceGravity', 'ScaleHeight', 'TransitDepth', 'Planck',
            'EquilibriumTemperature', 'get_calalog', 'parse_database',
+           'convert_spectrum_to_brighness_temperature',
            'extract_exoplanet_data', 'lightcuve', 'batman_model']
 
 
@@ -396,6 +398,35 @@ def EquilibriumTemperature(StellarTemperature: u.K, StellarRadius: u.R_sun,
         np.sqrt(StellarRadius/(2.0*SemiMajorAxis))
 
     return ET.to(u.K)
+
+
+@masked_array_input
+@u.quantity_input
+def convert_spectrum_to_brighness_temperature(wavelength: u.micron,
+                                              contrast: u.dimensionless_unscaled,
+                                              StellarTemperature: u.K,
+                                              StellarRadius: u.R_sun,
+                                              RadiusPlanet: u.R_jupiter):
+    """
+    Function to convert the secondary eclipse spectrum to brightness
+    temperature.
+    """
+    planet_temperature_grid = np.array([100.0 + 100.0*np.arange(20)]) * u.K
+
+    contrast_grid = Planck(np.tile(wavelength,
+                                   (len(planet_temperature_grid), 1)).T,
+                           planet_temperature_grid).T / \
+        Planck(wavelength, StellarTemperature)
+
+    scaling = ((RadiusPlanet/StellarRadius).decompose())**2
+    contrast_grid = contrast_grid*scaling
+
+    brighness_temperature = np.zeros_like(wavelength)
+    for ilam, lam in enumerate(wavelength):
+        f = interpolate.interp1d(contrast_grid[:, ilam],
+                                 planet_temperature_grid)
+        brighness_temperature[ilam] = f(contrast[ilam])
+    return brighness_temperature
 
 
 def get_calalog(catalog_name, update=True):
