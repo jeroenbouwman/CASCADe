@@ -39,3 +39,45 @@ axes = plt.gca()
 axes.set_xlim([0, 1])
 axes.set_ylim([-1.1, 0.1])
 plt.show()
+
+# calculate brightness temperature
+wave = np.array([5.0, 6.0, 7.0, 8.0, 9.0])*u.micron
+contrast = np.array([0.005, 0.005, 0.005, 0.005, 0.005])*u.dimensionless_unscaled
+bt = cascade.exoplanet_tools.\
+ convert_spectrum_to_brighness_temperature(wave,
+                                           contrast,
+                                           5000.0*u.K, 0.7*u.R_sun,
+                                           1.2*u.R_jup)
+print(bt)
+
+wave = np.array([5.0, 6.0, 7.0, 8.0, 9.0])*u.micron
+contrast = np.array([0.005, 0.005, 0.005, 0.005, 0.005])*u.dimensionless_unscaled
+mask = np.array([False, False, True, False, True])
+masked_wave = np.ma.array(wave, mask=mask)
+masked_contrast = np.ma.array(contrast, mask=mask)
+bt = cascade.exoplanet_tools.\
+ convert_spectrum_to_brighness_temperature(masked_wave,
+                                           masked_contrast,
+                                           5000.0*u.K, 0.7*u.R_sun,
+                                           1.2*u.R_jup)
+print(bt)
+
+wave = np.array([5.0, 6.0, 7.0, 8.0, 9.0])*u.micron
+contrast = np.array([0.005, 0.005, 0.005, 0.005,
+                     0.005])*u.dimensionless_unscaled
+error_contrast = np.array([0.001, 0.001, 0.001, 0.001,
+                           0.001])*u.dimensionless_unscaled
+mask = np.array([False, False, True, False, True])
+masked_wave = np.ma.array(wave, mask=mask)
+masked_contrast = np.ma.array(contrast, mask=mask)
+masked_error = np.ma.array(error_contrast, mask=mask)
+bt = cascade.exoplanet_tools.\
+ convert_spectrum_to_brighness_temperature(masked_wave,
+                                           masked_contrast,
+                                           5000.0*u.K, 0.7*u.R_sun,
+                                           1.2*u.R_jup,
+                                           error=masked_error)
+print(bt)
+
+
+

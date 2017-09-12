@@ -17,12 +17,13 @@ import astropy.units as u
 from astropy.units import cds
 from astropy import constants as const
 # import uncertainties
-from astropy.analytic_functions import blackbody_nu
+# from astropy.analytic_functions import blackbody_nu
+from astropy.modeling.blackbody import blackbody_nu
 from functools import wraps
 # from astropy.time import Time
 # from astropy.utils.data import download_file, clear_download_cache
 # from astropy.constants import M_jup, M_sun, R_jup, R_sun
-from astropy.table import Table
+from astropy.table import Table, QTable
 from astropy.table import join
 from scipy import interpolate
 import pandas
@@ -30,11 +31,12 @@ import difflib
 import batman
 
 from ..initialize import cascade_configuration
+from ..data_model import SpectralData
 
 __all__ = ['Vmag', 'Kmag', 'Rho_jup', 'Rho_jup', 'KmagToJy', 'JytoKmag',
            'SurfaceGravity', 'ScaleHeight', 'TransitDepth', 'Planck',
            'EquilibriumTemperature', 'get_calalog', 'parse_database',
-           'convert_spectrum_to_brighness_temperature',
+           'convert_spectrum_to_brighness_temperature', 'combine_spectra',
            'extract_exoplanet_data', 'lightcuve', 'batman_model']
 
 
@@ -227,14 +229,29 @@ def masked_array_input(func):
     def __wrapper(*args, **kwargs):
         is_masked = False
         arg_list = list(args)
+        kwargs_dict = dict(kwargs)
         for i, arg in enumerate(list(args)):
             if isinstance(arg, np.ma.core.MaskedArray):
                 arg_list[i] = arg.data
-                mask_store = arg.mask
+                if not is_masked:
+                    mask_store = arg.mask
                 is_masked = True
-                break
+                # break
+        for key, value in kwargs_dict.items():
+            if isinstance(value, np.ma.core.MaskedArray):
+                kwargs_dict[key] = value.data
+                if not is_masked:
+                    mask_store = value.mask
+                is_masked = True
         if is_masked:
-            return np.ma.array(func(*arg_list, **kwargs), mask=mask_store)
+            result = func(*arg_list, **kwargs_dict)
+            if not isinstance(result, tuple):
+                return np.ma.array(result, mask=mask_store)
+            else:
+                return_result = ()
+                for ir in result:
+                    return_result += tuple([np.ma.array(ir, mask=mask_store)])
+                return return_result
         else:
             return func(*arg_list, **kwargs)
     return __wrapper
@@ -403,10 +420,11 @@ def EquilibriumTemperature(StellarTemperature: u.K, StellarRadius: u.R_sun,
 @masked_array_input
 @u.quantity_input
 def convert_spectrum_to_brighness_temperature(wavelength: u.micron,
-                                              contrast: u.dimensionless_unscaled,
+                                              contrast: u.percent,
                                               StellarTemperature: u.K,
                                               StellarRadius: u.R_sun,
-                                              RadiusPlanet: u.R_jupiter):
+                                              RadiusPlanet: u.R_jupiter,
+                                              error: u.percent = None):
     """
     Function to convert the secondary eclipse spectrum to brightness
     temperature.
@@ -419,14 +437,82 @@ def convert_spectrum_to_brighness_temperature(wavelength: u.micron,
         Planck(wavelength, StellarTemperature)
 
     scaling = ((RadiusPlanet/StellarRadius).decompose())**2
-    contrast_grid = contrast_grid*scaling
+    contrast_grid = (contrast_grid*scaling).to(contrast.unit)
 
-    brighness_temperature = np.zeros_like(wavelength)
-    for ilam, lam in enumerate(wavelength):
-        f = interpolate.interp1d(contrast_grid[:, ilam],
-                                 planet_temperature_grid)
-        brighness_temperature[ilam] = f(contrast[ilam])
-    return brighness_temperature
+    if error is None:
+        brighness_temperature = np.zeros_like(wavelength.value)*u.K
+        for ilam, lam in enumerate(wavelength):
+            f = interpolate.interp1d(contrast_grid[:, ilam].value,
+                                     planet_temperature_grid.value)
+            brighness_temperature[ilam] = f(contrast[ilam].value)*u.K
+        return brighness_temperature
+    else:
+        brighness_temperature = np.zeros_like(wavelength.value)*u.K
+        error_brighness_temperature = np.zeros_like(wavelength.value)*u.K
+        for ilam, lam in enumerate(wavelength):
+            f = interpolate.interp1d(contrast_grid[:, ilam].value,
+                                     planet_temperature_grid.value,
+                                     bounds_error=False)
+            brighness_temperature[ilam] = f(contrast[ilam].value)*u.K
+            br_max = f(contrast[ilam].value + error[ilam].value)*u.K
+            br_min = f(contrast[ilam].value - error[ilam].value)*u.K
+            error_brighness_temperature[ilam] = np.abs(br_max-br_min)/2.0
+        return brighness_temperature, error_brighness_temperature
+
+
+def combine_spectra(identifier_list=[], path=""):
+    """
+    Convienience function to combine multiple extracted spectra
+    of the same source by calculating a weighted averige.
+    Input:
+    ------
+        identifier_list
+
+        path
+
+    Output:
+    -------
+        combined_spectrum
+    """
+
+    spectrum = []
+    error = []
+    wave = []
+    mask = []
+    for objectID in identifier_list:
+        tbl = QTable.read(path+objectID+'_exoplanet_spectra.fits')
+        spectrum.append(tbl['Flux'])
+        error.append(tbl['Error'])
+        wave.append(tbl['Wavelength'])
+        mask.append(~np.isfinite(tbl['Flux'].value))
+
+    unit_spectrum = u.Unit(spectrum[0].unit)
+    unit_wave = u.Unit(wave[0].unit)
+    mask = np.asarray(mask)
+    spectrum = np.asarray(spectrum)
+    error = np.asarray(error)
+    wave = np.asarray(wave)
+    spectrum = np.ma.array(spectrum*unit_spectrum, mask=mask)
+    error = np.ma.array(error*unit_spectrum, mask=mask)
+    wave = np.ma.array(wave*unit_wave, mask=mask)
+
+    all_spectra = SpectralData(wavelength=wave,
+                               data=spectrum,
+                               uncertainty=error)
+
+    averige_spectrum = np.ma.average(spectrum, axis=0,
+                                     weights=np.ma.ones(error.shape)/error**2)
+    averige_error = np.ma.ones(averige_spectrum.shape) / \
+        np.ma.sum((np.ma.ones(error.shape) / error)**2, axis=0)
+    averige_error = u.Quantity(np.ma.sqrt(averige_error)).to(unit_spectrum)
+    averige_wave = np.ma.average(wave, axis=0,
+                                 weights=np.ma.ones(error.shape)/error**2)
+
+    combined_spectrum = SpectralData(wavelength=averige_wave,
+                                     data=averige_spectrum,
+                                     uncertainty=averige_error)
+
+    return combined_spectrum, all_spectra
 
 
 def get_calalog(catalog_name, update=True):

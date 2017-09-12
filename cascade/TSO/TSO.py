@@ -20,6 +20,7 @@ import os
 from matplotlib import pyplot as plt
 from astropy.visualization import quantity_support
 import copy
+from matplotlib.ticker import ScalarFormatter, MaxNLocator
 
 from ..cpm_model import solve_linear_equation
 from ..exoplanet_tools import lightcuve
@@ -28,6 +29,7 @@ from ..initialize import default_initialization_path
 from ..initialize import cascade_configuration
 from ..instruments import Observation
 from ..data_model import SpectralData
+from ..exoplanet_tools import convert_spectrum_to_brighness_temperature
 
 cds.enable()
 
@@ -1116,6 +1118,16 @@ class TSOSuite:
         except AttributeError:
             raise AttributeError("Planet or Stellar radius not defined. \
                                  Aborting extraction of planetary spectrum")
+        try:
+            stellar_temperature = \
+                (u.Quantity(self.cascade_parameters.
+                            object_temperature_host_star).to(u.K))
+            stellar_radius = \
+                (u.Quantity(self.cascade_parameters.
+                            object_radius_host_star).to(u.R_sun))
+        except AttributeError:
+            raise AttributeError("Stellar radius or temperature not defined. \
+                                 Aborting extraction of planetary spectrum")
 
         calibrated_weighted_image = calibrated_signal/calibrated_error**2
 
@@ -1222,6 +1234,7 @@ class TSOSuite:
                          data=spectrum,
                          uncertainty=error_spectrum,
                          data_unit=u.dimensionless_unscaled)
+        exoplanet_spectrum.data_unit = u.percent
         if add_calibration_signal:
             calibration_correction_spectrum = \
                 SpectralData(wavelength=weighted_signal_wavelength,
@@ -1229,12 +1242,34 @@ class TSOSuite:
                              data=calibration_correction,
                              uncertainty=calibration_correction_error,
                              data_unit=u.dimensionless_unscaled)
+            calibration_correction_spectrum.data_unit = u.percent
+        if transittype == 'secondary':
+            brightness_temperature, error_brightness_temperature = \
+             convert_spectrum_to_brighness_temperature(exoplanet_spectrum.
+                                                       wavelength,
+                                                       exoplanet_spectrum.data,
+                                                       stellar_temperature,
+                                                       stellar_radius,
+                                                       planet_radius *
+                                                       stellar_radius,
+                                                       error=exoplanet_spectrum.uncertainty)
+            exoplanet_spectrum_in_brightnes_temperature = \
+                SpectralData(wavelength=exoplanet_spectrum.wavelength,
+                             wavelength_unit=wavelength_unit,
+                             data=brightness_temperature,
+                             uncertainty=error_brightness_temperature)
+            exoplanet_spectrum_in_brightnes_temperature.wavelength_unit = \
+                u.cm**-1
+
         try:
             self.exoplanet_spectrum
         except AttributeError:
             self.exoplanet_spectrum = SimpleNamespace()
         self.exoplanet_spectrum.weighted_image = calibrated_weighted_image
         self.exoplanet_spectrum.spectrum = exoplanet_spectrum
+        if transittype == 'secondary':
+            self.exoplanet_spectrum.brightness_temperature = \
+                exoplanet_spectrum_in_brightnes_temperature
         if add_calibration_signal:
             self.exoplanet_spectrum.calibration_correction = \
                 calibration_correction_spectrum
@@ -1261,13 +1296,36 @@ class TSOSuite:
                                  Aborting saving results")
 
         t = Table()
-        col = MaskedColumn(data=results.spectrum.wavelength, name='Wavelength')
+        col = MaskedColumn(data=results.spectrum.wavelength,
+                           unit=results.spectrum.wavelength_unit,
+                           name='Wavelength')
         t.add_column(col)
-        col = MaskedColumn(data=results.spectrum.data, name='Flux')
+        col = MaskedColumn(data=results.spectrum.data,
+                           unit=results.spectrum.data_unit,
+                           name='Flux')
         t.add_column(col)
-        col = MaskedColumn(data=results.spectrum.uncertainty, name='Error')
+        col = MaskedColumn(data=results.spectrum.uncertainty,
+                           unit=results.spectrum.data_unit,
+                           name='Error')
         t.add_column(col)
         t.write(save_path+observations_id+'_exoplanet_spectra.fits',
+                format='fits', overwrite=True)
+
+        t = Table()
+        col = MaskedColumn(data=results.brightness_temperature.wavelength,
+                           unit=results.brightness_temperature.wavelength_unit,
+                           name='Wavelength')
+        t.add_column(col)
+        col = MaskedColumn(data=results.brightness_temperature.data,
+                           unit=results.brightness_temperature.data_unit,
+                           name='Flux')
+        t.add_column(col)
+        col = MaskedColumn(data=results.brightness_temperature.uncertainty,
+                           unit=results.brightness_temperature.data_unit,
+                           name='Error')
+        t.add_column(col)
+        t.write(save_path+observations_id +
+                '_exoplanet_brightness_temperature.fits',
                 format='fits', overwrite=True)
 
     def plot_results(self):
@@ -1313,9 +1371,9 @@ class TSOSuite:
             raise AttributeError("Type of observaton unknown. \
                                  Aborting plotting results")
 
-        results.spectrum.data_unit = u.percent
-        if add_calibration_signal:
-            results.calibration_correction.data_unit = u.percent
+        #results.spectrum.data_unit = u.percent
+        #if add_calibration_signal:
+        #    results.calibration_correction.data_unit = u.percent
 
         fig, ax = plt.subplots(figsize=(6, 6))
         for item in ([ax.title, ax.xaxis.label, ax.yaxis.label] +
@@ -1369,6 +1427,49 @@ class TSOSuite:
             plt.show()
             fig.savefig(save_path+observations_id+'_exoplanet_spectra.png',
                         bbox_inches='tight')
+
+        if transittype == 'secondary':
+            # BUG FIX as errorbar does not support quantaties.
+            # also the calculations with masked quantities ,
+            # like subtraction of a constant quantity can lead to wrong results
+            err_bt_temp = \
+             np.ma.array(results.brightness_temperature.uncertainty.data.value,
+                         mask=results.brightness_temperature.uncertainty.mask)
+            wav_bt_temp = \
+              np.ma.array(results.brightness_temperature.wavelength.data.value,
+                          mask=results.brightness_temperature.wavelength.mask)
+            flux_bt_temp = \
+                np.ma.array(results.brightness_temperature.data.data.value,
+                            mask=results.brightness_temperature.data.mask)
+            with quantity_support():
+                fig, ax = plt.subplots(figsize=(7, 4))
+                for item in ([ax.title, ax.xaxis.label, ax.yaxis.label] +
+                             ax.get_xticklabels() + ax.get_yticklabels()):
+                    item.set_fontsize(20)
+                ax.plot(results.brightness_temperature.wavelength,
+                        results.brightness_temperature.data,
+                        lw=3, alpha=0.7, color='blue')
+                ax.errorbar(wav_bt_temp, flux_bt_temp, yerr=err_bt_temp,
+                            fmt=".k", color='blue', lw=3, alpha=0.7,
+                            ecolor='blue',
+                            markerfacecolor='blue', markeredgecolor='blue',
+                            fillstyle='full', markersize=10)
+                axes = plt.gca()
+                axes.set_xlim([0.95*np.ma.min(wav_bt_temp),
+                               1.05*np.ma.max(wav_bt_temp)])
+                axes.invert_xaxis()
+                axes.set_ylim([np.ma.median(flux_bt_temp)/1.5,
+                               1.5*np.ma.median(flux_bt_temp)])
+                ax.xaxis.set_major_locator(MaxNLocator(6))
+                ax.get_xaxis().set_major_formatter(ScalarFormatter())
+                ax.set_ylabel('Brightness Temperature [{}]'.format(results.
+                              brightness_temperature.data_unit))
+                ax.set_xlabel('Wavelength [{}]'.format(results.
+                              brightness_temperature.wavelength_unit))
+                plt.show()
+                fig.savefig(save_path+observations_id +
+                            '_exoplanet_brithness_temperature.png',
+                            bbox_inches='tight')
 
         if add_calibration_signal:
             # Bug FIX for errorbar not having quantaty support

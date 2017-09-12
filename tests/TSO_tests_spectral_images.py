@@ -5,6 +5,9 @@ from matplotlib import pyplot as plt
 from astropy.visualization import quantity_support
 import numpy as np
 from astropy.io import ascii
+from astropy import units as u
+from astropy.units import cds
+
 
 # create transit spectoscopy object
 tso = cascade.TSO.TSOSuite()
@@ -200,15 +203,17 @@ plt.show()
 
 path_old = '/home/bouwman/SST_OBSERVATIONS/projects_HD189733/REDUCED_DATA/'
 spec_instr_model_ian = ascii.read(path_old+'results_ian.dat', data_start=1)
+wave_ian = (spec_instr_model_ian['lam_micron']*u.micron)
+flux_ian = (spec_instr_model_ian['depthA'] *
+            u.dimensionless_unscaled).to(u.percent)
+error_ian = (spec_instr_model_ian['errorA'] *
+             u.dimensionless_unscaled).to(u.percent)
 fig, ax = plt.subplots(figsize=(7, 4))
 for item in ([ax.title, ax.xaxis.label, ax.yaxis.label] +
              ax.get_xticklabels() + ax.get_yticklabels()):
     item.set_fontsize(20)
-ax.plot(spec_instr_model_ian['lam_micron'], spec_instr_model_ian['depthA'],
-        color="r", lw=2, alpha=0.9)
-ax.errorbar(spec_instr_model_ian['lam_micron'],
-            spec_instr_model_ian['depthA'],
-            yerr=spec_instr_model_ian['errorA'],
+ax.plot(wave_ian, flux_ian, color="r", lw=2, alpha=0.9)
+ax.errorbar(wave_ian.value, flux_ian.value, yerr=error_ian.value,
             fmt=".k", color="r", lw=2,
             alpha=0.9, ecolor="r",
             markeredgecolor='r', fillstyle='full', markersize=10,
@@ -224,7 +229,7 @@ ax.errorbar(tso.exoplanet_spectrum.spectrum.wavelength.data.value,
             zorder=4)
 axes = plt.gca()
 axes.set_xlim([7.5, 15.5])
-axes.set_ylim([-0.00, 0.008])
+axes.set_ylim([0.00, 0.8])
 ax.set_ylabel('Fp/Fstar')
 ax.set_xlabel('Wavelength')
 plt.show()
@@ -268,8 +273,9 @@ plt.plot(tso.exoplanet_spectrum.calibration_correction.wavelength,
 #             yerr=tso.exoplanet_spectrum.calibration_correction.uncertainty)
 plt.show()
 
+mean_ecld = np.ma.array((mean_eclipse_depth*u.dimensionless_unscaled).to(u.percent))
 plt.plot(tso.exoplanet_spectrum.spectrum.wavelength,
-         (mean_eclipse_depth-tso.exoplanet_spectrum.calibration_correction.data) /
+         (mean_ecld-tso.exoplanet_spectrum.calibration_correction.data) /
          tso.exoplanet_spectrum.calibration_correction.uncertainty)
 plt.plot(tso.exoplanet_spectrum.spectrum.wavelength,
          tso.exoplanet_spectrum.spectrum.data/tso.exoplanet_spectrum.spectrum.uncertainty)

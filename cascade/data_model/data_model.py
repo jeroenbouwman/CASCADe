@@ -221,19 +221,25 @@ class SpectralData(InstanceDescriptorMixin):
 
     @wavelength.setter
     def wavelength(self, value):
-        if isinstance(value, u.Quantity):
+        if isinstance(value, np.ma.masked_array):
+            wave_in = value.data
+            mask_in = value.mask
+            self._mask = mask_in
+        else:
+            wave_in = value
+        if isinstance(wave_in, u.Quantity):
             if self._wavelength_unit is not None:
                 self._wavelength = \
-                    np.array(((value).to(self._wavelength_unit,
+                    np.array(((wave_in).to(self._wavelength_unit,
                               equivalencies=u.spectral())).value)
             else:
-                self._wavelength = np.array(value.value)
-                self._wavelength_unit = value.unit
+                self._wavelength = np.array(wave_in.value)
+                self._wavelength_unit = wave_in.unit
         else:
-            if np.array(value).shape != ():
-                self._wavelength = np.array(value)
+            if np.array(wave_in).shape != ():
+                self._wavelength = np.array(wave_in)
             else:
-                self._wavelength = np.array([value])
+                self._wavelength = np.array([wave_in])
 
     @property
     def wavelength_unit(self):

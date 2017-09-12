@@ -18,6 +18,7 @@ wave = np.array([1.0, 2.0, 3.0, 4.0, 5.0, 6.0])*u.micron
 flux = np.array([8.0, 8.0, 8.0, 8.0, 8.0, 8.0])*u.Jy
 sd = cascade.data_model.SpectralData(wavelength=wave, data=flux)
 print(sd.data)
+print(sd.wavelength)
 # changing units
 sd.data_unit = u.erg/u.s/u.cm**2/u.Hz
 print(sd.data)
@@ -43,6 +44,18 @@ sd = cascade.data_model.SpectralData(wavelength=masked_wave,
                                      data=masked_flux,
                                      mask = mask)
 print(sd.data)
+
+error = 0.1*flux
+masked_error = np.ma.array(error, mask=mask)
+sd = cascade.data_model.SpectralData(wavelength=masked_wave,
+                                     data=masked_flux,
+                                     uncertainty = error)
+print(sd.data)
+print(sd.data_unit)
+print(sd.wavelength_unit)
+print(sd.wavelength)
+print(sd.uncertainty)
+
 
 # with image data
 intensity = np.zeros((10, 10))
