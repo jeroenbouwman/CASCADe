@@ -502,9 +502,14 @@ def combine_spectra(identifier_list=[], path=""):
 
     averige_spectrum = np.ma.average(spectrum, axis=0,
                                      weights=np.ma.ones(error.shape)/error**2)
+
+    error_temp = np.ma.array(error.data.value, mask = error.mask)
     averige_error = np.ma.ones(averige_spectrum.shape) / \
-        np.ma.sum((np.ma.ones(error.shape) / error)**2, axis=0)
-    averige_error = u.Quantity(np.ma.sqrt(averige_error)).to(unit_spectrum)
+        np.ma.sum((np.ma.ones(error.shape) / error_temp)**2, axis=0)
+    averige_error = np.ma.sqrt(averige_error)
+    averige_error = np.ma.array(averige_error.data*unit_spectrum,
+                                mask=averige_error.mask)
+
     averige_wave = np.ma.average(wave, axis=0,
                                  weights=np.ma.ones(error.shape)/error**2)
 
