@@ -370,6 +370,7 @@ class SpitzerIRS(InstrumentBase):
                                                     data=data, time=phase,
                                                     mask=mask,
                                                     position=position,
+                                                    isRampFitted=True,
                                                     isNodded=isNodded)
         return SpectralTimeSeries
 
@@ -687,6 +688,14 @@ class SpitzerIRS(InstrumentBase):
                 np.moveaxis(fits.getdata(image_file, ext=0), 0, -1)
             image_cube[:, :, :, im] = spectral_image
             time[im] = fits.getval(image_file, "BMJD_OBS", ext=0)
+
+############
+# Buf fix
+############
+        image_cube = np.diff(image_cube, axis=2)
+        mask = mask[:, :, :-1, :]
+        flux_unit = flux_unit/(2.0*samptime*u.s)
+##########
 
         data = image_cube * flux_unit
         npix, mpix, nframes, nintegrations = data.shape

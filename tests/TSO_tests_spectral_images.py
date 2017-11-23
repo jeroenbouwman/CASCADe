@@ -7,7 +7,7 @@ import numpy as np
 from astropy.io import ascii
 from astropy import units as u
 from astropy.units import cds
-
+from scipy import stats
 
 # create transit spectoscopy object
 tso = cascade.TSO.TSOSuite()
@@ -16,7 +16,7 @@ tso = cascade.TSO.TSOSuite()
 path = cascade.initialize.default_initialization_path
 tso = cascade.TSO.TSOSuite("cascade_test_cpm.ini",
                            "cascade_test_object.ini",
-                           "cascade_test_data_spectral_images.ini", path=path)
+                           "cascade_test_data_spectral_images2.ini", path=path)
 print(tso.cascade_parameters)
 print(cascade.initialize.cascade_configuration)
 print(tso.cascade_parameters.isInitialized)
@@ -33,7 +33,7 @@ print(tso.cascade_parameters.isInitialized)
 tso = cascade.TSO.TSOSuite()
 path = cascade.initialize.default_initialization_path
 tso.execute("initialize", "cascade_test_cpm.ini", "cascade_test_object.ini",
-            "cascade_test_data_spectral_images.ini", path=path)
+            "cascade_test_data_spectral_images2.ini", path=path)
 print(tso.cascade_parameters)
 print(cascade.initialize.cascade_configuration)
 print(tso.cascade_parameters.isInitialized)
@@ -204,9 +204,9 @@ plt.show()
 path_old = '/home/bouwman/SST_OBSERVATIONS/projects_HD189733/REDUCED_DATA/'
 spec_instr_model_ian = ascii.read(path_old+'results_ian.dat', data_start=1)
 wave_ian = (spec_instr_model_ian['lam_micron']*u.micron)
-flux_ian = (spec_instr_model_ian['depthA'] *
+flux_ian = (spec_instr_model_ian['depthB'] *
             u.dimensionless_unscaled).to(u.percent)
-error_ian = (spec_instr_model_ian['errorA'] *
+error_ian = (spec_instr_model_ian['errorB'] *
              u.dimensionless_unscaled).to(u.percent)
 fig, ax = plt.subplots(figsize=(7, 4))
 for item in ([ax.title, ax.xaxis.label, ax.yaxis.label] +
@@ -233,6 +233,15 @@ axes.set_ylim([0.00, 0.8])
 ax.set_ylabel('Fp/Fstar')
 ax.set_xlabel('Wavelength')
 plt.show()
+
+
+for i in range(71):
+    ks, prob = stats.ks_2samp(flux_ian.value,
+                          (tso.exoplanet_spectrum.spectrum.data.data.
+                           value[~tso.exoplanet_spectrum.spectrum.mask])[::-1] -
+                           (0.035-i*0.001))
+    print(-(0.035-i*0.001), ks, prob)
+
 
 # save planetary signal
 tso.execute("save_results")

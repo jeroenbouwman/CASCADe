@@ -5,6 +5,10 @@ from matplotlib import pyplot as plt
 from astropy.visualization import quantity_support
 import numpy as np
 from astropy.io import ascii
+from astropy import units as u
+from astropy.units import cds
+from scipy import stats
+
 
 # create transit spectoscopy object
 tso = cascade.TSO.TSOSuite()
@@ -13,7 +17,7 @@ tso = cascade.TSO.TSOSuite()
 path = cascade.initialize.default_initialization_path
 tso = cascade.TSO.TSOSuite("cascade_test_cpm.ini",
                            "cascade_test_object.ini",
-                           "cascade_test_data_spectra2.ini", path=path)
+                           "cascade_test_data_spectra.ini", path=path)
 
 print(tso.cascade_parameters)
 print(cascade.initialize.cascade_configuration)
@@ -31,7 +35,7 @@ print(tso.cascade_parameters.isInitialized)
 tso = cascade.TSO.TSOSuite()
 path = cascade.initialize.default_initialization_path
 tso.execute("initialize", "cascade_test_cpm.ini", "cascade_test_object.ini",
-            "cascade_test_data_spectra2.ini", path=path)
+            "cascade_test_data_spectra.ini", path=path)
 print(tso.cascade_parameters)
 print(cascade.initialize.cascade_configuration)
 print(tso.cascade_parameters.isInitialized)
@@ -178,28 +182,44 @@ ax.set_ylabel('Wavelength')
 
 path_old = '/home/bouwman/SST_OBSERVATIONS/projects_HD189733/REDUCED_DATA/'
 spec_instr_model_ian = ascii.read(path_old+'results_ian.dat', data_start=1)
+wave_ian = (spec_instr_model_ian['lam_micron']*u.micron)
+flux_ian = (spec_instr_model_ian['depthA'] *
+            u.dimensionless_unscaled).to(u.percent)
+error_ian = (spec_instr_model_ian['errorA'] *
+             u.dimensionless_unscaled).to(u.percent)
 fig, ax = plt.subplots(figsize=(7, 4))
 for item in ([ax.title, ax.xaxis.label, ax.yaxis.label] +
              ax.get_xticklabels() + ax.get_yticklabels()):
     item.set_fontsize(20)
-ax.plot(spec_instr_model_ian['lam_micron'], spec_instr_model_ian['depthB'],
-        color="r", lw=2, alpha=0.8)
-ax.errorbar(spec_instr_model_ian['lam_micron'],
-            spec_instr_model_ian['depthB'],
-            yerr=spec_instr_model_ian['errorB'],
+ax.plot(wave_ian, flux_ian, color="r", lw=2, alpha=0.9)
+ax.errorbar(wave_ian.value, flux_ian.value, yerr=error_ian.value,
             fmt=".k", color="r", lw=2,
-            alpha=0.8, ecolor="r")
-ax.plot(tso.exoplanet_spectrum.wavelength,
-        tso.exoplanet_spectrum.data, lw=3, alpha=0.7, color='blue')
-ax.errorbar(tso.exoplanet_spectrum.wavelength,
-            tso.exoplanet_spectrum.data, yerr=tso.exoplanet_spectrum.error,
-            fmt=".k", color='blue', lw=3, alpha=0.7, ecolor='blue', mfc='blue')
+            alpha=0.9, ecolor="r",
+            markeredgecolor='r', fillstyle='full', markersize=10,
+            markerfacecolor='r', zorder=3)
+ax.plot(tso.exoplanet_spectrum.spectrum.wavelength,
+        tso.exoplanet_spectrum.spectrum.data, lw=3, alpha=0.5, color='blue')
+ax.errorbar(tso.exoplanet_spectrum.spectrum.wavelength.data.value,
+            tso.exoplanet_spectrum.spectrum.data.data.value,
+            yerr=tso.exoplanet_spectrum.spectrum.uncertainty.data.value,
+            fmt=".k", color='blue', lw=3, alpha=0.5, ecolor='blue',
+            markerfacecolor='blue',
+            markeredgecolor='blue', fillstyle='full', markersize=10,
+            zorder=4)
 axes = plt.gca()
 axes.set_xlim([7.5, 15.5])
-axes.set_ylim([-0.00, 0.008])
+axes.set_ylim([0.00, 0.8])
 ax.set_ylabel('Fp/Fstar')
 ax.set_xlabel('Wavelength')
 plt.show()
+
+for i in range(71):
+    ks, prob = stats.ks_2samp(flux_ian.value,
+                          (tso.exoplanet_spectrum.spectrum.data.data.
+                           value[~tso.exoplanet_spectrum.spectrum.mask])[::-1] -
+                           (0.035-i*0.001))
+    print(-(0.035-i*0.001), ks, prob)
+
 
 # save planetary signal
 tso.execute("save_results")

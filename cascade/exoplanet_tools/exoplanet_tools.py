@@ -429,7 +429,7 @@ def convert_spectrum_to_brighness_temperature(wavelength: u.micron,
     Function to convert the secondary eclipse spectrum to brightness
     temperature.
     """
-    planet_temperature_grid = np.array([100.0 + 100.0*np.arange(20)]) * u.K
+    planet_temperature_grid = np.array([100.0 + 100.0*np.arange(30)]) * u.K
 
     contrast_grid = Planck(np.tile(wavelength,
                                    (len(planet_temperature_grid), 1)).T,

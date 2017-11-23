@@ -397,18 +397,22 @@ class TSOSuite:
                                  or cubes. Aborting position determination")
         if not ramp_fitted_flag:
             # determine ramp slope from 2 point difference and collapse image
-            # in detector cubes, last idex is time,
+            # in detector cubes, last index is time,
             # and the prelast index samples up the ramp
-            selection1 = \
-                [slice(None)]*(ndim-2) + \
-                [slice(1, dim[-2]-1, None)] + \
-                [slice(None)]
-            selection0 = \
-                [slice(None)]*(ndim-2) + \
-                [slice(0, dim[-2]-2, None)] + \
-                [slice(None)]
-            data_use = np.ma.median(data_in.data[selection1] -
-                                    data_in.data[selection0], axis=ndim-2)
+# ################
+# Bug fix
+# ################
+#            selection1 = \
+#                [slice(None)]*(ndim-2) + \
+#                [slice(1, dim[-2]-1, None)] + \
+#                [slice(None)]
+#            selection0 = \
+#                [slice(None)]*(ndim-2) + \
+#                [slice(0, dim[-2]-2, None)] + \
+#                [slice(None)]
+#            data_use = np.ma.median(data_in.data[selection1] -
+#                                    data_in.data[selection0], axis=ndim-2)
+            data_use = np.ma.median(data_in.data, axis=ndim-2)
             time_in = self.observation.dataset.time.data.value
             time_use = np.ma.median(time_in, axis=ndim-2)
         else:
@@ -567,6 +571,7 @@ class TSOSuite:
         """
         try:
             spectral_trace = self.cpm.spectral_trace
+            median_position = self.cpm.median_position
         except AttributeError:
             raise AttributeError("No spectral trace or source position \
                                  found. Aborting setting regressors")
@@ -620,7 +625,7 @@ class TSOSuite:
                                             (idx_all > il_cal_max)))]
 
                 # trace at source position
-                trace = np.rint(spectral_trace).astype(int)
+                trace = np.rint(spectral_trace + median_position).astype(int)
                 trace = trace - (trace[il] - ir)
                 trace = trace[idx_cal]
 
@@ -923,7 +928,6 @@ class TSOSuite:
             # the indici of the calibration pixels
             for regressor_selection in regressor_list:
                 (il, ir), _ = regressor_selection
-
                 regressor_matrix = \
                     self.get_design_matrix(data_use, regressor_selection,
                                            nrebin, clip=True,
@@ -978,6 +982,9 @@ class TSOSuite:
                     design_matrix = np.vstack((design_matrix, zcal))
                 design_matrix = np.vstack((design_matrix, z)).T
 
+                if np.any(~np.isfinite(design_matrix.data)):
+                    plt.imshow(design_matrix.data)
+                    plt.show()
                 # solve linear Eq.
                 P, Perr, opt_reg_par = \
                     solve_linear_equation(design_matrix.data,
@@ -1018,6 +1025,7 @@ class TSOSuite:
                     final_lc_model = np.vstack([zcal, z]).T
                 else:
                     final_lc_model = z[:, None]
+
                 P_final, Perr_final, opt_reg_par_final = \
                     solve_linear_equation(final_lc_model,
                                           calibrated_lightcurve, weights,
@@ -1128,14 +1136,29 @@ class TSOSuite:
         except AttributeError:
             raise AttributeError("Stellar radius or temperature not defined. \
                                  Aborting extraction of planetary spectrum")
-
+#######################
+# Bug fix
+######################
+        try:
+            ramp_fitted_flag = self.observation.dataset.isRampFitted
+        except AttributeError:
+            raise AttributeError("type of data not properly set, \
+                                 or not consistent with spectral images or \
+                                 cubes. Aborting extraction of \
+                                 planetary spectrum")
         calibrated_weighted_image = calibrated_signal/calibrated_error**2
 
         extraction_mask = calibrated_signal.mask
 
         ndim = self.observation.dataset.wavelength.data.ndim
         wavelength_unit = self.observation.dataset.wavelength.data.unit
-        selection1 = [slice(None)]*(ndim-1)+[0]
+###############
+# Bug Fix
+###############
+        if not ramp_fitted_flag:
+            selection1 = [slice(None)]*(ndim-2)+[0, 0]
+        else:
+            selection1 = [slice(None)]*(ndim-1)+[0]
         wavelength_image = \
             np.ma.array(self.observation.dataset.wavelength.
                         data.value[selection1], mask=extraction_mask)
@@ -1144,10 +1167,10 @@ class TSOSuite:
 
         npix, mpix = wavelength_image.shape
 
-        #mask_temp = np.logical_or(self.cpm.extraction_mask[0],
+        # mask_temp = np.logical_or(self.cpm.extraction_mask[0],
         #                               calibrated_signal.mask)
-        #calibrated_signal.mask = mask_temp
-        #calibrated_error.mask = mask_temp
+        # calibrated_signal.mask = mask_temp
+        # calibrated_error.mask = mask_temp
         weighted_signal = np.ma.average(calibrated_signal, axis=1,
                                         weights=(np.ma.ones((npix, mpix)) /
                                                  calibrated_error)**2)
@@ -1161,10 +1184,10 @@ class TSOSuite:
                           weights=(np.ma.ones((npix, mpix)) /
                                    calibrated_error)**2)
         if add_calibration_signal:
-            #mask_temp = np.logical_or(self.cpm.extraction_mask[0],
+            # mask_temp = np.logical_or(self.cpm.extraction_mask[0],
             #                           calibrated_cal_signal.mask)
-            #calibrated_cal_signal.mask = mask_temp
-            #calibrated_cal_signal_error.mask = mask_temp
+            # calibrated_cal_signal.mask = mask_temp
+            # calibrated_cal_signal_error.mask = mask_temp
             weighted_cal_signal = \
                 np.ma.average(calibrated_cal_signal, axis=1,
                               weights=(np.ma.ones((npix, mpix)) /
@@ -1279,6 +1302,11 @@ class TSOSuite:
         Save results
         """
         try:
+            transittype = self.model.transittype
+        except AttributeError:
+            raise AttributeError("Type of observaton unknown. \
+                                 Aborting saving results")
+        try:
             results = self.exoplanet_spectrum
         except AttributeError:
             raise AttributeError("No results defined \
@@ -1311,22 +1339,24 @@ class TSOSuite:
         t.write(save_path+observations_id+'_exoplanet_spectra.fits',
                 format='fits', overwrite=True)
 
-        t = Table()
-        col = MaskedColumn(data=results.brightness_temperature.wavelength,
-                           unit=results.brightness_temperature.wavelength_unit,
-                           name='Wavelength')
-        t.add_column(col)
-        col = MaskedColumn(data=results.brightness_temperature.data,
-                           unit=results.brightness_temperature.data_unit,
-                           name='Flux')
-        t.add_column(col)
-        col = MaskedColumn(data=results.brightness_temperature.uncertainty,
-                           unit=results.brightness_temperature.data_unit,
-                           name='Error')
-        t.add_column(col)
-        t.write(save_path+observations_id +
-                '_exoplanet_brightness_temperature.fits',
-                format='fits', overwrite=True)
+        if transittype == 'secondary':
+            t = Table()
+            col = MaskedColumn(data=results.brightness_temperature.wavelength,
+                               unit=results.brightness_temperature.
+                               wavelength_unit,
+                               name='Wavelength')
+            t.add_column(col)
+            col = MaskedColumn(data=results.brightness_temperature.data,
+                               unit=results.brightness_temperature.data_unit,
+                               name='Flux')
+            t.add_column(col)
+            col = MaskedColumn(data=results.brightness_temperature.uncertainty,
+                               unit=results.brightness_temperature.data_unit,
+                               name='Error')
+            t.add_column(col)
+            t.write(save_path+observations_id +
+                    '_exoplanet_brightness_temperature.fits',
+                    format='fits', overwrite=True)
 
     def plot_results(self):
         """
@@ -1371,9 +1401,9 @@ class TSOSuite:
             raise AttributeError("Type of observaton unknown. \
                                  Aborting plotting results")
 
-        #results.spectrum.data_unit = u.percent
-        #if add_calibration_signal:
-        #    results.calibration_correction.data_unit = u.percent
+        # results.spectrum.data_unit = u.percent
+        # if add_calibration_signal:
+        #     results.calibration_correction.data_unit = u.percent
 
         fig, ax = plt.subplots(figsize=(6, 6))
         for item in ([ax.title, ax.xaxis.label, ax.yaxis.label] +
@@ -1468,7 +1498,7 @@ class TSOSuite:
                               brightness_temperature.wavelength_unit))
                 plt.show()
                 fig.savefig(save_path+observations_id +
-                            '_exoplanet_brithness_temperature.png',
+                            '_exoplanet_brightness_temperature.png',
                             bbox_inches='tight')
 
         if add_calibration_signal:
