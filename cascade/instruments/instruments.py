@@ -21,7 +21,7 @@ from ..initialize import cascade_configuration
 from ..data_model import SpectralDataTimeSeries
 
 __all__ = ['Observation', 'Spitzer',
-           'SpitzerIRS']
+           'SpitzerIRS', 'HST', 'HSTWFC3']
 
 
 class Observation(object):
@@ -43,7 +43,7 @@ class Observation(object):
 
     @property
     def __valid_observatories(self):
-        return {"SPITZER": Spitzer}
+        return {"SPITZER": Spitzer, "HST": HST}
 
     @property
     def __valid_observation_type(self):
@@ -110,6 +110,156 @@ class InstrumentBase(metaclass=ABCMeta):
     @abstractproperty
     def name(self):
         pass
+
+
+class HST(ObservatoryBase):
+    """
+    This observatory class defines the instuments and data handling for the
+    spectropgraphs of the Spitzer Space telescope
+    """
+
+    def __init__(self):
+        # check if cascade is initialized
+        if cascade_configuration.isInitialized:
+            # check if model is implemented and pick model
+            if cascade_configuration.instrument in self.observatory_instruments:
+                if cascade_configuration.instrument == 'WFC3':
+                    factory = HSTWFC3()
+                    self.par = factory.par
+                    self.data = factory.data
+                    self.spectral_trace = factory.spectral_trace
+                    if self.par['obs_has_backgr']:
+                        self.data_background = factory.data_background
+                    self.instrument = factory.name
+            else:
+                raise ValueError("HST instrument not recognized, \
+                                 check your init file for the following \
+                                 valid instruments: {}. Aborting loading \
+                                 instrument".format(self.valid_instruments))
+        else:
+            raise ValueError("CASCADe not initialized, \
+                                 aborting loading Observatory")
+
+    @property
+    def name(self):
+        return "HST"
+
+    @property
+    def location(self):
+        return "SPACE"
+
+    @property
+    def NAIF_ID(self):
+        return -48
+
+    @property
+    def observatory_instruments(self):
+        return{"WFC3"}
+
+
+class HSTWFC3(InstrumentBase):
+    """
+    This instrument class defines the properties of the IRS instrument of
+    the Spitzer Space Telescope
+    """
+
+    __valid_sub_array = {'SQ128SUB', 'SQ256SUB', 'SQ512SUB'}
+    __valid_data = {'SPECTRUM', 'SPECTRAL_IMAGE', 'SPECTRAL_DETECTOR_CUBE'}
+    __valid_observing_strategy = {'STARING', 'SCANNING'}
+
+    def __init__(self):
+
+        self.par = self.get_instrument_setup()
+        if self.par['obs_has_backgr']:
+            self.data, self.data_background = self.load_data()
+        else:
+            self.data = self.load_data()
+        self.spectral_trace = self.get_spectral_trace()
+
+    @property
+    def name(self):
+        return "WFC3"
+
+    def load_data(self):
+        if self.par["obs_data"] == 'SPECTRUM':
+            data = self.get_spectra()
+            if self.par['obs_has_backgr']:
+                data_back = self.get_spectra(is_background=True)
+        elif self.par["obs_data"] == 'SPECTRAL_IMAGE':
+            data = self.get_spectral_images()
+            if self.par['obs_has_backgr']:
+                data_back = self.get_spectral_images(is_background=True)
+        elif self.par["obs_data"] == 'SPECTRAL_DETECTOR_CUBE':
+            data = self.get_detector_cubes()
+            if self.par['obs_has_backgr']:
+                data_back = self.get_detector_cubes(is_background=True)
+        if self.par['obs_has_backgr']:
+            return data, data_back
+        else:
+            return data
+
+    def get_instrument_setup(self):
+        """
+        Retrieve all relevant parameters defining the instrument and data setup
+        """
+        inst_mode = cascade_configuration.instrument_mode
+        inst_order = cascade_configuration.instrument_order
+        obj_period = \
+            u.Quantity(cascade_configuration.object_period).to(u.day)
+        obj_period = obj_period.value
+        obj_ephemeris = \
+            u.Quantity(cascade_configuration.object_ephemeris).to(u.day)
+        obj_ephemeris = obj_ephemeris.value
+        obs_mode = cascade_configuration.observations_mode
+        obs_data = cascade_configuration.observations_data
+        obs_path = cascade_configuration.observations_path
+        obs_cal_path = cascade_configuration.observations_cal_path
+        obs_cal_version = cascade_configuration.observations_cal_version
+        obs_id = cascade_configuration.observations_id
+        obs_target_name = cascade_configuration.observations_target_name
+        obs_has_backgr = ast.literal_eval(cascade_configuration.
+                                          observations_has_background)
+        if obs_has_backgr:
+            obs_backgr_id = cascade_configuration.observations_background_id
+            obs_backgr_target_name = \
+                cascade_configuration.observations_background_name
+
+        if not (obs_data in self.__valid_data):
+            raise ValueError("Data type not recognized, \
+                     check your init file for the following \
+                     valid types: {}. \
+                     Aborting loading data".format(self.__valid_data))
+        if not (obs_mode in self.__valid_observing_strategy):
+            raise ValueError("Observational stategy not recognized, \
+                     check your init file for the following \
+                     valid types: {}. \
+                     Aborting loading data".format(self.__valid_data))
+        if not (inst_mode in self.__valid_arrays):
+            raise ValueError("Instrument mode not recognized, \
+                     check your init file for the following \
+                     valid types: {}. \
+                     Aborting loading data".format(self.__valid_arrays))
+        if not (inst_order in self.__valid_orders):
+            raise ValueError("Spectral order not recognized, \
+                     check your init file for the following \
+                     valid types: {}. \
+                     Aborting loading data".format(self.__valid_orders))
+        par = collections.OrderedDict(inst_mode=inst_mode,
+                                      inst_order=inst_order,
+                                      obj_period=obj_period,
+                                      obj_ephemeris=obj_ephemeris,
+                                      obs_mode=obs_mode,
+                                      obs_data=obs_data,
+                                      obs_path=obs_path,
+                                      obs_cal_path=obs_cal_path,
+                                      obs_cal_version=obs_cal_version,
+                                      obs_id=obs_id,
+                                      obs_target_name=obs_target_name,
+                                      obs_has_backgr=obs_has_backgr)
+        if obs_has_backgr:
+            par.update({'obs_backgr_id': obs_backgr_id})
+            par.update({'obs_backgr_target_name': obs_backgr_target_name})
+        return par
 
 
 class Spitzer(ObservatoryBase):
@@ -690,7 +840,7 @@ class SpitzerIRS(InstrumentBase):
             time[im] = fits.getval(image_file, "BMJD_OBS", ext=0)
 
 ############
-# Buf fix
+# Bug fix
 ############
         image_cube = np.diff(image_cube, axis=2)
         mask = mask[:, :, :-1, :]

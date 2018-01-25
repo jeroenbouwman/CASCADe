@@ -4,32 +4,31 @@ Created on Sun Jul 10 16:14:19 2016
 
 @author: bouwman
 """
-import numpy as np
-from scipy import interpolate
-from astropy.stats import sigma_clip
-from types import SimpleNamespace
-import os.path
 import ast
-from astropy.convolution import Gaussian2DKernel, interpolate_replace_nans
-from functools import reduce
-import astropy.units as u
-from astropy.units import cds
-from astropy.table import Table
-from astropy.table import MaskedColumn
-import os
-from matplotlib import pyplot as plt
-from astropy.visualization import quantity_support
 import copy
-from matplotlib.ticker import ScalarFormatter, MaxNLocator
+import os
+import os.path
+from functools import reduce
+from types import SimpleNamespace
+
+import astropy.units as u
+import numpy as np
+from astropy.convolution import Gaussian2DKernel, interpolate_replace_nans
+from astropy.stats import sigma_clip
+from astropy.table import MaskedColumn, Table
+from astropy.units import cds
+from astropy.visualization import quantity_support
+from matplotlib import pyplot as plt
+from matplotlib.ticker import MaxNLocator, ScalarFormatter
+from scipy import interpolate
 
 from ..cpm_model import solve_linear_equation
-from ..exoplanet_tools import lightcuve
-from ..initialize import configurator
-from ..initialize import default_initialization_path
-from ..initialize import cascade_configuration
-from ..instruments import Observation
 from ..data_model import SpectralData
-from ..exoplanet_tools import convert_spectrum_to_brighness_temperature
+from ..exoplanet_tools import (convert_spectrum_to_brighness_temperature,
+                               lightcuve)
+from ..initialize import (cascade_configuration, configurator,
+                          default_initialization_path)
+from ..instruments import Observation
 
 cds.enable()
 
@@ -73,10 +72,10 @@ class TSOSuite:
         Excecute specified command
         """
         if command not in self.__valid_commands:
-                raise ValueError("Command not recognized, \
-                                 check your data reduction command for the \
-                                 following valid commans: {}. Aborting \
-                                 command".format(self.__valid_commands.keys()))
+            raise ValueError("Command not recognized, \
+                             check your data reduction command for the \
+                             following valid commans: {}. Aborting \
+                             command".format(self.__valid_commands.keys()))
         else:
             if command == "initialize":
                 self.__valid_commands[command](*init_files, path=path)
@@ -770,12 +769,13 @@ class TSOSuite:
             design_matrix_list = []
             for regressor_selection in regressor_list:
                 regressor_matrix = \
-                    self.get_design_matrix(data_use, regressor_selection,
-                                           nrebin, clip=clip,
-                                           clip_pctl_time=clip_pctl_time,
-                                           clip_pctl_regressors=clip_pctl_regressors,
-                                           center_matrix=center_matrix,
-                                           stdv_kernel=stdv_kernel)
+                    self.get_design_matrix(
+                            data_use, regressor_selection,
+                            nrebin, clip=clip,
+                            clip_pctl_time=clip_pctl_time,
+                            clip_pctl_regressors=clip_pctl_regressors,
+                            center_matrix=center_matrix,
+                            stdv_kernel=stdv_kernel)
                 design_matrix_list.append([regressor_matrix])
             design_matrix_list_nod.append(design_matrix_list)
         self.cpm.design_matrix = design_matrix_list_nod
@@ -929,11 +929,12 @@ class TSOSuite:
             for regressor_selection in regressor_list:
                 (il, ir), _ = regressor_selection
                 regressor_matrix = \
-                    self.get_design_matrix(data_use, regressor_selection,
-                                           nrebin, clip=True,
-                                           clip_pctl_time=clip_pctl_time,
-                                           clip_pctl_regressors=clip_pctl_regressors,
-                                           stdv_kernel=stdv_kernel)
+                    self.get_design_matrix(
+                            data_use, regressor_selection,
+                            nrebin, clip=True,
+                            clip_pctl_time=clip_pctl_time,
+                            clip_pctl_regressors=clip_pctl_regressors,
+                            stdv_kernel=stdv_kernel)
                 # remove bad regressors
                 idx_cut = np.all(regressor_matrix.mask, axis=1)
                 regressor_matrix = regressor_matrix[~idx_cut, :]
@@ -1012,8 +1013,7 @@ class TSOSuite:
                     # eclipse is normalized to stellar flux
                     calibrated_lightcurve = 1.0 - np.dot(design_matrix.data,
                                                          Ptemp) / \
-                                                    np.dot(design_matrix.data,
-                                                           P)
+                                                  np.dot(design_matrix.data, P)
                 else:
                     # transit is normalized to flux-baseline outside transit
                     calibrated_lightcurve = np.dot(design_matrix.data, P) / \
@@ -1136,9 +1136,6 @@ class TSOSuite:
         except AttributeError:
             raise AttributeError("Stellar radius or temperature not defined. \
                                  Aborting extraction of planetary spectrum")
-#######################
-# Bug fix
-######################
         try:
             ramp_fitted_flag = self.observation.dataset.isRampFitted
         except AttributeError:
@@ -1152,9 +1149,6 @@ class TSOSuite:
 
         ndim = self.observation.dataset.wavelength.data.ndim
         wavelength_unit = self.observation.dataset.wavelength.data.unit
-###############
-# Bug Fix
-###############
         if not ramp_fitted_flag:
             selection1 = [slice(None)]*(ndim-2)+[0, 0]
         else:
@@ -1268,14 +1262,15 @@ class TSOSuite:
             calibration_correction_spectrum.data_unit = u.percent
         if transittype == 'secondary':
             brightness_temperature, error_brightness_temperature = \
-             convert_spectrum_to_brighness_temperature(exoplanet_spectrum.
-                                                       wavelength,
-                                                       exoplanet_spectrum.data,
-                                                       stellar_temperature,
-                                                       stellar_radius,
-                                                       planet_radius *
-                                                       stellar_radius,
-                                                       error=exoplanet_spectrum.uncertainty)
+             convert_spectrum_to_brighness_temperature(
+                     exoplanet_spectrum.
+                     wavelength,
+                     exoplanet_spectrum.data,
+                     stellar_temperature,
+                     stellar_radius,
+                     planet_radius *
+                     stellar_radius,
+                     error=exoplanet_spectrum.uncertainty)
             exoplanet_spectrum_in_brightnes_temperature = \
                 SpectralData(wavelength=exoplanet_spectrum.wavelength,
                              wavelength_unit=wavelength_unit,

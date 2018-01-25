@@ -503,7 +503,7 @@ def combine_spectra(identifier_list=[], path=""):
     averige_spectrum = np.ma.average(spectrum, axis=0,
                                      weights=np.ma.ones(error.shape)/error**2)
 
-    error_temp = np.ma.array(error.data.value, mask = error.mask)
+    error_temp = np.ma.array(error.data.value, mask=error.mask)
     averige_error = np.ma.ones(averige_spectrum.shape) / \
         np.ma.sum((np.ma.ones(error.shape) / error_temp)**2, axis=0)
     averige_error = np.ma.sqrt(averige_error)

@@ -16,7 +16,7 @@ tso = cascade.TSO.TSOSuite()
 path = cascade.initialize.default_initialization_path
 tso = cascade.TSO.TSOSuite("cascade_test_cpm.ini",
                            "cascade_test_object.ini",
-                           "cascade_test_data_spectral_images2.ini", path=path)
+                           "cascade_test_data_spectral_images.ini", path=path)
 print(tso.cascade_parameters)
 print(cascade.initialize.cascade_configuration)
 print(tso.cascade_parameters.isInitialized)
@@ -33,7 +33,7 @@ print(tso.cascade_parameters.isInitialized)
 tso = cascade.TSO.TSOSuite()
 path = cascade.initialize.default_initialization_path
 tso.execute("initialize", "cascade_test_cpm.ini", "cascade_test_object.ini",
-            "cascade_test_data_spectral_images2.ini", path=path)
+            "cascade_test_data_spectral_images.ini", path=path)
 print(tso.cascade_parameters)
 print(cascade.initialize.cascade_configuration)
 print(tso.cascade_parameters.isInitialized)
@@ -204,9 +204,9 @@ plt.show()
 path_old = '/home/bouwman/SST_OBSERVATIONS/projects_HD189733/REDUCED_DATA/'
 spec_instr_model_ian = ascii.read(path_old+'results_ian.dat', data_start=1)
 wave_ian = (spec_instr_model_ian['lam_micron']*u.micron)
-flux_ian = (spec_instr_model_ian['depthB'] *
+flux_ian = (spec_instr_model_ian['depthA'] *
             u.dimensionless_unscaled).to(u.percent)
-error_ian = (spec_instr_model_ian['errorB'] *
+error_ian = (spec_instr_model_ian['errorA'] *
              u.dimensionless_unscaled).to(u.percent)
 fig, ax = plt.subplots(figsize=(7, 4))
 for item in ([ax.title, ax.xaxis.label, ax.yaxis.label] +
@@ -237,9 +237,9 @@ plt.show()
 
 for i in range(71):
     ks, prob = stats.ks_2samp(flux_ian.value,
-                          (tso.exoplanet_spectrum.spectrum.data.data.
-                           value[~tso.exoplanet_spectrum.spectrum.mask])[::-1] -
-                           (0.035-i*0.001))
+                         (tso.exoplanet_spectrum.spectrum.data.data.
+                          value[~tso.exoplanet_spectrum.spectrum.mask])[::-1] -
+                          (0.035-i*0.001))
     print(-(0.035-i*0.001), ks, prob)
 
 
@@ -252,7 +252,7 @@ tso.execute("plot_results")
 cal_signal_depth = float(tso.cascade_parameters.cpm_calibration_signal_depth)
 mean_eclipse_depth = float(tso.cascade_parameters.observations_median_signal)
 
-plt.plot(tso.calibration_results.calibrated_time_series[50, 17:21, :].T)
+plt.plot(tso.calibration_results.calibrated_time_series[90, 17:21, :].T)
 plt.show()
 
 plt.plot(tso.exoplanet_spectrum.spectrum.wavelength,
