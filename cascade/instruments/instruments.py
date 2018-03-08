@@ -6,19 +6,29 @@ Observatory and Instruments specific Module
 
 @author: bouwman
 """
-import numpy as np
-from astropy.io import fits
 import os
-import fnmatch
+# import fnmatch
 import collections
 import ast
 from abc import ABCMeta, abstractmethod, abstractproperty
+from types import SimpleNamespace
+
+import numpy as np
+from astropy.io import fits
 import astropy.units as u
 from astropy.io import ascii
 from scipy import interpolate
+from astropy.time import Time
+from astropy import coordinates as coord
+from astropy.wcs import WCS
+from astropy.stats import sigma_clipped_stats
+from photutils import IRAFStarFinder
+import pandas as pd
+from skimage.feature import register_translation
 
 from ..initialize import cascade_configuration
 from ..data_model import SpectralDataTimeSeries
+from ..utilities import find
 
 __all__ = ['Observation', 'Spitzer',
            'SpitzerIRS', 'HST', 'HSTWFC3']
@@ -163,9 +173,12 @@ class HSTWFC3(InstrumentBase):
     the Spitzer Space Telescope
     """
 
-    __valid_sub_array = {'SQ128SUB', 'SQ256SUB', 'SQ512SUB'}
-    __valid_data = {'SPECTRUM', 'SPECTRAL_IMAGE', 'SPECTRAL_DETECTOR_CUBE'}
-    __valid_observing_strategy = {'STARING', 'SCANNING'}
+    __valid_sub_array = {'IRSUB128', 'IRSUB256', 'IRSUB512'}
+    __valid_spectroscopic_filter = {'G141'}
+    __valid_imaging_filter = {'F139M'}
+    __valid_beams = {'A'}
+    __valid_data = {'SPECTRUM', 'SPECTRAL_IMAGE'}
+    __valid_observing_strategy = {'STARING'}
 
     def __init__(self):
 
@@ -189,10 +202,6 @@ class HSTWFC3(InstrumentBase):
             data = self.get_spectral_images()
             if self.par['obs_has_backgr']:
                 data_back = self.get_spectral_images(is_background=True)
-        elif self.par["obs_data"] == 'SPECTRAL_DETECTOR_CUBE':
-            data = self.get_detector_cubes()
-            if self.par['obs_has_backgr']:
-                data_back = self.get_detector_cubes(is_background=True)
         if self.par['obs_has_backgr']:
             return data, data_back
         else:
@@ -202,20 +211,27 @@ class HSTWFC3(InstrumentBase):
         """
         Retrieve all relevant parameters defining the instrument and data setup
         """
-        inst_mode = cascade_configuration.instrument_mode
-        inst_order = cascade_configuration.instrument_order
+        # instrument parameters
+        inst_inst_name = cascade_configuration.instrument
+        inst_filter = cascade_configuration.instrument_filter
+        inst_cal_filter = cascade_configuration.instrument_cal_filter
+        inst_aperture = cascade_configuration.instrument_aperture
+        inst_cal_aperture = cascade_configuration.instrument_cal_aperture
+        inst_beam = cascade_configuration.instrument_beam
+        # object parameters
         obj_period = \
             u.Quantity(cascade_configuration.object_period).to(u.day)
         obj_period = obj_period.value
         obj_ephemeris = \
             u.Quantity(cascade_configuration.object_ephemeris).to(u.day)
         obj_ephemeris = obj_ephemeris.value
+        # observation parameters
         obs_mode = cascade_configuration.observations_mode
         obs_data = cascade_configuration.observations_data
         obs_path = cascade_configuration.observations_path
         obs_cal_path = cascade_configuration.observations_cal_path
-        obs_cal_version = cascade_configuration.observations_cal_version
         obs_id = cascade_configuration.observations_id
+        obs_cal_version = cascade_configuration.observations_cal_version
         obs_target_name = cascade_configuration.observations_target_name
         obs_has_backgr = ast.literal_eval(cascade_configuration.
                                           observations_has_background)
@@ -234,32 +250,662 @@ class HSTWFC3(InstrumentBase):
                      check your init file for the following \
                      valid types: {}. \
                      Aborting loading data".format(self.__valid_data))
-        if not (inst_mode in self.__valid_arrays):
-            raise ValueError("Instrument mode not recognized, \
+        if not (inst_filter in self.__valid_spectroscopic_filter):
+            raise ValueError("Instrument spectroscopic filter not recognized, \
                      check your init file for the following \
-                     valid types: {}. \
-                     Aborting loading data".format(self.__valid_arrays))
-        if not (inst_order in self.__valid_orders):
-            raise ValueError("Spectral order not recognized, \
+                     valid types: {}. Aborting loading \
+                     data".format(self.__valid_spectroscopic_filter))
+        if not (inst_cal_filter in self.__valid_imaging_filter):
+            raise ValueError("Filter of calibration image not recognized, \
                      check your init file for the following \
-                     valid types: {}. \
-                     Aborting loading data".format(self.__valid_orders))
-        par = collections.OrderedDict(inst_mode=inst_mode,
-                                      inst_order=inst_order,
+                     valid types: {}. Aborting loading \
+                     data".format(self.__valid_imaging_filter))
+        if not (inst_aperture in self.__valid_sub_array):
+            raise ValueError("Spectroscopic subarray not recognized, \
+                     check your init file for the following \
+                     valid types: {}. Aborting loading \
+                     data".format(self.__valid_sub_array))
+        if not (inst_cal_aperture in self.__valid_sub_array):
+            raise ValueError("Calibration image subarray not recognized, \
+                     check your init file for the following \
+                     valid types: {}. Aborting loading \
+                     data".format(self.__valid_sub_array))
+        if not (inst_beam in self.__valid_beams):
+            raise ValueError("Beam (spectral order) not recognized, \
+                     check your init file for the following \
+                     valid types: {}. Aborting loading \
+                     data".format(self.__valid_beams))
+        par = collections.OrderedDict(inst_inst_name=inst_inst_name,
+                                      inst_filter=inst_filter,
+                                      inst_cal_filter=inst_cal_filter,
+                                      inst_aperture=inst_aperture,
+                                      inst_cal_aperture=inst_cal_aperture,
+                                      inst_beam=inst_beam,
                                       obj_period=obj_period,
                                       obj_ephemeris=obj_ephemeris,
                                       obs_mode=obs_mode,
                                       obs_data=obs_data,
                                       obs_path=obs_path,
                                       obs_cal_path=obs_cal_path,
-                                      obs_cal_version=obs_cal_version,
                                       obs_id=obs_id,
+                                      obs_cal_version=obs_cal_version,
                                       obs_target_name=obs_target_name,
                                       obs_has_backgr=obs_has_backgr)
         if obs_has_backgr:
             par.update({'obs_backgr_id': obs_backgr_id})
             par.update({'obs_backgr_target_name': obs_backgr_target_name})
         return par
+
+    def get_spectra(self, is_background=False):
+        """
+        read (uncalibrated) spectral timeseries, phase and wavelength
+        """
+
+        # get data files
+        if is_background:
+            # obsid = self.par['obs_backgr_id']
+            target_name = self.par['obs_backgr_target_name']
+        else:
+            # obsid = self.par['obs_id']
+            target_name = self.par['obs_target_name']
+
+        path_to_files = os.path.join(self.par['obs_path'],
+                                     self.par['inst_inst_name'],
+                                     target_name,
+                                     'SPECTRA/')
+        data_files = find(self.par['obs_id'] + '*.SPC.fits', path_to_files)
+
+        # number of integrations
+        nintegrations = len(data_files)
+        if nintegrations < 2:
+            raise AssertionError("No Timeseries data found in dir " +
+                                 path_to_files)
+
+        spectral_data_file = data_files[0]
+        spectral_data = fits.getdata(spectral_data_file, ext=0)
+        nwavelength = spectral_data.shape[0]
+
+        # get the data
+        spectral_data = np.zeros((nwavelength, nintegrations))
+        uncertainty_spectral_data = np.zeros((nwavelength, nintegrations))
+        wavelength_data = np.zeros((nwavelength, nintegrations))
+        time = np.zeros((nintegrations))
+        for im, spectral_data_file in enumerate(data_files):
+            # WARNING fits data is single precision!!
+            spectrum = fits.getdata(spectral_data_file, ext=1)
+            spectral_data[:, im] = spectrum['FLUX']
+            uncertainty_spectral_data[:, im] = spectrum['FERROR']
+            wavelength_data[:, im] = spectrum['LAMBDA']
+            exptime = fits.getval(spectral_data_file, "EXPTIME", ext=0)
+            expstart = fits.getval(spectral_data_file, "EXPSTART", ext=0)
+            time[im] = expstart + 0.5*(exptime/(24.0*3600.0))
+
+        idx = np.argsort(time)
+        time = time[idx]
+        spectral_data = spectral_data[:, idx]
+        uncertainty_spectral_data = uncertainty_spectral_data[:, idx]
+        wavelength_data = wavelength_data[:, idx]
+        data_files = [data_files[i] for i in idx]
+
+        # convert to BJD
+        ra_target = fits.getval(data_files[0], "RA_TARG")
+        dec_target = fits.getval(data_files[0], "DEC_TARG")
+        target_coord = coord.SkyCoord(ra_target, dec_target,
+                                      unit=(u.deg, u.deg), frame='icrs')
+        time_obs = Time(time, format='mjd', scale='utc',
+                        location=('0d', '0d'))
+        ltt_bary_jpl = time_obs.light_travel_time(target_coord,
+                                                  ephemeris='jpl')
+        time_barycentre = time_obs.tdb + ltt_bary_jpl
+        time = time_barycentre.jd
+
+        # orbital phase
+        phase = (time - self.par['obj_ephemeris']) / self.par['obj_period']
+        phase = phase - np.int(np.max(phase))
+        if np.max(phase) < 0.0:
+            phase = phase + 1.0
+
+        # set the units of the observations
+        flux_unit = u.Unit("erg cm-2 s-1 Angstrom-1")
+        wave_unit = u.Unit('Angstrom')
+
+        mask = np.ma.make_mask_none(spectral_data.shape)
+
+        position = np.zeros_like(spectral_data)
+
+        SpectralTimeSeries = \
+            SpectralDataTimeSeries(wavelength=wavelength_data,
+                                   wavelength_unit=wave_unit,
+                                   data=spectral_data,
+                                   data_unit=flux_unit,
+                                   uncertainty=uncertainty_spectral_data,
+                                   time=phase,
+                                   mask=mask,
+                                   position=position,
+                                   isRampFitted=True,
+                                   isNodded=False)
+        return SpectralTimeSeries
+
+    def get_spectral_images(self, is_background=False):
+        """
+        read uncalibrated spectral images (flt data product)
+        """
+        # get data files
+        if is_background:
+            # obsid = self.par['obs_backgr_id']
+            target_name = self.par['obs_backgr_target_name']
+        else:
+            # obsid = self.par['obs_id']
+            target_name = self.par['obs_target_name']
+
+        path_to_files = os.path.join(self.par['obs_path'],
+                                     self.par['inst_inst_name'],
+                                     target_name,
+                                     'SPECTRAL_IMAGES/')
+        data_files = find(self.par['obs_id'] + '*_flt.fits', path_to_files)
+
+        # check if time series data can be found
+        if len(data_files) < 2:
+            raise AssertionError("No Timeseries data found in the \
+                                 directory: {}".format(path_to_files))
+
+        # get the data
+        calibration_image_cube = []
+        spectral_image_cube = []
+        time = []
+        cal_time = []
+        spectral_data_files = []
+        calibration_data_files = []
+        for im, image_file in enumerate(data_files):
+            instrument_fiter = fits.getval(image_file, "FILTER", ext=0)
+            if instrument_fiter != self.par["inst_filter"]:
+                if instrument_fiter == self.par["inst_cal_filter"]:
+                    calibration_image = fits.getdata(image_file, ext=1)
+                    calibration_image_cube.append(calibration_image)
+                    calibration_data_files.append(image_file)
+                    exptime = fits.getval(image_file, "EXPTIME", ext=0)
+                    expstart = fits.getval(image_file, "EXPSTART", ext=0)
+                    cal_time.append(expstart + 0.5*(exptime/(24.0*3600.0)))
+                continue
+            # WARNING fits data is single precision!!
+            spectral_image = fits.getdata(image_file, ext=1)
+            spectral_image_cube.append(spectral_image)
+            spectral_data_files.append(image_file)
+            exptime = fits.getval(image_file, "EXPTIME", ext=0)
+            expstart = fits.getval(image_file, "EXPSTART", ext=0)
+            time.append(expstart + 0.5*(exptime/(24.0*3600.0)))
+
+        if len(spectral_image_cube) == 0:
+            raise ValueError("No science data found for the \
+                             filter: {}".format(self.par["inst_filter"]))
+        if len(calibration_image_cube) == 0:
+            raise ValueError("No calibration image found for the \
+                             filter: {}".format(self.par["inst_cal_filter"]))
+
+        spectral_image_cube = np.array(spectral_image_cube, dtype='float64')
+        calibration_image_cube = np.array(calibration_image_cube,
+                                          dtype='float64')
+        time = np.array(time, dtype='float64')
+        cal_time = np.array(cal_time, dtype='float64')
+
+        idx_time_sort = np.argsort(time)
+        time = time[idx_time_sort]
+        spectral_image_cube = spectral_image_cube[idx_time_sort, :, :]
+
+        nintegrations, mpix, npix = spectral_image_cube.shape
+        nintegrations_cal, ypix_cal, xpix_cal = calibration_image_cube.shape
+
+        # convert to BJD
+        ra_target = fits.getval(spectral_data_files[0], "RA_TARG")
+        dec_target = fits.getval(spectral_data_files[0], "DEC_TARG")
+        target_coord = coord.SkyCoord(ra_target, dec_target,
+                                      unit=(u.deg, u.deg), frame='icrs')
+        time_obs = Time(time, format='mjd', scale='utc',
+                        location=('0d', '0d'))
+        cal_time_obs = Time(cal_time, format='mjd', scale='utc',
+                            location=('0d', '0d'))
+        ltt_bary_jpl = time_obs.light_travel_time(target_coord,
+                                                  ephemeris='jpl')
+        time_barycentre = time_obs.tdb + ltt_bary_jpl
+        time = time_barycentre.jd
+        cal_ltt_bary_jpl = cal_time_obs.light_travel_time(target_coord,
+                                                          ephemeris='jpl')
+        cal_time_barycentre = cal_time_obs.tdb + cal_ltt_bary_jpl
+        cal_time = cal_time_barycentre.jd
+
+        # orbital phase
+        phase = (time - self.par['obj_ephemeris']) / self.par['obj_period']
+        phase = phase - np.int(np.max(phase))
+        if np.max(phase) < 0.0:
+            phase = phase + 1.0
+        cal_phase = (cal_time - self.par['obj_ephemeris']) / \
+            self.par['obj_period']
+        cal_phase = cal_phase - np.int(np.max(cal_phase))
+        if np.max(cal_phase) < 0.0:
+            cal_phase = cal_phase + 1.0
+
+        self._determine_relative_source_position(spectral_image_cube)
+        self._determine_source_position_from_cal_image(
+                calibration_image_cube, calibration_data_files)
+        self._read_grism_configuration_files()
+        self._read_reference_pixel_file()
+        self._get_subarray_size(calibration_image_cube, spectral_image_cube)
+
+        wave_cal = self._get_wavelength_calibration()
+
+        flux_unit = u.electron/u.second
+        spectral_image_cube = spectral_image_cube.T * flux_unit
+
+        mask = np.ma.make_mask_none(spectral_image_cube.shape)
+        mask[:2,:,:] = True
+        mask[-2:,:,:] = True
+
+        if (is_background):
+            for i in range(nintegrations):
+                spectral_image_cube[:, :, i] = \
+                    np.roll(spectral_image_cube[:, :, i], -18, axis=1)
+                mask[:, 0:70, :] = True
+                mask[:, 96:, :] = True
+
+        SpectralTimeSeries = SpectralDataTimeSeries(wavelength=wave_cal,
+                                                    data=spectral_image_cube,
+                                                    time=phase,
+                                                    mask=mask,
+                                                    isRampFitted=True,
+                                                    isNodded=False)
+        return SpectralTimeSeries
+
+    def _determine_relative_source_position(self, spectral_image_cube):
+        """
+        """
+        nintegrations, mpix, npix = spectral_image_cube.shape
+        image0 = spectral_image_cube[0, :, :]
+        yshift = np.zeros((nintegrations))
+        xshift = np.zeros((nintegrations))
+        for it in range(nintegrations):
+            # subpixel precision by oversmpling pixel by a factor of 100
+            shift, error, diffphase = \
+                register_translation(image0,
+                                     spectral_image_cube[it, :, :], 100)
+            yshift[it] = shift[0]
+            xshift[it] = shift[1]
+        relative_source_shift = collections.OrderedDict(yshift=yshift,
+                                                        xshift=xshift)
+        try:
+            self.wfc3_cal
+        except AttributeError:
+            self.wfc3_cal = SimpleNamespace()
+        finally:
+            self.wfc3_cal.relative_source_shift = relative_source_shift
+        return
+
+    def _determine_source_position_from_cal_image(self, calibration_image_cube,
+                                                  calibration_data_files):
+        """
+        """
+        calibration_source_position = []
+        for im, image_file in enumerate(calibration_data_files):
+            ra_target = fits.getval(image_file, "RA_TARG")
+            dec_target = fits.getval(image_file, "DEC_TARG")
+            hdu = fits.open(image_file)[1]
+            w = WCS(hdu.header)
+            expected_target_position = \
+                w.all_world2pix(ra_target, dec_target, 0)
+            expexted_xcentroid = expected_target_position[0].reshape(1)[0]
+            expected_ycentroid = expected_target_position[1].reshape(1)[0]
+
+            mean, median, std = \
+                sigma_clipped_stats(calibration_image_cube[im, :, :],
+                                    sigma=3.0, iters=5)
+
+            iraffind = IRAFStarFinder(fwhm=2.0, threshold=30.*std)
+
+            sources = iraffind(calibration_image_cube[im, :, :] - median)
+            distances = np.sqrt((sources['xcentroid']-expexted_xcentroid)**2 +
+                                (sources['ycentroid']-expected_ycentroid)**2)
+            idx_target = distances.argmin()
+            source_position = (sources[idx_target]['xcentroid'],
+                               sources[idx_target]['ycentroid'])
+            calibration_source_position.append(source_position)
+
+        try:
+            self.wfc3_cal
+        except AttributeError:
+            self.wfc3_cal = SimpleNamespace()
+        finally:
+            self.wfc3_cal.calibration_source_position = \
+                calibration_source_position
+        return
+
+    def _read_grism_configuration_files(self):
+        """
+        Gets the relevant data from WFC3 configuration files
+        """
+        calibration_file_name = os.path.join(self.par['obs_cal_path'],
+                                             self.par['inst_inst_name'],
+                                             self.par['inst_filter'] + '.' +
+                                             self.par['inst_cal_filter']+'.V' +
+                                             self.par['obs_cal_version'] +
+                                             '.conf')
+
+        with open(calibration_file_name, 'r') as content_file:
+            content = content_file.readlines()
+        flag_DYDX0 = True
+        flag_DYDX1 = True
+        flag_DLDP0 = True
+        flag_DLDP1 = True
+        for line in content:
+            # parameters spectral trace
+            if 'DYDX_'+self.par['inst_beam']+'_0' in line:
+                DYDX0 = np.array(line.strip().split()[1:], dtype='float64')
+                flag_DYDX0 = False
+                continue
+            if 'DYDX_'+self.par['inst_beam']+'_1' in line:
+                DYDX1 = np.array(line.strip().split()[1:], dtype='float64')
+                flag_DYDX1 = False
+                continue
+            # parameters wavelength calibration
+            if 'DLDP_'+self.par['inst_beam']+'_0' in line:
+                DLDP0 = np.array(line.strip().split()[1:], dtype='float64')
+                flag_DLDP0 = False
+                continue
+            if 'DLDP_'+self.par['inst_beam']+'_1' in line:
+                DLDP1 = np.array(line.strip().split()[1:], dtype='float64')
+                flag_DLDP1 = False
+                continue
+        if flag_DYDX0:
+            raise ValueError("Spectral trace not found in calibration file, \
+                     check {} file for the following entry: {} \
+                     Aborting".format(calibration_file_name,
+                                      'DYDX_'+self.par['inst_beam']+'_0'))
+        if flag_DYDX1:
+            raise ValueError("Spectral trace not found in calibration file, \
+                     check {} file for the following entry: {} \
+                     Aborting".format(calibration_file_name,
+                                      'DYDX_'+self.par['inst_beam']+'_1'))
+        if flag_DLDP0:
+            raise ValueError("Wavelength definition not found in calibration \
+                     file, check {} file for the following entry: {} \
+                     Aborting".format(calibration_file_name,
+                                      'DLDP_'+self.par['inst_beam']+'_0'))
+        if flag_DLDP1:
+            raise ValueError("Wavelength definition not found in calibration \
+                     file, check {} file for the following entry: {} \
+                     Aborting".format(calibration_file_name,
+                                      'DLDP_'+self.par['inst_beam']+'_1'))
+        DYDX = [DYDX0, DYDX1]
+        DLDP = [DLDP0, DLDP1]
+        try:
+            self.wfc3_cal
+        except AttributeError:
+            self.wfc3_cal = SimpleNamespace()
+        finally:
+            self.wfc3_cal.DYDX = DYDX
+            self.wfc3_cal.DLDP = DLDP
+        return
+
+    def _read_reference_pixel_file(self):
+        """
+        Read the calibration file containig the definition
+        of the reference pixel appropriate for a given sub array and or filer
+        """
+        calibration_file_name = os.path.join(self.par['obs_cal_path'],
+                                             self.par['inst_inst_name'],
+           'wavelength_ref_pixel_' + self.par['inst_inst_name'].lower()+'.txt')
+
+        ptable_cal = pd.read_table(calibration_file_name,
+                                   delim_whitespace=True,
+                                   low_memory=False, skiprows=1,
+                                   names=['APERTURE', 'FILTER',
+                                          'XREF', 'YREF'])
+
+        XREF_GRISM, YREF_GRISM = \
+            self._search_ref_pixel_cal_file(ptable_cal,
+                                            self.par["inst_aperture"],
+                                            self.par["inst_filter"])
+        XREF_IMAGE, YREF_IMAGE = \
+            self._search_ref_pixel_cal_file(ptable_cal,
+                                            self.par["inst_cal_aperture"],
+                                            self.par["inst_cal_filter"])
+
+        reference_pixels = collections.OrderedDict(XREF_GRISM=XREF_GRISM,
+                                                   YREF_GRISM=YREF_GRISM,
+                                                   XREF_IMAGE=XREF_IMAGE,
+                                                   YREF_IMAGE=YREF_IMAGE)
+        try:
+            self.wfc3_cal
+        except AttributeError:
+            self.wfc3_cal = SimpleNamespace()
+        finally:
+            self.wfc3_cal.reference_pixels = reference_pixels
+
+        return
+
+    @staticmethod
+    def _search_ref_pixel_cal_file(ptable, inst_aperture, inst_filter):
+        """
+        Search the reference pixel calibration file for the reference pixel
+        given the instrument aperture and filter.
+        See also http://www.stsci.edu/hst/observatory/apertures/wfc3.html
+        """
+        ptable_aperture = \
+            ptable[(ptable.APERTURE == inst_aperture)]
+        if ptable_aperture.shape[0] == 1:
+            XREF = ptable_aperture.XREF.values
+            YREF = ptable_aperture.YREF.values
+        else:
+            ptable_aperture_filter = \
+                ptable_aperture[(ptable_aperture.FILTER == inst_filter)]
+            if ptable_aperture_filter.shape[0] == 1:
+                XREF = ptable_aperture.XREF.values
+                YREF = ptable_aperture.YREF.values
+            else:
+                ptable_grism_filter = \
+                    ptable_aperture[(ptable_aperture.FILTER.isnull())]
+                if ptable_grism_filter.shape[0] == 1:
+                    XREF = ptable_aperture.XREF.values
+                    YREF = ptable_aperture.YREF.values
+                else:
+                    raise ValueError("Filter or Aperture not found in, \
+                     reference pixel calibration file, Aborting")
+        return XREF, YREF
+
+    def _get_subarray_size(self, calibration_data, spectral_data):
+        """
+        """
+        nintegrations, nspatial, nwavelength = spectral_data.shape
+        nintegrations_cal, npix_y_cal, npix_x_cal = calibration_data.shape
+
+        subarray_sizes = collections.OrderedDict(cal_image_size=npix_x_cal,
+                                                 science_image_size=nwavelength)
+        try:
+            self.wfc3_cal
+        except AttributeError:
+            self.wfc3_cal = SimpleNamespace()
+        finally:
+            self.wfc3_cal.subarray_sizes = subarray_sizes
+        return
+
+    def _get_wavelength_calibration(self):
+        """
+        Return the wavelength calibration
+        """
+        try:
+            self.wfc3_cal
+        except AttributeError:
+            raise AttributeError("Necessary calibration data not yet defined. \
+                                 Aborting wavelength to pixel assignment")
+
+        xc, yc = self.wfc3_cal.calibration_source_position[0]
+        DYDX = self.wfc3_cal.DYDX
+        DLDP = self.wfc3_cal.DLDP
+        reference_pixels = self.wfc3_cal.reference_pixels
+        subarray_sizes = self.wfc3_cal.subarray_sizes
+
+        wave_cal = \
+            self._WFC3Dispersion(xc, yc, DYDX, DLDP,
+                                 xref=reference_pixels["XREF_IMAGE"][0],
+                                 yref=reference_pixels["YREF_IMAGE"][0],
+                                 xref_grism=reference_pixels["XREF_GRISM"][0],
+                                 yref_grism=reference_pixels["YREF_GRISM"][0],
+                                 subarray=subarray_sizes['cal_image_size'],
+                                 subarray_grism=subarray_sizes['science_image_size'])
+        return wave_cal
+
+    def get_spectral_trace(self):
+        """
+        Get spectral trace
+        """
+        dim = self.data.data.shape
+#        wavelength_unit = self.data.wavelength_unit
+
+        wave_pixel_grid = np.arange(dim[0]) * u.pix
+
+        if self.par["obs_data"] == 'SPECTRUM':
+            position_pixel_grid = np.zeros_like(wave_pixel_grid)
+            spectral_trace = \
+                collections.OrderedDict(wavelength_pixel=wave_pixel_grid,
+                                        positional_pixel=position_pixel_grid,
+                                        wavelength=self.data.wavelength.
+                                        data[:, 0])
+            return spectral_trace
+
+        try:
+            self.wfc3_cal
+        except AttributeError:
+            raise AttributeError("Necessary calibration data not yet defined. \
+                                 Aborting trace determination")
+
+        xc, yc = self.wfc3_cal.calibration_source_position[0]
+        DYDX = self.wfc3_cal.DYDX
+        DLDP = self.wfc3_cal.DLDP
+        reference_pixels = self.wfc3_cal.reference_pixels
+        subarray_sizes = self.wfc3_cal.subarray_sizes
+
+        trace = self._WFC3Trace(xc, yc, DYDX,
+                                xref=reference_pixels["XREF_IMAGE"],
+                                yref=reference_pixels["YREF_IMAGE"],
+                                xref_grism=reference_pixels["XREF_GRISM"],
+                                yref_grism=reference_pixels["YREF_GRISM"],
+                                subarray=subarray_sizes['cal_image_size'],
+                                subarray_grism=subarray_sizes['science_image_size'])
+        trace = trace * u.pix
+
+        wavelength = \
+            self._WFC3Dispersion(xc, yc, DYDX, DLDP,
+                                 xref=reference_pixels["XREF_IMAGE"],
+                                 yref=reference_pixels["YREF_IMAGE"],
+                                 xref_grism=reference_pixels["XREF_GRISM"],
+                                 yref_grism=reference_pixels["YREF_GRISM"],
+                                 subarray=subarray_sizes['cal_image_size'],
+                                 subarray_grism=subarray_sizes['science_image_size'])
+
+        spectral_trace = \
+            collections.OrderedDict(wavelength_pixel=wave_pixel_grid,
+                                    positional_pixel=trace,
+                                    wavelength=wavelength)
+
+        return spectral_trace
+
+    @staticmethod
+    def _WFC3Trace(xc, yc, DYDX, xref=522, yref=522, xref_grism=522,
+                   yref_grism=522, subarray=256, subarray_grism=256):
+        """
+        This function defines the spectral trace for the wfc3 grism modes.
+        Details can be found in:
+           http://www.stsci.edu/hst/wfc3/documents/ISRs/WFC3-2016-15.pdf
+        and
+           http://www.stsci.edu/hst/observatory/apertures/wfc3.html
+        """
+        # adjust position in case different subarrays are used.
+        xc = xc - (xref - xref_grism)
+        yc = yc - (yref - yref_grism)
+
+        coord0 = (1014 - subarray) // 2
+        xc = xc + coord0
+        yc = yc + coord0
+
+        dx = np.arange(1014) - xc
+        M = np.sqrt(1.0 + (DYDX[1][0] + DYDX[1][1] * xc + DYDX[1][2] * yc +
+                           DYDX[1][3] * xc**2 + DYDX[1][4] * xc * yc +
+                           DYDX[1][5] * yc**2)**2
+                    )
+        dp = dx * M
+
+        trace = (DYDX[0][0] + DYDX[0][1]*xc + DYDX[0][2]*yc +
+                 DYDX[0][3]*xc**2 + DYDX[0][4]*xc*yc + DYDX[0][5]*yc**2) + \
+            dp * (DYDX[1][0] + DYDX[1][1]*xc + DYDX[1][2]*yc +
+                  DYDX[1][3]*xc**2 + DYDX[1][4]*xc*yc + DYDX[1][5]*yc**2) / M
+        if subarray < 1014:
+            i0 = (1014 - subarray) // 2
+            trace = trace[i0: i0 + subarray]
+
+        idx_min = (subarray-subarray_grism)//2
+        idx_max = (subarray-subarray_grism)//2 + subarray_grism
+        trace = trace[idx_min:idx_max]
+        return trace + yc - (1014 - subarray_grism) // 2
+
+    @staticmethod
+    def _WFC3Dispersion(xc, yc, DYDX, DLDP, xref=522, yref=522,
+                        xref_grism=522, yref_grism=522, subarray=256,
+                        subarray_grism=256):
+        """
+        Convert pixel coordinate to wavelength. Method and coefficient
+        adopted from Kuntschner et al. (2009), Wilkins et al. (2014). See also
+        http://www.stsci.edu/hst/wfc3/documents/ISRs/WFC3-2016-15.pdf
+
+        In case the direct image and spectral image are not taken with the
+        same aperture, the centroid measurement is adjusted according to the
+        table in: http://www.stsci.edu/hst/observatory/apertures/wfc3.html
+
+        Input:
+        ------
+            xc:
+                X coordinate of direct image centroid
+            yc:
+                Y coordinate of direct image centroid
+        xref
+        yref
+        xref_grism
+        yref_grism
+        subarray
+        subarray_grism
+
+        Output:
+        -------
+            wavelength:
+                return wavelength mapping of x coordinate in micron
+        """
+
+        # adjust position in case different subarrays are used.
+        xc = xc - (xref - xref_grism)
+        yc = yc - (yref - yref_grism)
+
+        coord0 = (1014 - subarray) // 2
+        xc = xc + coord0
+        yc = yc + coord0
+
+        # calculate field dependent dispersion coefficient
+        p0 = (DLDP[0][0] + DLDP[0][1]*xc + DLDP[0][2]*yc +
+              DLDP[0][3]*xc**2 + DLDP[0][4]*xc*yc + DLDP[0][5]*yc**2)
+        p1 = (DLDP[1][0] + DLDP[1][1]*xc + DLDP[1][2]*yc +
+              DLDP[1][3]*xc**2 + DLDP[1][4]*xc*yc + DLDP[1][5]*yc**2)
+        dx = np.arange(1014) - xc
+        M = np.sqrt(1.0 + (DYDX[1][0] + DYDX[1][1]*xc + DYDX[1][2]*yc +
+                           DYDX[1][3]*xc**2 + DYDX[1][4]*xc*yc +
+                           DYDX[1][5]*yc**2)**2
+                    )
+        dp = dx * M
+
+        wavelength = (p0 + dp * p1)
+        if subarray < 1014:
+            i0 = (1014 - subarray) // 2
+            wavelength = wavelength[i0: i0 + subarray]
+
+        idx_min = (subarray-subarray_grism)//2
+        idx_max = (subarray-subarray_grism)//2 + subarray_grism
+        wavelength = wavelength[idx_min:idx_max] * u.Angstrom
+        return wavelength.to(u.micron)
 
 
 class Spitzer(ObservatoryBase):
@@ -416,13 +1062,13 @@ class SpitzerIRS(InstrumentBase):
         read uncalibrated spectral timeseries, phase and wavelength
         """
         # make list of all spectral images
-        def find(pattern, path):
-            result = []
-            for root, dirs, files in os.walk(path):
-                for name in files:
-                    if fnmatch.fnmatch(name, pattern):
-                        result.append(os.path.join(root, name))
-            return sorted(result)
+#        def find(pattern, path):
+#            result = []
+#            for root, dirs, files in os.walk(path):
+#                for name in files:
+#                    if fnmatch.fnmatch(name, pattern):
+#                        result.append(os.path.join(root, name))
+#            return sorted(result)
 
         # get data files
         if is_background:
@@ -552,13 +1198,13 @@ class SpitzerIRS(InstrumentBase):
         wave_cal = self._get_wavelength_calibration()
 
         # make list of all spectral images
-        def find(pattern, path):
-            result = []
-            for root, dirs, files in os.walk(path):
-                for name in files:
-                    if fnmatch.fnmatch(name, pattern):
-                        result.append(os.path.join(root, name))
-            return sorted(result)
+#        def find(pattern, path):
+#            result = []
+#            for root, dirs, files in os.walk(path):
+#                for name in files:
+#                    if fnmatch.fnmatch(name, pattern):
+#                        result.append(os.path.join(root, name))
+#            return sorted(result)
 
         # get data files
         if is_background:
@@ -752,14 +1398,14 @@ class SpitzerIRS(InstrumentBase):
         # wavelength calibration
         wave_cal = self._get_wavelength_calibration()
 
-        # make list of all spectral images
-        def find(pattern, path):
-            result = []
-            for root, dirs, files in os.walk(path):
-                for name in files:
-                    if fnmatch.fnmatch(name, pattern):
-                        result.append(os.path.join(root, name))
-            return sorted(result)
+#        # make list of all spectral images
+#        def find(pattern, path):
+#            result = []
+#            for root, dirs, files in os.walk(path):
+#                for name in files:
+#                    if fnmatch.fnmatch(name, pattern):
+#                        result.append(os.path.join(root, name))
+#            return sorted(result)
 
         # get data files
         if is_background:
@@ -839,14 +1485,9 @@ class SpitzerIRS(InstrumentBase):
             image_cube[:, :, :, im] = spectral_image
             time[im] = fits.getval(image_file, "BMJD_OBS", ext=0)
 
-############
-# Bug fix
-############
         image_cube = np.diff(image_cube, axis=2)
         mask = mask[:, :, :-1, :]
         flux_unit = flux_unit/(2.0*samptime*u.s)
-##########
-
         data = image_cube * flux_unit
         npix, mpix, nframes, nintegrations = data.shape
 

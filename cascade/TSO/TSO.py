@@ -398,19 +398,6 @@ class TSOSuite:
             # determine ramp slope from 2 point difference and collapse image
             # in detector cubes, last index is time,
             # and the prelast index samples up the ramp
-# ################
-# Bug fix
-# ################
-#            selection1 = \
-#                [slice(None)]*(ndim-2) + \
-#                [slice(1, dim[-2]-1, None)] + \
-#                [slice(None)]
-#            selection0 = \
-#                [slice(None)]*(ndim-2) + \
-#                [slice(0, dim[-2]-2, None)] + \
-#                [slice(None)]
-#            data_use = np.ma.median(data_in.data[selection1] -
-#                                    data_in.data[selection0], axis=ndim-2)
             data_use = np.ma.median(data_in.data, axis=ndim-2)
             time_in = self.observation.dataset.time.data.value
             time_use = np.ma.median(time_in, axis=ndim-2)
@@ -1395,10 +1382,6 @@ class TSOSuite:
         except AttributeError:
             raise AttributeError("Type of observaton unknown. \
                                  Aborting plotting results")
-
-        # results.spectrum.data_unit = u.percent
-        # if add_calibration_signal:
-        #     results.calibration_correction.data_unit = u.percent
 
         fig, ax = plt.subplots(figsize=(6, 6))
         for item in ([ax.title, ax.xaxis.label, ax.yaxis.label] +
