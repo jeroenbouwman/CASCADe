@@ -144,7 +144,7 @@ class SpectralData(InstanceDescriptorMixin):
     data
         spectral data
     data_unit
-        he physical unit of the data (uses astropy.units)
+        the physical unit of the data (uses astropy.units)
     uncertainty
         uncertainty on spectral data
     mask

@@ -47,6 +47,14 @@ with quantity_support():
              tso.observation.dataset.data[80, 85, :])
     plt.show()
 
+background_model_parameters = \
+    tso.observation.instrument_calibration.background_model_parameters
+plt.plot(background_model_parameters['parameter'])
+plt.errorbar(range(background_model_parameters['parameter'].size),
+             background_model_parameters['parameter'],
+             yerr=background_model_parameters['error'])
+plt.show()
+
 # sigma clip data
 tso.execute("sigma_clip_data")
 plt.imshow(np.ma.median(tso.observation.dataset.data[:, :, :], axis=2))
@@ -87,6 +95,49 @@ plt.show()
 
 plt.plot(tso.observation.dataset.time.data.value[80, 85, :],
          tso.cpm.position[80, 85, :])
+plt.show()
+
+from astropy.convolution import Gaussian2DKernel, interpolate_replace_nans
+from skimage.feature import register_translation
+image0 = np.ma.array(tso.observation.dataset.data.data.value[:, :, 0],
+                     mask = tso.observation.dataset.mask[:, :, 0])
+np.ma.set_fill_value(image0, float("NaN"))
+kernel = Gaussian2DKernel(x_stddev=1.5)
+cleaned_image0 = interpolate_replace_nans(image0.filled(),
+                                         kernel)
+plt.imshow(image0)
+plt.show()
+plt.imshow(cleaned_image0)
+plt.show()
+
+_,_,nintegrations = tso.observation.dataset.data.data.value.shape
+shift_store = np.zeros((2, nintegrations))
+for it in range(nintegrations):
+    # subpixel precision
+    image = np.ma.array(tso.observation.dataset.data.data.value[:, :, it],
+                     mask = tso.observation.dataset.mask[:, :, it])
+    np.ma.set_fill_value(image, float("NaN"))
+    cleaned_image = interpolate_replace_nans(image.filled(),
+                                         kernel)
+    shift, error, diffphase = register_translation(cleaned_image0, cleaned_image, 150)
+    shift_store[:,it] = shift
+
+fig = plt.figure(figsize=(8, 3))
+ax1 = plt.subplot(1, 2, 1, adjustable='box-forced')
+ax2 = plt.subplot(1, 2, 2, sharex=ax1, sharey=ax1, adjustable='box-forced')
+ax1.plot(tso.observation.dataset.time.data.value[80, 18, :], shift_store[0,:])
+ax1.set_title('Y offset')
+ax2.plot(tso.observation.dataset.time.data.value[80, 18, :], shift_store[1,:])
+ax2.set_title('X offset')
+plt.show()
+
+fig = plt.figure(figsize=(8, 3))
+ax1 = plt.subplot(1, 1, 1)
+ax1.plot(tso.observation.dataset.time.data.value[80, 18, :],
+         tso.cpm.position[80, 18, :])
+ax1.plot(tso.observation.dataset.time.data.value[80, 18, :],shift_store[0,:] - np.median(shift_store[0,:]))
+ax1.plot(tso.observation.dataset.time.data.value[80, 18, :],-shift_store[1,:]- np.median(-shift_store[1,:]))
+ax1.set_ylim([-0.1,0.1])
 plt.show()
 
 # set the extraction area
@@ -136,27 +187,28 @@ error_mandell = (spec_instr_model_mandell['col3'] * u.percent)
 
 tso.exoplanet_spectrum.spectrum.wavelength_unit = u.micrometer
 
-#from pysynphot import observation
-#from pysynphot import spectrum
-#
-#def rebin_spec(wave, specin, wavnew):
-#    spec = spectrum.ArraySourceSpectrum(wave=wave, flux=specin)
-#    f = np.ones(len(wave))
-#    filt = spectrum.ArraySpectralElement(wave, f, waveunits='micron')
-#    obs = observation.Observation(spec, filt, binset=wavnew, force='taper')
-#
-#    return obs.binflux
+from pysynphot import observation
+from pysynphot import spectrum
 
-#rebinned_spec = rebin_spec(tso.exoplanet_spectrum.spectrum.wavelength.data.value,
-#                           tso.exoplanet_spectrum.spectrum.data.data.value,
-#                           tso.exoplanet_spectrum.spectrum.wavelength.data.value[::6])
-#rebinned_wave = tso.exoplanet_spectrum.spectrum.wavelength.data.value[::6]
+def rebin_spec(wave, specin, wavnew):
+    spec = spectrum.ArraySourceSpectrum(wave=wave, flux=specin)
+    f = np.ones(len(wave))
+    filt = spectrum.ArraySpectralElement(wave, f, waveunits='micron')
+    obs = observation.Observation(spec, filt, binset=wavnew, force='taper')
+    print(obs)
+    return obs.binflux
+
+mask_use = tso.exoplanet_spectrum.spectrum.wavelength.mask
+rebinned_spec = rebin_spec(tso.exoplanet_spectrum.spectrum.wavelength.data.value[~mask_use],
+                           tso.exoplanet_spectrum.spectrum.data.data.value[~mask_use],
+                           tso.exoplanet_spectrum.spectrum.wavelength.data.value[~mask_use][::6])
+rebinned_wave = tso.exoplanet_spectrum.spectrum.wavelength.data.value[~mask_use][::6]
 fig, ax = plt.subplots(figsize=(7, 4))
 for item in ([ax.title, ax.xaxis.label, ax.yaxis.label] +
              ax.get_xticklabels() + ax.get_yticklabels()):
     item.set_fontsize(20)
-#ax.plot(rebinned_wave, rebinned_spec, color="g", lw=2, alpha=0.9)
-ax.plot(wave_mandell, flux_mandell, color="r", lw=2, alpha=0.9)
+ax.plot(rebinned_wave, rebinned_spec, color="g", lw=5, alpha=0.9)
+ax.plot(wave_mandell, flux_mandell, color="r", lw=3, alpha=0.9)
 ax.errorbar(wave_mandell.value, flux_mandell.value, yerr=error_mandell.value,
             fmt=".k", color="r", lw=2,
             alpha=0.9, ecolor="r",

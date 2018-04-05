@@ -126,6 +126,49 @@ axes = plt.gca()
 axes.set_ylim([-1, 1])
 plt.show()
 
+from astropy.convolution import Gaussian2DKernel, interpolate_replace_nans
+from skimage.feature import register_translation
+image0 = np.ma.array(tso.observation.dataset.data.data.value[:, 10:30, 0],
+                     mask = tso.observation.dataset.mask[:, 10:30, 0])
+np.ma.set_fill_value(image0, float("NaN"))
+kernel = Gaussian2DKernel(x_stddev=1.5)
+cleaned_image0 = interpolate_replace_nans(image0.filled(),
+                                         kernel)
+plt.imshow(image0)
+plt.show()
+plt.imshow(cleaned_image0)
+plt.show()
+
+_,_,nintegrations = tso.observation.dataset.data.data.value.shape
+shift_store = np.zeros((2, nintegrations))
+for it in range(nintegrations):
+    # subpixel precision
+    image = np.ma.array(tso.observation.dataset.data.data.value[:, 10:30, it],
+                     mask = tso.observation.dataset.mask[:, 10:30, it])
+    np.ma.set_fill_value(image, float("NaN"))
+    cleaned_image = interpolate_replace_nans(image.filled(),
+                                         kernel)
+    shift, error, diffphase = register_translation(cleaned_image0, cleaned_image, 200)
+    shift_store[:,it] = shift
+
+fig = plt.figure(figsize=(8, 3))
+ax1 = plt.subplot(1, 2, 1, adjustable='box-forced')
+ax2 = plt.subplot(1, 2, 2, sharex=ax1, sharey=ax1, adjustable='box-forced')
+ax1.plot(tso.observation.dataset.time.data.value[80, 18, :], shift_store[0,:])
+ax1.set_title('Y offset')
+ax2.plot(tso.observation.dataset.time.data.value[80, 18, :], shift_store[1,:])
+ax2.set_title('X offset')
+plt.show()
+
+fig = plt.figure(figsize=(8, 3))
+ax1 = plt.subplot(1, 1, 1)
+ax1.plot(tso.observation.dataset.time.data.value[80, 18, :],
+         tso.cpm.position[80, 18, :])
+ax1.plot(tso.observation.dataset.time.data.value[80, 18, :],shift_store[0,:] - np.median(shift_store[0,:]))
+ax1.plot(tso.observation.dataset.time.data.value[80, 18, :],-shift_store[1,:]- np.median(-shift_store[1,:]))
+ax1.set_ylim([-0.1,0.1])
+plt.show()
+
 # set the extraction area
 tso.execute("set_extraction_mask")
 

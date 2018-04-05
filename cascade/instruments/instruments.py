@@ -7,8 +7,8 @@ Observatory and Instruments specific Module
 @author: bouwman
 """
 import os
-# import fnmatch
 import collections
+# import itertools
 import ast
 from abc import ABCMeta, abstractmethod, abstractproperty
 from types import SimpleNamespace
@@ -17,14 +17,16 @@ import numpy as np
 from astropy.io import fits
 import astropy.units as u
 from astropy.io import ascii
-from scipy import interpolate
 from astropy.time import Time
 from astropy import coordinates as coord
 from astropy.wcs import WCS
 from astropy.stats import sigma_clipped_stats
 from photutils import IRAFStarFinder
 import pandas as pd
+from scipy import interpolate
+from scipy.optimize import nnls
 from skimage.feature import register_translation
+from tqdm import tqdm
 
 from ..initialize import cascade_configuration
 from ..data_model import SpectralDataTimeSeries
@@ -50,6 +52,7 @@ class Observation(object):
         self.observatory = observations.name
         self.instrument = observations.instrument
         self.spectral_trace = observations.spectral_trace
+        self.instrument_calibration = observations.instrument_calibration
 
     @property
     def __valid_observatories(self):
@@ -141,6 +144,7 @@ class HST(ObservatoryBase):
                     if self.par['obs_has_backgr']:
                         self.data_background = factory.data_background
                     self.instrument = factory.name
+                    self.instrument_calibration = factory.instrument_calibration
             else:
                 raise ValueError("HST instrument not recognized, \
                                  check your init file for the following \
@@ -188,6 +192,10 @@ class HSTWFC3(InstrumentBase):
         else:
             self.data = self.load_data()
         self.spectral_trace = self.get_spectral_trace()
+        try:
+            self.instrument_calibration = self.wfc3_cal
+        except AttributeError:
+            self.instrument_calibration = None
 
     @property
     def name(self):
@@ -201,7 +209,11 @@ class HSTWFC3(InstrumentBase):
         elif self.par["obs_data"] == 'SPECTRAL_IMAGE':
             data = self.get_spectral_images()
             if self.par['obs_has_backgr']:
-                data_back = self.get_spectral_images(is_background=True)
+                if not self.par['obs_uses_backgr_model']:
+                    data_back = self.get_spectral_images(is_background=True)
+                else:
+                    self._get_background_cal_data()
+                    data_back = self._fit_background(data)
         if self.par['obs_has_backgr']:
             return data, data_back
         else:
@@ -235,7 +247,13 @@ class HSTWFC3(InstrumentBase):
         obs_target_name = cascade_configuration.observations_target_name
         obs_has_backgr = ast.literal_eval(cascade_configuration.
                                           observations_has_background)
-        if obs_has_backgr:
+        try:
+            obs_uses_backgr_model = \
+                ast.literal_eval(cascade_configuration.
+                                 observations_uses_background_model)
+        except AttributeError:
+            obs_uses_backgr_model = False
+        if obs_has_backgr and not obs_uses_backgr_model:
             obs_backgr_id = cascade_configuration.observations_background_id
             obs_backgr_target_name = \
                 cascade_configuration.observations_background_name
@@ -290,8 +308,9 @@ class HSTWFC3(InstrumentBase):
                                       obs_id=obs_id,
                                       obs_cal_version=obs_cal_version,
                                       obs_target_name=obs_target_name,
-                                      obs_has_backgr=obs_has_backgr)
-        if obs_has_backgr:
+                                      obs_has_backgr=obs_has_backgr,
+                                      obs_uses_backgr_model=obs_uses_backgr_model)
+        if obs_has_backgr and not obs_uses_backgr_model:
             par.update({'obs_backgr_id': obs_backgr_id})
             par.update({'obs_backgr_target_name': obs_backgr_target_name})
         return par
@@ -330,7 +349,8 @@ class HSTWFC3(InstrumentBase):
         uncertainty_spectral_data = np.zeros((nwavelength, nintegrations))
         wavelength_data = np.zeros((nwavelength, nintegrations))
         time = np.zeros((nintegrations))
-        for im, spectral_data_file in enumerate(data_files):
+        for im, spectral_data_file in enumerate(tqdm(data_files,
+                                                     dynamic_ncols=True)):
             # WARNING fits data is single precision!!
             spectrum = fits.getdata(spectral_data_file, ext=1)
             spectral_data[:, im] = spectrum['FLUX']
@@ -391,9 +411,9 @@ class HSTWFC3(InstrumentBase):
         read uncalibrated spectral images (flt data product)
         """
         # get data files
-        if is_background:
-            # obsid = self.par['obs_backgr_id']
+        if is_background and not self.par['obs_uses_backgr_model']:
             target_name = self.par['obs_backgr_target_name']
+            # obsid = self.par['obs_backgr_id']
         else:
             # obsid = self.par['obs_id']
             target_name = self.par['obs_target_name']
@@ -412,11 +432,13 @@ class HSTWFC3(InstrumentBase):
         # get the data
         calibration_image_cube = []
         spectral_image_cube = []
+        spectral_image_unc_cube = []
+        spectral_image_dq_cube = []
         time = []
         cal_time = []
         spectral_data_files = []
         calibration_data_files = []
-        for im, image_file in enumerate(data_files):
+        for im, image_file in enumerate(tqdm(data_files, dynamic_ncols=True)):
             instrument_fiter = fits.getval(image_file, "FILTER", ext=0)
             if instrument_fiter != self.par["inst_filter"]:
                 if instrument_fiter == self.par["inst_cal_filter"]:
@@ -430,6 +452,10 @@ class HSTWFC3(InstrumentBase):
             # WARNING fits data is single precision!!
             spectral_image = fits.getdata(image_file, ext=1)
             spectral_image_cube.append(spectral_image)
+            spectral_image_unc = fits.getdata(image_file, ext=2)
+            spectral_image_unc_cube.append(spectral_image_unc)
+            spectral_image_dq = fits.getdata(image_file, ext=3)
+            spectral_image_dq_cube.append(spectral_image_dq)
             spectral_data_files.append(image_file)
             exptime = fits.getval(image_file, "EXPTIME", ext=0)
             expstart = fits.getval(image_file, "EXPSTART", ext=0)
@@ -443,14 +469,20 @@ class HSTWFC3(InstrumentBase):
                              filter: {}".format(self.par["inst_cal_filter"]))
 
         spectral_image_cube = np.array(spectral_image_cube, dtype='float64')
-        calibration_image_cube = np.array(calibration_image_cube,
-                                          dtype='float64')
+        spectral_image_unc_cube = \
+            np.array(spectral_image_unc_cube, dtype='float64')
+        spectral_image_dq_cube = \
+            np.array(spectral_image_dq_cube, dtype='float64')
+        calibration_image_cube = \
+            np.array(calibration_image_cube, dtype='float64')
         time = np.array(time, dtype='float64')
         cal_time = np.array(cal_time, dtype='float64')
 
         idx_time_sort = np.argsort(time)
         time = time[idx_time_sort]
         spectral_image_cube = spectral_image_cube[idx_time_sort, :, :]
+        spectral_image_unc_cube = spectral_image_unc_cube[idx_time_sort, :, :]
+        spectral_image_dq_cube = spectral_image_dq_cube[idx_time_sort, :, :]
 
         nintegrations, mpix, npix = spectral_image_cube.shape
         nintegrations_cal, ypix_cal, xpix_cal = calibration_image_cube.shape
@@ -495,24 +527,209 @@ class HSTWFC3(InstrumentBase):
 
         flux_unit = u.electron/u.second
         spectral_image_cube = spectral_image_cube.T * flux_unit
+        spectral_image_unc_cube = spectral_image_unc_cube.T * flux_unit
 
-        mask = np.ma.make_mask_none(spectral_image_cube.shape)
-        mask[:2,:,:] = True
-        mask[-2:,:,:] = True
+        spectral_image_dq_cube = spectral_image_dq_cube.T
+#        mask = np.ma.make_mask_none(spectral_image_cube.shape)
+        mask = (spectral_image_dq_cube != 0)
+        mask[:2, :, :] = True
+        mask[-2:, :, :] = True
 
-        if (is_background):
-            for i in range(nintegrations):
-                spectral_image_cube[:, :, i] = \
-                    np.roll(spectral_image_cube[:, :, i], -18, axis=1)
-                mask[:, 0:70, :] = True
-                mask[:, 96:, :] = True
+        SpectralTimeSeries = \
+            SpectralDataTimeSeries(wavelength=wave_cal,
+                                   data=spectral_image_cube,
+                                   uncertainty=spectral_image_unc_cube,
+                                   time=phase,
+                                   mask=mask,
+                                   isRampFitted=True,
+                                   isNodded=False)
+        if is_background and self.par['obs_uses_backgr_model']:
+            self._get_background_cal_data()
+            SpectralTimeSeries = self._fit_background(SpectralTimeSeries)
+        return SpectralTimeSeries
 
-        SpectralTimeSeries = SpectralDataTimeSeries(wavelength=wave_cal,
-                                                    data=spectral_image_cube,
-                                                    time=phase,
-                                                    mask=mask,
-                                                    isRampFitted=True,
-                                                    isNodded=False)
+    def _get_background_cal_data(self):
+        """
+        Get the calibration data from which the background in the science
+        images can be determined.  For further details see:
+        http://www.stsci.edu/hst/wfc3/documents/ISRs/WFC3-2015-17.pdf
+        """
+        _applied_flatfields = {"G141": "uc72113oi_pfl.fits",
+                               "G102": "uc721143i_pfl.fits"}
+        _zodi_cal_files = {"G141": "zodi_G141_clean.fits",
+                           "G102": "zodi_G102_clean.fits"}
+        _helium_cal_files = {"G141": "excess_lo_G141_clean.fits",
+                            "G102": "excess_G102_clean.fits"}
+        _scattered_cal_files = {"G141": "G141_scattered_light.fits"}
+
+        calibration_file_name_flatfield = \
+            os.path.join(self.par['obs_cal_path'],
+                         self.par['inst_inst_name'],
+                         _applied_flatfields[self.par['inst_filter']])
+        calibration_file_name_zodi = \
+            os.path.join(self.par['obs_cal_path'],
+                         self.par['inst_inst_name'],
+                         _zodi_cal_files[self.par['inst_filter']])
+        calibration_file_name_helium = \
+            os.path.join(self.par['obs_cal_path'],
+                         self.par['inst_inst_name'],
+                         _helium_cal_files[self.par['inst_filter']])
+        try:
+            zodi = fits.getdata(calibration_file_name_zodi, ext=0)
+        except FileNotFoundError:
+            raise FileNotFoundError("Calibration file {} for the \
+                                contribution of the zodi to the \
+                                background not found. \
+                                Aborting".format(calibration_file_name_zodi))
+        try:
+            helium = fits.getdata(calibration_file_name_helium, ext=0)
+        except FileNotFoundError:
+            raise FileNotFoundError("Calibration file {} for the \
+                                contribution of the helium excess to the \
+                                background not found. \
+                                Aborting".format(calibration_file_name_helium))
+        if self.par['inst_filter'] == 'G141':
+            calibration_file_name_scattered = \
+                os.path.join(self.par['obs_cal_path'],
+                             self.par['inst_inst_name'],
+                             _scattered_cal_files[self.par['inst_filter']])
+            try:
+                scattered = fits.getdata(calibration_file_name_scattered,
+                                         ext=0)
+            except FileNotFoundError:
+                raise FileNotFoundError("Calibration file {} for the \
+                                        contribution of the excess excess \
+                                        scattered light to the \
+                                        background not found. \
+                                        Aborting".
+                                        format(calibration_file_name_helium))
+        else:
+            scattered = None
+        try:
+            flatfield = fits.getdata(calibration_file_name_flatfield,
+                                     ext=0)[:-10, :-10]
+        except FileNotFoundError:
+            raise FileNotFoundError("Flatfield calibration file {} not \
+                            found. \
+                            Aborting".format(calibration_file_name_flatfield))
+        zodi = zodi*flatfield
+        helium = helium*flatfield
+        scattered = scattered*flatfield
+
+        try:
+            self.wfc3_cal.subarray_sizes
+        except AttributeError:
+            raise AttributeError("Necessary calibration data not yet defined. \
+                                 Aborting loading background calibration file")
+        subarray = self.wfc3_cal.subarray_sizes['science_image_size']
+        if subarray < 1014:
+            i0 = (1014 - subarray) // 2
+            zodi = zodi[i0: i0 + subarray, i0: i0 + subarray]
+            helium = helium[i0: i0 + subarray, i0: i0 + subarray]
+            scattered = scattered[i0: i0 + subarray, i0: i0 + subarray]
+
+        self.wfc3_cal.background_cal_data = {"zodi": zodi.T,
+                                             "helium": helium.T,
+                                             "scattered": scattered.T}
+        return
+
+    def _fit_background(self, science_data_in):
+        """
+        Fits the background in the HST Grism data using the method described
+        in: http://www.stsci.edu/hst/wfc3/documents/ISRs/WFC3-2015-17.pdf
+        """
+        try:
+            background_cal_data = self.wfc3_cal.background_cal_data
+            zodi = background_cal_data['zodi']
+            helium = background_cal_data['helium']
+        except AttributeError:
+            raise AttributeError("Necessary calibration data not yet defined. \
+                                 Aborting fitting background level")
+
+        mask_science_data_in = science_data_in.mask
+        data_science_data_in = science_data_in.data.data.value
+        uncertainty_science_data_in = science_data_in.uncertainty.data.value
+        time_science_data_in = science_data_in.time
+        wavelength_science_data_in = science_data_in.wavelength
+
+        # step 1
+        mask = mask_science_data_in
+        weights = np.zeros_like(uncertainty_science_data_in)
+        weights[~mask] = uncertainty_science_data_in[~mask]**-2
+
+        # step 2a
+        fited_background = np.median(data_science_data_in, axis=[0, 1],
+                                     keepdims=True)
+        nflagged = np.count_nonzero(mask)
+        iter_count = 0
+
+        while(iter_count < 10):
+            print('iteration background fit: {}'.format(iter_count))
+            # step 2b
+            residual = np.abs(np.sqrt(weights) *
+                              (data_science_data_in-fited_background))
+            mask_source = residual > 3.0
+
+            # step 3
+            mask = np.logical_or(mask_source, mask)
+            nflagged_new = np.count_nonzero(mask)
+            if nflagged_new != nflagged:
+                nflagged = nflagged_new
+            else:
+                print("no additional sources found, stopping iteration")
+                break
+
+            # step 4
+            weights[mask] = 0.0
+
+            # step 5
+            _, _, nint = data_science_data_in.shape
+            design_matrix = \
+                np.diag(np.hstack([np.sum(np.sum(weights[:, :, :].T *
+                                                 helium.T*helium.T, axis=1),
+                                          axis=1),
+                                   np.sum(weights[:, :, :].T*zodi.T*zodi.T)]))
+            design_matrix[:-1, -1] = np.sum(np.sum(weights[:, :, :].T *
+                                            helium.T*zodi.T, axis=1), axis=1)
+            design_matrix[-1, :-1] = design_matrix[:-1, -1]
+            vector = np.hstack([np.sum(np.sum(weights[:, :, :].T *
+                                              helium.T*data_science_data_in.T,
+                                              axis=1), axis=1),
+                                np.sum(weights[:, :, :].T*zodi.T *
+                                       data_science_data_in.T)])
+
+            fit_parameters, chi = nnls(design_matrix, vector)
+
+            fitted_backgroud = np.tile(helium.T, (nint, 1, 1)).T * \
+                fit_parameters[:-1] + (zodi*fit_parameters[-1])[:, :, None]
+
+            # update iter count and break if to many iterations
+            iter_count += 1
+
+        sigma_hat_sqr = chi / (fit_parameters.size - 1)
+        err_fit_parameters = \
+            np.sqrt(sigma_hat_sqr *
+                    np.diag(np.linalg.inv(np.dot(design_matrix.T,
+                                                 design_matrix))))
+
+        background = {'parameter': fit_parameters, 'error': err_fit_parameters}
+        self.wfc3_cal.background_model_parameters = background
+
+        uncertainty_background_model = np.tile(helium.T, (nint, 1, 1)).T * \
+            err_fit_parameters[:-1] + (zodi*err_fit_parameters[-1])[:, :, None]
+
+        data_init = science_data_in.data_unit
+        uncertainty_background_model = uncertainty_background_model*data_init
+        fitted_backgroud = fitted_backgroud*data_init
+
+        SpectralTimeSeries = \
+            SpectralDataTimeSeries(wavelength=wavelength_science_data_in,
+                                   data=fitted_backgroud,
+                                   uncertainty=uncertainty_background_model,
+                                   time=time_science_data_in,
+                                   mask=mask_science_data_in,
+                                   isRampFitted=True,
+                                   isNodded=False)
         return SpectralTimeSeries
 
     def _determine_relative_source_position(self, spectral_image_cube):
@@ -927,6 +1144,7 @@ class Spitzer(ObservatoryBase):
                     if self.par['obs_has_backgr']:
                         self.data_background = factory.data_background
                     self.instrument = factory.name
+                    self.instrument_calibration = factory.instrument_calibration
             else:
                 raise ValueError("Spitzer instrument not recognized, \
                                  check your init file for the following \
@@ -971,6 +1189,7 @@ class SpitzerIRS(InstrumentBase):
         else:
             self.data = self.load_data()
         self.spectral_trace = self.get_spectral_trace()
+        self.instrument_calibration = None
 
     @property
     def name(self):
@@ -1115,7 +1334,8 @@ class SpitzerIRS(InstrumentBase):
         # get the unit of the spectral images
         try:
             flux_unit_string = fits.getval(image_file, "BUNIT", ext=0)
-            flux_unit_string = flux_unit_string.replace("-", "")  # fix unit
+            flux_unit_string = flux_unit_string.replace("e-", "electron")
+            flux_unit_string = flux_unit_string.replace("sec", "s")
             flux_unit = u.Unit(flux_unit_string)
         except:
             print("No flux unit set in fits files")
@@ -1257,7 +1477,8 @@ class SpitzerIRS(InstrumentBase):
         # get the unit of the spectral images
         try:
             flux_unit_string = fits.getval(image_file, "BUNIT", ext=0)
-            flux_unit_string = flux_unit_string.replace("-", "")  # fix unit
+            flux_unit_string = flux_unit_string.replace("e-", "electron")
+            flux_unit_string = flux_unit_string.replace("sec", "s")
             flux_unit = u.Unit(flux_unit_string)
         except:
             print("No flux unit set in fits files")
@@ -1268,15 +1489,27 @@ class SpitzerIRS(InstrumentBase):
 
         # get the data
         image_cube = np.zeros((npix, mpix, nintegrations))
+        image_unc_cube = np.zeros((npix, mpix, nintegrations))
+        image_dq_cube = np.zeros((npix, mpix, nintegrations))
         time = np.zeros((nintegrations))
-        for im, image_file in enumerate(data_files):
+        for im, image_file in enumerate(tqdm(data_files, dynamic_ncols=True)):
             # WARNING fits data is single precision!!
             spectral_image = fits.getdata(image_file, ext=0)
             image_cube[:, :, im] = spectral_image
             time[im] = fits.getval(image_file, "BMJD_OBS", ext=0)
+            unc_image = fits.getdata(image_file.replace("droop.fits",
+                                                        "drunc.fits"), ext=0)
+            image_unc_cube[:, :, im] = unc_image
+            dq_image = fits.getdata(image_file.replace("droop.fits",
+                                                        "bmask.fits"), ext=0)
+            image_dq_cube[:, :, im] = dq_image
 
         data = image_cube * flux_unit
+        uncertainty = image_unc_cube * flux_unit
         npix, mpix, nintegrations = data.shape
+
+        mask_dq = image_dq_cube > int('10000000', 2)
+        mask = np.logical_or(mask, mask_dq)
 
         # The time in the spitzer fits header is -2400000.5 and
         # it is the time at the start of the ramp
@@ -1291,6 +1524,7 @@ class SpitzerIRS(InstrumentBase):
 
         SpectralTimeSeries = SpectralDataTimeSeries(wavelength=wave_cal,
                                                     data=data, time=phase,
+                                                    uncertainty=uncertainty,
                                                     mask=mask,
                                                     isRampFitted=True,
                                                     isNodded=isNodded)
@@ -1465,7 +1699,8 @@ class SpitzerIRS(InstrumentBase):
         # get the unit of the spectral images
         try:
             flux_unit_string = fits.getval(image_file, "BUNIT", ext=0)
-            flux_unit_string = flux_unit_string.replace("-", "")  # fix unit
+            flux_unit_string = flux_unit_string.replace("e-", "electron")
+            flux_unit_string = flux_unit_string.replace("sec", "s")
             flux_unit = u.Unit(flux_unit_string)
         except:
             print("No flux unit set in fits files")
@@ -1478,7 +1713,7 @@ class SpitzerIRS(InstrumentBase):
         # make sure time is last axis
         image_cube = np.zeros((npix, mpix, nframes, nintegrations))
         time = np.zeros((nintegrations))
-        for im, image_file in enumerate(data_files):
+        for im, image_file in enumerate(tqdm(data_files, dynamic_ncols=True)):
             # WARNING fits data is single precision!!
             spectral_image = \
                 np.moveaxis(fits.getdata(image_file, ext=0), 0, -1)

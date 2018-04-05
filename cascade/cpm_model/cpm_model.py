@@ -130,7 +130,7 @@ def solve_linear_equation(design_matrix, data, weights=None, cv_method='gcv',
                                  U[:, :dim_dm[1]].T, data_weighted])
 
         # calculate the sum of squared errors
-        # (squared norm of the residual vactor)
+        # (squared norm of the residual vector)
         sigma_hat_sqr = np.dot(residual_reg.T, residual_reg) / \
             (dim_dm[0] - dim_dm[1])
 

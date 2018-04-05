@@ -14,7 +14,7 @@ import urllib
 import collections
 # from astropy.coordinates import SkyCoord
 import astropy.units as u
-from astropy.units import cds
+# from astropy.units import cds
 from astropy import constants as const
 # import uncertainties
 # from astropy.analytic_functions import blackbody_nu
@@ -41,7 +41,7 @@ __all__ = ['Vmag', 'Kmag', 'Rho_jup', 'Rho_jup', 'KmagToJy', 'JytoKmag',
 
 
 # enable cds to be able to use certain quantities defined in this system
-cds_enable = cds.enable()
+#cds_enable = cds.enable()
 
 ###########################################################################
 # astropy does not have V and K band magnitudes, we define it here ourself
@@ -68,6 +68,8 @@ Vwav_vega = const.Constant('Vwav_vega', 'Vmag_central_wave_Vega', 0.545,
 # Define V band magnitude
 Vmag = u.def_unit(
     'Vmag', u.mag, format={'generic': 'Vmag', 'console': 'Vmag'})
+
+unitcontext_with_mag = u.add_enabled_units([Kmag, Vmag])
 
 ####################################################
 # Define mean solar density and mean jupiter density
@@ -106,9 +108,9 @@ tepcat_table_units = collections.OrderedDict(
     RSTAR=const.R_sun,
     RSTARUPPER=const.R_sun,
     RSTARLOWER=const.R_sun,
-    LOGG=u.dex,
-    LOGGUPPER=u.dex,
-    LOGGLOWER=u.dex,
+    LOGG=u.dex(u.cm/u.s**2),
+    LOGGUPPER=u.dex(u.cm/u.s**2),
+    LOGGLOWER=u.dex(u.cm/u.s**2),
     RHOSTAR=Rho_sun,
     RHOSTARUPPER=Rho_sun,
     RHOSTARLOWER=Rho_sun,
@@ -170,9 +172,9 @@ exoplanets_table_units = collections.OrderedDict(
     RSTAR=const.R_sun,
     RSTARUPPER=const.R_sun,
     RSTARLOWER=const.R_sun,
-    LOGG=u.dex,
-    LOGGUPPER=u.dex,
-    LOGGLOWER=u.dex,
+    LOGG=u.dex(u.cm/u.s**2),
+    LOGGUPPER=u.dex(u.cm/u.s**2),
+    LOGGLOWER=u.dex(u.cm/u.s**2),
     RHOSTAR=u.g/u.cm**3,
     RHOSTARUPPER=u.g/u.cm**3,
     RHOSTARLOWER=u.g/u.cm**3,
@@ -717,10 +719,14 @@ class batman_model:
                                 transittype=InputParameter['transittype'])
 
         # normalize the lightcurve to zero outside of the eclipse/transit
-        if InputParameter['transittype'] == 'secondary':
-            lcmodel = m.light_curve(params) - (1 + params.fp)
-        else:
-            lcmodel = (m.light_curve(params) - 1) / params.rp**2
+#        if InputParameter['transittype'] == 'secondary':
+#            lcmodel = m.light_curve(params) - (1 + params.fp)
+#        else:
+#            lcmodel = (m.light_curve(params) - 1) / params.rp**2
+
+        lcmodel = \
+            -1.0 * (m.light_curve(params) - np.max(m.light_curve(params))) / \
+            np.min(m.light_curve(params) - np.max(m.light_curve(params)))
         return tmodel, lcmodel
 
     def ReturnParFromIni(self):

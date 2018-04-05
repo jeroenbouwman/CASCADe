@@ -10,6 +10,7 @@ import os
 import os.path
 from functools import reduce
 from types import SimpleNamespace
+import warnings
 
 import astropy.units as u
 import numpy as np
@@ -21,6 +22,7 @@ from astropy.visualization import quantity_support
 from matplotlib import pyplot as plt
 from matplotlib.ticker import MaxNLocator, ScalarFormatter
 from scipy import interpolate
+from tqdm import tqdm
 
 from ..cpm_model import solve_linear_equation
 from ..data_model import SpectralData
@@ -30,7 +32,7 @@ from ..initialize import (cascade_configuration, configurator,
                           default_initialization_path)
 from ..instruments import Observation
 
-cds.enable()
+#cds.enable()
 
 __all__ = ['TSOSuite']
 
@@ -135,6 +137,21 @@ class TSOSuite:
         except AttributeError:
             raise AttributeError("Sigma clip value not defined. \
                                  Aborting background subtraction")
+        try:
+            obs_uses_backgr_model = \
+                ast.literal_eval(self.cascade_parameters.
+                                 observations_uses_background_model)
+        except AttributeError:
+            warnings.warn('observations_uses_background_model parameter \
+                          not defined, assuming it to tbe False')
+            obs_uses_backgr_model = False
+
+        if obs_uses_backgr_model:
+            self.observation.dataset.data = self.observation.dataset.data -\
+                background.data
+            self.observation.dataset.isBackgroundSubtracted = True
+            return
+
         # mask cosmic hits
         input_background_data = np.ma.array(background.data.data.value,
                                             mask=background.mask)
@@ -668,7 +685,7 @@ class TSOSuite:
             idx_clip_regressor = idx_bad[:nclip]
 
             # define kernel used to replace bad data
-            kernel = Gaussian2DKernel(stddev=stdv_kernel)
+            kernel = Gaussian2DKernel(x_stddev=stdv_kernel)
             # set masked data to NaN and sort data to signal value
 
             np.ma.set_fill_value(sorted_matrix, float("NaN"))
@@ -850,6 +867,7 @@ class TSOSuite:
 
         # reshape input data to general 3D shape.
         data_use = self.reshape_data(data_in.data)
+        unc_use = self.reshape_data(data_in.uncertainty)
         time_use = self.reshape_data(data_in.time)
         position_use = self.reshape_data(position)
         lightcurve_model_use = self.reshape_data(lightcurve_model)
@@ -913,7 +931,7 @@ class TSOSuite:
             # loop over pixels
             # regressor list contains tuples ;isting pixel indx and
             # the indici of the calibration pixels
-            for regressor_selection in regressor_list:
+            for regressor_selection in tqdm(regressor_list, dynamic_ncols=True):
                 (il, ir), _ = regressor_selection
                 regressor_matrix = \
                     self.get_design_matrix(
@@ -940,7 +958,9 @@ class TSOSuite:
                 # z = ligthcurve model, r = position)
                 x = time_use[il, ir, :].copy()
                 y = data_use[il, ir, :].copy()
+                yerr = unc_use[il, ir, :].copy()
                 np.ma.set_fill_value(y, 0.0)
+                np.ma.set_fill_value(yerr, 1.0e8)
 
                 if add_calibration_signal:
                     zcal = calibration_signal_use[inod][il, ir, :].copy()
@@ -955,8 +975,9 @@ class TSOSuite:
                 idx_bad_time = \
                     np.logical_or(y.mask,
                                   np.all(regressor_matrix.mask, axis=0))
-                weights = np.ones(len(y))
-                weights[idx_bad_time] = 1.e-8
+                #weights = np.ones(len(y))
+                weights = 1.0/yerr.filled().value**2
+                weights[idx_bad_time] = 1.e-16
 
                 # add other regressors: constant, time, position along slit,
                 # lightcure model
