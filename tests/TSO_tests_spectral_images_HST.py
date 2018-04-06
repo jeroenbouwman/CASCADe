@@ -102,7 +102,7 @@ from skimage.feature import register_translation
 image0 = np.ma.array(tso.observation.dataset.data.data.value[:, :, 0],
                      mask = tso.observation.dataset.mask[:, :, 0])
 np.ma.set_fill_value(image0, float("NaN"))
-kernel = Gaussian2DKernel(x_stddev=1.5)
+kernel = Gaussian2DKernel(x_stddev=0.3, y_stddev=2.0, theta=-0.1)
 cleaned_image0 = interpolate_replace_nans(image0.filled(),
                                          kernel)
 plt.imshow(image0)

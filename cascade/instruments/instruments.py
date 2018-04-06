@@ -20,6 +20,7 @@ from astropy.time import Time
 from astropy import coordinates as coord
 from astropy.wcs import WCS
 from astropy.stats import sigma_clipped_stats
+from astropy.convolution import Gaussian2DKernel, interpolate_replace_nans
 from photutils import IRAFStarFinder
 import pandas as pd
 from scipy import interpolate
@@ -488,6 +489,12 @@ class HSTWFC3(InstrumentBase):
         nintegrations, mpix, npix = spectral_image_cube.shape
         nintegrations_cal, ypix_cal, xpix_cal = calibration_image_cube.shape
 
+        spectral_image_dq_cube = spectral_image_dq_cube.T
+#        mask = np.ma.make_mask_none(spectral_image_cube.shape)
+        mask = (spectral_image_dq_cube != 0)
+        mask[:2, :, :] = True
+        mask[-2:, :, :] = True
+
         # convert to BJD
         ra_target = fits.getval(spectral_data_files[0], "RA_TARG")
         dec_target = fits.getval(spectral_data_files[0], "DEC_TARG")
@@ -517,7 +524,7 @@ class HSTWFC3(InstrumentBase):
         if np.max(cal_phase) < 0.0:
             cal_phase = cal_phase + 1.0
 
-        self._determine_relative_source_position(spectral_image_cube)
+        self._determine_relative_source_position(spectral_image_cube, mask)
         self._determine_source_position_from_cal_image(
                 calibration_image_cube, calibration_data_files)
         self._read_grism_configuration_files()
@@ -529,12 +536,6 @@ class HSTWFC3(InstrumentBase):
         flux_unit = u.electron/u.second
         spectral_image_cube = spectral_image_cube.T * flux_unit
         spectral_image_unc_cube = spectral_image_unc_cube.T * flux_unit
-
-        spectral_image_dq_cube = spectral_image_dq_cube.T
-#        mask = np.ma.make_mask_none(spectral_image_cube.shape)
-        mask = (spectral_image_dq_cube != 0)
-        mask[:2, :, :] = True
-        mask[-2:, :, :] = True
 
         SpectralTimeSeries = \
             SpectralDataTimeSeries(wavelength=wave_cal,
@@ -731,18 +732,27 @@ class HSTWFC3(InstrumentBase):
                                    isNodded=False)
         return SpectralTimeSeries
 
-    def _determine_relative_source_position(self, spectral_image_cube):
+    def _determine_relative_source_position(self, spectral_image_cube, mask):
         """
         """
         nintegrations, mpix, npix = spectral_image_cube.shape
-        image0 = spectral_image_cube[0, :, :]
+
+        image_cube_use = np.ma.array(spectral_image_cube, mask=mask)
+        np.ma.set_fill_value(image_cube_use, float("NaN"))
+        kernel = Gaussian2DKernel(x_stddev=0.3, y_stddev=2.0, theta=-0.1)
+        image0 = image_cube_use[0, :, :]
+        cleaned_image0 = interpolate_replace_nans(image0.filled(), kernel)
+
         yshift = np.zeros((nintegrations))
         xshift = np.zeros((nintegrations))
         for it in range(nintegrations):
+            cleaned_shifted_image = \
+                interpolate_replace_nans(image_cube_use[it, :, :].filled(),
+                                         kernel)
             # subpixel precision by oversmpling pixel by a factor of 100
             shift, error, diffphase = \
-                register_translation(image0,
-                                     spectral_image_cube[it, :, :], 100)
+                register_translation(cleaned_image0,
+                                     cleaned_shifted_image, 100)
             yshift[it] = shift[0]
             xshift[it] = shift[1]
         relative_source_shift = collections.OrderedDict(yshift=yshift,

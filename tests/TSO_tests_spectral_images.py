@@ -131,7 +131,7 @@ from skimage.feature import register_translation
 image0 = np.ma.array(tso.observation.dataset.data.data.value[:, 10:30, 0],
                      mask = tso.observation.dataset.mask[:, 10:30, 0])
 np.ma.set_fill_value(image0, float("NaN"))
-kernel = Gaussian2DKernel(x_stddev=1.5)
+kernel = Gaussian2DKernel(x_stddev=0.3, y_stddev=2.0, theta=-0.1)
 cleaned_image0 = interpolate_replace_nans(image0.filled(),
                                          kernel)
 plt.imshow(image0)
@@ -164,7 +164,7 @@ fig = plt.figure(figsize=(8, 3))
 ax1 = plt.subplot(1, 1, 1)
 ax1.plot(tso.observation.dataset.time.data.value[80, 18, :],
          tso.cpm.position[80, 18, :])
-ax1.plot(tso.observation.dataset.time.data.value[80, 18, :],shift_store[0,:] - np.median(shift_store[0,:]))
+ax1.plot(tso.observation.dataset.time.data.value[80, 18, :],-shift_store[0,:] - np.median(-shift_store[0,:]))
 ax1.plot(tso.observation.dataset.time.data.value[80, 18, :],-shift_store[1,:]- np.median(-shift_store[1,:]))
 ax1.set_ylim([-0.1,0.1])
 plt.show()
