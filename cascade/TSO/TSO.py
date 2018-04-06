@@ -17,7 +17,6 @@ import numpy as np
 from astropy.convolution import Gaussian2DKernel, interpolate_replace_nans
 from astropy.stats import sigma_clip
 from astropy.table import MaskedColumn, Table
-from astropy.units import cds
 from astropy.visualization import quantity_support
 from matplotlib import pyplot as plt
 from matplotlib.ticker import MaxNLocator, ScalarFormatter
@@ -32,7 +31,6 @@ from ..initialize import (cascade_configuration, configurator,
                           default_initialization_path)
 from ..instruments import Observation
 
-#cds.enable()
 
 __all__ = ['TSOSuite']
 
@@ -931,7 +929,8 @@ class TSOSuite:
             # loop over pixels
             # regressor list contains tuples ;isting pixel indx and
             # the indici of the calibration pixels
-            for regressor_selection in tqdm(regressor_list, dynamic_ncols=True):
+            for regressor_selection in tqdm(regressor_list,
+                                            dynamic_ncols=True):
                 (il, ir), _ = regressor_selection
                 regressor_matrix = \
                     self.get_design_matrix(
@@ -1465,8 +1464,10 @@ class TSOSuite:
              np.ma.array(results.brightness_temperature.uncertainty.data.value,
                          mask=results.brightness_temperature.uncertainty.mask)
             wav_bt_temp = \
-              np.ma.array(results.brightness_temperature.wavelength.data.value,
-                          mask=results.brightness_temperature.wavelength.mask)
+                np.ma.array(results.brightness_temperature.
+                            wavelength.data.value,
+                            mask=results.brightness_temperature.
+                            wavelength.mask)
             flux_bt_temp = \
                 np.ma.array(results.brightness_temperature.data.data.value,
                             mask=results.brightness_temperature.data.mask)

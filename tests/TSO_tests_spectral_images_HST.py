@@ -202,12 +202,23 @@ mask_use = tso.exoplanet_spectrum.spectrum.wavelength.mask
 rebinned_spec = rebin_spec(tso.exoplanet_spectrum.spectrum.wavelength.data.value[~mask_use],
                            tso.exoplanet_spectrum.spectrum.data.data.value[~mask_use],
                            tso.exoplanet_spectrum.spectrum.wavelength.data.value[~mask_use][::6])
-rebinned_wave = tso.exoplanet_spectrum.spectrum.wavelength.data.value[~mask_use][::6]
+
+rebinned_wave = tso.exoplanet_spectrum.spectrum.wavelength.data.value[~mask_use][3:-3:6]
+
+rebinned_spec, rebinned_error = spectres(rebinned_wave, tso.exoplanet_spectrum.spectrum.wavelength.data.value[~mask_use],
+                           tso.exoplanet_spectrum.spectrum.data.data.value[~mask_use],
+                           spec_errs=tso.exoplanet_spectrum.spectrum.uncertainty.data.value[~mask_use])
+
 fig, ax = plt.subplots(figsize=(7, 4))
 for item in ([ax.title, ax.xaxis.label, ax.yaxis.label] +
              ax.get_xticklabels() + ax.get_yticklabels()):
     item.set_fontsize(20)
-ax.plot(rebinned_wave, rebinned_spec, color="g", lw=5, alpha=0.9)
+ax.plot(rebinned_wave, rebinned_spec, color="black", lw=4, alpha=0.9)
+ax.errorbar(rebinned_wave, rebinned_spec, yerr=rebinned_error,
+            fmt=".k", color="black", lw=4,
+            alpha=0.9, ecolor="black",
+            markeredgecolor='black', fillstyle='full', markersize=10,
+            markerfacecolor='black', zorder=3)
 ax.plot(wave_mandell, flux_mandell, color="r", lw=3, alpha=0.9)
 ax.errorbar(wave_mandell.value, flux_mandell.value, yerr=error_mandell.value,
             fmt=".k", color="r", lw=2,

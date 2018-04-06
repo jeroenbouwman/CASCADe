@@ -8,7 +8,6 @@ Observatory and Instruments specific Module
 """
 import os
 import collections
-# import itertools
 import ast
 from abc import ABCMeta, abstractmethod, abstractproperty
 from types import SimpleNamespace
@@ -135,7 +134,8 @@ class HST(ObservatoryBase):
         # check if cascade is initialized
         if cascade_configuration.isInitialized:
             # check if model is implemented and pick model
-            if cascade_configuration.instrument in self.observatory_instruments:
+            if (cascade_configuration.instrument in
+                    self.observatory_instruments):
                 if cascade_configuration.instrument == 'WFC3':
                     factory = HSTWFC3()
                     self.par = factory.par
@@ -144,7 +144,8 @@ class HST(ObservatoryBase):
                     if self.par['obs_has_backgr']:
                         self.data_background = factory.data_background
                     self.instrument = factory.name
-                    self.instrument_calibration = factory.instrument_calibration
+                    self.instrument_calibration = \
+                        factory.instrument_calibration
             else:
                 raise ValueError("HST instrument not recognized, \
                                  check your init file for the following \
@@ -559,7 +560,7 @@ class HSTWFC3(InstrumentBase):
         _zodi_cal_files = {"G141": "zodi_G141_clean.fits",
                            "G102": "zodi_G102_clean.fits"}
         _helium_cal_files = {"G141": "excess_lo_G141_clean.fits",
-                            "G102": "excess_G102_clean.fits"}
+                             "G102": "excess_G102_clean.fits"}
         _scattered_cal_files = {"G141": "G141_scattered_light.fits"}
 
         calibration_file_name_flatfield = \
@@ -685,16 +686,14 @@ class HSTWFC3(InstrumentBase):
             # step 5
             _, _, nint = data_science_data_in.shape
             design_matrix = \
-                np.diag(np.hstack([np.sum(np.sum(weights[:, :, :].T *
-                                                 helium.T*helium.T, axis=1),
-                                          axis=1),
+                np.diag(np.hstack([np.sum(weights[:, :, :].T*helium.T*helium.T,
+                                          axis=(1, 2)),
                                    np.sum(weights[:, :, :].T*zodi.T*zodi.T)]))
-            design_matrix[:-1, -1] = np.sum(np.sum(weights[:, :, :].T *
-                                            helium.T*zodi.T, axis=1), axis=1)
+            design_matrix[:-1, -1] = np.sum(weights[:, :, :].T*helium.T*zodi.T,
+                                            axis=(1, 2))
             design_matrix[-1, :-1] = design_matrix[:-1, -1]
-            vector = np.hstack([np.sum(np.sum(weights[:, :, :].T *
-                                              helium.T*data_science_data_in.T,
-                                              axis=1), axis=1),
+            vector = np.hstack([np.sum(weights[:, :, :].T * helium.T *
+                                       data_science_data_in.T, axis=(1, 2)),
                                 np.sum(weights[:, :, :].T*zodi.T *
                                        data_science_data_in.T)])
 
@@ -868,7 +867,9 @@ class HSTWFC3(InstrumentBase):
         """
         calibration_file_name = os.path.join(self.par['obs_cal_path'],
                                              self.par['inst_inst_name'],
-           'wavelength_ref_pixel_' + self.par['inst_inst_name'].lower()+'.txt')
+                                             'wavelength_ref_pixel_' +
+                                             self.par['inst_inst_name'].
+                                             lower()+'.txt')
 
         ptable_cal = pd.read_table(calibration_file_name,
                                    delim_whitespace=True,
@@ -933,8 +934,9 @@ class HSTWFC3(InstrumentBase):
         nintegrations, nspatial, nwavelength = spectral_data.shape
         nintegrations_cal, npix_y_cal, npix_x_cal = calibration_data.shape
 
-        subarray_sizes = collections.OrderedDict(cal_image_size=npix_x_cal,
-                                                 science_image_size=nwavelength)
+        subarray_sizes = \
+            collections.OrderedDict(cal_image_size=npix_x_cal,
+                                    science_image_size=nwavelength)
         try:
             self.wfc3_cal
         except AttributeError:
@@ -1135,7 +1137,8 @@ class Spitzer(ObservatoryBase):
         # check if cascade is initialized
         if cascade_configuration.isInitialized:
             # check if model is implemented and pick model
-            if cascade_configuration.instrument in self.observatory_instruments:
+            if (cascade_configuration.instrument in
+                    self.observatory_instruments):
                 if cascade_configuration.instrument == 'IRS':
                     factory = SpitzerIRS()
                     self.par = factory.par
@@ -1144,7 +1147,8 @@ class Spitzer(ObservatoryBase):
                     if self.par['obs_has_backgr']:
                         self.data_background = factory.data_background
                     self.instrument = factory.name
-                    self.instrument_calibration = factory.instrument_calibration
+                    self.instrument_calibration = \
+                        factory.instrument_calibration
             else:
                 raise ValueError("Spitzer instrument not recognized, \
                                  check your init file for the following \
