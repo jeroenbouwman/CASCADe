@@ -1,12 +1,17 @@
 # -*- coding: utf-8 -*-
+"""
+CASCADe
 
+Test reading Spitzer spectroscopic images
+
+@author: Jeroen Bouwman
+"""
 import cascade
 from matplotlib import pyplot as plt
 from astropy.visualization import quantity_support
 import numpy as np
 from astropy.io import ascii
 from astropy import units as u
-from astropy.units import cds
 from scipy import stats
 
 # create transit spectoscopy object
@@ -20,16 +25,20 @@ tso = cascade.TSO.TSOSuite("cascade_test_cpm.ini",
 print(tso.cascade_parameters)
 print(cascade.initialize.cascade_configuration)
 print(tso.cascade_parameters.isInitialized)
+assert tso.cascade_parameters == cascade.initialize.cascade_configuration
+assert tso.cascade_parameters.isInitialized is True
 
 # reset parameters
 tso.execute("reset")
 print(tso.cascade_parameters.isInitialized)
+assert tso.cascade_parameters.isInitialized is False
 
-# initialize with providing ini files
+# initialize without providing ini files
 tso.execute("initialize")
 print(tso.cascade_parameters.isInitialized)
+assert tso.cascade_parameters.isInitialized is False
 
-# create TSO object and initialize
+# create TSO object and initialize providing ini files
 tso = cascade.TSO.TSOSuite()
 path = cascade.initialize.default_initialization_path
 tso.execute("initialize", "cascade_test_cpm.ini", "cascade_test_object.ini",
@@ -37,17 +46,62 @@ tso.execute("initialize", "cascade_test_cpm.ini", "cascade_test_object.ini",
 print(tso.cascade_parameters)
 print(cascade.initialize.cascade_configuration)
 print(tso.cascade_parameters.isInitialized)
+assert tso.cascade_parameters == cascade.initialize.cascade_configuration
+assert tso.cascade_parameters.isInitialized is True
 
 # load data
 tso.execute("load_data")
-plt.imshow(tso.observation.dataset.data[:, :, 0])
-plt.show()
-plt.imshow(tso.observation.dataset_background.data[:, :,  0])
+
+image0 = tso.observation.dataset.data[:, :, 0].copy()
+image0.set_fill_value(np.nan)
+plt.imshow(image0.filled().value,
+           origin='lower',
+           cmap='hot',
+           interpolation='nearest',
+           aspect='equal')
+plt.colorbar().set_label("Intensity ({})".format(image0.data.unit))
+plt.xlabel("Pixel number spatial direction")
+plt.ylabel("Pixel number")
+plt.title('Science data')
 plt.show()
 
-plt.imshow(tso.observation.dataset._wavelength)
+image1 = tso.observation.dataset_background.data[:, :, 0].copy()
+image1.set_fill_value(np.nan)
+plt.imshow(image1.filled().value,
+           origin='lower',
+           cmap='hot',
+           interpolation='nearest',
+           aspect='equal')
+plt.colorbar().set_label("Intensity ({})".format(image1.data.unit))
+plt.xlabel("Pixel number spatial direction")
+plt.ylabel("Pixel number")
+plt.title('Background data')
 plt.show()
-plt.imshow(tso.observation.dataset.wavelength[:, :, 0])
+
+image0 = tso.observation.dataset._wavelength.copy()
+plt.imshow(image0,
+           origin='lower',
+           cmap='hot',
+           interpolation='nearest',
+           aspect='equal')
+plt.colorbar().set_label("Wavelength ({})".
+                         format(tso.observation.dataset.wavelength_unit))
+plt.xlabel("Pixel number spatial direction")
+plt.ylabel("Pixel number")
+plt.title('Wavelength')
+plt.show()
+
+image1 = tso.observation.dataset.wavelength[:, :, 0]
+image1.set_fill_value(np.nan)
+plt.imshow(image1.filled().value,
+           origin='lower',
+           cmap='hot',
+           interpolation='nearest',
+           aspect='equal')
+plt.colorbar().set_label("Intensity ({})".format(image1.data.unit))
+plt.xlabel("Pixel number spatial direction")
+plt.ylabel("Pixel number")
+plt.title('Wavelength')
 plt.show()
 
 with quantity_support():
@@ -63,45 +117,116 @@ with quantity_support():
 print(tso.observation.dataset.time.data.shape)
 print(type(tso.observation.dataset.time.data))
 print(tso.observation.dataset.time.data.unit)
+assert tso.observation.dataset.time.data.shape == (128, 128, 280)
+assert type(tso.observation.dataset.time.data) == u.quantity.Quantity
+assert tso.observation.dataset.time.data.unit == u.dimensionless_unscaled
 
 # subtract background
 tso.execute("subtract_background")
-plt.imshow(tso.observation.dataset.data[:, :, 0])
+
+image0 = tso.observation.dataset.data[:, :, 0].copy()
+image0.set_fill_value(np.nan)
+plt.imshow(image0.filled().value,
+           origin='lower',
+           cmap='hot',
+           interpolation='nearest',
+           aspect='equal')
+plt.colorbar().set_label("Intensity ({})".format(image0.data.unit))
+plt.xlabel("Pixel number spatial direction")
+plt.ylabel("Pixel number")
+plt.title('Science data')
 plt.show()
 
-plt.imshow(tso.observation.dataset.mask.any(axis=2))
+plt.imshow(tso.observation.dataset.mask.any(axis=2),
+           origin='lower',
+           cmap='hot',
+           interpolation='nearest',
+           aspect='equal')
+plt.xlabel("Pixel number spatial direction")
+plt.ylabel("Pixel number")
+plt.title('Collapsed mask science data')
 plt.show()
 
 with quantity_support():
-    plt.plot(tso.observation.dataset.time[80, 18, :],
-             tso.observation.dataset.data[80, 18, :])
+    plt.plot(tso.observation.dataset.time.data[80, 18, :],
+             tso.observation.dataset.data.data[80, 18, :])
     plt.show()
+
+print(tso.observation.dataset.isBackgroundSubtracted)
+assert tso.observation.dataset.isBackgroundSubtracted is True
 
 # sigma clip data
 tso.execute("sigma_clip_data")
-plt.imshow(np.ma.median(tso.observation.dataset.data[:, :, :], axis=2))
+
+plt.imshow(np.ma.median(tso.observation.dataset.data[:, :, :], axis=2),
+           origin='lower',
+           cmap='hot',
+           interpolation='nearest',
+           aspect='equal')
+plt.xlabel("Pixel number spatial direction")
+plt.ylabel("Pixel number")
+plt.title('Median science data')
 plt.show()
-plt.imshow(tso.observation.dataset.mask[:, :, :].all(axis=2))
+
+plt.imshow(tso.observation.dataset.mask[:, :, :].any(axis=2),
+           origin='lower',
+           cmap='hot',
+           interpolation='nearest',
+           aspect='equal')
+plt.xlabel("Pixel number spatial direction")
+plt.ylabel("Pixel number")
+plt.title('Collapsed mask science data')
 plt.show()
+
+time0 = tso.observation.dataset.time[80, 18, :].copy()
+data0 = tso.observation.dataset.data[80, 18, :].copy()
+time0.set_fill_value(np.nan)
+data0.set_fill_value(np.nan)
 with quantity_support():
-    plt.plot(tso.observation.dataset.time[80, 18, :],
-             tso.observation.dataset.data[80, 18, :])
+    plt.plot(time0.filled(),
+             data0.filled())
     plt.show()
+
+print(tso.observation.dataset.isSigmaCliped)
+assert tso.observation.dataset.isSigmaCliped is True
 
 # eclipse model
 tso.execute("define_eclipse_model")
-plt.imshow(tso.model.light_curve_interpolated[0][:, 0, :])
+
+plt.imshow(tso.model.light_curve_interpolated[0][:, 0, :],
+           origin='lower',
+           cmap='Reds',
+           interpolation='nearest')
+plt.colorbar().set_label("Normalised depth")
+plt.xlabel("Number of integration")
+plt.ylabel("Pixel number dispersion direction")
+plt.title('Lightcurve model')
 plt.show()
+
 with quantity_support():
     plt.plot(tso.observation.dataset.time.data[80, 18, :],
              tso.model.light_curve_interpolated[0][80, 18, :])
+    plt.xlabel("Phase")
+    plt.ylabel("Normalised depth")
     plt.show()
+
 # calibration signal
-plt.imshow(tso.model.calibration_signal[0][:, 0, :])
+plt.imshow(tso.model.calibration_signal[0][:, 0, :],
+           origin='lower',
+           cmap='Reds',
+           interpolation='nearest')
+plt.colorbar().set_label("Normalised depth")
+plt.xlabel("Number of integration")
+plt.ylabel("Pixel number dispersion direction")
+plt.title('Calibration lightcurve model')
 plt.show()
+
+print(tso.model.transit_timing)
+assert tso.model.transit_timing == [0.4827232723272327, 0.5172767276727672]
 
 # determine position of source from data set
 tso.execute("determine_source_position")
+
 with quantity_support():
     plt.plot(tso.observation.spectral_trace['wavelength_pixel'],
              tso.observation.spectral_trace['positional_pixel'] -
@@ -115,6 +240,7 @@ with quantity_support():
 
 plt.plot(tso.cpm.spectral_trace)
 plt.show()
+
 plt.plot(tso.observation.dataset.time.data.value[80, 18, :],
          tso.cpm.position[80, 18, :])
 plt.show()
@@ -151,7 +277,7 @@ for it in range(nintegrations):
     shift, error, diffphase = register_translation(cleaned_image0, cleaned_image, 200)
     shift_store[:,it] = shift
 
-fig = plt.figure(figsize=(8, 3))
+fig = plt.figure(figsize=(8, 5))
 ax1 = plt.subplot(1, 2, 1, adjustable='box-forced')
 ax2 = plt.subplot(1, 2, 2, sharex=ax1, sharey=ax1, adjustable='box-forced')
 ax1.plot(tso.observation.dataset.time.data.value[80, 18, :], shift_store[0,:])
@@ -160,11 +286,11 @@ ax2.plot(tso.observation.dataset.time.data.value[80, 18, :], shift_store[1,:])
 ax2.set_title('X offset')
 plt.show()
 
-fig = plt.figure(figsize=(8, 3))
+fig = plt.figure(figsize=(8, 5))
 ax1 = plt.subplot(1, 1, 1)
 ax1.plot(tso.observation.dataset.time.data.value[80, 18, :],
          tso.cpm.position[80, 18, :])
-ax1.plot(tso.observation.dataset.time.data.value[80, 18, :],-shift_store[0,:] - np.median(-shift_store[0,:]))
+#ax1.plot(tso.observation.dataset.time.data.value[80, 18, :],-shift_store[0,:] - np.median(-shift_store[0,:]))
 ax1.plot(tso.observation.dataset.time.data.value[80, 18, :],-shift_store[1,:]- np.median(-shift_store[1,:]))
 ax1.set_ylim([-0.1,0.1])
 plt.show()

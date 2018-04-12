@@ -974,7 +974,7 @@ class TSOSuite:
                 idx_bad_time = \
                     np.logical_or(y.mask,
                                   np.all(regressor_matrix.mask, axis=0))
-                #weights = np.ones(len(y))
+                # weights = np.ones(len(y))
                 weights = 1.0/yerr.filled().value**2
                 weights[idx_bad_time] = 1.e-16
 

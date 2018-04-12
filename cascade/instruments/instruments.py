@@ -11,6 +11,7 @@ import collections
 import ast
 from abc import ABCMeta, abstractmethod, abstractproperty
 from types import SimpleNamespace
+import gc
 
 import numpy as np
 from astropy.io import fits
@@ -181,7 +182,7 @@ class HSTWFC3(InstrumentBase):
 
     __valid_sub_array = {'IRSUB128', 'IRSUB256', 'IRSUB512'}
     __valid_spectroscopic_filter = {'G141'}
-    __valid_imaging_filter = {'F139M'}
+    __valid_imaging_filter = {'F139M', 'F132N'}
     __valid_beams = {'A'}
     __valid_data = {'SPECTRUM', 'SPECTRAL_IMAGE'}
     __valid_observing_strategy = {'STARING'}
@@ -441,27 +442,33 @@ class HSTWFC3(InstrumentBase):
         spectral_data_files = []
         calibration_data_files = []
         for im, image_file in enumerate(tqdm(data_files, dynamic_ncols=True)):
-            instrument_fiter = fits.getval(image_file, "FILTER", ext=0)
-            if instrument_fiter != self.par["inst_filter"]:
-                if instrument_fiter == self.par["inst_cal_filter"]:
-                    calibration_image = fits.getdata(image_file, ext=1)
-                    calibration_image_cube.append(calibration_image)
-                    calibration_data_files.append(image_file)
-                    exptime = fits.getval(image_file, "EXPTIME", ext=0)
-                    expstart = fits.getval(image_file, "EXPSTART", ext=0)
-                    cal_time.append(expstart + 0.5*(exptime/(24.0*3600.0)))
-                continue
-            # WARNING fits data is single precision!!
-            spectral_image = fits.getdata(image_file, ext=1)
-            spectral_image_cube.append(spectral_image)
-            spectral_image_unc = fits.getdata(image_file, ext=2)
-            spectral_image_unc_cube.append(spectral_image_unc)
-            spectral_image_dq = fits.getdata(image_file, ext=3)
-            spectral_image_dq_cube.append(spectral_image_dq)
-            spectral_data_files.append(image_file)
-            exptime = fits.getval(image_file, "EXPTIME", ext=0)
-            expstart = fits.getval(image_file, "EXPSTART", ext=0)
-            time.append(expstart + 0.5*(exptime/(24.0*3600.0)))
+            with fits.open(image_file) as hdul:
+                instrument_fiter = hdul['PRIMARY'].header['FILTER']
+                exptime = hdul['PRIMARY'].header['EXPTIME']
+                expstart = hdul['PRIMARY'].header['EXPSTART']
+                if instrument_fiter != self.par["inst_filter"]:
+                    if instrument_fiter == self.par["inst_cal_filter"]:
+                        calibration_image = hdul['SCI'].data
+                        calibration_image_cube.append(calibration_image.copy())
+                        calibration_data_files.append(image_file)
+                        cal_time.append(expstart + 0.5*(exptime/(24.0*3600.0)))
+                        del calibration_image
+                    continue
+                spectral_image = hdul['SCI'].data
+                spectral_image_cube.append(spectral_image.copy())
+                spectral_image_unc = hdul['ERR'].data
+                spectral_image_unc_cube.append(spectral_image_unc.copy())
+                spectral_image_dq = spectral_image_unc = hdul['DQ'].data
+                spectral_image_dq_cube.append(spectral_image_dq.copy())
+                spectral_data_files.append(image_file)
+                time.append(expstart + 0.5*(exptime/(24.0*3600.0)))
+                del spectral_image
+                del spectral_image_unc
+                del spectral_image_dq
+                del instrument_fiter
+                del expstart
+                del exptime
+                gc.collect()
 
         if len(spectral_image_cube) == 0:
             raise ValueError("No science data found for the \
@@ -470,6 +477,7 @@ class HSTWFC3(InstrumentBase):
             raise ValueError("No calibration image found for the \
                              filter: {}".format(self.par["inst_cal_filter"]))
 
+        # WARNING fits data is single precision!!
         spectral_image_cube = np.array(spectral_image_cube, dtype='float64')
         spectral_image_unc_cube = \
             np.array(spectral_image_unc_cube, dtype='float64')
@@ -485,15 +493,28 @@ class HSTWFC3(InstrumentBase):
         spectral_image_cube = spectral_image_cube[idx_time_sort, :, :]
         spectral_image_unc_cube = spectral_image_unc_cube[idx_time_sort, :, :]
         spectral_image_dq_cube = spectral_image_dq_cube[idx_time_sort, :, :]
+        spectral_data_files = \
+            list(np.array(spectral_data_files)[idx_time_sort])
+# TEST
+#        spectral_image_cube = spectral_image_cube[:,64:-64,64:-64]
+#        spectral_image_unc_cube = spectral_image_unc_cube[:,64:-64,64:-64]
+#        spectral_image_dq_cube = spectral_image_dq_cube[:,64:-64,64:-64]
+
+        idx_time_sort = np.argsort(cal_time)
+        cal_time = cal_time[idx_time_sort]
+        calibration_image_cube = calibration_image_cube[idx_time_sort]
+        calibration_data_files = \
+            list(np.array(calibration_data_files)[idx_time_sort])
 
         nintegrations, mpix, npix = spectral_image_cube.shape
         nintegrations_cal, ypix_cal, xpix_cal = calibration_image_cube.shape
 
-        spectral_image_dq_cube = spectral_image_dq_cube.T
 #        mask = np.ma.make_mask_none(spectral_image_cube.shape)
         mask = (spectral_image_dq_cube != 0)
-        mask[:2, :, :] = True
-        mask[-2:, :, :] = True
+        # mask[:, :, :2+64] = True
+        # mask[:, :, -2-64:] = True
+#        mask[:, :, :2] = True
+#        mask[:, :, -2:] = True
 
         # convert to BJD
         ra_target = fits.getval(spectral_data_files[0], "RA_TARG")
@@ -512,6 +533,22 @@ class HSTWFC3(InstrumentBase):
                                                           ephemeris='jpl')
         cal_time_barycentre = cal_time_obs.tdb + cal_ltt_bary_jpl
         cal_time = cal_time_barycentre.jd
+
+# TEST
+#        idx_time_sort = (time > 2.45566e6+3.2) & (time < 2.45566e6+5)
+#        time = time[idx_time_sort]
+#        spectral_image_cube = spectral_image_cube[idx_time_sort, :, :]
+#        spectral_image_unc_cube = spectral_image_unc_cube[idx_time_sort, :, :]
+#        spectral_image_dq_cube = spectral_image_dq_cube[idx_time_sort, :, :]
+#        mask = mask[idx_time_sort, :, :]
+#        spectral_data_files = \
+#           list(np.array(spectral_data_files)[idx_time_sort])
+
+#        idx_time_sort = (cal_time > 2.45566e6+3.2) & (cal_time < 2.45566e6+5)
+#        cal_time = cal_time[idx_time_sort]
+#        calibration_image_cube = calibration_image_cube[idx_time_sort]
+#        calibration_data_files = \
+#           list(np.array(calibration_data_files)[idx_time_sort])
 
         # orbital phase
         phase = (time - self.par['obj_ephemeris']) / self.par['obj_period']
@@ -536,6 +573,7 @@ class HSTWFC3(InstrumentBase):
         flux_unit = u.electron/u.second
         spectral_image_cube = spectral_image_cube.T * flux_unit
         spectral_image_unc_cube = spectral_image_unc_cube.T * flux_unit
+        mask = mask.T
 
         SpectralTimeSeries = \
             SpectralDataTimeSeries(wavelength=wave_cal,
@@ -543,6 +581,7 @@ class HSTWFC3(InstrumentBase):
                                    uncertainty=spectral_image_unc_cube,
                                    time=phase,
                                    mask=mask,
+                                   time_bjd=time,
                                    isRampFitted=True,
                                    isNodded=False)
         if is_background and self.par['obs_uses_backgr_model']:
@@ -734,12 +773,26 @@ class HSTWFC3(InstrumentBase):
 
     def _determine_relative_source_position(self, spectral_image_cube, mask):
         """
+        Determine the shift of the spectra (source) relative to the first
+        integration. Note that it is important for this to work properly
+        to have identified bad pixels and to correct the values using an edge
+        preserving correction, i.e. an correction which takes into account
+        the dispersion direction and psf size (relative to pixel size)
+        Input:
+        ------
+            spectral_image_cube
+
+            mask
+
+        Output:
+        ------
+            relative x and y position as a function of time.
         """
         nintegrations, mpix, npix = spectral_image_cube.shape
 
         image_cube_use = np.ma.array(spectral_image_cube, mask=mask)
         np.ma.set_fill_value(image_cube_use, float("NaN"))
-        kernel = Gaussian2DKernel(x_stddev=0.3, y_stddev=2.0, theta=-0.1)
+        kernel = Gaussian2DKernel(x_stddev=3.0, y_stddev=0.2, theta=0.0)
         image0 = image_cube_use[0, :, :]
         cleaned_image0 = interpolate_replace_nans(image0.filled(), kernel)
 
@@ -752,11 +805,12 @@ class HSTWFC3(InstrumentBase):
             # subpixel precision by oversmpling pixel by a factor of 100
             shift, error, diffphase = \
                 register_translation(cleaned_image0,
-                                     cleaned_shifted_image, 100)
+                                     cleaned_shifted_image, 150)
             yshift[it] = shift[0]
             xshift[it] = shift[1]
-        relative_source_shift = collections.OrderedDict(yshift=yshift,
-                                                        xshift=xshift)
+        relative_source_shift = \
+            collections.OrderedDict(cross_disp_shift=yshift,
+                                    disp_shift=xshift)
         try:
             self.wfc3_cal
         except AttributeError:
@@ -768,6 +822,8 @@ class HSTWFC3(InstrumentBase):
     def _determine_source_position_from_cal_image(self, calibration_image_cube,
                                                   calibration_data_files):
         """
+        Determines the source position on the detector of the target source in
+        the calibration image takes prior to the spectroscopic observations.
         """
         calibration_source_position = []
         for im, image_file in enumerate(calibration_data_files):
