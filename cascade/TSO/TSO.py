@@ -673,8 +673,9 @@ class TSOSuite:
             # number of good measurements at a given time
             number_of_bad_data = np.ma.count(sorted_matrix, axis=0)
             idx_bad = np.argsort(number_of_bad_data)
-            nclip = np.rint(dim[1]*clip_pctl_time).astype(int)
+            nclip = np.rint(dim[-1]*clip_pctl_time).astype(int)
             idx_clip_time = idx_bad[:nclip]
+
             # clip the worst regressors
             # number of good measurements for regressor.
             number_of_bad_data = np.ma.count(sorted_matrix, axis=1)
@@ -694,12 +695,18 @@ class TSOSuite:
             cleaned_mask = np.ma.make_mask_none(cleaned_matrix.shape)
             cleaned_mask[:, idx_clip_time] = True
             cleaned_mask[idx_clip_regressor, :] = True
-            design_matrix = np.ma.array(cleaned_matrix*data_unit,
-                                        mask=cleaned_mask)
+
+            idx_reverse = np.argsort(idx_sort)
+            design_matrix = \
+                np.ma.array(cleaned_matrix[idx_reverse, :],
+                            mask=cleaned_mask[idx_reverse, :])
 
         if center_matrix:
             mean_dm = np.ma.mean(design_matrix, axis=1)
             design_matrix = design_matrix - mean_dm[:, np.newaxis]
+
+        design_matrix = np.ma.array(design_matrix.data*data_unit,
+                                    mask=design_matrix.mask)
         return design_matrix
 
     def reshape_data(self, data_in):

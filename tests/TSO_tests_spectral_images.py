@@ -30,11 +30,13 @@ assert tso.cascade_parameters.isInitialized is True
 
 # reset parameters
 tso.execute("reset")
+
 print(tso.cascade_parameters.isInitialized)
 assert tso.cascade_parameters.isInitialized is False
 
 # initialize without providing ini files
 tso.execute("initialize")
+
 print(tso.cascade_parameters.isInitialized)
 assert tso.cascade_parameters.isInitialized is False
 
@@ -278,8 +280,8 @@ for it in range(nintegrations):
     shift_store[:,it] = shift
 
 fig = plt.figure(figsize=(8, 5))
-ax1 = plt.subplot(1, 2, 1, adjustable='box-forced')
-ax2 = plt.subplot(1, 2, 2, sharex=ax1, sharey=ax1, adjustable='box-forced')
+ax1 = plt.subplot(1, 2, 1, adjustable='box')
+ax2 = plt.subplot(1, 2, 2, sharex=ax1, sharey=ax1, adjustable='box')
 ax1.plot(tso.observation.dataset.time.data.value[80, 18, :], shift_store[0,:])
 ax1.set_title('Y offset')
 ax2.plot(tso.observation.dataset.time.data.value[80, 18, :], shift_store[1,:])
@@ -417,6 +419,7 @@ tso.execute("save_results")
 
 # plot planetary signal
 tso.execute("plot_results")
+
 
 cal_signal_depth = float(tso.cascade_parameters.cpm_calibration_signal_depth)
 mean_eclipse_depth = float(tso.cascade_parameters.observations_median_signal)

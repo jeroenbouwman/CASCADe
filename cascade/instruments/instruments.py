@@ -575,12 +575,16 @@ class HSTWFC3(InstrumentBase):
         spectral_image_unc_cube = spectral_image_unc_cube.T * flux_unit
         mask = mask.T
 
+        position = self.wfc3_cal.relative_source_shift['cross_disp_shift']
+        position = -position-np.median(-position)
+
         SpectralTimeSeries = \
             SpectralDataTimeSeries(wavelength=wave_cal,
                                    data=spectral_image_cube,
                                    uncertainty=spectral_image_unc_cube,
                                    time=phase,
                                    mask=mask,
+                                   position=position,
                                    time_bjd=time,
                                    isRampFitted=True,
                                    isNodded=False)
@@ -1428,6 +1432,8 @@ class SpitzerIRS(InstrumentBase):
 
         mask = np.ma.make_mask_none(data.shape)
 
+        uncertainty = np.ones_like(data)
+
         # get the spectral images to get the timing and positional info
         time = np.zeros((nintegrations))
         position = np.zeros((nintegrations))
@@ -1455,6 +1461,7 @@ class SpitzerIRS(InstrumentBase):
         SpectralTimeSeries = SpectralDataTimeSeries(wavelength=wavelength,
                                                     data=data, time=phase,
                                                     mask=mask,
+                                                    uncertainty=uncertainty,
                                                     position=position,
                                                     isRampFitted=True,
                                                     isNodded=isNodded)
