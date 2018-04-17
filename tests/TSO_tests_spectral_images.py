@@ -12,7 +12,8 @@ from astropy.visualization import quantity_support
 import numpy as np
 from astropy.io import ascii
 from astropy import units as u
-from scipy import stats
+import pandas as pd
+from pandas.plotting import autocorrelation_plot
 
 # create transit spectoscopy object
 tso = cascade.TSO.TSOSuite()
@@ -21,7 +22,7 @@ tso = cascade.TSO.TSOSuite()
 path = cascade.initialize.default_initialization_path
 tso = cascade.TSO.TSOSuite("cascade_test_cpm.ini",
                            "cascade_test_object.ini",
-                           "cascade_test_data_spectral_images.ini", path=path)
+                           "cascade_test_data_spectral_images2.ini", path=path)
 print(tso.cascade_parameters)
 print(cascade.initialize.cascade_configuration)
 print(tso.cascade_parameters.isInitialized)
@@ -44,7 +45,7 @@ assert tso.cascade_parameters.isInitialized is False
 tso = cascade.TSO.TSOSuite()
 path = cascade.initialize.default_initialization_path
 tso.execute("initialize", "cascade_test_cpm.ini", "cascade_test_object.ini",
-            "cascade_test_data_spectral_images.ini", path=path)
+            "cascade_test_data_spectral_images2.ini", path=path)
 print(tso.cascade_parameters)
 print(cascade.initialize.cascade_configuration)
 print(tso.cascade_parameters.isInitialized)
@@ -160,6 +161,10 @@ assert tso.observation.dataset.isBackgroundSubtracted is True
 # sigma clip data
 tso.execute("sigma_clip_data")
 
+wave0 = tso.observation.dataset.wavelength
+wave0_min = np.ma.min(wave0).data.value
+wave0_max = np.ma.max(wave0).data.value
+
 plt.imshow(np.ma.median(tso.observation.dataset.data[:, :, :], axis=2),
            origin='lower',
            cmap='hot',
@@ -198,10 +203,12 @@ tso.execute("define_eclipse_model")
 plt.imshow(tso.model.light_curve_interpolated[0][:, 0, :],
            origin='lower',
            cmap='Reds',
-           interpolation='nearest')
+           interpolation='nearest',
+           aspect='auto',
+           extent=[0, image0.shape[1], wave0_min, wave0_max])
 plt.colorbar().set_label("Normalised depth")
 plt.xlabel("Number of integration")
-plt.ylabel("Pixel number dispersion direction")
+plt.ylabel("Wavelength")
 plt.title('Lightcurve model')
 plt.show()
 
@@ -229,62 +236,60 @@ assert tso.model.transit_timing == [0.4827232723272327, 0.5172767276727672]
 # determine position of source from data set
 tso.execute("determine_source_position")
 
+assert hasattr(tso.cpm, 'spectral_trace') is True
+assert hasattr(tso.cpm, 'position') is True
+
 with quantity_support():
     plt.plot(tso.observation.spectral_trace['wavelength_pixel'],
-             tso.observation.spectral_trace['positional_pixel'] -
-             np.median(tso.observation.spectral_trace['positional_pixel']))
-    plt.plot(tso.cpm.spectral_trace)
+             tso.observation.spectral_trace['positional_pixel'], lw=3)
+    plt.title("Shift in spatial diraction of the spectral trace")
     plt.show()
 with quantity_support():
     plt.plot(tso.observation.spectral_trace['wavelength_pixel'],
-             tso.observation.spectral_trace['wavelength'])
+             tso.observation.spectral_trace['wavelength'], lw=3)
+    plt.title("Wavelength assignment spectral trace")
     plt.show()
 
 plt.plot(tso.cpm.spectral_trace)
+plt.title("Spectral Trace")
+plt.show()
+plt.plot(tso.cpm.position[80, 18, :])
+plt.title("Relative position in slit")
 plt.show()
 
-plt.plot(tso.observation.dataset.time.data.value[80, 18, :],
-         tso.cpm.position[80, 18, :])
-plt.show()
-
-plt.plot(tso.observation.spectral_trace['wavelength_pixel'].value,
-         tso.observation.spectral_trace['positional_pixel'].value -
-         (tso.cpm.spectral_trace+tso.cpm.median_position))
-axes = plt.gca()
-axes.set_ylim([-1, 1])
-plt.show()
-
+##################################
 from astropy.convolution import Gaussian2DKernel, interpolate_replace_nans
 from skimage.feature import register_translation
-image0 = np.ma.array(tso.observation.dataset.data.data.value[:, 10:30, 0],
+image_test0 = np.ma.array(tso.observation.dataset.data.data.value[:, 10:30, 0],
                      mask = tso.observation.dataset.mask[:, 10:30, 0])
-np.ma.set_fill_value(image0, float("NaN"))
+np.ma.set_fill_value(image_test0, float("NaN"))
 kernel = Gaussian2DKernel(x_stddev=0.3, y_stddev=2.0, theta=-0.1)
-cleaned_image0 = interpolate_replace_nans(image0.filled(),
-                                         kernel)
-plt.imshow(image0)
+cleaned_image_test0 = interpolate_replace_nans(image_test0.filled(),
+                                               kernel)
+plt.imshow(image_test0)
 plt.show()
-plt.imshow(cleaned_image0)
+plt.imshow(cleaned_image_test0)
 plt.show()
 
-_,_,nintegrations = tso.observation.dataset.data.data.value.shape
+_, _, nintegrations = tso.observation.dataset.data.data.value.shape
 shift_store = np.zeros((2, nintegrations))
 for it in range(nintegrations):
     # subpixel precision
     image = np.ma.array(tso.observation.dataset.data.data.value[:, 10:30, it],
-                     mask = tso.observation.dataset.mask[:, 10:30, it])
+                        mask=tso.observation.dataset.mask[:, 10:30, it])
     np.ma.set_fill_value(image, float("NaN"))
     cleaned_image = interpolate_replace_nans(image.filled(),
-                                         kernel)
-    shift, error, diffphase = register_translation(cleaned_image0, cleaned_image, 200)
-    shift_store[:,it] = shift
+                                             kernel)
+    shift, error, diffphase = register_translation(cleaned_image_test0,
+                                                   cleaned_image, 200)
+    shift_store[:, it] = shift
 
 fig = plt.figure(figsize=(8, 5))
 ax1 = plt.subplot(1, 2, 1, adjustable='box')
 ax2 = plt.subplot(1, 2, 2, sharex=ax1, sharey=ax1, adjustable='box')
-ax1.plot(tso.observation.dataset.time.data.value[80, 18, :], shift_store[0,:])
+ax1.plot(tso.observation.dataset.time.data.value[80, 18, :], shift_store[0, :])
 ax1.set_title('Y offset')
-ax2.plot(tso.observation.dataset.time.data.value[80, 18, :], shift_store[1,:])
+ax2.plot(tso.observation.dataset.time.data.value[80, 18, :], shift_store[1, :])
 ax2.set_title('X offset')
 plt.show()
 
@@ -296,68 +301,134 @@ ax1.plot(tso.observation.dataset.time.data.value[80, 18, :],
 ax1.plot(tso.observation.dataset.time.data.value[80, 18, :],-shift_store[1,:]- np.median(-shift_store[1,:]))
 ax1.set_ylim([-0.1,0.1])
 plt.show()
+######################################################
 
 # set the extraction area
 tso.execute("set_extraction_mask")
 
+print(hasattr(tso.cpm, 'extraction_mask'))
+assert hasattr(tso.cpm, 'extraction_mask') is True
 print(tso.cpm.extraction_mask[0].shape)
-plt.imshow(tso.cpm.extraction_mask[0])
+assert (tso.cpm.extraction_mask[0].shape[0] ==
+        tso.observation.dataset.data.shape[0])
+
+plt.imshow(tso.cpm.extraction_mask[0],
+           origin='lower',
+           cmap='Reds',
+           interpolation='nearest')
+plt.ylabel("Data number in wavelength direction")
+plt.xlabel("Data number in spatial direction")
+plt.title("Extraction Mask")
 plt.show()
 
 # setup regressors
 tso.execute("select_regressors")
-print(len(tso.cpm.regressor_list))
-print(len(tso.cpm.regressor_list[0]))
-print(len(tso.cpm.regressor_list[0][50]))
-print(len(tso.cpm.regressor_list[0][50][1]))
-print(len(tso.cpm.regressor_list[0][50][1][0]))
-print(tso.cpm.regressor_list[0][50])
 
-# setup of regression matrix
-tso.return_all_design_matrices(center_matrix=True)
-print(tso.cpm.design_matrix[0][0][0].shape)
-mask = tso.cpm.design_matrix[0][50][0].mask
-if mask.shape != ():
-    plt.imshow(mask)
-    plt.show()
-data_masked = tso.cpm.design_matrix[0][50][0]
-plt.imshow(data_masked)
+print(hasattr(tso.cpm, 'regressor_list'))
+assert hasattr(tso.cpm, 'regressor_list') is True
+
+# setup of regression matrix without clipping
+tso.return_all_design_matrices()
+
+# 2D case:
+#   regressor list index:
+#       first: [# nod]
+#       second: [# of valid pixels within extraction mask]
+#       third: [0=pixel coord; 1=list of regressors]
+#       forth: [0=coordinate wave direction; 1=coordinate spatial direction]
+#   design_matrix:
+#       first: [# nod]
+#       second: [# of valid pixels within extraction mask]
+#       third: [0]
+
+
+i_pixel_in_extraction_mask = 150
+reg_list = \
+    tso.cpm.regressor_list[0][i_pixel_in_extraction_mask][1][0]
+reg_matrix = tso.cpm.design_matrix[0][i_pixel_in_extraction_mask][0]
+
+plt.imshow(reg_matrix.mask,
+           origin='lower',
+           cmap='hot',
+           interpolation='nearest',
+           aspect='auto')
+plt.xlabel("Integration Number")
+plt.ylabel("Regressor Number")
+plt.title('Mask of non-clipped regressor matrix')
 plt.show()
 
-B, lambdas = cascade.cpm_model.return_PCR(data_masked.data.T, 36)
-plt.plot(B[:, 0:36])
+data_masked = reg_matrix
+data_masked.set_fill_value(np.nan)
+plt.imshow(data_masked.filled().value,
+           origin='lower',
+           cmap='hot',
+           interpolation='nearest',
+           aspect='auto')
+plt.colorbar().set_label("Intensity ({})".format(image0.data.unit))
+plt.xlabel("Integration Number")
+plt.ylabel("Regressor Number")
+plt.title('Not clipped regressor matrix')
 plt.show()
 
-clip_pctl_regressors = float(tso.cascade_parameters.cpm_clip_percentile_regressors)
-clip_pctl_time = float(tso.cascade_parameters.cpm_clip_percentile_time)
-tso.return_all_design_matrices(clip=True,
-                               clip_pctl_time=clip_pctl_time,
-                               clip_pctl_regressors=clip_pctl_regressors,
-                               center_matrix=False)
-print(tso.cpm.design_matrix[0][0][0].shape)
-mask = tso.cpm.design_matrix[0][50][0].mask
-plt.imshow(mask)
-plt.show()
-data_masked = tso.cpm.design_matrix[0][50][0]
-plt.imshow(data_masked)
+# setup of regression matrix with clipping
+tso.return_all_design_matrices(clip=True, clip_pctl_time=0.08,
+                               clip_pctl_regressors=0.04)
+
+reg_matrix = tso.cpm.design_matrix[0][i_pixel_in_extraction_mask][0]
+
+plt.imshow(reg_matrix.mask,
+           origin='lower',
+           cmap='hot',
+           interpolation='nearest',
+           aspect='auto')
+plt.xlabel("Integration Number")
+plt.ylabel("Regressor Number")
+plt.title('Mask of clipped regressor matrix')
 plt.show()
 
-B, lambdas = cascade.cpm_model.return_PCR(data_masked.data.T, 36)
-plt.plot(B[:, 0:36])
+data_masked = reg_matrix
+data_masked.set_fill_value(np.nan)
+plt.imshow(data_masked.filled().value,
+           origin='lower',
+           cmap='hot',
+           interpolation='nearest',
+           aspect='auto')
+plt.colorbar().set_label("Intensity ({})".format(image0.data.unit))
+plt.xlabel("Integration Number")
+plt.ylabel("Regressor Number")
+plt.title('Clipped regressor matrix')
 plt.show()
 
 # create calibrated time series and derive planetary signal
 tso.execute("calibrate_timeseries")
+
 print(np.ma.max(tso.calibration_results.regularization))
 print(np.ma.min(tso.calibration_results.regularization))
-plt.imshow(tso.calibration_results.regularization)
+assert (np.ma.max(tso.calibration_results.regularization) <
+        float(tso.cascade_parameters.cpm_lam1))
+assert (np.ma.min(tso.calibration_results.regularization) >
+        float(tso.cascade_parameters.cpm_lam0))
+
+fig, ax = plt.subplots(figsize=(7, 5))
+for item in ([ax.title, ax.xaxis.label, ax.yaxis.label] +
+             ax.get_xticklabels() + ax.get_yticklabels()):
+    item.set_fontsize(20)
+im = ax.imshow(tso.calibration_results.regularization,
+               origin='lower',
+               cmap='hot',
+               interpolation='nearest',
+               aspect='auto')
+fig.colorbar(im, ax=ax).set_label("Regularization strength")
+ax.set_ylabel("Wavelength data point number")
+ax.set_xlabel("Spatial data point number")
+ax.set_title('Regularization parameter')
 plt.show()
 
 # extract planetary signal
 tso.execute("extract_spectrum")
 
-extent = [0, 127, 15.5, 7.5]
-delta_lam = 15.5-7.5
+extent = [0, image0.shape[1]-1, wave0_min, wave0_max]
+delta_lam = wave0_max - wave0_min
 fig, ax = plt.subplots(figsize=(6, 6))
 for item in ([ax.title, ax.xaxis.label, ax.yaxis.label] +
              ax.get_xticklabels() + ax.get_yticklabels()):
@@ -375,9 +446,9 @@ plt.show()
 path_old = '/home/bouwman/SST_OBSERVATIONS/projects_HD189733/REDUCED_DATA/'
 spec_instr_model_ian = ascii.read(path_old+'results_ian.dat', data_start=1)
 wave_ian = (spec_instr_model_ian['lam_micron']*u.micron)
-flux_ian = (spec_instr_model_ian['depthA'] *
+flux_ian = (spec_instr_model_ian['depthB'] *
             u.dimensionless_unscaled).to(u.percent)
-error_ian = (spec_instr_model_ian['errorA'] *
+error_ian = (spec_instr_model_ian['errorB'] *
              u.dimensionless_unscaled).to(u.percent)
 fig, ax = plt.subplots(figsize=(7, 4))
 for item in ([ax.title, ax.xaxis.label, ax.yaxis.label] +
@@ -405,59 +476,77 @@ ax.set_ylabel('Fp/Fstar')
 ax.set_xlabel('Wavelength')
 plt.show()
 
+image0 = tso.exoplanet_spectrum.weighted_residual.copy()
+image0.set_fill_value(np.nan)
+image0 = image0.filled().value
 
-for i in range(71):
-    ks, prob = stats.ks_2samp(flux_ian.value,
-                         (tso.exoplanet_spectrum.spectrum.data.data.
-                          value[~tso.exoplanet_spectrum.spectrum.mask])[::-1] -
-                          (0.035-i*0.001))
-    print(-(0.035-i*0.001), ks, prob)
+df = pd.DataFrame(image0.T)
+df = df.replace(np.nan, 0)
+fig, ax = plt.subplots(figsize=(7, 5))
+for item in ([ax.title, ax.xaxis.label, ax.yaxis.label] +
+             ax.get_xticklabels() + ax.get_yticklabels()):
+    item.set_fontsize(20)
+ax = autocorrelation_plot(df[10], lw=3, ax=ax, label="10")
+ax = autocorrelation_plot(df[50], lw=3, ax=ax, label="50")
+ax = autocorrelation_plot(df[90], lw=3, ax=ax, label="90")
+ax = autocorrelation_plot(df, lw=3, ax=ax, label="All")
+ax.legend(loc='best')
+ax.set_title('ACF in time direction')
+plt.show()
 
+df = pd.DataFrame(image0)
+df = df.replace(np.nan, 0)
+fig, ax = plt.subplots(figsize=(7, 5))
+for item in ([ax.title, ax.xaxis.label, ax.yaxis.label] +
+             ax.get_xticklabels() + ax.get_yticklabels()):
+    item.set_fontsize(20)
+ax = autocorrelation_plot(df[10], lw=3, ax=ax, label="50")
+ax = autocorrelation_plot(df[50], lw=3, ax=ax, label="150")
+ax = autocorrelation_plot(df[90], lw=3, ax=ax, label="250")
+ax = autocorrelation_plot(df, lw=3, ax=ax, label="All")
+ax.legend(loc='best')
+ax.set_title('ACF in wavelength direction')
+plt.show()
+
+
+fig, ax = plt.subplots(figsize=(7, 5))
+for item in ([ax.title, ax.xaxis.label, ax.yaxis.label] +
+             ax.get_xticklabels() + ax.get_yticklabels()):
+    item.set_fontsize(20)
+s = pd.Series(np.random.normal(0.0, 1.0, 280))
+ax = autocorrelation_plot(s, lw=3, ax=ax, label="run1")
+s = pd.Series(np.random.normal(0.0, 1.0, 280))
+ax = autocorrelation_plot(s, lw=3, ax=ax, label="run2")
+s = pd.Series(np.random.normal(0.0, 1.0, 280))
+ax = autocorrelation_plot(s, lw=3, ax=ax, label="run3")
+s = pd.Series(np.random.normal(0.0, 1.0, 280))
+ax = autocorrelation_plot(s, lw=3, ax=ax, label="run4")
+s = pd.DataFrame(np.random.normal(0.0, 1.0, 280*130).reshape(280, 130))
+ax = autocorrelation_plot(s, lw=3, ax=ax, label="All")
+ax.legend(loc='best')
+ax.set_title('ACF in time direction for random distributions')
+plt.show()
+
+fig, ax = plt.subplots(figsize=(7, 5))
+for item in ([ax.title, ax.xaxis.label, ax.yaxis.label] +
+             ax.get_xticklabels() + ax.get_yticklabels()):
+    item.set_fontsize(20)
+s = pd.Series(np.random.normal(0.0, 1.0, 130))
+ax = autocorrelation_plot(s, lw=3, ax=ax, label="run1")
+s = pd.Series(np.random.normal(0.0, 1.0, 130))
+ax = autocorrelation_plot(s, lw=3, ax=ax, label="run2")
+s = pd.Series(np.random.normal(0.0, 1.0, 130))
+ax = autocorrelation_plot(s, lw=3, ax=ax, label="run3")
+s = pd.Series(np.random.normal(0.0, 1.0, 130))
+ax = autocorrelation_plot(s, lw=3, ax=ax, label="run4")
+s = pd.DataFrame(np.random.normal(0.0, 1.0, 280*130).reshape(130, 280))
+ax = autocorrelation_plot(s, lw=3, ax=ax, label="All")
+ax.legend(loc='best')
+ax.set_title('ACF in wavelength direction for random distributions')
+plt.show()
 
 # save planetary signal
 tso.execute("save_results")
 
 # plot planetary signal
 tso.execute("plot_results")
-
-
-cal_signal_depth = float(tso.cascade_parameters.cpm_calibration_signal_depth)
-mean_eclipse_depth = float(tso.cascade_parameters.observations_median_signal)
-
-plt.plot(tso.calibration_results.calibrated_time_series[90, 17:21, :].T)
-plt.show()
-
-plt.plot(tso.exoplanet_spectrum.spectrum.wavelength,
-         tso.calibration_results.calibration_signal *
-         (1+cal_signal_depth)+cal_signal_depth)
-axes = plt.gca()
-axes.set_ylim([cal_signal_depth*0.0, cal_signal_depth*5])
-plt.show()
-
-plt.plot(tso.exoplanet_spectrum.spectrum.wavelength,
-         (tso.calibration_results.calibration_signal *
-          (1+cal_signal_depth)+cal_signal_depth)/cal_signal_depth)
-axes = plt.gca()
-axes.set_ylim([0.0, 2.5])
-plt.show()
-
-plt.imshow(np.log10((tso.calibration_results.calibration_signal *
-           (1+cal_signal_depth)+cal_signal_depth) /
-           (tso.calibration_results.error_calibration_signal *
-            (1+cal_signal_depth)/cal_signal_depth)**2))
-plt.show()
-
-plt.plot(tso.exoplanet_spectrum.calibration_correction.wavelength,
-         tso.exoplanet_spectrum.calibration_correction.data)
-#plt.errorbar(tso.exoplanet_spectrum.spectrum.wavelength,
-#             tso.exoplanet_spectrum.calibration_correction.data,
-#             yerr=tso.exoplanet_spectrum.calibration_correction.uncertainty)
-plt.show()
-
-mean_ecld = np.ma.array((mean_eclipse_depth*u.dimensionless_unscaled).to(u.percent))
-plt.plot(tso.exoplanet_spectrum.spectrum.wavelength,
-         (mean_ecld-tso.exoplanet_spectrum.calibration_correction.data) /
-         tso.exoplanet_spectrum.calibration_correction.uncertainty)
-plt.plot(tso.exoplanet_spectrum.spectrum.wavelength,
-         tso.exoplanet_spectrum.spectrum.data/tso.exoplanet_spectrum.spectrum.uncertainty)
-plt.show()

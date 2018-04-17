@@ -569,6 +569,15 @@ class TSOSuite:
     def select_regressors(self):
         """
         Select pixels which will be used as regressors.
+
+        Output:
+        -------
+        List of regressors, using the following list index:
+            first index: [# nod]
+            second index: [# valid pixel in extraction mask]
+            third index: [0=pixel coord; 1=list of regressors]
+            forth index: [0=coordinate wave direction;
+                          1=coordinate spatial direction]
         """
         try:
             spectral_trace = self.cpm.spectral_trace
@@ -746,6 +755,13 @@ class TSOSuite:
         """
         Setup the regression matrix based on the sub set of the data slected
         to be used as calibrators.
+
+        Output:
+        -------
+        list with design matrici with the following index convention:
+               first index: [# nods]
+               second index : [# of valid pixels within extraction mask]
+               third index : [0]
         """
         try:
             data_in = self.observation.dataset
@@ -877,7 +893,7 @@ class TSOSuite:
         position_use = self.reshape_data(position)
         lightcurve_model_use = self.reshape_data(lightcurve_model)
         calibration_signal_use = self.reshape_data(calibration_signal)
-
+        data_unit = data_use.data.unit
         nlambda, nspatial, ntime = data_use.shape
 
         # number of additional regressors
@@ -928,6 +944,11 @@ class TSOSuite:
                                  dtype=np.dtype('Float64')),
                         mask=np.tile(Combined_ExtractionMask.T,
                                      (ntime, 1, 1)).T)
+        residual_time_series = \
+            np.ma.array(np.zeros(shape=(nlambda, nspatial, ntime),
+                                 dtype=np.dtype('Float64'))*data_unit,
+                        mask=np.tile(Combined_ExtractionMask.T,
+                                     (ntime, 1, 1)).T)
 
         # loop over nods
         for inod, (ExtractionMask, regressor_list) in \
@@ -960,9 +981,7 @@ class TSOSuite:
                                       axis=1) * temp_cal.data.T).T * \
                         regressor_matrix.data.unit
 
-                # select data and aditional regressors (x = phase, y=signal,
-                # z = ligthcurve model, r = position)
-                x = time_use[il, ir, :].copy()
+                # select data (y=signal, yerr = error signal)
                 y = data_use[il, ir, :].copy()
                 yerr = unc_use[il, ir, :].copy()
                 np.ma.set_fill_value(y, 0.0)
@@ -975,19 +994,25 @@ class TSOSuite:
                     temp_ma.mask[idx_temp] = True
                     y = y + np.ma.median(temp_ma)*zcal
 
+                # select aditional regressors (x = phase,
+                # z = ligthcurve model, r = position)
+                x = time_use[il, ir, :].data.value.copy()
                 z = lightcurve_model_use[inod][il, ir, :].copy()
                 r = position_use[il, ir, :].copy()
 
+                # flag bad data in time and give low weight
                 idx_bad_time = \
                     np.logical_or(y.mask,
                                   np.all(regressor_matrix.mask, axis=0))
-                # weights = np.ones(len(y))
+                y.mask[idx_bad_time] = True
+                yerr.mask[idx_bad_time] = True
+                np.ma.set_fill_value(y, 0.0)
+                np.ma.set_fill_value(yerr, 1.0e8)
                 weights = 1.0/yerr.filled().value**2
-                weights[idx_bad_time] = 1.e-16
 
                 # add other regressors: constant, time, position along slit,
                 # lightcure model
-                design_matrix = regressor_matrix
+                design_matrix = regressor_matrix.data.value  # uses clean data
                 if add_time:
                     design_matrix = np.vstack((design_matrix,
                                                np.ones_like(x), x))
@@ -997,12 +1022,12 @@ class TSOSuite:
                     design_matrix = np.vstack((design_matrix, zcal))
                 design_matrix = np.vstack((design_matrix, z)).T
 
-                if np.any(~np.isfinite(design_matrix.data)):
-                    plt.imshow(design_matrix.data)
+                if np.any(~np.isfinite(design_matrix)):
+                    plt.imshow(design_matrix)
                     plt.show()
                 # solve linear Eq.
                 P, Perr, opt_reg_par = \
-                    solve_linear_equation(design_matrix.data,
+                    solve_linear_equation(design_matrix,
                                           y.filled().value, weights,
                                           cv_method=cv_method,
                                           reg_par=reg_par)
@@ -1010,7 +1035,8 @@ class TSOSuite:
                 optimal_regularization_parameter.data[il, ir] = opt_reg_par
                 fitted_parameters.data[:, il, ir] = P[len(P)-nadd:]
                 error_fitted_parameters.data[:, il, ir] = Perr[len(P)-nadd:]
-
+                residual_time_series[il, ir, :] = \
+                    y-np.dot(design_matrix, P)*y.data.unit
                 ##################################
                 # calculate the spectrum!!!!!!!!!#
                 ##################################
@@ -1025,13 +1051,13 @@ class TSOSuite:
                 # for eiter eclipse or transit
                 if self.model.transittype == 'secondary':
                     # eclipse is normalized to stellar flux
-                    calibrated_lightcurve = 1.0 - np.dot(design_matrix.data,
+                    calibrated_lightcurve = 1.0 - np.dot(design_matrix,
                                                          Ptemp) / \
-                                                  np.dot(design_matrix.data, P)
+                                                  np.dot(design_matrix, P)
                 else:
                     # transit is normalized to flux-baseline outside transit
-                    calibrated_lightcurve = np.dot(design_matrix.data, P) / \
-                                            np.dot(design_matrix.data,
+                    calibrated_lightcurve = np.dot(design_matrix, P) / \
+                                            np.dot(design_matrix,
                                                    Ptemp) - 1.0
                 calibrated_time_series.data[il, ir, :] = calibrated_lightcurve
                 # fit again for final normalized transit/eclipse depth
@@ -1079,6 +1105,7 @@ class TSOSuite:
                 error_calibration_image
             self.calibration_results.calibrated_time_series = \
                 calibrated_time_series
+            self.calibration_results.residual = residual_time_series
 
     def extract_spectrum(self):
         """
@@ -1117,6 +1144,7 @@ class TSOSuite:
         try:
             calibrated_signal = self.calibration_results.signal
             calibrated_error = self.calibration_results.error_signal
+            residual = self.calibration_results.residual
         except AttributeError:
             raise AttributeError("No calibrated data found. \
                                  Aborting extraction of planetary spectrum")
@@ -1191,6 +1219,16 @@ class TSOSuite:
             np.ma.average(wavelength_image, axis=1,
                           weights=(np.ma.ones((npix, mpix)) /
                                    calibrated_error)**2)
+        nintegrations = residual.shape[-1]
+#        residual_unit = residual.data.unit
+#        residual_cube = np.ma.array(residual.data.value,
+#                                    mask = residual.mask)
+        weighted_residual = \
+            np.ma.average(residual, axis=1,
+                          weights=(np.ma.ones((npix, mpix, nintegrations)) /
+                                   np.tile(calibrated_error.T,
+                                           (nintegrations, 1,1)).T)**2)
+
         if add_calibration_signal:
             # mask_temp = np.logical_or(self.cpm.extraction_mask[0],
             #                           calibrated_cal_signal.mask)
@@ -1292,12 +1330,15 @@ class TSOSuite:
                              uncertainty=error_brightness_temperature)
             exoplanet_spectrum_in_brightnes_temperature.wavelength_unit = \
                 u.cm**-1
-
+            exoplanet_spectrum_in_brightnes_temperature.mask = \
+                ~np.isfinite(exoplanet_spectrum_in_brightnes_temperature.
+                             data.data)
         try:
             self.exoplanet_spectrum
         except AttributeError:
             self.exoplanet_spectrum = SimpleNamespace()
         self.exoplanet_spectrum.weighted_image = calibrated_weighted_image
+        self.exoplanet_spectrum.weighted_residual = weighted_residual
         self.exoplanet_spectrum.spectrum = exoplanet_spectrum
         if transittype == 'secondary':
             self.exoplanet_spectrum.brightness_temperature = \
