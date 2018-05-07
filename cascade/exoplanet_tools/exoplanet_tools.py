@@ -37,7 +37,8 @@ __all__ = ['Vmag', 'Kmag', 'Rho_jup', 'Rho_jup', 'KmagToJy', 'JytoKmag',
            'SurfaceGravity', 'ScaleHeight', 'TransitDepth', 'Planck',
            'EquilibriumTemperature', 'get_calalog', 'parse_database',
            'convert_spectrum_to_brighness_temperature', 'combine_spectra',
-           'extract_exoplanet_data', 'lightcuve', 'batman_model']
+           'extract_exoplanet_data', 'lightcuve', 'batman_model',
+           'masked_array_input']
 
 
 # enable cds to be able to use certain quantities defined in this system

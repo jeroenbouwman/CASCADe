@@ -27,6 +27,8 @@ import pandas as pd
 from scipy import interpolate
 from scipy.optimize import nnls
 from skimage.feature import register_translation
+from skimage.morphology import dilation
+from skimage.morphology import square
 from tqdm import tqdm
 
 from ..initialize import cascade_configuration
@@ -176,8 +178,8 @@ class HST(ObservatoryBase):
 
 class HSTWFC3(InstrumentBase):
     """
-    This instrument class defines the properties of the IRS instrument of
-    the Spitzer Space Telescope
+    This instrument class defines the properties of the WFC3 instrument of
+    the Hubble Space Telescope
     """
 
     __valid_sub_array = {'IRSUB128', 'IRSUB256', 'IRSUB512'}
@@ -195,6 +197,7 @@ class HSTWFC3(InstrumentBase):
         else:
             self.data = self.load_data()
         self.spectral_trace = self.get_spectral_trace()
+        self._define_region_of_interest()
         try:
             self.instrument_calibration = self.wfc3_cal
         except AttributeError:
@@ -396,6 +399,8 @@ class HSTWFC3(InstrumentBase):
 
         position = np.zeros_like(spectral_data)
 
+        self._define_convolution_kernel()
+
         SpectralTimeSeries = \
             SpectralDataTimeSeries(wavelength=wavelength_data,
                                    wavelength_unit=wave_unit,
@@ -441,6 +446,7 @@ class HSTWFC3(InstrumentBase):
         cal_time = []
         spectral_data_files = []
         calibration_data_files = []
+        linescan = []
         for im, image_file in enumerate(tqdm(data_files, dynamic_ncols=True)):
             with fits.open(image_file) as hdul:
                 instrument_fiter = hdul['PRIMARY'].header['FILTER']
@@ -454,6 +460,8 @@ class HSTWFC3(InstrumentBase):
                         cal_time.append(expstart + 0.5*(exptime/(24.0*3600.0)))
                         del calibration_image
                     continue
+                line = hdul['PRIMARY'].header['LINENUM']
+                linescan.append(line)
                 spectral_image = hdul['SCI'].data
                 spectral_image_cube.append(spectral_image.copy())
                 spectral_image_unc = hdul['ERR'].data
@@ -561,7 +569,8 @@ class HSTWFC3(InstrumentBase):
         if np.max(cal_phase) < 0.0:
             cal_phase = cal_phase + 1.0
 
-        self._determine_relative_source_position(spectral_image_cube, mask)
+        # self._determine_relative_source_position(spectral_image_cube, mask)
+        self._define_convolution_kernel()
         self._determine_source_position_from_cal_image(
                 calibration_image_cube, calibration_data_files)
         self._read_grism_configuration_files()
@@ -575,8 +584,8 @@ class HSTWFC3(InstrumentBase):
         spectral_image_unc_cube = spectral_image_unc_cube.T * flux_unit
         mask = mask.T
 
-        position = self.wfc3_cal.relative_source_shift['cross_disp_shift']
-        position = -position-np.median(-position)
+        # position = self.wfc3_cal.relative_source_shift['cross_disp_shift']
+        # position = -position-np.median(-position)
 
         SpectralTimeSeries = \
             SpectralDataTimeSeries(wavelength=wave_cal,
@@ -584,7 +593,7 @@ class HSTWFC3(InstrumentBase):
                                    uncertainty=spectral_image_unc_cube,
                                    time=phase,
                                    mask=mask,
-                                   position=position,
+                                   # position=position,
                                    time_bjd=time,
                                    isRampFitted=True,
                                    isNodded=False)
@@ -592,6 +601,53 @@ class HSTWFC3(InstrumentBase):
             self._get_background_cal_data()
             SpectralTimeSeries = self._fit_background(SpectralTimeSeries)
         return SpectralTimeSeries
+
+    def _define_convolution_kernel(self):
+        """
+        Define the instrument specific convolution kernel which will be used
+        in the correction procedure of bad pixels
+        """
+        kernel = Gaussian2DKernel(x_stddev=0.2, y_stddev=3.0, theta=-0.0)
+        try:
+            self.wfc3_cal
+        except AttributeError:
+            self.wfc3_cal = SimpleNamespace()
+        finally:
+            self.wfc3_cal.convolution_kernel = kernel
+        return
+
+    def _define_region_of_interest(self):
+        """
+        Defines region on detector which containes the intended target star.
+        """
+        if self.par["inst_beam"] == 'A':
+            wavelength_min = 1.082*u.micron
+            wavelength_max = 1.674*u.micron
+            roi_width = 40
+        trace = self.spectral_trace.copy()
+        mask_min = trace['wavelength'] > wavelength_min
+        mask_max = trace['wavelength'] < wavelength_max
+        idx_min = int(np.min(trace['wavelength_pixel'].value[mask_min]))
+        idx_max = int(np.max(trace['wavelength_pixel'].value[mask_max]))
+        dim = self.data.data.shape
+        if len(dim) <= 2:
+            roi = np.zeros((dim[0]), dtype=np.dtype("bool"))
+            roi[0:idx_min] = True
+            roi[idx_max+1:] = True
+        else:
+            center_pix = int(np.mean(trace['positional_pixel'].
+                                     value[idx_min:idx_max]))
+            min_idx_pix = center_pix - roi_width//2
+            max_idx_pix = center_pix + roi_width//2
+            roi = np.ones((dim[:-1]), dtype=np.dtype("bool"))
+            roi[idx_min:idx_max, min_idx_pix:max_idx_pix] = False
+        try:
+            self.wfc3_cal
+        except AttributeError:
+            self.wfc3_cal = SimpleNamespace()
+        finally:
+            self.wfc3_cal.roi = roi
+        return
 
     def _get_background_cal_data(self):
         """
@@ -1263,7 +1319,10 @@ class SpitzerIRS(InstrumentBase):
         else:
             self.data = self.load_data()
         self.spectral_trace = self.get_spectral_trace()
-        self.instrument_calibration = None
+        try:
+            self.instrument_calibration = self.IRS_cal
+        except AttributeError:
+            self.instrument_calibration = None
 
     @property
     def name(self):
@@ -1354,15 +1413,6 @@ class SpitzerIRS(InstrumentBase):
         """
         read uncalibrated spectral timeseries, phase and wavelength
         """
-        # make list of all spectral images
-#        def find(pattern, path):
-#            result = []
-#            for root, dirs, files in os.walk(path):
-#                for name in files:
-#                    if fnmatch.fnmatch(name, pattern):
-#                        result.append(os.path.join(root, name))
-#            return sorted(result)
-
         # get data files
         if is_background:
             # obsid = self.par['obs_backgr_id']
@@ -1457,7 +1507,12 @@ class SpitzerIRS(InstrumentBase):
         phase = phase - np.int(np.max(phase))
         if np.max(phase) < 0.0:
             phase = phase + 1.0
-        #
+
+        self._define_convolution_kernel()
+
+        # ROI
+        self._define_region_of_interest(data)
+
         SpectralTimeSeries = SpectralDataTimeSeries(wavelength=wavelength,
                                                     data=data, time=phase,
                                                     mask=mask,
@@ -1493,15 +1548,6 @@ class SpitzerIRS(InstrumentBase):
 
         # wavelength calibration
         wave_cal = self._get_wavelength_calibration()
-
-        # make list of all spectral images
-#        def find(pattern, path):
-#            result = []
-#            for root, dirs, files in os.walk(path):
-#                for name in files:
-#                    if fnmatch.fnmatch(name, pattern):
-#                        result.append(os.path.join(root, name))
-#            return sorted(result)
 
         # get data files
         if is_background:
@@ -1578,7 +1624,7 @@ class SpitzerIRS(InstrumentBase):
                                                         "drunc.fits"), ext=0)
             image_unc_cube[:, :, im] = unc_image
             dq_image = fits.getdata(image_file.replace("droop.fits",
-                                                        "bmask.fits"), ext=0)
+                                                       "bmask.fits"), ext=0)
             image_dq_cube[:, :, im] = dq_image
 
         data = image_cube * flux_unit
@@ -1599,6 +1645,11 @@ class SpitzerIRS(InstrumentBase):
         if np.max(phase) < 0.0:
             phase = phase + 1.0
 
+        self._define_convolution_kernel()
+
+        # ROI
+        self._define_region_of_interest(data)
+
         SpectralTimeSeries = SpectralDataTimeSeries(wavelength=wave_cal,
                                                     data=data, time=phase,
                                                     uncertainty=uncertainty,
@@ -1606,6 +1657,41 @@ class SpitzerIRS(InstrumentBase):
                                                     isRampFitted=True,
                                                     isNodded=isNodded)
         return SpectralTimeSeries
+
+    def _define_convolution_kernel(self):
+        """
+        Define the instrument specific convolution kernel which will be used
+        in the correction procedure of bad pixels
+        """
+        kernel = Gaussian2DKernel(x_stddev=0.3, y_stddev=2.0, theta=-0.1)
+        try:
+            self.IRS_cal
+        except AttributeError:
+            self.IRS_cal = SimpleNamespace()
+        finally:
+            self.IRS_cal.convolution_kernel = kernel
+        return
+
+    def _define_region_of_interest(self, data):
+        """
+        Defines region on detector which containes the intended target star.
+        """
+        dim = data.shape
+        if len(dim) <= 2:
+            roi = np.zeros((dim[0]), dtype=np.dtype("bool"))
+            roi[0] = True
+            roi[-1] = True
+        else:
+            roi = self._get_order_mask()
+            selem = square(2)
+            roi = dilation(roi, selem)
+        try:
+            self.IRS_cal
+        except AttributeError:
+            self.IRS_cal = SimpleNamespace()
+        finally:
+            self.IRS_cal.roi = roi
+        return
 
     def _get_order_mask(self):
         """
@@ -1820,6 +1906,11 @@ class SpitzerIRS(InstrumentBase):
         time_shift = np.tile(time_shift, (nintegrations, 1)).T
         time_shift = time_shift / (24.0*3600.0) / self.par['obj_period']
         phase = phase + time_shift
+
+        self._define_convolution_kernel()
+
+        # ROI
+        self._define_region_of_interest(data)
 
         SpectralTimeSeries = SpectralDataTimeSeries(wavelength=wave_cal,
                                                     data=data, time=phase,

@@ -18,7 +18,8 @@ __all__ = ['solve_linear_equation', 'return_PCR']
 
 
 def solve_linear_equation(design_matrix, data, weights=None, cv_method='gcv',
-                          reg_par={"lam0": 1.e-6, "lam1": 1.e2, "nlam": 60}):
+                          reg_par={"lam0": 1.e-6, "lam1": 1.e2, "nlam": 60},
+                          feature_scaling='norm'):
     """
     Solve linear system using SVD with TIKHONOV regularization
 
@@ -63,15 +64,22 @@ def solve_linear_equation(design_matrix, data, weights=None, cv_method='gcv',
                 lam0 : minimum lambda
                 lam1 : maximum lambda
                 nlam : number of grid points
+        feature_scaling:
+            norm : normalise features using L2 norm
+            None : no featue scaling
     """
-    # precondition regressors
-    if design_matrix.dtype != 'float64':
-        pc_matrix = \
-           np.diag(1.0/np.linalg.norm(design_matrix, axis=0)).astype('float64')
+    if feature_scaling is not None:
+        # precondition regressors
+        if design_matrix.dtype != 'float64':
+            pc_matrix = \
+               np.diag(1.0/np.linalg.norm(design_matrix,
+                                          axis=0)).astype('float64')
+        else:
+            pc_matrix = np.diag(1.0/np.linalg.norm(design_matrix, axis=0))
+        pc_design_matrix = np.dot(design_matrix, pc_matrix)
     else:
-        pc_matrix = np.diag(1.0/np.linalg.norm(design_matrix, axis=0))
+        pc_matrix = np.identity(design_matrix.shape[1])
     pc_design_matrix = np.dot(design_matrix, pc_matrix)
-
     # add weights
     if data.dtype != 'float64':
         data = data.astype('float64')
@@ -211,12 +219,17 @@ def solve_linear_equation(design_matrix, data, weights=None, cv_method='gcv',
                                                               Fsigma_inv**2,
                                                               VH])))
 
-    # remove preconditioning from fit parameters
-    fit_parameters = np.dot(pc_matrix, fit_parameters)
-    err_fit_parameters = np.dot(pc_matrix, err_fit_parameters)
+    if feature_scaling is not None:
+        # remove preconditioning from fit parameters
+        fit_parameters_scaled = np.dot(pc_matrix, fit_parameters)
+        err_fit_parameters_scaled = np.dot(pc_matrix, err_fit_parameters)
 
-    # return fitted parameters, error on parameters and optimal regularization
-    return fit_parameters, err_fit_parameters, lam_reg
+        # return fitted parameters, error on parameters and
+        # optimal regularization together with normed parameters
+        return (fit_parameters_scaled, err_fit_parameters_scaled, lam_reg,
+                pc_matrix, fit_parameters, err_fit_parameters)
+    else:
+        return (fit_parameters, err_fit_parameters, lam_reg)
 
 
 def return_PCR(design_matrix, n_components=None, variance_prior_scaling=1.):

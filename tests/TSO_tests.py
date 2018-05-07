@@ -8,6 +8,9 @@ from astropy.io import ascii
 from astropy import units as u
 import pandas as pd
 from pandas.plotting import autocorrelation_plot
+import seaborn as sns
+
+sns.set_style("white")
 
 # create transit spectoscopy object
 tso = cascade.TSO.TSOSuite()
@@ -141,6 +144,43 @@ with quantity_support():
 print(tso.observation.dataset.isSigmaCliped)
 assert tso.observation.dataset.isSigmaCliped is True
 
+# create a cleaned version of the spectral data
+tso.execute("create_cleaned_dataset")
+
+###################################
+roi_mask = tso.observation.instrument_calibration.roi.copy()
+kernel = tso.observation.instrument_calibration.convolution_kernel
+
+image_test_roi = np.ma.array(tso.observation.dataset.data.data.value.copy(),
+                             mask=tso.observation.dataset.mask.copy())
+image_test_roi[roi_mask] = 0.0
+image_test_roi.mask[roi_mask] = False
+image_test_roi.set_fill_value(np.nan)
+
+cleaned_image_test_roi = tso.cpm.cleaned_data
+
+plt.imshow(image_test_roi,
+           origin='lower',
+           cmap='hot',
+           interpolation='nearest',
+           aspect='auto')
+plt.show()
+plt.imshow(cleaned_image_test_roi.data.value,
+           origin='lower',
+           cmap='hot',
+           interpolation='nearest',
+           aspect='auto')
+plt.show()
+from sklearn.preprocessing import RobustScaler
+plt.imshow(RobustScaler().fit_transform(cleaned_image_test_roi),
+           origin='lower',
+           cmap='hot',
+           interpolation='nearest',
+           aspect='auto')
+plt.colorbar().set_label("Intensity")
+plt.show()
+################################################################
+
 # eclipse model
 tso.execute("define_eclipse_model")
 
@@ -256,8 +296,11 @@ plt.title('Not clipped regressor matrix')
 plt.show()
 
 # setup of regression matrix with clipping
-tso.return_all_design_matrices(clip=True, clip_pctl_time=0.08,
-                               clip_pctl_regressors=0.04)
+clip_pctl_time = float(tso.cascade_parameters.cpm_clip_percentile_time)
+clip_pctl_regressors = float(tso.cascade_parameters.
+                             cpm_clip_percentile_regressors)
+tso.return_all_design_matrices(clip=True, clip_pctl_time=clip_pctl_time,
+                               clip_pctl_regressors=clip_pctl_regressors)
 
 reg_matrix = tso.cpm.design_matrix[0][i_data_point_in_wavelength_direction][0]
 
@@ -304,6 +347,18 @@ ax.set_ylabel("Regularization strength")
 ax.set_title('Regularization parameter')
 plt.show()
 
+with quantity_support():
+    mask_use = ~tso.observation.dataset.data[80, :].mask
+    fig, ax = plt.subplots(figsize=(7, 5))
+    ax.plot(tso.observation.dataset.time.data[80, mask_use],
+            tso.observation.dataset.data.data[80, mask_use], label='Data')
+    ax.plot(tso.observation.dataset.time.data[80, mask_use],
+            tso.calibration_results.model_time_series.data[80, 0, mask_use],
+            label='Model')
+    ax.legend(loc='best')
+    ax.set_title('Comparison Data and Regression Model')
+    ax.set_xlabel('Phase')
+    plt.show()
 
 # extract planetary signal
 tso.execute("extract_spectrum")
@@ -313,9 +368,49 @@ for item in ([ax.title, ax.xaxis.label, ax.yaxis.label] +
              ax.get_xticklabels() + ax.get_yticklabels()):
     item.set_fontsize(20)
 ax.plot(tso.exoplanet_spectrum.spectrum.wavelength,
-        np.ma.abs(tso.exoplanet_spectrum.weighted_image),lw=3)
+        np.ma.abs(tso.exoplanet_spectrum.weighted_image), lw=3)
 ax.set_ylabel('| Signal * weight |')
 ax.set_xlabel('Wavelength')
+plt.show()
+
+W = (tso.exoplanet_spectrum.weighted_normed_parameters[:-4, :] /
+     np.ma.sum(tso.exoplanet_spectrum.weighted_normed_parameters[:-1, :],
+               axis=0)).T
+K = W - np.identity(W.shape[0])
+from scipy.linalg import pinv2
+K.set_fill_value(0.0)
+weighted_signal = tso.exoplanet_spectrum.weighted_signal.copy()
+weighted_signal.set_fill_value(0.0)
+
+bla = np.dot(pinv2(K.filled(), rcond=0.8),
+             -weighted_signal.filled())
+
+
+from scipy.linalg import lstsq
+res = lstsq(K.filled(), -weighted_signal.filled(), cond=0.8)
+bla=res[0]
+
+
+reg_par = {'lam0': 1.e-7, 'lam1': 1.e-2, 'nlam': 100}
+lam_reg0 = reg_par["lam0"]  # lowest value of regularization parameter
+lam_reg1 = reg_par["lam1"]   # highest
+ngrid_lam = reg_par["nlam"]  # number of points in grid
+# array to hold values of regularization parameter grid
+delta_lam = np.abs(np.log10(lam_reg1) - np.log10(lam_reg0)) / (ngrid_lam-1)
+lam_reg_array = 10**(np.log10(lam_reg0) +
+                     np.linspace(0, ngrid_lam-1, ngrid_lam)*delta_lam)
+
+from sklearn import linear_model
+RCV = linear_model.RidgeCV(fit_intercept=False, alphas=lam_reg_array)
+#RCV = linear_model.RidgeCV(fit_intercept=False)
+RCV.fit(K.filled(), -weighted_signal.filled())
+bla = RCV.coef_
+
+bla = bla-np.ma.median(bla)
+median_eclipse_depth = \
+    float(tso.cascade_parameters.observations_median_signal)
+bla = (bla * (1.0 + median_eclipse_depth) +
+       median_eclipse_depth)
 
 path_old = '/home/bouwman/SST_OBSERVATIONS/projects_HD189733/REDUCED_DATA/'
 spec_instr_model_ian = ascii.read(path_old+'results_ian.dat', data_start=1)
@@ -343,6 +438,7 @@ ax.errorbar(tso.exoplanet_spectrum.spectrum.wavelength.data.value,
             markerfacecolor='blue',
             markeredgecolor='blue', fillstyle='full', markersize=10,
             zorder=4)
+ax.plot(tso.exoplanet_spectrum.spectrum.wavelength, bla*100, lw=4, zorder=6)
 axes = plt.gca()
 axes.set_xlim([7.5, 15.5])
 axes.set_ylim([0.00, 0.8])
@@ -350,9 +446,14 @@ ax.set_ylabel('Fp/Fstar')
 ax.set_xlabel('Wavelength')
 plt.show()
 
-residual_time_series = tso.calibration_results.residual
-residual_time_series.set_fill_value(np.nan)
-image0 = residual_time_series[:,0,:].filled().value
+residual_time_series = tso.calibration_results.residual.copy()
+residual_unit = residual_time_series.data.unit
+image0 = np.ma.array(residual_time_series.data,
+                     mask=residual_time_series.mask)
+image0.set_fill_value(np.nan)
+image0 = image0[:, 0, :].filled().value
+# model = tso.calibration_results.model_time_series[:,0,:].data.value
+# image0 = image0/np.sqrt(model)
 wave0 = tso.observation.dataset._wavelength
 wave0_min = np.min(wave0)
 wave0_max = np.max(wave0)
@@ -361,11 +462,30 @@ plt.imshow(image0,
            cmap='hot',
            interpolation='nearest',
            aspect='auto',
-           extent =[0, image0.shape[1], wave0_min, wave0_max])
-plt.colorbar().set_label("Intensity ({})".format(residual_time_series.data.unit))
+           extent=[0, image0.shape[1], wave0_min, wave0_max])
+plt.colorbar().set_label("Residual ({})".format(residual_unit))
 plt.xlabel("Integration Number")
 plt.ylabel("Wavelength ")
 plt.title('Residual Image')
+plt.show()
+
+df = pd.DataFrame(image0.T)
+for col_id in df.dropna(axis=1, how='all').columns:
+    sns.distplot(df.dropna(axis=1, how='all')[col_id].dropna())
+
+wave_spectrum = tso.exoplanet_spectrum.spectrum.wavelength.copy()
+wave_spectrum.set_fill_value(np.nan)
+wave_spectrum = wave_spectrum.filled().value
+fig, ax = plt.subplots(figsize=(7, 5))
+for item in ([ax.title, ax.xaxis.label, ax.yaxis.label] +
+             ax.get_xticklabels() + ax.get_yticklabels()):
+    item.set_fontsize(20)
+ax.plot(wave_spectrum, tso.exoplanet_spectrum.weighted_aic,
+        label='AIC')
+ax.legend(loc='best')
+ax.set_title('AIC model fit per wavelength')
+ax.set_xlabel('Wavelength')
+ax.set_xlabel('AIC')
 plt.show()
 
 df = pd.DataFrame(image0.T)
@@ -448,9 +568,11 @@ wave_rsrf = rsrf['col1'].data
 rsrf_1 = rsrf['col2'].data
 rsrf_2 = rsrf['col4'].data
 
-wave = tso.exoplanet_spectrum.spectrum.wavelength.data.value
-star = 0.5 * (wave/wave[0])**-2
-rsrf_new = (tso.calibration_results.parameters[-1, :, 0])/(tso.calibration_results.signal[:,0])
+wave = np.ma.array(tso.exoplanet_spectrum.spectrum.wavelength.data,
+                   mask=tso.exoplanet_spectrum.spectrum.wavelength.mask)
+star = 0.5 * (wave/7.45)**-2
+rsrf_new = (tso.calibration_results.parameters[-1, :, 0]) / \
+    (tso.calibration_results.signal[:, 0])
 rsrf_old = (rsrf_1 + rsrf_2)*0.47*star
 plt.plot(wave, rsrf_new)
 plt.plot(wave, rsrf_old)

@@ -15,13 +15,16 @@ import warnings
 import astropy.units as u
 import numpy as np
 from astropy.convolution import Gaussian2DKernel, interpolate_replace_nans
+from skimage.feature import register_translation
 from astropy.stats import sigma_clip
+from astropy.stats import akaike_info_criterion
 from astropy.table import MaskedColumn, Table
 from astropy.visualization import quantity_support
 from matplotlib import pyplot as plt
 from matplotlib.ticker import MaxNLocator, ScalarFormatter
 from scipy import interpolate
 from tqdm import tqdm
+import seaborn as sns
 
 from ..cpm_model import solve_linear_equation
 from ..data_model import SpectralData
@@ -30,7 +33,6 @@ from ..exoplanet_tools import (convert_spectrum_to_brighness_temperature,
 from ..initialize import (cascade_configuration, configurator,
                           default_initialization_path)
 from ..instruments import Observation
-
 
 __all__ = ['TSOSuite']
 
@@ -58,6 +60,7 @@ class TSOSuite:
                 "load_data": self.load_data,
                 "subtract_background": self.subtract_background,
                 "sigma_clip_data": self.sigma_clip_data,
+                "create_cleaned_dataset": self.create_cleaned_dataset,
                 "define_eclipse_model": self.define_eclipse_model,
                 "determine_source_position": self.determine_source_position,
                 "set_extraction_mask": self.set_extraction_mask,
@@ -247,6 +250,63 @@ class TSOSuite:
         self.observation.dataset.mask = mask
         self.observation.dataset.isSigmaCliped = True
 
+    def create_cleaned_dataset(self):
+        """
+        Create a cleaned dataset to be used in regresion analysis.
+        """
+        try:
+            dataset = self.observation.dataset
+        except AttributeError:
+            raise AttributeError("Spectral dataset not found. Aborting "
+                                 "the creation of a cleaned dataset.")
+        try:
+            obs_has_backgr = ast.literal_eval(self.cascade_parameters.
+                                              observations_has_background)
+            if obs_has_backgr:
+                assert dataset.isBackgroundSubtracted is True
+            assert dataset.isSigmaCliped is True
+        except (AttributeError, AssertionError):
+            raise AssertionError("Spectral dataset not background subtracted "
+                                 "and/or sigma clipped. Aborting the "
+                                 "creation of a cleaned dataset.")
+        try:
+            roi_mask = self.observation.instrument_calibration.roi.copy()
+        except (AttributeError):
+            raise AttributeError("Region of interest not set. Aborting the "
+                                 "creation of a cleaned dataset.")
+        try:
+            kernel = self.observation.instrument_calibration.convolution_kernel
+        except AttributeError:
+            raise AttributeError("Convolution kernel not set. Aborting the "
+                                 "creation of a cleaned dataset.")
+
+        spectral_image_using_roi = np.ma.array(dataset.data.data.value.copy(),
+                                               mask=dataset.mask.copy())
+        spectral_image_using_roi[roi_mask] = 0.0
+        spectral_image_using_roi.mask[roi_mask] = False
+        spectral_image_using_roi.set_fill_value(np.nan)
+
+        ndim = spectral_image_using_roi.ndim
+        shape = spectral_image_using_roi.shape
+        data_unit = dataset.data.data.unit
+
+        if ndim > 2:
+            kernel = np.dstack([np.zeros_like(kernel), kernel,
+                                np.zeros_like(kernel)])
+
+        cleaned_spectral_image_using_roi = \
+            interpolate_replace_nans(spectral_image_using_roi.filled(), kernel)
+
+        try:
+            self.cpm
+        except AttributeError:
+            self.cpm = SimpleNamespace()
+        finally:
+            mask = np.repeat(roi_mask[..., np.newaxis], shape[-1], axis=ndim-1)
+            self.cpm.cleaned_data = \
+                np.ma.array(cleaned_spectral_image_using_roi*data_unit,
+                            mask=mask)
+
     def define_eclipse_model(self):
         """
         This function defines the light curve model used to analize the
@@ -348,6 +408,9 @@ class TSOSuite:
             data_in = self.observation.dataset
             dim = self.observation.dataset.data.shape
             ndim = self.observation.dataset.data.ndim
+#            data_in = self.cpm.cleaned_data
+#            dim = data_in.shape
+#            ndim = data_in.data.ndim
         except AttributeError:
             raise AttributeError("No Valid data found. \
                                  Aborting position determination")
@@ -414,11 +477,13 @@ class TSOSuite:
             # in detector cubes, last index is time,
             # and the prelast index samples up the ramp
             data_use = np.ma.median(data_in.data, axis=ndim-2)
+#            data_use = np.ma.median(data_in, axis=ndim-2)
             time_in = self.observation.dataset.time.data.value
             time_use = np.ma.median(time_in, axis=ndim-2)
         else:
             data_use = np.ma.array(data_in.data.data.value,
                                    mask=data_in.data.mask)
+#            data_use = data_in
             time_in = self.observation.dataset.time.data.value
             time_use = time_in
 
@@ -442,7 +507,7 @@ class TSOSuite:
 
             prof_temp = np.ma.median(data_use[:, :, inod], axis=2)
             grid_temp = np.linspace(0, mpix-1, num=mpix)
-            array_temp = np.ma.array(grid_temp, dtype=np.dtype('Float64'))
+            array_temp = np.ma.array(grid_temp, dtype=np.float64)
             tile_temp = np.tile(array_temp, (npix, 1))
             pos_trace = np.ma.sum(prof_temp * tile_temp, axis=1) / \
                 np.ma.sum(prof_temp, axis=1)
@@ -473,7 +538,7 @@ class TSOSuite:
             pos_trace = np.squeeze(np.mean(trace_list, axis=0))
         else:
             pos_trace = np.squeeze(np.asarray(trace_list,
-                                              dtype=np.dtype('Float64')))
+                                              dtype=np.float64))
 
         # make sure position is given on time grid acociated with data
         f = interpolate.interp1d(time_use[0, 0, :], pos_slit,
@@ -525,6 +590,11 @@ class TSOSuite:
         except AttributeError:
             raise AttributeError("No Valid data found. \
                                  Aborting setting extraction mask")
+        try:
+            roi = self.observation.instrument_calibration.roi
+        except AttributeError:
+            raise AttributeError("No ROI defined. "
+                                 "Aborting setting extraction mask")
 
         dim = data_in.data.shape
         ndim = data_in.data.ndim
@@ -535,6 +605,7 @@ class TSOSuite:
         select_axis = tuple(np.arange(ndim))
 
         ExtractionMask = [np.all(mask, axis=select_axis[ndim_extractionMask:])]
+        ExtractionMask[0] = np.logical_or(roi, ExtractionMask[0])
 
         if ndim_extractionMask != 1:
             idx_mask_y = np.tile(np.arange(np.max((1, nExtractionWidth))).
@@ -765,6 +836,8 @@ class TSOSuite:
         """
         try:
             data_in = self.observation.dataset
+# TEST
+#            data_in = self.cpm.cleaned_data
         except AttributeError:
             raise AttributeError("No Valid data found. \
                                  Aborting setting up of regression matrix")
@@ -789,6 +862,8 @@ class TSOSuite:
                                  Aborting getting of the design matrici")
 
         data_use = self.reshape_data(data_in.data)
+# TEST
+#        data_use = self.reshape_data(data_in)
         design_matrix_list_nod = []
         for regressor_list in regressor_list_nods:
             design_matrix_list = []
@@ -811,6 +886,8 @@ class TSOSuite:
         """
         try:
             data_in = self.observation.dataset
+# TEST
+#            data_in_clean = self.cpm.cleaned_data
         except AttributeError:
             raise AttributeError("No Valid data found. \
                                  Aborting time series calibration")
@@ -888,6 +965,8 @@ class TSOSuite:
 
         # reshape input data to general 3D shape.
         data_use = self.reshape_data(data_in.data)
+# TEST
+#        data_use = self.reshape_data(data_in_clean)
         unc_use = self.reshape_data(data_in.uncertainty)
         time_use = self.reshape_data(data_in.time)
         position_use = self.reshape_data(position)
@@ -911,44 +990,57 @@ class TSOSuite:
         # create arrays to store results
         data_driven_image = \
             np.ma.array(np.zeros(shape=(nlambda, nspatial),
-                                 dtype=np.dtype('Float64')),
+                                 dtype=np.float64),
                         mask=Combined_ExtractionMask)
         error_data_driven_image = \
             np.ma.array(np.zeros(shape=(nlambda, nspatial),
-                                 dtype=np.dtype('Float64')),
+                                 dtype=np.float64),
                         mask=Combined_ExtractionMask)
         calibration_image = \
             np.ma.array(np.zeros(shape=(nlambda, nspatial),
-                                 dtype=np.dtype('Float64')),
+                                 dtype=np.float64),
                         mask=Combined_ExtractionMask)
         error_calibration_image = \
             np.ma.array(np.zeros(shape=(nlambda, nspatial),
-                                 dtype=np.dtype('Float64')),
+                                 dtype=np.float64),
                         mask=Combined_ExtractionMask)
         optimal_regularization_parameter = \
             np.ma.array(np.zeros(shape=(nlambda, nspatial),
-                                 dtype=np.dtype('Float64')),
+                                 dtype=np.float64),
                         mask=Combined_ExtractionMask)
         fitted_parameters = \
             np.ma.array(np.zeros(shape=(nadd, nlambda, nspatial),
-                                 dtype=np.dtype('Float64')),
+                                 dtype=np.float64),
                         mask=np.tile(Combined_ExtractionMask,
                                      (nadd, 1, 1)))
         error_fitted_parameters = \
             np.ma.array(np.zeros(shape=(nadd, nlambda, nspatial),
-                                 dtype=np.dtype('Float64')),
+                                 dtype=np.float64),
                         mask=np.tile(Combined_ExtractionMask,
                                      (nadd, 1, 1)))
+        fitted_parameters_normed = \
+            np.ma.array(np.zeros(shape=(nlambda+nadd, nlambda, nspatial),
+                                 dtype=np.float64),
+                        mask=np.tile(Combined_ExtractionMask,
+                                     (nlambda+nadd, 1, 1)))
         calibrated_time_series = \
             np.ma.array(np.zeros(shape=(nlambda, nspatial, ntime),
-                                 dtype=np.dtype('Float64')),
+                                 dtype=np.float64),
+                        mask=np.tile(Combined_ExtractionMask.T,
+                                     (ntime, 1, 1)).T)
+        model_time_series = \
+            np.ma.array(np.zeros(shape=(nlambda, nspatial, ntime),
+                                 dtype=np.float64)*data_unit,
                         mask=np.tile(Combined_ExtractionMask.T,
                                      (ntime, 1, 1)).T)
         residual_time_series = \
             np.ma.array(np.zeros(shape=(nlambda, nspatial, ntime),
-                                 dtype=np.dtype('Float64'))*data_unit,
+                                 dtype=np.float64)*data_unit,
                         mask=np.tile(Combined_ExtractionMask.T,
                                      (ntime, 1, 1)).T)
+        AIC = np.ma.array(np.zeros(shape=(nlambda, nspatial),
+                                   dtype=np.float64),
+                          mask=Combined_ExtractionMask)
 
         # loop over nods
         for inod, (ExtractionMask, regressor_list) in \
@@ -959,7 +1051,7 @@ class TSOSuite:
             # the indici of the calibration pixels
             for regressor_selection in tqdm(regressor_list,
                                             dynamic_ncols=True):
-                (il, ir), _ = regressor_selection
+                (il, ir), (idx_cal, trace) = regressor_selection
                 regressor_matrix = \
                     self.get_design_matrix(
                             data_use, regressor_selection,
@@ -969,6 +1061,7 @@ class TSOSuite:
                             stdv_kernel=stdv_kernel)
                 # remove bad regressors
                 idx_cut = np.all(regressor_matrix.mask, axis=1)
+                idx_regressors_used = idx_cal[~idx_cut]
                 regressor_matrix = regressor_matrix[~idx_cut, :]
                 # add calibration signal to all regressors
                 if add_calibration_signal:
@@ -1026,7 +1119,7 @@ class TSOSuite:
                     plt.imshow(design_matrix)
                     plt.show()
                 # solve linear Eq.
-                P, Perr, opt_reg_par = \
+                P, Perr, opt_reg_par, _, Pnormed, _ = \
                     solve_linear_equation(design_matrix,
                                           y.filled().value, weights,
                                           cv_method=cv_method,
@@ -1035,8 +1128,18 @@ class TSOSuite:
                 optimal_regularization_parameter.data[il, ir] = opt_reg_par
                 fitted_parameters.data[:, il, ir] = P[len(P)-nadd:]
                 error_fitted_parameters.data[:, il, ir] = Perr[len(P)-nadd:]
+                fitted_parameters_normed.data[np.append(idx_regressors_used,
+                                                        np.arange(-(nadd),
+                                                                  0)),
+                                              il, ir] = Pnormed
+                model_time_series[il, ir, :] = \
+                    np.dot(design_matrix, P)*data_unit
+                residual = y.filled() - np.dot(design_matrix, P)*data_unit
                 residual_time_series[il, ir, :] = \
-                    y-np.dot(design_matrix, P)*y.data.unit
+                    np.ma.array(residual, mask=y.mask)
+                lnL = -0.5*np.sum(weights*(residual.value)**2)
+                n_samples, n_params = design_matrix.shape
+                AIC[il, ir] = akaike_info_criterion(lnL, n_params, n_samples)
                 ##################################
                 # calculate the spectrum!!!!!!!!!#
                 ##################################
@@ -1066,7 +1169,7 @@ class TSOSuite:
                 else:
                     final_lc_model = z[:, None]
 
-                P_final, Perr_final, opt_reg_par_final = \
+                P_final, Perr_final, opt_reg_par_final, _, _, _ = \
                     solve_linear_equation(final_lc_model,
                                           calibrated_lightcurve, weights,
                                           cv_method=cv_method,
@@ -1096,6 +1199,8 @@ class TSOSuite:
         finally:
             self.calibration_results.parameters = fitted_parameters
             self.calibration_results.error_parameters = error_fitted_parameters
+            self.calibration_results.fitted_parameters_normed = \
+                fitted_parameters_normed
             self.calibration_results.regularization = \
                 optimal_regularization_parameter
             self.calibration_results.signal = data_driven_image
@@ -1105,7 +1210,9 @@ class TSOSuite:
                 error_calibration_image
             self.calibration_results.calibrated_time_series = \
                 calibrated_time_series
+            self.calibration_results.model_time_series = model_time_series
             self.calibration_results.residual = residual_time_series
+            self.calibration_results.aic = AIC
 
     def extract_spectrum(self):
         """
@@ -1145,6 +1252,8 @@ class TSOSuite:
             calibrated_signal = self.calibration_results.signal
             calibrated_error = self.calibration_results.error_signal
             residual = self.calibration_results.residual
+            aic = self.calibration_results.aic
+            par_normed = self.calibration_results.fitted_parameters_normed
         except AttributeError:
             raise AttributeError("No calibrated data found. \
                                  Aborting extraction of planetary spectrum")
@@ -1227,7 +1336,17 @@ class TSOSuite:
             np.ma.average(residual, axis=1,
                           weights=(np.ma.ones((npix, mpix, nintegrations)) /
                                    np.tile(calibrated_error.T,
-                                           (nintegrations, 1,1)).T)**2)
+                                           (nintegrations, 1, 1)).T)**2)
+
+        weighted_normed_parameters = \
+            np.ma.average(par_normed, axis=2,
+                          weights=(np.ma.ones(par_normed.shape) /
+                                   np.tile(calibrated_error.copy(),
+                                           (par_normed.shape[0], 1, 1)))**2)
+        weighted_aic = \
+            np.ma.average(aic, axis=1,
+                          weights=(np.ma.ones((npix, mpix)) /
+                                   calibrated_error)**2)
 
         if add_calibration_signal:
             # mask_temp = np.logical_or(self.cpm.extraction_mask[0],
@@ -1339,6 +1458,10 @@ class TSOSuite:
             self.exoplanet_spectrum = SimpleNamespace()
         self.exoplanet_spectrum.weighted_image = calibrated_weighted_image
         self.exoplanet_spectrum.weighted_residual = weighted_residual
+        self.exoplanet_spectrum.weighted_aic = weighted_aic
+        self.exoplanet_spectrum.weighted_normed_parameters = \
+            weighted_normed_parameters
+        self.exoplanet_spectrum.weighted_signal = weighted_signal
         self.exoplanet_spectrum.spectrum = exoplanet_spectrum
         if transittype == 'secondary':
             self.exoplanet_spectrum.brightness_temperature = \
@@ -1450,19 +1573,74 @@ class TSOSuite:
         except AttributeError:
             raise AttributeError("Type of observaton unknown. \
                                  Aborting plotting results")
+        try:
+            dataset = self.observation.dataset
+        except AttributeError:
+            raise AttributeError("No dataset found. "
+                                 "Aborting plotting results")
 
-        fig, ax = plt.subplots(figsize=(6, 6))
+        sns.set_style("white")
+        sns.set_context("notebook", font_scale=1.5,
+                        rc={"lines.linewidth": 2.5})
+
+        try:
+            residual_time_series = \
+                self.exoplanet_spectrum.weighted_residual.copy()
+        except AttributeError:
+            raise AttributeError("No weighted residual data found. "
+                                 "Aborting plotting results")
+        residual_unit = residual_time_series.data.unit
+        image_res = np.ma.array(residual_time_series.data,
+                                mask=residual_time_series.mask)
+        image_res.set_fill_value(np.nan)
+        image_res = image_res.filled().value
+        wave0 = dataset.wavelength
+        wavelength_unit = dataset.wavelength_unit
+        wave0_min = np.ma.min(wave0).data.value
+        wave0_max = np.ma.max(wave0).data.value
+        fig, ax = plt.subplots(figsize=(6, 7))
         for item in ([ax.title, ax.xaxis.label, ax.yaxis.label] +
                      ax.get_xticklabels() + ax.get_yticklabels()):
             item.set_fontsize(20)
-        cmap = plt.cm.gist_heat
-        cmap.set_bad('black', 1.)
-        ax.imshow(np.ma.abs(results.weighted_image),
-                  origin='lower', aspect='auto',
-                  cmap=cmap, interpolation='none', vmin=0, vmax=1000)
-        ax.set_xlabel('Pixel Number Spatial Direction')
-        ax.set_ylabel('Pixel Number Wavelength Direction')
+        p = ax.imshow(image_res,
+                      origin='lower',
+                      cmap='hot',
+                      interpolation='nearest',
+                      aspect='auto',
+                      extent=[0, image_res.shape[1], wave0_min, wave0_max])
+        plt.colorbar(p, ax=ax).set_label("Residual ({})".format(residual_unit))
+        ax.set_xlabel("Integration Number")
+        ax.set_ylabel('Wavelength [{}]'.format(wavelength_unit))
+        ax.set_title('Residual Image')
         plt.show()
+        fig.savefig(save_path+observations_id+'_residual_signal.png',
+                    bbox_inches='tight')
+
+        if (results.weighted_image.shape[1] <= 1):
+            fig, ax = plt.subplots(figsize=(7, 5))
+            for item in ([ax.title, ax.xaxis.label, ax.yaxis.label] +
+                         ax.get_xticklabels() + ax.get_yticklabels()):
+                item.set_fontsize(20)
+            ax.plot(results.spectrum.wavelength,
+                    np.ma.abs(results.weighted_image), lw=3)
+            ax.set_ylabel('| Signal * weight |')
+            ax.set_xlabel('Wavelength [{}]'.format(results.
+                                                   spectrum.wavelength_unit))
+            plt.show()
+        else:
+            fig, ax = plt.subplots(figsize=(6, 6))
+            for item in ([ax.title, ax.xaxis.label, ax.yaxis.label] +
+                         ax.get_xticklabels() + ax.get_yticklabels()):
+                item.set_fontsize(20)
+            cmap = plt.cm.gist_heat
+            cmap.set_bad('black', 1.)
+            p = ax.imshow(np.ma.abs(results.weighted_image),
+                          origin='lower', aspect='auto',
+                          cmap=cmap, interpolation='none', vmin=0, vmax=1000)
+            plt.colorbar(p, ax=ax).set_label("'| Signal * weight |'")
+            ax.set_xlabel('Pixel Number Spatial Direction')
+            ax.set_ylabel('Pixel Number Wavelength Direction')
+            plt.show()
         fig.savefig(save_path+observations_id+'_weighted_signal.png',
                     bbox_inches='tight')
 
@@ -1476,33 +1654,33 @@ class TSOSuite:
         flux_temp = np.ma.array(results.spectrum.data.data.value,
                                 mask=results.spectrum.data.mask)
 
-        with quantity_support():
-            fig, ax = plt.subplots(figsize=(7, 4))
-            for item in ([ax.title, ax.xaxis.label, ax.yaxis.label] +
-                         ax.get_xticklabels() + ax.get_yticklabels()):
-                item.set_fontsize(20)
-            ax.plot(results.spectrum.wavelength, results.spectrum.data,
-                    lw=3, alpha=0.7, color='blue')
-            ax.errorbar(wav_temp, flux_temp, yerr=err_temp,
-                        fmt=".k", color='blue', lw=3, alpha=0.7, ecolor='blue',
-                        markerfacecolor='blue', markeredgecolor='blue',
-                        fillstyle='full', markersize=10)
-            axes = plt.gca()
-            axes.set_xlim([0.95*np.ma.min(wav_temp), 1.05*np.ma.max(wav_temp)])
-            if transittype == 'secondary':
-                axes.set_ylim([0.00, 2.0*np.ma.median(flux_temp)])
-                ax.set_ylabel('Fplanet/Fstar [{}]'.format(results.
-                              spectrum.data_unit))
-            else:
-                axes.set_ylim([np.ma.median(flux_temp)/1.2,
-                               1.2*np.ma.median(flux_temp)])
-                ax.set_ylabel('Transit Depth [{}]'.format(results.
-                              spectrum.data_unit))
-            ax.set_xlabel('Wavelength [{}]'.format(results.
-                          spectrum.wavelength_unit))
-            plt.show()
-            fig.savefig(save_path+observations_id+'_exoplanet_spectra.png',
-                        bbox_inches='tight')
+#        with quantity_support():
+        fig, ax = plt.subplots(figsize=(7, 4))
+        for item in ([ax.title, ax.xaxis.label, ax.yaxis.label] +
+                     ax.get_xticklabels() + ax.get_yticklabels()):
+            item.set_fontsize(20)
+        ax.plot(results.spectrum.wavelength, results.spectrum.data,
+                lw=3, alpha=0.7, color='blue')
+        ax.errorbar(wav_temp, flux_temp, yerr=err_temp,
+                    fmt=".k", color='blue', lw=3, alpha=0.7, ecolor='blue',
+                    markerfacecolor='blue', markeredgecolor='blue',
+                    fillstyle='full', markersize=10)
+        axes = plt.gca()
+        axes.set_xlim([0.95*np.ma.min(wav_temp), 1.05*np.ma.max(wav_temp)])
+        if transittype == 'secondary':
+            axes.set_ylim([0.00, 2.0*np.ma.median(flux_temp)])
+            ax.set_ylabel('Fplanet/Fstar [{}]'.format(results.
+                          spectrum.data_unit))
+        else:
+            axes.set_ylim([np.ma.median(flux_temp)/1.2,
+                           1.2*np.ma.median(flux_temp)])
+            ax.set_ylabel('Transit Depth [{}]'.format(results.
+                          spectrum.data_unit))
+        ax.set_xlabel('Wavelength [{}]'.format(results.
+                      spectrum.wavelength_unit))
+        plt.show()
+        fig.savefig(save_path+observations_id+'_exoplanet_spectra.png',
+                    bbox_inches='tight')
 
         if transittype == 'secondary':
             # BUG FIX as errorbar does not support quantaties.
@@ -1519,35 +1697,35 @@ class TSOSuite:
             flux_bt_temp = \
                 np.ma.array(results.brightness_temperature.data.data.value,
                             mask=results.brightness_temperature.data.mask)
-            with quantity_support():
-                fig, ax = plt.subplots(figsize=(7, 4))
-                for item in ([ax.title, ax.xaxis.label, ax.yaxis.label] +
-                             ax.get_xticklabels() + ax.get_yticklabels()):
-                    item.set_fontsize(20)
-                ax.plot(results.brightness_temperature.wavelength,
-                        results.brightness_temperature.data,
-                        lw=3, alpha=0.7, color='blue')
-                ax.errorbar(wav_bt_temp, flux_bt_temp, yerr=err_bt_temp,
-                            fmt=".k", color='blue', lw=3, alpha=0.7,
-                            ecolor='blue',
-                            markerfacecolor='blue', markeredgecolor='blue',
-                            fillstyle='full', markersize=10)
-                axes = plt.gca()
-                axes.set_xlim([0.95*np.ma.min(wav_bt_temp),
-                               1.05*np.ma.max(wav_bt_temp)])
-                axes.invert_xaxis()
-                axes.set_ylim([np.ma.median(flux_bt_temp)/1.5,
-                               1.5*np.ma.median(flux_bt_temp)])
-                ax.xaxis.set_major_locator(MaxNLocator(6))
-                ax.get_xaxis().set_major_formatter(ScalarFormatter())
-                ax.set_ylabel('Brightness Temperature [{}]'.format(results.
-                              brightness_temperature.data_unit))
-                ax.set_xlabel('Wavelength [{}]'.format(results.
-                              brightness_temperature.wavelength_unit))
-                plt.show()
-                fig.savefig(save_path+observations_id +
-                            '_exoplanet_brightness_temperature.png',
-                            bbox_inches='tight')
+
+            fig, ax = plt.subplots(figsize=(7, 4))
+            for item in ([ax.title, ax.xaxis.label, ax.yaxis.label] +
+                         ax.get_xticklabels() + ax.get_yticklabels()):
+                item.set_fontsize(20)
+            ax.plot(results.brightness_temperature.wavelength,
+                    results.brightness_temperature.data,
+                    lw=3, alpha=0.7, color='blue')
+            ax.errorbar(wav_bt_temp, flux_bt_temp, yerr=err_bt_temp,
+                        fmt=".k", color='blue', lw=3, alpha=0.7,
+                        ecolor='blue',
+                        markerfacecolor='blue', markeredgecolor='blue',
+                        fillstyle='full', markersize=10)
+            axes = plt.gca()
+            axes.set_xlim([0.95*np.ma.min(wav_bt_temp),
+                           1.05*np.ma.max(wav_bt_temp)])
+            axes.invert_xaxis()
+            axes.set_ylim([np.ma.median(flux_bt_temp)/1.5,
+                           1.5*np.ma.median(flux_bt_temp)])
+            ax.xaxis.set_major_locator(MaxNLocator(6))
+            ax.get_xaxis().set_major_formatter(ScalarFormatter())
+            ax.set_ylabel('Brightness Temperature [{}]'.format(results.
+                          brightness_temperature.data_unit))
+            ax.set_xlabel('Wavelength [{}]'.format(results.
+                          brightness_temperature.wavelength_unit))
+            plt.show()
+            fig.savefig(save_path+observations_id +
+                        '_exoplanet_brightness_temperature.png',
+                        bbox_inches='tight')
 
         if add_calibration_signal:
             # Bug FIX for errorbar not having quantaty support
