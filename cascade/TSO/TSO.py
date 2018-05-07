@@ -408,6 +408,7 @@ class TSOSuite:
             data_in = self.observation.dataset
             dim = self.observation.dataset.data.shape
             ndim = self.observation.dataset.data.ndim
+            roi = self.observation.instrument_calibration.roi
 #            data_in = self.cpm.cleaned_data
 #            dim = data_in.shape
 #            ndim = data_in.data.ndim
@@ -478,11 +479,15 @@ class TSOSuite:
             # and the prelast index samples up the ramp
             data_use = np.ma.median(data_in.data, axis=ndim-2)
 #            data_use = np.ma.median(data_in, axis=ndim-2)
+            data_use[roi] = 0.0
+            data_use.mask[roi] = True
             time_in = self.observation.dataset.time.data.value
             time_use = np.ma.median(time_in, axis=ndim-2)
         else:
-            data_use = np.ma.array(data_in.data.data.value,
-                                   mask=data_in.data.mask)
+            data_use = np.ma.array(data_in.data.data.value.copy(),
+                                   mask=data_in.data.mask.copy())
+            data_use[roi] = 0.0
+            data_use.mask[roi] = True
 #            data_use = data_in
             time_in = self.observation.dataset.time.data.value
             time_use = time_in

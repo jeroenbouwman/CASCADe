@@ -446,7 +446,6 @@ class HSTWFC3(InstrumentBase):
         cal_time = []
         spectral_data_files = []
         calibration_data_files = []
-        linescan = []
         for im, image_file in enumerate(tqdm(data_files, dynamic_ncols=True)):
             with fits.open(image_file) as hdul:
                 instrument_fiter = hdul['PRIMARY'].header['FILTER']
@@ -460,8 +459,6 @@ class HSTWFC3(InstrumentBase):
                         cal_time.append(expstart + 0.5*(exptime/(24.0*3600.0)))
                         del calibration_image
                     continue
-                line = hdul['PRIMARY'].header['LINENUM']
-                linescan.append(line)
                 spectral_image = hdul['SCI'].data
                 spectral_image_cube.append(spectral_image.copy())
                 spectral_image_unc = hdul['ERR'].data
@@ -503,10 +500,6 @@ class HSTWFC3(InstrumentBase):
         spectral_image_dq_cube = spectral_image_dq_cube[idx_time_sort, :, :]
         spectral_data_files = \
             list(np.array(spectral_data_files)[idx_time_sort])
-# TEST
-#        spectral_image_cube = spectral_image_cube[:,64:-64,64:-64]
-#        spectral_image_unc_cube = spectral_image_unc_cube[:,64:-64,64:-64]
-#        spectral_image_dq_cube = spectral_image_dq_cube[:,64:-64,64:-64]
 
         idx_time_sort = np.argsort(cal_time)
         cal_time = cal_time[idx_time_sort]
@@ -517,12 +510,7 @@ class HSTWFC3(InstrumentBase):
         nintegrations, mpix, npix = spectral_image_cube.shape
         nintegrations_cal, ypix_cal, xpix_cal = calibration_image_cube.shape
 
-#        mask = np.ma.make_mask_none(spectral_image_cube.shape)
         mask = (spectral_image_dq_cube != 0)
-        # mask[:, :, :2+64] = True
-        # mask[:, :, -2-64:] = True
-#        mask[:, :, :2] = True
-#        mask[:, :, -2:] = True
 
         # convert to BJD
         ra_target = fits.getval(spectral_data_files[0], "RA_TARG")
@@ -541,22 +529,6 @@ class HSTWFC3(InstrumentBase):
                                                           ephemeris='jpl')
         cal_time_barycentre = cal_time_obs.tdb + cal_ltt_bary_jpl
         cal_time = cal_time_barycentre.jd
-
-# TEST
-#        idx_time_sort = (time > 2.45566e6+3.2) & (time < 2.45566e6+5)
-#        time = time[idx_time_sort]
-#        spectral_image_cube = spectral_image_cube[idx_time_sort, :, :]
-#        spectral_image_unc_cube = spectral_image_unc_cube[idx_time_sort, :, :]
-#        spectral_image_dq_cube = spectral_image_dq_cube[idx_time_sort, :, :]
-#        mask = mask[idx_time_sort, :, :]
-#        spectral_data_files = \
-#           list(np.array(spectral_data_files)[idx_time_sort])
-
-#        idx_time_sort = (cal_time > 2.45566e6+3.2) & (cal_time < 2.45566e6+5)
-#        cal_time = cal_time[idx_time_sort]
-#        calibration_image_cube = calibration_image_cube[idx_time_sort]
-#        calibration_data_files = \
-#           list(np.array(calibration_data_files)[idx_time_sort])
 
         # orbital phase
         phase = (time - self.par['obj_ephemeris']) / self.par['obj_period']

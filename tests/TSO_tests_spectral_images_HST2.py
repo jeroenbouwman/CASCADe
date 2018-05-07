@@ -453,7 +453,7 @@ res = lstsq(K.filled(), -weighted_signal.filled(), cond=0.8)
 bla=res[0]
 
 
-reg_par = {'lam0': 1.e-7, 'lam1': 1.e0, 'nlam': 100}
+reg_par = {'lam0': 1.e-7, 'lam1': 1.e-2, 'nlam': 100}
 lam_reg0 = reg_par["lam0"]  # lowest value of regularization parameter
 lam_reg1 = reg_par["lam1"]   # highest
 ngrid_lam = reg_par["nlam"]  # number of points in grid
