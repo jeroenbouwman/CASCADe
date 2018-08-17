@@ -15,7 +15,7 @@ import warnings
 import astropy.units as u
 import numpy as np
 from astropy.convolution import Gaussian2DKernel, interpolate_replace_nans
-from skimage.feature import register_translation
+# from skimage.feature import register_translation
 from astropy.stats import sigma_clip
 from astropy.stats import akaike_info_criterion
 from astropy.table import MaskedColumn, Table
@@ -26,7 +26,7 @@ from scipy import interpolate
 from tqdm import tqdm
 import seaborn as sns
 from sklearn.preprocessing import RobustScaler
-from sklearn.decomposition import PCA
+# from sklearn.decomposition import PCA
 
 from ..cpm_model import solve_linear_equation
 from ..data_model import SpectralData
@@ -787,8 +787,9 @@ class TSOSuite:
             np.ma.set_fill_value(sorted_matrix, float("NaN"))
             # create a "reconstructed" image with NaNs replaced by
             # interpolated values
-            cleaned_matrix = interpolate_replace_nans(sorted_matrix.filled(),
-                                                      kernel)
+            cleaned_matrix = \
+                interpolate_replace_nans(sorted_matrix.filled().value,
+                                         kernel)
             cleaned_mask = np.ma.make_mask_none(cleaned_matrix.shape)
             cleaned_mask[:, idx_clip_time] = True
             cleaned_mask[idx_clip_regressor, :] = True
@@ -1124,13 +1125,14 @@ class TSOSuite:
                 # lightcure model
                 design_matrix = regressor_matrix.data.value  # uses clean data
 # HACK
-                RS = RobustScaler(with_scaling=False)
-                X_scaled = RS.fit_transform(design_matrix.T)
+#                RS = RobustScaler(with_scaling=False)
+#                X_scaled = RS.fit_transform(design_matrix.T)
+#
+#                pca = PCA(n_components=np.min([10,len(idx_regressors_used)]), whiten=True)
+#                pca.fit(X_scaled.T)
 
-                pca = PCA(n_components=np.min([10,len(idx_regressors_used)]), whiten=True)
-                pca.fit(X_scaled.T)
-
-                design_matrix = pca.components_
+#                design_matrix = pca.components_
+# END HACK
                 if add_time:
                     design_matrix = np.vstack((design_matrix,
                                                np.ones_like(x), x))
@@ -1144,34 +1146,36 @@ class TSOSuite:
                     plt.imshow(design_matrix)
                     plt.show()
 # HACK
-                pc_matrix = np.diag(1.0/np.linalg.norm(design_matrix, axis=0))
+#                pc_matrix = np.diag(1.0/np.linalg.norm(design_matrix, axis=0))
 #                pc_matrix[:-(nadd)] = 1.0
-                pc_design_matrix = np.dot(design_matrix, pc_matrix)
-                P, Perr, opt_reg_par = \
-                    solve_linear_equation(pc_design_matrix,
-                                          y.filled().value, weights,
-                                          cv_method=cv_method,
-                                          reg_par=reg_par,
-                                          feature_scaling=None)
-                Pnormed = P.copy()
-                P[:] = np.dot(pc_matrix, P[:])
-                Perr[:] = np.dot(pc_matrix, Perr[:])
-                # solve linear Eq.
-#                P, Perr, opt_reg_par, _, Pnormed, _ = \
-#                    solve_linear_equation(design_matrix,
+
+#                pc_design_matrix = np.dot(design_matrix, pc_matrix)
+#                P, Perr, opt_reg_par = \
+#                    solve_linear_equation(pc_design_matrix,
 #                                          y.filled().value, weights,
 #                                          cv_method=cv_method,
-#                                          reg_par=reg_par)
+#                                          reg_par=reg_par,
+#                                          feature_scaling=None)
+#                Pnormed = P.copy()
+#                P[:] = np.dot(pc_matrix, P[:])
+#                Perr[:] = np.dot(pc_matrix, Perr[:])
+                # solve linear Eq.
+                P, Perr, opt_reg_par, _, Pnormed, _ = \
+                    solve_linear_equation(design_matrix,
+                                          y.filled().value, weights,
+                                          cv_method=cv_method,
+                                          reg_par=reg_par)
+# END HACK
                 # store results
                 optimal_regularization_parameter.data[il, ir] = opt_reg_par
                 fitted_parameters.data[:, il, ir] = P[len(P)-nadd:]
                 error_fitted_parameters.data[:, il, ir] = Perr[len(P)-nadd:]
 # HACK
-                fitted_parameters_normed.data[np.arange(len(Pnormed)), il, ir] = Pnormed
-#                fitted_parameters_normed.data[np.append(idx_regressors_used,
-#                                                        np.arange(-(nadd),
-#                                                                  0)),
-#                                              il, ir] = Pnormed
+#                fitted_parameters_normed.data[np.arange(len(Pnormed)), il, ir] = Pnormed
+                fitted_parameters_normed.data[np.append(idx_regressors_used,
+                                                        np.arange(-(nadd), 0)),
+                                              il, ir] = Pnormed
+# END HACK
                 model_time_series[il, ir, :] = \
                     np.dot(design_matrix, P)*data_unit
                 residual = y.filled() - np.dot(design_matrix, P)*data_unit

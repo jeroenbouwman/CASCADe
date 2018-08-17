@@ -418,8 +418,8 @@ fig, ax = plt.subplots(figsize=(7, 5))
 for item in ([ax.title, ax.xaxis.label, ax.yaxis.label] +
              ax.get_xticklabels() + ax.get_yticklabels()):
     item.set_fontsize(20)
-ax.plot(rebinned_wave, rebinned_spec-2, color="black", lw=4, alpha=0.9)
-ax.errorbar(rebinned_wave, rebinned_spec-2, yerr=rebinned_error,
+ax.plot(rebinned_wave, rebinned_spec, color="black", lw=4, alpha=0.9)
+ax.errorbar(rebinned_wave, rebinned_spec, yerr=rebinned_error,
             fmt=".k", color="black", lw=4,
             alpha=0.9, ecolor="black",
             markeredgecolor='black', fillstyle='full', markersize=10,
@@ -433,7 +433,7 @@ ax.errorbar(wave_mandell.value, flux_mandell.value, yerr=error_mandell.value,
 ax.plot(tso.exoplanet_spectrum.spectrum.wavelength,
         tso.exoplanet_spectrum.spectrum.data-2, lw=3, alpha=0.5, color='blue')
 ax.errorbar(tso.exoplanet_spectrum.spectrum.wavelength.data.value,
-            tso.exoplanet_spectrum.spectrum.data.data.value-2,
+            tso.exoplanet_spectrum.spectrum.data.data.value,
             yerr=tso.exoplanet_spectrum.spectrum.uncertainty.data.value,
             fmt=".k", color='blue', lw=3, alpha=0.5, ecolor='blue',
             markerfacecolor='blue',

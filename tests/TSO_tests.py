@@ -433,9 +433,9 @@ ax.errorbar(wave_ian.value, flux_ian.value, yerr=error_ian.value,
             markeredgecolor='r', fillstyle='full', markersize=10,
             markerfacecolor='r', zorder=3)
 ax.plot(tso.exoplanet_spectrum.spectrum.wavelength,
-        tso.exoplanet_spectrum.spectrum.data-0.2, lw=3, alpha=0.5, color='blue')
+        tso.exoplanet_spectrum.spectrum.data, lw=3, alpha=0.5, color='blue')
 ax.errorbar(tso.exoplanet_spectrum.spectrum.wavelength.data.value,
-            tso.exoplanet_spectrum.spectrum.data.data.value-0.2,
+            tso.exoplanet_spectrum.spectrum.data.data.value,
             yerr=tso.exoplanet_spectrum.spectrum.uncertainty.data.value,
             fmt=".k", color='blue', lw=3, alpha=0.5, ecolor='blue',
             markerfacecolor='blue',
