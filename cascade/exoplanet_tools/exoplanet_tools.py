@@ -9,21 +9,21 @@ exoplanet and define the model ligth curve for the system
 
 import numpy as np
 import os
+import re
 import ast
 import urllib
 import collections
-# from astropy.coordinates import SkyCoord
+import gc
+import string
 import astropy.units as u
-# from astropy.units import cds
 from astropy import constants as const
-# import uncertainties
-# from astropy.analytic_functions import blackbody_nu
 from astropy.modeling.blackbody import blackbody_nu
+from astropy.coordinates import SkyCoord
+from astropy.coordinates.name_resolve import NameResolveError
+from astropy.utils.data import conf
 from functools import wraps
-# from astropy.time import Time
-# from astropy.utils.data import download_file, clear_download_cache
-# from astropy.constants import M_jup, M_sun, R_jup, R_sun
 from astropy.table import Table, QTable
+from astropy.table import MaskedColumn
 from astropy.table import join
 from scipy import interpolate
 import pandas
@@ -42,7 +42,7 @@ __all__ = ['Vmag', 'Kmag', 'Rho_jup', 'Rho_jup', 'KmagToJy', 'JytoKmag',
 
 
 # enable cds to be able to use certain quantities defined in this system
-#cds_enable = cds.enable()
+# cds_enable = cds.enable()
 
 ###########################################################################
 # astropy does not have V and K band magnitudes, we define it here ourself
@@ -94,6 +94,55 @@ Rho_jup = const.Constant('Rho_jup', 'jupiter_mean_density',
                          _rho.cgs.value,
                          _rho.cgs.unit,
                          _err.cgs.value, 'this module', system='cgs')
+
+nasaexoplanetarchive_table_units = collections.OrderedDict(
+    NAME=u.dimensionless_unscaled,
+    RA=u.deg,
+    DEC=u.deg,
+    TT=u.day,
+    TTUPPER=u.day,
+    TTLOWER=u.day,
+    PER=u.day,
+    PERUPPER=u.day,
+    PERLOWER=u.day,
+    A=u.AU,
+    AUPPER=u.AU,
+    ALOWER=u.AU,
+    ECC=u.dimensionless_unscaled,
+    ECCUPPER=u.dimensionless_unscaled,
+    ECCLOWER=u.dimensionless_unscaled,
+    I=u.deg,
+    IUPPER=u.deg,
+    ILOWER=u.deg,
+    OM=u.deg,
+    OMUPPER=u.deg,
+    OMLOWER=u.deg,
+    T14=u.day,
+    T14UPPER=u.day,
+    T14LOWER=u.day,
+    R=const.R_jup,
+    RUPPER=const.R_jup,
+    RLOWER=const.R_jup,
+    RSTAR=const.R_sun,
+    RSTARUPPER=const.R_sun,
+    RSTARLOWER=const.R_sun,
+    MASS=const.M_jup,
+    MASSUPPER=const.M_jup,
+    MASSLOWER=const.M_jup,
+    MSTAR=const.M_sun,
+    MSTARUPPER=const.M_sun,
+    MSTARLOWER=const.M_sun,
+    TEFF=u.Kelvin,
+    TEFFUPPER=u.Kelvin,
+    TEFFLOWER=u.Kelvin,
+    FE=u.dex,
+    FEUPPER=u.dex,
+    FELOWER=u.dex,
+    LOGG=u.dex(u.cm/u.s**2),
+    LOGGUPPER=u.dex(u.cm/u.s**2),
+    LOGGLOWER=u.dex(u.cm/u.s**2),
+    ROWUPDATE=u.dimensionless_unscaled,
+    REFERENCES=u.dimensionless_unscaled)
 
 tepcat_table_units = collections.OrderedDict(
     NAME=u.dimensionless_unscaled,
@@ -531,7 +580,7 @@ def get_calalog(catalog_name, update=True):
     catalog_name
         name of catalog to use
     """
-    valid_catalogs = ['TEPCAT', 'EXOPLANETS.ORG']
+    valid_catalogs = ['TEPCAT', 'EXOPLANETS.ORG', 'NASAEXOPLANETARCHIVE']
     path = os.environ['HOME'] + "/CASCADeData/"
     os.makedirs(path, exist_ok=True)
 
@@ -548,6 +597,36 @@ def get_calalog(catalog_name, update=True):
         exoplanet_database_url = [
             "http://www.exoplanets.org/csv-files/exoplanets.csv"]
         data_files_save = ["exoplanets.csv"]
+    elif catalog_name == 'NASAEXOPLANETARCHIVE':
+        path = path+"NASAEXOPLANETARCHIVE/"
+        os.makedirs(path, exist_ok=True)
+        _url = ("https://exoplanetarchive.ipac.caltech.edu/"
+                "cgi-bin/nstedAPI/nph-nstedAPI?")
+        _tab = "table=exoplanets"
+        _query = ("&select=pl_name,ra,dec,"
+                  "pl_tranmid,pl_tranmiderr1,pl_tranmiderr2,"
+                  "pl_orbper,pl_orbpererr1,pl_orbpererr2,"
+                  "pl_orbsmax,pl_orbsmaxerr1,pl_orbsmaxerr2,"
+                  "pl_orbeccen,pl_orbeccenerr1,pl_orbeccenerr2,"
+                  "pl_orbincl,pl_orbinclerr1,pl_orbinclerr2,"
+                  "pl_orblper,pl_orblpererr1,pl_orblpererr2,"
+                  "pl_trandur,pl_trandurerr1,pl_trandurerr2,"
+                  "pl_radj,pl_radjerr1,pl_radjerr2,"
+                  "st_rad,st_raderr1,st_raderr2,"
+                  "pl_massj,pl_massjerr1,pl_massjerr2,"
+                  "st_mass,st_masserr1,st_masserr2,"
+                  "st_teff,st_tefferr1,st_tefferr2,"
+                  "st_metfe,st_metfeerr1,st_metfeerr2,"
+                  "st_logg,st_loggerr1,st_loggerr2,"
+                  "rowupdate,pl_reflink"
+                  "&orderby=dec")
+        _tab_multi = "table=exomultpars"
+        _query_multi = _query.replace("pl_", "mpl_").replace("st_", "mst_")
+
+#        exoplanet_database_url = [_url + _tab + _query]
+        # use multi par catalogue as standard dous not always include T0
+        exoplanet_database_url = [_url + _tab_multi + _query_multi]
+        data_files_save = ["nasaexoplanetarchive.csv"]
     else:
         raise ValueError('Catalog name not recognized. ' +
                          'Use one of the following: {}'.format(valid_catalogs))
@@ -557,7 +636,7 @@ def get_calalog(catalog_name, update=True):
         if update:
             try:
                 download_results = urllib.request.urlretrieve(url, path+file)
-            except urllib.error.URLError as e:
+            except urllib.error.URLError:
                 raise urllib.error.URLError('Network connection not working,' +
                                             ' check settings')
             files_downloaded.append(download_results[0])
@@ -574,7 +653,7 @@ def parse_database(catalog_name, update=True):
     """
     Read CSV files containing exoplanet catalog data
     """
-    valid_catalogs = ['TEPCAT', 'EXOPLANETS.ORG']
+    valid_catalogs = ['TEPCAT', 'EXOPLANETS.ORG', 'NASAEXOPLANETARCHIVE']
 
     input_csv_files = get_calalog(catalog_name, update=update)
 
@@ -583,24 +662,29 @@ def parse_database(catalog_name, update=True):
         table_unit_list = [tepcat_table_units, tepcat_observables_table_units]
     elif catalog_name == "EXOPLANETS.ORG":
         table_unit_list = [exoplanets_table_units]
+    elif catalog_name == "NASAEXOPLANETARCHIVE":
+        table_unit_list = [nasaexoplanetarchive_table_units]
     else:
         raise ValueError('Catalog name not recognized. ' +
                          'Use one of the following: {}'.format(valid_catalogs))
     for ilist, input_csv_file in enumerate(input_csv_files):
-        csv_file = pandas.read_csv(input_csv_file, low_memory=False)
-        table_temp = Table().from_pandas(csv_file)
-        if catalog_name == "TEPCAT":
+        csv_file = pandas.read_csv(input_csv_file, low_memory=False,
+                                   keep_default_na=False, na_values=['', -1.0])
+        table_temp = Table(masked=True).from_pandas(csv_file)
+        if ((catalog_name == "TEPCAT") |
+           (catalog_name == "NASAEXOPLANETARCHIVE")):
             for icol, colname in enumerate(table_temp.colnames):
                 table_temp.rename_column(colname,
                                          list(table_unit_list[ilist].
                                               keys())[icol])
-        table_temp2 = Table()
+        table_temp2 = Table(masked=True)
         for colname in list(table_unit_list[ilist].keys()):
             table_temp2.add_column(table_temp[colname])
             table_temp2[colname].unit = table_unit_list[ilist][colname]
         table_temp2.add_index("NAME")
         for iname in range(len(table_temp2["NAME"])):
-            table_temp2["NAME"][iname] = table_temp2["NAME"][iname].strip()
+            table_temp2["NAME"].data[iname] = \
+                table_temp2["NAME"].data[iname].strip()
         table_list.append(table_temp2)
 
     # c = SkyCoord('00 42 30 +41 12 00',unit=(u.hourangle,u.deg),epoch="J2000")
@@ -609,39 +693,216 @@ def parse_database(catalog_name, update=True):
                           keys='NAME')
         table_temp.add_index("NAME")
         table_list = [table_temp]
+    if catalog_name == "NASAEXOPLANETARCHIVE":
+        references = table_list[0]["REFERENCES"]
+        pub_date_list=[]
+        for ref in references:
+            pub_date_str = re.findall(' (\d{4})" href', ref)
+            if len(pub_date_str) == 0:
+                pub_date_list += ['0']
+            else:
+                pub_date_list += pub_date_str
+        pub_year = MaskedColumn(np.asarray(pub_date_list,
+                                           dtype=np.float64)*u.year,
+                                mask=table_list[0]["REFERENCES"].mask,
+                                name='PUBYEAR')
+        table_list[0].add_column(pub_year)
+    if catalog_name == "TEPCAT":
+        ra = MaskedColumn(table_list[0]["RAHOUR"].data.data *
+                          table_list[0]["RAHOUR"].unit +
+                          table_list[0]["RAMINUTE"].data.data *
+                          table_list[0]["RAMINUTE"].unit +
+                          table_list[0]["RASECOND"].data.data *
+                          table_list[0]["RASECOND"].unit,
+                          name="RA", mask=table_list[0]["RAHOUR"].mask)
+
+        dec_sign = np.sign(table_list[0]["DECDEGREE"].data.data)
+        idx = np.abs(dec_sign) < 0.1
+        dec_sign[idx] = 1.0
+        dec = MaskedColumn(table_list[0]["DECDEGREE"].data.data *
+                           table_list[0]["DECDEGREE"].unit +
+                           dec_sign*table_list[0]["DECMINUTE"].data.data *
+                           table_list[0]["DECMINUTE"].unit +
+                           dec_sign*table_list[0]["DECSECOND"].data.data *
+                           table_list[0]["DECSECOND"].unit, name="DEC",
+                           mask=table_list[0]["DECDEGREE"].mask)
+        table_list[0].remove_columns(['RAHOUR', 'RAMINUTE', 'RASECOND',
+                                      'DECDEGREE', 'DECMINUTE', 'DECSECOND'])
+        table_list[0].add_column(ra, index=1)
+        table_list[0].add_column(dec, index=2)
     return table_list
 
 
-def extract_exoplanet_data(data_list, target_name):
+def extract_exoplanet_data(data_list, target_name_or_position, coord_unit=None,
+                           coordinate_frame='icrs', search_radius=5*u.arcsec):
     """
     Extract the data record for a single target
     Input:
     data_list
         List containing table with exoplanet data
-    target_name
-        Name of the target for which the record is extracted
+    target_name_or_position
+        Name of the target or coordinates of the target for
+        which the record is extracted
+    coord_unit
+        unit of coordinates e.g (u.hourangle, u.deg)
+    coordinate_frame
+        Frame of coordinate system e.g icrs
     Output:
         list containing data record of the specified planet
     """
+    if not isinstance(target_name_or_position, str):
+        raise TypeError("Input name of coordinate not a string")
+
+    planet_designation_list = string.ascii_lowercase[:14]
+    stellar_designation_list = string.ascii_uppercase[:4]
+
+    stellar_name = ""
+    stellar_name_stripped = ""
+    target_name_or_position = target_name_or_position.replace("_", " ")
+    last_char = target_name_or_position.strip()[-1]
+    if last_char in planet_designation_list:
+        planet_designation = last_char
+        stellar_name = target_name_or_position.strip()[:-1].strip()
+    else:
+        planet_designation = "b"
+    pre_last_char = target_name_or_position.strip()[:-1].strip()[-1]
+    if pre_last_char in stellar_designation_list:
+        stellar_designation = pre_last_char
+        stellar_name_stripped = \
+            target_name_or_position.strip()[:-1].strip()[:-1].strip()
+    else:
+        stellar_designation = ""
+
+    searchName = False
+    try:
+        if coord_unit is None:
+            coordinates = SkyCoord(target_name_or_position,
+                                   frame=coordinate_frame)
+        else:
+            coordinates = SkyCoord(target_name_or_position,
+                                   unit=coord_unit,
+                                   frame=coordinate_frame)
+    except ValueError:
+        conf.remote_timeout = 30
+        try:
+            coordinates = SkyCoord.from_name(target_name_or_position)
+        except NameResolveError:
+            if stellar_name != "":
+                try:
+                    coordinates = SkyCoord.from_name(stellar_name)
+                except NameResolveError:
+                    if stellar_name_stripped != "":
+                        try:
+                            coordinates = \
+                                SkyCoord.from_name(stellar_name_stripped)
+                        except NameResolveError:
+                                target_name = target_name_or_position
+                                searchName = True
+                    else:
+                        target_name = target_name_or_position
+                        searchName = True
+            else:
+                target_name = target_name_or_position
+                searchName = True
+        conf.reset('remote_timeout')
+
     table_list = []
     for idata, data in enumerate(data_list):
-        try:
-            table_row = data.loc["NAME", target_name]
+        multiple_entries_flag = False
+        if searchName:
+            try:
+                table_row = data.loc["NAME", target_name]
+                new_table = Table(table_row)
+                new_table.add_index("NAME")
+                if idata == 0:
+                    table_list = [new_table]
+                else:
+                    table_temp = join(table_list[0], new_table, join_type='left',
+                                      keys='NAME')
+                    table_temp.add_index("NAME")
+                    table_list = [table_temp.copy()]
+            except KeyError as e:
+                print(e)
+                print("Did you mean to search any of the following systems:")
+                print(difflib.get_close_matches(target_name,
+                                                data['NAME'].tolist()))
+                raise e
+        else:
+            mask = data['RA'].mask
+            data_use = data[~mask]
+            catalog = SkyCoord(data['RA'].data[~mask]*data['RA'].unit,
+                               data['DEC'].data[~mask]*data['DEC'].unit,
+                               frame=coordinate_frame)
+
+            d2d = coordinates.separation(catalog)
+            catalogmsk = d2d < search_radius
+            if np.all(~catalogmsk):
+                raise ValueError("No Target found within {} around the "
+                                 "coordinates {}".
+                                 format(search_radius,
+                                        coordinates.to_string()))
+            if np.sum(catalogmsk) > 1:
+                targets_in_search_area = data_use[catalogmsk]["NAME"].data
+                unique_targets = \
+                  np.unique([i.strip()[:-1] if i[-1] in planet_designation_list
+                             else i.strip() for i in targets_in_search_area])
+                if unique_targets.size != 1:
+                    raise ValueError("Multiple targets found: {}. Please "
+                                     "reduce the search radius of {}".
+                                     format(unique_targets, search_radius))
+                targets_planet_designation = \
+                    [i.strip()[-1] if i[-1] in planet_designation_list
+                     else None for i in targets_in_search_area]
+                idx_searched_planet = \
+                    np.array(targets_planet_designation) == planet_designation
+                if np.sum(idx_searched_planet) == 0:
+                    raise ValueError("Planet number {} not found. "
+                                     "The following planets are available: {}".
+                                     format(planet_designation,
+                                            targets_planet_designation))
+                elif np.sum(idx_searched_planet) > 1:
+                    # multiple entries for one source in data table
+                    # raise flag to agregate rows
+                    multiple_entries_flag = True
+                idx_select = np.where(catalogmsk == True)[0]
+                catalogmsk[idx_select[~idx_searched_planet]] = False
+            table_row = data_use[catalogmsk]
             new_table = Table(table_row)
             new_table.add_index("NAME")
+            del(table_row)
+            gc.collect()
+            if multiple_entries_flag:
+                # make sure to pick the latest values
+                #idx_update_time = np.argsort(new_table['ROWUPDATE'])[::-1]
+                # idx_update_time = np.argsort(new_table['PUBYEAR'])[::-1]
+                idx_good_period = ~new_table['PERLOWER'].data.mask
+                idx_update_time = np.argsort(new_table[idx_good_period]['PUBYEAR'])[::-1]
+                table_selection = new_table[idx_good_period][idx_update_time]
+                table_temp_multi = Table(masked=True)
+                for cn in new_table.keys():
+                    idx = [i for i,
+                           x in enumerate(table_selection.mask[cn].data) if not x]
+                    if len(idx) == 0:
+                        idx = [0]
+                    table_temp_multi[cn] = table_selection[cn][idx[0]:idx[0]+1]
+                table_temp_multi.add_index("NAME")
+                new_table = table_temp_multi.copy()
+# Bug fix due to mem leak astropy table
+                del(table_temp_multi)
+                del(idx_good_period)
+                del(table_selection)
+                gc.collect()
             if idata == 0:
-                table_list = [new_table]
+                table_list = [new_table.copy()]
             else:
                 table_temp = join(table_list[0], new_table, join_type='left',
                                   keys='NAME')
                 table_temp.add_index("NAME")
-                table_list = [table_temp]
-        except KeyError as e:
-            print(e)
-            print("Did you mean to search any of the following systems:")
-            print(difflib.get_close_matches(target_name,
-                                            data['NAME'].tolist()))
-            raise e
+                table_list = [table_temp.copy()]
+                del(table_temp)
+                gc.collect()
+    del(new_table)
+    gc.collect()
     return table_list
 
 

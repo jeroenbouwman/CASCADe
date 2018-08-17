@@ -435,7 +435,7 @@ rebinned_spec, rebinned_error = \
              spec_errs=tso.exoplanet_spectrum.
              spectrum.uncertainty.data.value[~mask_use])
 
-W = (tso.exoplanet_spectrum.weighted_normed_parameters[:-4, :] /
+W = (tso.exoplanet_spectrum.weighted_normed_parameters[:-2, :] /
      np.ma.sum(tso.exoplanet_spectrum.weighted_normed_parameters[:-1, :],
                axis=0)).T
 K = W - np.identity(W.shape[0])
@@ -444,29 +444,8 @@ K.set_fill_value(0.0)
 weighted_signal = tso.exoplanet_spectrum.weighted_signal.copy()
 weighted_signal.set_fill_value(0.0)
 
-bla = np.dot(pinv2(K.filled(), rcond=0.8),
+bla = np.dot(pinv2(K.filled(), rcond=0.001),
              -weighted_signal.filled())
-
-
-from scipy.linalg import lstsq
-res = lstsq(K.filled(), -weighted_signal.filled(), cond=0.8)
-bla=res[0]
-
-
-reg_par = {'lam0': 1.e-7, 'lam1': 1.e-2, 'nlam': 100}
-lam_reg0 = reg_par["lam0"]  # lowest value of regularization parameter
-lam_reg1 = reg_par["lam1"]   # highest
-ngrid_lam = reg_par["nlam"]  # number of points in grid
-# array to hold values of regularization parameter grid
-delta_lam = np.abs(np.log10(lam_reg1) - np.log10(lam_reg0)) / (ngrid_lam-1)
-lam_reg_array = 10**(np.log10(lam_reg0) +
-                     np.linspace(0, ngrid_lam-1, ngrid_lam)*delta_lam)
-
-from sklearn import linear_model
-RCV = linear_model.RidgeCV(fit_intercept=False, alphas=lam_reg_array)
-#RCV = linear_model.RidgeCV(fit_intercept=False)
-RCV.fit(K.filled(), -weighted_signal.filled())
-bla = RCV.coef_
 
 bla = bla-np.ma.median(bla)
 planet_radius = \

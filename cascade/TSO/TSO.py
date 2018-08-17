@@ -25,6 +25,8 @@ from matplotlib.ticker import MaxNLocator, ScalarFormatter
 from scipy import interpolate
 from tqdm import tqdm
 import seaborn as sns
+from sklearn.preprocessing import RobustScaler
+from sklearn.decomposition import PCA
 
 from ..cpm_model import solve_linear_equation
 from ..data_model import SpectralData
@@ -282,13 +284,19 @@ class TSOSuite:
 
         spectral_image_using_roi = np.ma.array(dataset.data.data.value.copy(),
                                                mask=dataset.mask.copy())
-        spectral_image_using_roi[roi_mask] = 0.0
-        spectral_image_using_roi.mask[roi_mask] = False
-        spectral_image_using_roi.set_fill_value(np.nan)
-
         ndim = spectral_image_using_roi.ndim
         shape = spectral_image_using_roi.shape
         data_unit = dataset.data.data.unit
+
+        if ndim == 2:
+            RS = RobustScaler(with_scaling=True)
+            spectral_image_using_roi.set_fill_value(0.0)
+            data_scaled = RS.fit_transform(spectral_image_using_roi.filled())
+            spectral_image_using_roi.data[...] = data_scaled
+
+        spectral_image_using_roi[roi_mask] = 0.0
+        spectral_image_using_roi.mask[roi_mask] = False
+        spectral_image_using_roi.set_fill_value(np.nan)
 
         if ndim > 2:
             kernel = np.dstack([np.zeros_like(kernel), kernel,
@@ -296,6 +304,10 @@ class TSOSuite:
 
         cleaned_spectral_image_using_roi = \
             interpolate_replace_nans(spectral_image_using_roi.filled(), kernel)
+
+        if ndim == 2:
+            cleaned_spectral_image_using_roi = \
+                RS.inverse_transform(cleaned_spectral_image_using_roi)
 
         try:
             self.cpm
@@ -1111,6 +1123,14 @@ class TSOSuite:
                 # add other regressors: constant, time, position along slit,
                 # lightcure model
                 design_matrix = regressor_matrix.data.value  # uses clean data
+# HACK
+                RS = RobustScaler(with_scaling=False)
+                X_scaled = RS.fit_transform(design_matrix.T)
+
+                pca = PCA(n_components=np.min([10,len(idx_regressors_used)]), whiten=True)
+                pca.fit(X_scaled.T)
+
+                design_matrix = pca.components_
                 if add_time:
                     design_matrix = np.vstack((design_matrix,
                                                np.ones_like(x), x))
@@ -1123,20 +1143,35 @@ class TSOSuite:
                 if np.any(~np.isfinite(design_matrix)):
                     plt.imshow(design_matrix)
                     plt.show()
-                # solve linear Eq.
-                P, Perr, opt_reg_par, _, Pnormed, _ = \
-                    solve_linear_equation(design_matrix,
+# HACK
+                pc_matrix = np.diag(1.0/np.linalg.norm(design_matrix, axis=0))
+#                pc_matrix[:-(nadd)] = 1.0
+                pc_design_matrix = np.dot(design_matrix, pc_matrix)
+                P, Perr, opt_reg_par = \
+                    solve_linear_equation(pc_design_matrix,
                                           y.filled().value, weights,
                                           cv_method=cv_method,
-                                          reg_par=reg_par)
+                                          reg_par=reg_par,
+                                          feature_scaling=None)
+                Pnormed = P.copy()
+                P[:] = np.dot(pc_matrix, P[:])
+                Perr[:] = np.dot(pc_matrix, Perr[:])
+                # solve linear Eq.
+#                P, Perr, opt_reg_par, _, Pnormed, _ = \
+#                    solve_linear_equation(design_matrix,
+#                                          y.filled().value, weights,
+#                                          cv_method=cv_method,
+#                                          reg_par=reg_par)
                 # store results
                 optimal_regularization_parameter.data[il, ir] = opt_reg_par
                 fitted_parameters.data[:, il, ir] = P[len(P)-nadd:]
                 error_fitted_parameters.data[:, il, ir] = Perr[len(P)-nadd:]
-                fitted_parameters_normed.data[np.append(idx_regressors_used,
-                                                        np.arange(-(nadd),
-                                                                  0)),
-                                              il, ir] = Pnormed
+# HACK
+                fitted_parameters_normed.data[np.arange(len(Pnormed)), il, ir] = Pnormed
+#                fitted_parameters_normed.data[np.append(idx_regressors_used,
+#                                                        np.arange(-(nadd),
+#                                                                  0)),
+#                                              il, ir] = Pnormed
                 model_time_series[il, ir, :] = \
                     np.dot(design_matrix, P)*data_unit
                 residual = y.filled() - np.dot(design_matrix, P)*data_unit
@@ -1340,7 +1375,7 @@ class TSOSuite:
         weighted_residual = \
             np.ma.average(residual, axis=1,
                           weights=(np.ma.ones((npix, mpix, nintegrations)) /
-                                   np.tile(calibrated_error.T,
+                                   np.tile(calibrated_error.copy().T,
                                            (nintegrations, 1, 1)).T)**2)
 
         weighted_normed_parameters = \
@@ -1603,7 +1638,7 @@ class TSOSuite:
         wavelength_unit = dataset.wavelength_unit
         wave0_min = np.ma.min(wave0).data.value
         wave0_max = np.ma.max(wave0).data.value
-        fig, ax = plt.subplots(figsize=(6, 7))
+        fig, ax = plt.subplots(figsize=(7, 6))
         for item in ([ax.title, ax.xaxis.label, ax.yaxis.label] +
                      ax.get_xticklabels() + ax.get_yticklabels()):
             item.set_fontsize(20)
@@ -1745,27 +1780,26 @@ class TSOSuite:
                             data.value,
                             mask=results.calibration_correction.mask)
 
-            with quantity_support():
-                fig, ax = plt.subplots(figsize=(7, 4))
-                for item in ([ax.title, ax.xaxis.label, ax.yaxis.label] +
-                             ax.get_xticklabels() + ax.get_yticklabels()):
-                    item.set_fontsize(20)
-                ax.plot(results.calibration_correction.wavelength,
-                        results.calibration_correction.data)
-                ax.errorbar(wav_corr_temp, cal_corr_temp,
-                            yerr=error_corr_temp)
-                axes = plt.gca()
-                axes.set_xlim([0.95*np.ma.min(wav_corr_temp),
-                              1.05*np.max(wav_corr_temp)])
-                axes.set_ylim([-1.0*np.ma.median(flux_temp),
-                               np.ma.median(flux_temp)])
-                ax.set_ylabel('Calibration correction [{}]'.format(results.
-                              calibration_correction.data_unit))
-                ax.set_xlabel('Wavelength [{}]'.format(results.
-                              calibration_correction.wavelength_unit))
-                plt.show()
-                fig.savefig(save_path+observations_id +
-                            '_calibration_correction.png', bbox_inches='tight')
+            fig, ax = plt.subplots(figsize=(7, 4))
+            for item in ([ax.title, ax.xaxis.label, ax.yaxis.label] +
+                         ax.get_xticklabels() + ax.get_yticklabels()):
+                item.set_fontsize(20)
+            ax.plot(results.calibration_correction.wavelength,
+                    results.calibration_correction.data)
+            ax.errorbar(wav_corr_temp, cal_corr_temp,
+                        yerr=error_corr_temp)
+            axes = plt.gca()
+            axes.set_xlim([0.95*np.ma.min(wav_corr_temp),
+                          1.05*np.max(wav_corr_temp)])
+            axes.set_ylim([-1.0*np.ma.median(flux_temp),
+                           np.ma.median(flux_temp)])
+            ax.set_ylabel('Calibration correction [{}]'.format(results.
+                          calibration_correction.data_unit))
+            ax.set_xlabel('Wavelength [{}]'.format(results.
+                          calibration_correction.wavelength_unit))
+            plt.show()
+            fig.savefig(save_path+observations_id +
+                        '_calibration_correction.png', bbox_inches='tight')
 
             snr_cal = (median_eclipse_depth.value - cal_corr_temp) / \
                 error_corr_temp

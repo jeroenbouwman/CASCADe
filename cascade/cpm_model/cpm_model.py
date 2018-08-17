@@ -13,6 +13,7 @@ from __future__ import absolute_import
 import numpy as np
 from scipy.linalg import svd
 from scipy import signal
+from sklearn.utils.extmath import svd_flip
 
 __all__ = ['solve_linear_equation', 'return_PCR']
 
@@ -245,7 +246,8 @@ def return_PCR(design_matrix, n_components=None, variance_prior_scaling=1.):
     if design_matrix.dtype != 'float64':
         design_matrix = design_matrix.astype('float64')
 
-    U, S, _ = svd(design_matrix, full_matrices=False)
+    U, S, V = svd(design_matrix, full_matrices=False)
+    U, V = svd_flip(U, V)
     # If matrix is (time, pixels), then U zero dimension is also
     # time dimension, 1st is eigenvector
 

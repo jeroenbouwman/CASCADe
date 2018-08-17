@@ -16,9 +16,12 @@ from astropy import units as u
 import pandas as pd
 from pandas.plotting import autocorrelation_plot
 import seaborn as sns
+import warnings
+
+warnings.simplefilter("ignore")
 
 sns.set_style("white")
-#sns.set_context("talk")
+# sns.set_context("talk")
 sns.set_context("notebook", font_scale=1.5, rc={"lines.linewidth": 2.5})
 
 # create transit spectoscopy object
@@ -457,7 +460,7 @@ plt.ylabel("Regressor Number")
 plt.title('Clipped regressor matrix')
 plt.show()
 
-plt.plot(data_masked.filled().value[70:80, :].T)
+plt.plot(data_masked.filled().value[30:40, :].T)
 plt.show()
 
 #############################################################
@@ -765,9 +768,10 @@ with quantity_support():
 # extract planetary signal
 tso.execute("extract_spectrum")
 
-extent = [0, image0.shape[1]-1, wave0_min, wave0_max]
+extent = [0, tso.exoplanet_spectrum.weighted_image.shape[1]-1,
+          wave0_min, wave0_max]
 delta_lam = wave0_max - wave0_min
-fig, ax = plt.subplots(figsize=(6, 6))
+fig, ax = plt.subplots(figsize=(10, 10))
 for item in ([ax.title, ax.xaxis.label, ax.yaxis.label] +
              ax.get_xticklabels() + ax.get_yticklabels()):
     item.set_fontsize(20)
@@ -781,44 +785,44 @@ ax.set_xlabel('Pixel Number Spatial Direction')
 ax.set_ylabel('Wavelength')
 plt.show()
 
-W = (tso.exoplanet_spectrum.weighted_normed_parameters[:-4, :] /
-     np.ma.sum(tso.exoplanet_spectrum.weighted_normed_parameters[:-1, :],
-               axis=0)).T
-K = W - np.identity(W.shape[0])
-from scipy.linalg import pinv2
-K.set_fill_value(0.0)
-weighted_signal = tso.exoplanet_spectrum.weighted_signal.copy()
-weighted_signal.set_fill_value(0.0)
-
-bla = np.dot(pinv2(K.filled(), rcond=0.8),
-             -weighted_signal.filled())
-
-
-from scipy.linalg import lstsq
-res = lstsq(K.filled(), -weighted_signal.filled(), cond=0.8)
-bla=res[0]
+#W = (tso.exoplanet_spectrum.weighted_normed_parameters[:-4, :] /
+#     np.ma.sum(tso.exoplanet_spectrum.weighted_normed_parameters[:-1, :],
+#               axis=0)).T
+#K = W - np.identity(W.shape[0])
+#from scipy.linalg import pinv2
+#K.set_fill_value(0.0)
+#weighted_signal = tso.exoplanet_spectrum.weighted_signal.copy()
+#weighted_signal.set_fill_value(0.0)
+#
+#bla = np.dot(pinv2(K.filled(), rcond=0.001),
+#             -weighted_signal.filled())
 
 
-reg_par = {'lam0': 1.e-7, 'lam1': 1.e-2, 'nlam': 100}
-lam_reg0 = reg_par["lam0"]  # lowest value of regularization parameter
-lam_reg1 = reg_par["lam1"]   # highest
-ngrid_lam = reg_par["nlam"]  # number of points in grid
-# array to hold values of regularization parameter grid
-delta_lam = np.abs(np.log10(lam_reg1) - np.log10(lam_reg0)) / (ngrid_lam-1)
-lam_reg_array = 10**(np.log10(lam_reg0) +
-                     np.linspace(0, ngrid_lam-1, ngrid_lam)*delta_lam)
+#from scipy.linalg import lstsq
+#res = lstsq(K.filled(), -weighted_signal.filled(), cond=0.8)
+#bla=res[0]
+#
+#
+#reg_par = {'lam0': 1.e-7, 'lam1': 1.e-2, 'nlam': 100}
+#lam_reg0 = reg_par["lam0"]  # lowest value of regularization parameter
+#lam_reg1 = reg_par["lam1"]   # highest
+#ngrid_lam = reg_par["nlam"]  # number of points in grid
+## array to hold values of regularization parameter grid
+#delta_lam = np.abs(np.log10(lam_reg1) - np.log10(lam_reg0)) / (ngrid_lam-1)
+#lam_reg_array = 10**(np.log10(lam_reg0) +
+#                     np.linspace(0, ngrid_lam-1, ngrid_lam)*delta_lam)
+#
+#from sklearn import linear_model
+#RCV = linear_model.RidgeCV(fit_intercept=False, alphas=lam_reg_array)
+##RCV = linear_model.RidgeCV(fit_intercept=False)
+#RCV.fit(K.filled(), -weighted_signal.filled())
+#bla = RCV.coef_
 
-from sklearn import linear_model
-RCV = linear_model.RidgeCV(fit_intercept=False, alphas=lam_reg_array)
-#RCV = linear_model.RidgeCV(fit_intercept=False)
-RCV.fit(K.filled(), -weighted_signal.filled())
-bla = RCV.coef_
-
-bla = bla-np.ma.median(bla)
-median_eclipse_depth = \
-    float(tso.cascade_parameters.observations_median_signal)
-bla = (bla * (1.0 + median_eclipse_depth) +
-       median_eclipse_depth)
+#bla = bla-np.ma.median(bla)
+#median_eclipse_depth = \
+#    float(tso.cascade_parameters.observations_median_signal)
+#bla = (bla * (1.0 + median_eclipse_depth) +
+#       median_eclipse_depth)
 
 
 path_old = '/home/bouwman/SST_OBSERVATIONS/projects_HD189733/REDUCED_DATA/'
@@ -828,7 +832,7 @@ flux_ian = (spec_instr_model_ian['depthA'] *
             u.dimensionless_unscaled).to(u.percent)
 error_ian = (spec_instr_model_ian['errorA'] *
              u.dimensionless_unscaled).to(u.percent)
-fig, ax = plt.subplots(figsize=(7, 4))
+fig, ax = plt.subplots(figsize=(13, 9))
 for item in ([ax.title, ax.xaxis.label, ax.yaxis.label] +
              ax.get_xticklabels() + ax.get_yticklabels()):
     item.set_fontsize(20)
@@ -839,15 +843,15 @@ ax.errorbar(wave_ian.value, flux_ian.value, yerr=error_ian.value,
             markeredgecolor='r', fillstyle='full', markersize=10,
             markerfacecolor='r', zorder=3)
 ax.plot(tso.exoplanet_spectrum.spectrum.wavelength,
-        tso.exoplanet_spectrum.spectrum.data, lw=3, alpha=0.5, color='blue')
+        tso.exoplanet_spectrum.spectrum.data-0.4, lw=3, alpha=0.5, color='blue')
 ax.errorbar(tso.exoplanet_spectrum.spectrum.wavelength.data.value,
-            tso.exoplanet_spectrum.spectrum.data.data.value,
+            tso.exoplanet_spectrum.spectrum.data.data.value-0.4,
             yerr=tso.exoplanet_spectrum.spectrum.uncertainty.data.value,
             fmt=".k", color='blue', lw=3, alpha=0.5, ecolor='blue',
             markerfacecolor='blue',
             markeredgecolor='blue', fillstyle='full', markersize=10,
             zorder=4)
-ax.plot(tso.exoplanet_spectrum.spectrum.wavelength, bla*100-0.01, lw=4, zorder=6)
+#ax.plot(tso.exoplanet_spectrum.spectrum.wavelength, bla*100-0.01, lw=4, zorder=6)
 axes = plt.gca()
 axes.set_xlim([7.5, 15.5])
 axes.set_ylim([0.00, 0.8])
