@@ -859,28 +859,35 @@ class HSTWFC3(InstrumentBase):
         """
         calibration_source_position = []
         for im, image_file in enumerate(calibration_data_files):
-            ra_target = fits.getval(image_file, "RA_TARG")
-            dec_target = fits.getval(image_file, "DEC_TARG")
-            hdu = fits.open(image_file)[1]
-            w = WCS(hdu.header)
-            expected_target_position = \
-                w.all_world2pix(ra_target, dec_target, 0)
-            expexted_xcentroid = expected_target_position[0].reshape(1)[0]
-            expected_ycentroid = expected_target_position[1].reshape(1)[0]
+            with fits.open(image_file) as hdul:
+                ra_target = hdul['PRIMARY'].header['RA_TARG']
+                dec_target = hdul['PRIMARY'].header['DEC_TARG']
+                w = WCS(hdul['SCI'].header)
+                # BUG FIX
+                #            ra_target = fits.getval(image_file, "RA_TARG")
+                #            dec_target = fits.getval(image_file, "DEC_TARG")
+                #            hdu = fits.open(image_file)[1]
+                #            w = WCS(hdu.header)
+                expected_target_position = \
+                    w.all_world2pix(ra_target, dec_target, 0)
+                expexted_xcentroid = expected_target_position[0].reshape(1)[0]
+                expected_ycentroid = expected_target_position[1].reshape(1)[0]
 
-            mean, median, std = \
-                sigma_clipped_stats(calibration_image_cube[im, :, :],
-                                    sigma=3.0, iters=5)
+                mean, median, std = \
+                    sigma_clipped_stats(calibration_image_cube[im, :, :],
+                                        sigma=3.0, iters=5)
 
-            iraffind = IRAFStarFinder(fwhm=2.0, threshold=30.*std)
+                iraffind = IRAFStarFinder(fwhm=2.0, threshold=30.*std)
 
-            sources = iraffind(calibration_image_cube[im, :, :] - median)
-            distances = np.sqrt((sources['xcentroid']-expexted_xcentroid)**2 +
-                                (sources['ycentroid']-expected_ycentroid)**2)
-            idx_target = distances.argmin()
-            source_position = (sources[idx_target]['xcentroid'],
-                               sources[idx_target]['ycentroid'])
-            calibration_source_position.append(source_position)
+                sources = iraffind(calibration_image_cube[im, :, :] - median)
+                distances = \
+                    np.sqrt((sources['xcentroid']-expexted_xcentroid)**2 +
+                            (sources['ycentroid']-expected_ycentroid)**2)
+                idx_target = distances.argmin()
+                source_position = (sources[idx_target]['xcentroid'],
+                                   sources[idx_target]['ycentroid'])
+                calibration_source_position.append(source_position)
+                gc.collect()
 
         try:
             self.wfc3_cal

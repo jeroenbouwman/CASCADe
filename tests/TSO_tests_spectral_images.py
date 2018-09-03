@@ -17,6 +17,9 @@ import pandas as pd
 from pandas.plotting import autocorrelation_plot
 import seaborn as sns
 import warnings
+from scipy.io import readsav
+from skimage.feature import register_translation
+from scipy.linalg import pinv2
 
 warnings.simplefilter("ignore")
 
@@ -174,7 +177,10 @@ wave0 = tso.observation.dataset.wavelength
 wave0_min = np.ma.min(wave0).data.value
 wave0_max = np.ma.max(wave0).data.value
 
-plt.imshow(np.ma.median(tso.observation.dataset.data[:, :, :], axis=2),
+med_science_data_image = \
+    np.ma.median(tso.observation.dataset.data[:, :, :], axis=2)
+med_science_data_image.set_fill_value(np.nan)
+plt.imshow(med_science_data_image.filled().value,
            origin='lower',
            cmap='hot',
            interpolation='nearest',
@@ -270,8 +276,9 @@ plt.plot(tso.cpm.position[80, 18, :])
 plt.title("Relative position in slit")
 plt.show()
 
-###################################
-from skimage.feature import register_translation
+###############################################
+# check derived pointing and movement of source
+###############################################
 
 roi_mask = tso.observation.instrument_calibration.roi.copy()
 kernel = tso.observation.instrument_calibration.convolution_kernel
@@ -322,7 +329,7 @@ ax1.legend(loc='best')
 ax1.set_ylim([-0.05, 0.05])
 plt.show()
 
-from scipy.io import readsav
+# read file containing derived pointing using peakup array
 path_to_save_file = \
     ('/home/bouwman/SST_OBSERVATIONS/projects_HD189733/REDUCED_DATA/'
      'HD_189733_combined_SL_A/S16.1.0/SL1/')
@@ -340,9 +347,9 @@ ax1.plot(tso.observation.dataset.time.data.value[80, 18, :],
          tso.cpm.position[80, 18, :], label='COL')
 ax1.plot(tso.observation.dataset.time.data.value[80, 18, :],
          -shift_store[1, :]-np.median(-shift_store[1, :]), label='CC')
-ax1.plot(phase, xmovement_slit -np.median(xmovement_slit), label='Slit')
-ax1.plot(phase, xmovement_peakup -np.median(xmovement_peakup), label='PU')
-ax1.set_ylim([-0.05,0.05])
+ax1.plot(phase, xmovement_slit-np.median(xmovement_slit), label='Slit')
+ax1.plot(phase, xmovement_peakup-np.median(xmovement_peakup), label='PU')
+ax1.set_ylim([-0.05, 0.05])
 ax1.legend(loc='best')
 ax1.set_title("Comparison cross-dispersion direction")
 plt.show()
@@ -463,270 +470,6 @@ plt.show()
 plt.plot(data_masked.filled().value[30:40, :].T)
 plt.show()
 
-#############################################################
-#i_pixel_in_extraction_mask = 350
-#reg_matrix = tso.cpm.design_matrix[0][i_pixel_in_extraction_mask][0].copy()
-#
-#pix_to_fit=tso.cpm.regressor_list[0][i_pixel_in_extraction_mask][0]
-#lc = tso.model.light_curve_interpolated[0][pix_to_fit[0],
-#                                           pix_to_fit[1], :].copy()
-#
-#x = tso.observation.dataset.time[pix_to_fit[0],
-#                                 pix_to_fit[1], :].data.value.copy()
-#position = tso.cpm.position[pix_to_fit[0],
-#                            pix_to_fit[1], :].copy()
-#y = cleaned_image_test_roi[pix_to_fit[0], pix_to_fit[1], :].copy()
-#
-#regressor_matrix = np.vstack([reg_matrix.data.value, np.ones_like(x),
-#                              x, position, lc])
-#
-#
-#from sklearn.preprocessing import RobustScaler
-#RS = RobustScaler()
-#
-#lc_scaled = RS.fit_transform(lc.reshape(-1, 1))
-#y_scaled = RS.fit_transform(y.reshape(-1, 1))
-#yscale = RS.scale_
-#ycenter = RS.center_
-#
-#regressor_matrix_no_intercept = np.vstack([reg_matrix.data.value,
-#                                           x, position, lc])
-#
-#RS.fit(regressor_matrix_no_intercept.T)
-#RobustScaled_regressor_matrix = RS.transform(regressor_matrix_no_intercept.T).T
-#plt.imshow(RobustScaled_regressor_matrix,
-#           origin='lower',
-#           cmap='hot',
-#           interpolation='nearest',
-#           aspect='auto')
-#plt.colorbar().set_label("Intensity")
-#plt.xlabel("Integration Number")
-#plt.ylabel("Regressor Number")
-#plt.title('Robust Scaled regressor matrix')
-#plt.show()
-#
-#plt.plot(RobustScaled_regressor_matrix[70:80, :].T)
-#plt.plot(lc_scaled)
-#plt.plot(y_scaled, lw=3)
-#plt.show()
-#
-#from cascade.cpm_model import solve_linear_equation
-#reg_par = {'lam0': 1.e-6, 'lam1': 1.e4, 'nlam': 100}
-#par = solve_linear_equation(RobustScaled_regressor_matrix.T,
-#                            y_scaled.reshape(280), reg_par=reg_par,
-#                            feature_scaling=None)
-#from sklearn import linear_model
-#reg = linear_model.Ridge(alpha=par[2]**2, fit_intercept=False)
-#reg.fit(RobustScaled_regressor_matrix.T, y_scaled.reshape(280))
-#
-#
-#plt.plot(y_scaled)
-#plt.plot(np.dot(RobustScaled_regressor_matrix.T, par[0]))
-#plt.plot(reg.predict(RobustScaled_regressor_matrix.T))
-#plt.show()
-#
-#plt.plot(par[0])
-#plt.plot(reg.coef_)
-#plt.show()
-#
-#par_new = par[0]*yscale/RS.scale_
-#par_new = np.insert(par_new, -3, ycenter/yscale)
-#par_new2 = reg.coef_*yscale/RS.scale_
-#par_new2 = np.insert(par_new2, -3, ycenter/yscale)
-#
-#
-#plt.plot(y.data.value)
-#plt.plot(np.dot(regressor_matrix.T, par_new))
-#plt.plot(np.dot(regressor_matrix.T, par_new2))
-#plt.show()
-#
-#plt.semilogy(par_new)
-#plt.semilogy(par_new2)
-#plt.show()
-#
-#par_temp_new = par_new.copy()
-#par_temp_new[-1]=0.0
-#lc_cal = 1.0 - (np.dot(regressor_matrix.T,par_temp_new) /
-#                np.dot(regressor_matrix.T,par_new))
-#plt.plot(lc_cal)
-#plt.show()
-#
-#
-#plt.plot(y.data.value)
-#plt.plot(np.dot(RobustScaled_regressor_matrix.T, par[0]*yscale) + ycenter)
-#plt.plot(reg.predict(RobustScaled_regressor_matrix.T)*yscale + ycenter)
-#plt.show()
-#
-#par_temp = par[0].copy()
-#par_temp[-1]=0.0
-#lc_cal = 1.0 - ((np.dot(RobustScaled_regressor_matrix.T, par_temp*yscale) + ycenter) /
-#                (np.dot(RobustScaled_regressor_matrix.T, par[0]*yscale) + ycenter))
-#plt.plot(lc_cal)
-#plt.show()
-#
-#
-#
-#bla2 = RS.inverse_transform(RobustScaled_regressor_matrix.T).T
-#plt.imshow(bla2,
-#           origin='lower',
-#           cmap='hot',
-#           interpolation='nearest',
-#           aspect='auto')
-#plt.colorbar().set_label("Intensity")
-#plt.xlabel("Integration Number")
-#plt.ylabel("Regressor Number")
-#plt.title('Clipped regressor matrix')
-#plt.show()
-#
-#
-##############
-#regressor_matrix = np.vstack([reg_matrix.data.value, np.ones_like(x),
-#                              x, position, lc])
-#
-#pc_matrix = np.diag(1.0/np.linalg.norm(regressor_matrix.T, axis=0))
-#pc_design_matrix = np.dot(regressor_matrix.T, pc_matrix).T
-#plt.imshow(pc_design_matrix,
-#           origin='lower',
-#           cmap='hot',
-#           interpolation='nearest',
-#           aspect='auto')
-#plt.colorbar().set_label("Intensity")
-#plt.xlabel("Integration Number")
-#plt.ylabel("Regressor Number")
-#plt.title('Clipped regressor matrix')
-#plt.show()
-#
-#plt.plot(pc_design_matrix[70:80,:].T)
-#plt.show()
-#
-#from cascade.cpm_model import solve_linear_equation
-#reg_par={'lam0':1.e-6, 'lam1':1.e4, 'nlam':100}
-#par = solve_linear_equation(pc_design_matrix.T, y.data.value, reg_par=reg_par,
-#                            feature_scaling=None)
-#from sklearn import linear_model
-#reg = linear_model.Ridge (alpha = par[2]**2, fit_intercept=False)
-#reg.fit(pc_design_matrix.T, y.data.value)
-#
-#fit_parameters = np.dot(pc_matrix, par[0])
-#fit_parameters2 = np.dot(pc_matrix,reg.coef_)
-#
-#plt.plot(y.data.value)
-#plt.plot(np.dot(regressor_matrix.T, fit_parameters))
-#plt.plot(np.dot(regressor_matrix.T, fit_parameters2))
-#plt.show()
-#
-#plt.plot(par[0])
-#plt.plot(reg.coef_)
-#plt.show()
-#
-#plt.semilogy(fit_parameters)
-#plt.semilogy(fit_parameters2)
-#plt.show()
-#
-#par_temp= fit_parameters.copy()
-#par_temp[-1]=0.0
-#lc_cal = 1.0 - (np.dot(regressor_matrix.T,par_temp) /
-#                np.dot(regressor_matrix.T,fit_parameters))
-#plt.plot(lc_cal)
-#plt.show()
-##########################
-#from cascade.cpm_model import solve_linear_equation
-#
-#noise = np.sin(x*500)
-#
-#lcA = (lc*100.0 + 1000.0 + noise*20 + noise2 +
-#       np.random.normal(scale=np.sqrt(1000), size=len(lc)))
-#lcB = (lc*100.0 + 500.0 + noise*3 +
-#       np.random.normal(scale=np.sqrt(500), size=len(lc)))
-#lcC = (lc*75.0 + 250.0 + noise*10 +
-#       np.random.normal(scale=np.sqrt(250), size=len(lc)))
-#lcD = (lc*40.0 + 100.0 + noise*5 +
-#       np.random.normal(scale=np.sqrt(100), size=len(lc)))
-#
-#plt.plot(lcA)
-#plt.plot(lcB)
-#plt.plot(lcC)
-#plt.plot(lcD)
-#plt.show()
-#
-#reg_matrix = np.vstack([lcB, lcC, lcD, lc])
-#pc_matrix = np.diag(1.0/np.linalg.norm(reg_matrix.T, axis=0))
-#pc_design_matrix = np.dot(reg_matrix.T, pc_matrix).T
-#
-#plt.plot(pc_design_matrix.T)
-#plt.show()
-#
-#reg_par={'lam0':1.e-6, 'lam1':1.e2, 'nlam':100}
-#par = solve_linear_equation(pc_design_matrix.T, lcA, reg_par=reg_par,
-#                            feature_scaling=None)
-#
-#plt.plot(par[0])
-#plt.show()
-#
-#fit_parameters = np.dot(pc_matrix, par[0])
-#
-#plt.plot(fit_parameters)
-#plt.show()
-#
-#par_temp = fit_parameters.copy()
-#par_temp[-1]=0
-#plt.plot(lcA)
-#plt.plot(np.dot(reg_matrix.T,fit_parameters))
-#plt.plot(np.dot(reg_matrix.T,par_temp))
-#plt.plot(lc*fit_parameters[-1])
-#plt.show()
-#print(fit_parameters)
-#equal_weights = np.array([33.33/50., 33.33/25., 33.33/10.0])
-#relative_TD = np.array([0.2,0.3,0.4])
-#print(equal_weights)
-#print(np.sum(relative_TD*(equal_weights/equal_weights))/
-#      np.sum(equal_weights/equal_weights))
-#print(fit_parameters[:-1]/equal_weights)
-#print(np.sum(relative_TD*(fit_parameters[:-1]/equal_weights) /
-#             np.sum(fit_parameters[:-1]/equal_weights)))
-#print((fit_parameters[:-1]/equal_weights)/sum(fit_parameters[:-1]/equal_weights))
-#print(par[0][:-1]/np.sum(par[0][:-1]))
-#
-#print(np.sum(relative_TD*(par[0][:-1]/np.sum(par[0][:-1])) /
-#             np.sum((par[0][:-1]/np.sum(par[0][:-1])))))
-#
-#
-#lc_cal = 1.0-np.dot(reg_matrix.T,par_temp)/np.dot(reg_matrix.T,fit_parameters)
-#plt.plot(lc_cal)
-#plt.show()
-#print(np.max(lc_cal))
-#
-#
-#RS = RobustScaler()
-#y_scaled = RS.fit_transform(lcA.reshape(-1,1))
-#yscale = RS.scale_
-#ycenter = RS.center_
-#
-#RS.fit(reg_matrix.T)
-#bla = RS.transform(reg_matrix.T).T
-#par = solve_linear_equation(bla.T, y_scaled.squeeze(), reg_par=reg_par,
-#                            feature_scaling=None)
-#print(par[0])
-#
-#par_temp = par[0].copy()
-#par_temp[-1]=0
-#plt.plot(y_scaled.squeeze())
-#plt.plot(np.dot(bla.T,par[0]))
-#plt.plot(np.dot(bla.T,par_temp))
-#plt.plot(bla[-1,:]*par[0][-1])
-#plt.show()
-#
-#plt.plot(lcA)
-#plt.plot(np.dot(bla.T,par[0]*yscale)+ycenter)
-#plt.plot(np.dot(bla.T,par_temp*yscale)+ycenter)
-#plt.show()
-#
-#lc_cal = 1.0 - (np.dot(bla.T,par_temp*yscale)+ycenter) / (np.dot(bla.T,par[0]*yscale)+ycenter)
-#plt.plot(lc_cal)
-#plt.show()
-#print(np.min(lc_cal))
-
-
 # create calibrated time series and derive planetary signal
 tso.execute("calibrate_timeseries")
 
@@ -785,45 +528,30 @@ ax.set_xlabel('Pixel Number Spatial Direction')
 ax.set_ylabel('Wavelength')
 plt.show()
 
-#W = (tso.exoplanet_spectrum.weighted_normed_parameters[:-4, :] /
-#     np.ma.sum(tso.exoplanet_spectrum.weighted_normed_parameters[:-1, :],
-#               axis=0)).T
-#K = W - np.identity(W.shape[0])
-#from scipy.linalg import pinv2
-#K.set_fill_value(0.0)
-#weighted_signal = tso.exoplanet_spectrum.weighted_signal.copy()
-#weighted_signal.set_fill_value(0.0)
-#
-#bla = np.dot(pinv2(K.filled(), rcond=0.001),
-#             -weighted_signal.filled())
+# correct the extracted planetary signal for non uniform subtraction
+# of averige signal
+tso.execute("correct_extracted_spectrum")
 
+####################################
+# TEST derived signal correction
+####################################
+ndim_reg, ndim_lam = tso.exoplanet_spectrum.weighted_normed_parameters.shape
+ndim_diff = ndim_reg - ndim_lam
+W = (tso.exoplanet_spectrum.weighted_normed_parameters[:-ndim_diff, :] /
+     np.ma.sum(tso.exoplanet_spectrum.weighted_normed_parameters[:-1, :],
+               axis=0)).T
+K = W - np.identity(W.shape[0])
+K.set_fill_value(0.0)
+weighted_signal = tso.exoplanet_spectrum.weighted_signal.copy()
+weighted_signal.set_fill_value(0.0)
 
-#from scipy.linalg import lstsq
-#res = lstsq(K.filled(), -weighted_signal.filled(), cond=0.8)
-#bla=res[0]
-#
-#
-#reg_par = {'lam0': 1.e-7, 'lam1': 1.e-2, 'nlam': 100}
-#lam_reg0 = reg_par["lam0"]  # lowest value of regularization parameter
-#lam_reg1 = reg_par["lam1"]   # highest
-#ngrid_lam = reg_par["nlam"]  # number of points in grid
-## array to hold values of regularization parameter grid
-#delta_lam = np.abs(np.log10(lam_reg1) - np.log10(lam_reg0)) / (ngrid_lam-1)
-#lam_reg_array = 10**(np.log10(lam_reg0) +
-#                     np.linspace(0, ngrid_lam-1, ngrid_lam)*delta_lam)
-#
-#from sklearn import linear_model
-#RCV = linear_model.RidgeCV(fit_intercept=False, alphas=lam_reg_array)
-##RCV = linear_model.RidgeCV(fit_intercept=False)
-#RCV.fit(K.filled(), -weighted_signal.filled())
-#bla = RCV.coef_
-
-#bla = bla-np.ma.median(bla)
-#median_eclipse_depth = \
-#    float(tso.cascade_parameters.observations_median_signal)
-#bla = (bla * (1.0 + median_eclipse_depth) +
-#       median_eclipse_depth)
-
+corrected_spectrum = np.dot(pinv2(K.filled(), rcond=1.e-3),
+                            -weighted_signal.filled())
+corrected_spectrum = corrected_spectrum-np.ma.median(corrected_spectrum)
+median_eclipse_depth = \
+    float(tso.cascade_parameters.observations_median_signal)
+corrected_spectrum = (corrected_spectrum * (1.0 + median_eclipse_depth) +
+                      median_eclipse_depth)*100
 
 path_old = '/home/bouwman/SST_OBSERVATIONS/projects_HD189733/REDUCED_DATA/'
 spec_instr_model_ian = ascii.read(path_old+'results_ian.dat', data_start=1)
@@ -843,15 +571,23 @@ ax.errorbar(wave_ian.value, flux_ian.value, yerr=error_ian.value,
             markeredgecolor='r', fillstyle='full', markersize=10,
             markerfacecolor='r', zorder=3)
 ax.plot(tso.exoplanet_spectrum.spectrum.wavelength,
-        tso.exoplanet_spectrum.spectrum.data-0.4, lw=3, alpha=0.5, color='blue')
+        tso.exoplanet_spectrum.spectrum.data, lw=3, alpha=0.5, color='blue')
 ax.errorbar(tso.exoplanet_spectrum.spectrum.wavelength.data.value,
-            tso.exoplanet_spectrum.spectrum.data.data.value-0.4,
+            tso.exoplanet_spectrum.spectrum.data.data.value,
             yerr=tso.exoplanet_spectrum.spectrum.uncertainty.data.value,
             fmt=".k", color='blue', lw=3, alpha=0.5, ecolor='blue',
             markerfacecolor='blue',
             markeredgecolor='blue', fillstyle='full', markersize=10,
             zorder=4)
-#ax.plot(tso.exoplanet_spectrum.spectrum.wavelength, bla*100-0.01, lw=4, zorder=6)
+ax.plot(tso.exoplanet_spectrum.spectrum.wavelength, corrected_spectrum,
+        lw=3, zorder=6, color='green')
+ax.errorbar(tso.exoplanet_spectrum.spectrum.wavelength.data.value,
+            corrected_spectrum,
+            yerr=tso.exoplanet_spectrum.spectrum.uncertainty.data.value,
+            fmt=".k", color='green', lw=3, alpha=0.5, ecolor='green',
+            markerfacecolor='green',
+            markeredgecolor='green', fillstyle='full', markersize=10,
+            zorder=6)
 axes = plt.gca()
 axes.set_xlim([7.5, 15.5])
 axes.set_ylim([0.00, 0.8])

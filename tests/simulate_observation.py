@@ -7,7 +7,7 @@ Created on Fri Apr 27 16:24:00 2018
 """
 import cascade
 from cascade.cpm_model import solve_linear_equation
-# import os
+import os
 from matplotlib import pyplot as plt
 # from astropy.visualization import quantity_support
 import numpy as np
@@ -22,7 +22,8 @@ import pandas as pd
 from statsmodels.robust.scale import Huber
 from scipy.linalg import pinv2
 from sklearn.preprocessing import RobustScaler, Normalizer
-# from sklearn.preprocessing import robust_scale
+from sklearn.decomposition import PCA, FactorAnalysis   # ,FastICA
+from cascade.cpm_model import return_PCR
 
 
 def mysolve(A):
@@ -42,10 +43,27 @@ cascade.initialize.configurator(path+"cascade_test_cpm.ini",
                                 path+"cascade_test_object.ini",
                                 path+"cascade_test_data_spectral_images.ini")
 
+# model parameters defining noise strength and data dimensions
+model_name = 'test_model21'
+noise_factor = 5.0e-1    # systematic noise amplitude
+noise_factor2 = 3.0e-1   # random noise amplitude
+ndata = 300
+nwave = 130
+ncomponents_pca = 101
+
+save_path = os.path.join(cascade.initialize.cascade_configuration.
+                         cascade_save_path, model_name)
+os.makedirs(save_path, exist_ok=True)
+
+with open(os.path.join(save_path, 'parameters.txt'), 'wb') as f:
+    f.write("noise_factor = {} \n".format(noise_factor).encode())
+    f.write("noise_factor2 = {} \n".format(noise_factor2).encode())
+    f.write("ndata = {} \n".format(ndata).encode())
+    f.write("nwave = {} \n".format(nwave).encode())
+    f.write("ncomponents_pca = {}".format(ncomponents_pca).encode())
 
 # define ligthcurve model
 lc_model = cascade.exoplanet_tools.lightcuve()
-ndata = 300
 phase = np.linspace(0.45, 0.55, num=ndata)
 # interpoplate light curve model to observed phases
 f = interpolate.interp1d(lc_model.lc[0], lc_model.lc[1])
@@ -60,17 +78,20 @@ model_flux = np.array([1000.0, 900.0, 800.0, 750.0, 700.0, 600.0, 550.0, 500.0,
 modelTD = np.array([100.0, 90.0, 80.0, 112.5, 95.0, 80.0, 70.0, 100.0, 50.0,
                     70.0, 60.0, 75.0, 70.0, 61.25, 50.0, 40.0])  # *0.15/2.
 # Define systematic noise
-noise_amplitude = np.array([20.0, 13.0, 11.0, 8.0, 7.0, 5.0, 5.0, 3.0, 6.0,
-                            9.0, 11.0, 10.0, 8.0, 6.0, 7.0, 5.0])*4.0 * 0.1
+noise_amplitude = np.array([160., 104., 88., 64., 56., 40., 40., 24., 48., 72.,
+                            88., 80., 64., 48., 56., 40.])*noise_factor
+# noise_amplitude = np.minimum(noise_amplitude, 1.0*(modelTD))
 noise = np.sin(phase*250)
-# Define random noise amplitude
-noise2_amplitude = np.sqrt(model_flux)*1.0
-#noise2_amplitude = model_flux*0.2
 
+# Define random noise amplitude
+noise2_amplitude = 4.0*np.sqrt(model_flux)*noise_factor2
+# noise2_amplitude = np.minimum(noise2_amplitude, 0.50*(model_flux-modelTD))
+
+# define mock position
 position_amplitude = 0.1
 position = position_amplitude*np.cos(phase*250)
 
-nwave = 130
+# create transit sifnal model and noise model on fine grid
 f1 = interpolate.interp1d(np.linspace(0, len(model_flux)-1,
                                       num=len(model_flux)),
                           model_flux)
@@ -89,9 +110,27 @@ modelTD_fullres = f2(np.linspace(0, len(model_flux)-1, num=nwave))
 noise_amplitude_fullres = f3(np.linspace(0, len(model_flux)-1, num=nwave))
 noise2_amplitude_fullres = f4(np.linspace(0, len(model_flux)-1, num=nwave))
 
+plt.plot(noise_amplitude_fullres/noise2_amplitude_fullres)
+plt.xlabel("Data number")
+plt.ylabel("Ratio Systematic/Random")
+plt.title('Ratio noise amplitudes')
+plt.show()
+
+plt.plot(noise_amplitude_fullres/modelTD_fullres)
+plt.xlabel("Data number")
+plt.ylabel("Ratio Systematic/Transit Signal")
+plt.title('Ratio systematic noise and Transit signal')
+plt.show()
+
 theoretical_noise_limit = \
     (np.sqrt(2)*noise2_amplitude_fullres /
      np.sqrt(number_of_points_in_transit)/model_flux_fullres)
+
+plt.plot(1/theoretical_noise_limit)
+plt.xlabel("Data number")
+plt.ylabel("SNR")
+plt.title('Noise limit')
+plt.show()
 
 # Create dataset
 data = np.zeros((len(model_flux_fullres), ndata))
@@ -115,9 +154,15 @@ for i, (td, mf, na, na2) in enumerate(zip(modelTD,
 
 X = pd.DataFrame(data.T, columns=["Lam %d" % (i + 1)
                                   for i in range(model_flux_fullres.size)])
-Xlowres = pd.DataFrame(data_lowres.T, columns=["Lam %d" % (i + 1)
-                                              for i in range(model_flux.size)])
+Xlowres = pd.DataFrame(data_lowres.T,
+                       columns=["Lam %d" % (i + 1)
+                                for i in range(model_flux.size)])
 plt.plot(X)
+plt.xlabel("Exposure number")
+plt.ylabel("Signal")
+plt.title('Lightcurves')
+plt.savefig(os.path.join(save_path, 'lightcurves.png'),
+            bbox_inches='tight')
 plt.show()
 
 plt.rcParams["patch.force_edgecolor"] = True
@@ -157,6 +202,11 @@ norm_matrix_masked = \
     np.diag(1.0/np.linalg.norm(data_temp, axis=1))
 data_normed = np.dot(data.T, norm_matrix_masked).T
 plt.plot(data_normed.T)
+plt.xlabel("Exposure number")
+plt.ylabel("Normalized signal")
+plt.title('Normalized lightcurves')
+plt.savefig(os.path.join(save_path, 'normalized_lightcurves.png'),
+            bbox_inches='tight')
 plt.show()
 
 plt.plot((np.diag(norm_matrix_masked)-np.diag(norm_matrix)) /
@@ -213,7 +263,7 @@ for idata, index_reg in idx_list:
                                 phase, position, lcmodel_obs])
 
     matrix_temp = \
-        reg_matrix.filled(np.tile(np.ma.mean(reg_matrix, axis=1).data,
+        reg_matrix.filled(np.tile(np.ma.median(reg_matrix, axis=1).data,
                                   (reg_matrix.shape[1], 1)).T)
     pc_matrix = np.diag(1.0/np.linalg.norm(matrix_temp.T, axis=0))
     pc_design_matrix = np.dot(reg_matrix.data.T, pc_matrix).T
@@ -263,7 +313,7 @@ for idata, index_reg in idx_list:
 #                                                      np.arange(-(nadd+1), 0))]
 #                    ))
 #    plt.plot(np.dot(reg_matrix.T, par_temp))
-##    plt.plot(lcmodel_obs*fitted_parameter[idata, -1])
+#    plt.plot(lcmodel_obs*fitted_parameter[idata, -1])
 #    plt.show()
 
     # Scaling for eclipse observations
@@ -308,7 +358,7 @@ for idata, index_reg in idx_list:
                 )
 
 #    plt.plot(lc_cal_trans)
-#    plt.plot(np.dot(reg_matrix2.T, fitted_relative_TD_trans[idata]))
+#    plt.plot(np.dot(reg_matrix_cal.T, fitted_relative_TD_trans[idata]))
 #    plt.title('Transit')
 #    plt.show()
 
@@ -349,10 +399,11 @@ plt.show()
 W = (fitted_parameter_normed[:, :-(nadd+1)].T /
      np.sum(fitted_parameter_normed[:, :-1], axis=1)).T
 
-#W2 = (fitted_parameter[:, :-(nadd+1)].T /
+# W2 = (fitted_parameter[:, :-(nadd+1)].T /
 #     np.sum(fitted_parameter[:, :-1], axis=1)).T
 
-est_sub_signal = -model_flux_fullres*np.dot(W, (modelTD_fullres/model_flux_fullres))
+est_sub_signal = \
+    -model_flux_fullres*np.dot(W, (modelTD_fullres/model_flux_fullres))
 
 fig, ax = plt.subplots(figsize=(9, 7))
 for item in ([ax.title, ax.xaxis.label, ax.yaxis.label] +
@@ -405,7 +456,8 @@ for item in ([ax.title, ax.xaxis.label, ax.yaxis.label] +
              ax.get_xticklabels() + ax.get_yticklabels()):
     item.set_fontsize(20)
 # estimate of subtracted signal using fitted delta depth and known depth
-ax.plot(-1.0*((fitted_relative_TD_trans*(1.0-meanTD)) - modelTD_fullres/model_flux_fullres),
+ax.plot(-1.0*((fitted_relative_TD_trans*(1.0-meanTD)) -
+              modelTD_fullres/model_flux_fullres),
         label='Estimate using results from normalized transit light curve')
 ax.plot(rel_est_sub_signal,
         label='Estimate subtracted relative signal using W')
@@ -448,8 +500,6 @@ corrected_relative_TD_trans = corrected_relative_TD_trans - \
 
 corrected_relative_TD_trans_e = \
     np.zeros((1500, corrected_relative_TD_trans.size))
-#est_fitted_trans_signal_e = \
-#    np.zeros((1000, corrected_relative_TD_trans.size))
 for i in range(1500):
     error_W = (np.random.normal(size=fitted_parameter_normed.size).
                reshape(fitted_parameter_normed.shape) *
@@ -462,12 +512,6 @@ for i in range(1500):
     TDe = fitted_relative_TD_trans+error_TD
     Ke = We - np.identity(data.shape[0])
     corrected_relative_TD_trans_e[i, :] = np.dot(pinv2(Ke, rcond=1.e-4), -TDe)
-#    corrected_relative_TD_trans_e[i, :] = np.dot(np.linalg.inv(Ke), -TDe)
-#    est_fitted_trans_signal_e[i,:] = np.dot(K, -corrected_relative_TD_trans_e[i, :])
-
-#est_fitted_trans_signal_e = (est_fitted_trans_signal_e.T -
-#                             np.mean(est_fitted_trans_signal_e, axis=1) +
-#                             np.mean(fitted_relative_TD_trans))
 
 curves_minus_mean = (corrected_relative_TD_trans_e.T -
                      np.mean(corrected_relative_TD_trans_e, axis=1))
@@ -479,13 +523,6 @@ plt.plot(curves_minus_mean)
 plt.plot(results_transit_with_error, lw=5, color='black')
 plt.show()
 
-#plt.plot(est_fitted_trans_signal_e)
-#plt.plot(fitted_relative_TD_trans, lw=4)
-#plt.show()
-
-#bla = (np.sum((est_fitted_trans_signal_e.T - fitted_relative_TD_trans)**2,axis=1))
-#idx = np.argsort(bla)
-
 meanTD = np.mean(modelTD_fullres/model_flux_fullres)
 
 fig, ax = plt.subplots(figsize=(9, 7))
@@ -494,6 +531,12 @@ for item in ([ax.title, ax.xaxis.label, ax.yaxis.label] +
     item.set_fontsize(20)
 ax.plot(modelTD_fullres/model_flux_fullres, label='True transit depth',
         color='b', zorder=4)
+plt.fill_between(np.arange(len(modelTD_fullres)),
+                 modelTD_fullres /
+                 (model_flux_fullres)-theoretical_noise_limit,
+                 modelTD_fullres /
+                 (model_flux_fullres)+theoretical_noise_limit,
+                 color='gray', zorder=3, alpha=0.5)
 ax.plot(fitted_relative_TD_trans*(1.0-meanTD) + meanTD,
         label='Derived uncorrected depth', color='orange')
 ax.errorbar(np.arange(len(fitted_relative_TD_trans)),
@@ -510,22 +553,22 @@ ax.errorbar(np.arange(len(corrected_relative_TD_trans)),
             fmt=".k", lw=3, fillstyle='full', markersize=10, zorder=6,
             alpha=0.9, ecolor="g", color="g",
             markeredgecolor='g', markerfacecolor='g')
-ax.plot(results_transit_with_error*(1.0-meanTD) + meanTD,
-        label='Corrected derived depth with error analysis', color='r',
-        zorder=5)
-ax.errorbar(np.arange(len(results_transit_with_error)),
-            results_transit_with_error*(1.0-meanTD) + meanTD,
-            yerr=error_results_transit_with_error*(1.0-meanTD),
-            fmt=".k", lw=3, fillstyle='full', markersize=10, zorder=5,
-            alpha=0.9, ecolor="r", color="r",
-            markeredgecolor='r', markerfacecolor='r')
-# ax.plot(curves_minus_mean[:, idx[0:3]]*(1.0-meanTD)+meanTD, color='cyan')
+#ax.plot(results_transit_with_error*(1.0-meanTD) + meanTD,
+#        label='Corrected derived depth with error analysis', color='r',
+#        zorder=5)
+#ax.errorbar(np.arange(len(results_transit_with_error)),
+#            results_transit_with_error*(1.0-meanTD) + meanTD,
+#            yerr=error_results_transit_with_error*(1.0-meanTD),
+#            fmt=".k", lw=3, fillstyle='full', markersize=10, zorder=5,
+#            alpha=0.9, ecolor="r", color="r",
+#            markeredgecolor='r', markerfacecolor='r')
 ax.legend(loc='best')
 ax.set_xlabel("Data number")
 ax.set_ylabel("Relative depth")
 plt.title('Transit depth')
 ax.set_ylim([-0.0, 0.6])
 plt.show()
+fig.savefig(os.path.join(save_path, 'direct_transit.png'), bbox_inches='tight')
 
 
 def eclipse_to_transit(eclipse):
@@ -543,7 +586,7 @@ def transit_to_eclipse(transit):
 ##################################################
 mean_ecl = np.mean(modelTD_fullres/(model_flux_fullres-modelTD_fullres))
 
-corrected_relative_TD = np.dot(pinv2(K, rcond=0.0001), -fitted_relative_TD)
+corrected_relative_TD = np.dot(pinv2(K, rcond=1.e-4), -fitted_relative_TD)
 corrected_relative_TD = corrected_relative_TD-np.mean(corrected_relative_TD)
 
 corrected_relative_TD_e = np.zeros((1000, corrected_relative_TD.size))
@@ -557,7 +600,7 @@ for i in range(1000):
     We = (par_temp[:, :-(nadd+1)].T / np.sum(par_temp[:, :-1], axis=1)).T
     TDe = fitted_relative_TD+error_TD
     Ke = We - np.identity(data.shape[0])
-    corrected_relative_TD_e[i, :] = np.dot(pinv2(Ke, rcond=0.0001), -TDe)
+    corrected_relative_TD_e[i, :] = np.dot(pinv2(Ke, rcond=1.e-4), -TDe)
 
 curves_minus_mean = (corrected_relative_TD_e.T -
                      np.mean(corrected_relative_TD_e, axis=1))
@@ -577,7 +620,14 @@ fig, ax = plt.subplots(figsize=(9, 7))
 for item in ([ax.title, ax.xaxis.label, ax.yaxis.label] +
              ax.get_xticklabels() + ax.get_yticklabels()):
     item.set_fontsize(20)
-ax.plot(modelTD_fullres/(model_flux_fullres-modelTD_fullres), label='Model', color='b', zorder=4)
+ax.plot(modelTD_fullres/(model_flux_fullres-modelTD_fullres),
+        label='Model', color='b', zorder=4)
+plt.fill_between(np.arange(len(modelTD_fullres)),
+                 modelTD_fullres /
+                 (model_flux_fullres-modelTD_fullres)-theoretical_noise_limit,
+                 modelTD_fullres /
+                 (model_flux_fullres-modelTD_fullres)+theoretical_noise_limit,
+                 color='gray', alpha=0.5, zorder=4)
 ax.plot(fitted_relative_TD*(1.0+mean_ecl) + mean_ecl,
         label='Derived uncorrected depth', color='orange', zorder=3)
 ax.errorbar(np.arange(len(fitted_relative_TD)),
@@ -594,15 +644,15 @@ ax.errorbar(np.arange(len(corrected_relative_TD)),
             fmt=".k", lw=3, fillstyle='full', markersize=10, zorder=6,
             alpha=0.9, ecolor="g", color="g",
             markeredgecolor='g', markerfacecolor='g')
-ax.plot(results_eclipse_with_error*(1.0+mean_ecl) + mean_ecl,
-        color='r', label='Corrected Eclipse Depth with error analysis',
-        zorder=5)
-ax.errorbar(np.arange(len(results_eclipse_with_error)),
-            results_eclipse_with_error*(1.0+mean_ecl) + mean_ecl,
-            yerr=error_results_eclipse_with_error*(1.0+mean_ecl),
-            fmt=".k", lw=3, fillstyle='full', markersize=10, zorder=5,
-            alpha=0.9, ecolor="r", color="r",
-            markeredgecolor='r', markerfacecolor='r')
+#ax.plot(results_eclipse_with_error*(1.0+mean_ecl) + mean_ecl,
+#        color='r', label='Corrected Eclipse Depth with error analysis',
+#        zorder=5)
+#ax.errorbar(np.arange(len(results_eclipse_with_error)),
+#            results_eclipse_with_error*(1.0+mean_ecl) + mean_ecl,
+#            yerr=error_results_eclipse_with_error*(1.0+mean_ecl),
+#            fmt=".k", lw=3, fillstyle='full', markersize=10, zorder=5,
+#            alpha=0.9, ecolor="r", color="r",
+#            markeredgecolor='r', markerfacecolor='r')
 ax.plot(corrected_eclipse_via_transit, label='Via Transit value',
         color='black', zorder=6)
 ax.legend(loc='best')
@@ -613,8 +663,7 @@ plt.title('Eclipse depth')
 plt.show()
 ##########################################
 
-from sklearn.decomposition import PCA, FactorAnalysis  #  ,FastICA
-pca = PCA(n_components=10, whiten=False)
+pca = PCA(n_components=10, whiten=False, svd_solver='randomized')
 Xtransformed = pca.fit_transform(X)
 plt.plot(Xtransformed)
 plt.show()
@@ -622,7 +671,6 @@ plt.show()
 plt.plot(np.cumsum(np.round(pca.explained_variance_ratio_, decimals=4)*100))
 plt.show()
 
-from cascade.cpm_model import return_PCR
 B, lambdas = return_PCR(X.get_values(), n_components=10)
 plt.plot(B)
 plt.show()
@@ -637,11 +685,11 @@ plt.show()
 # plt.plot(ica.components_.T)
 # plt.show()
 
-from sklearn.preprocessing import RobustScaler
+
 RS = RobustScaler(with_scaling=False)
 X_scaled = RS.fit_transform(X)
 
-pca = PCA(n_components=10, whiten=False)
+pca = PCA(n_components=10, whiten=False, svd_solver='randomized')
 Xtransformed = pca.fit_transform(X_scaled)
 plt.plot(Xtransformed)
 plt.show()
@@ -649,7 +697,6 @@ plt.show()
 plt.plot(np.cumsum(np.round(pca.explained_variance_ratio_, decimals=4)*100))
 plt.show()
 
-from cascade.cpm_model import return_PCR
 B, lambdas = return_PCR(X_scaled, n_components=10)
 plt.plot(B)
 plt.show()
@@ -659,11 +706,10 @@ Xtransformed = fa.fit_transform(X_scaled)
 plt.plot(Xtransformed)
 plt.show()
 
-from sklearn.preprocessing import RobustScaler
 RS = RobustScaler(with_scaling=True)
 X_scaled = RS.fit_transform(X)
 
-pca = PCA(n_components=10, whiten=False)
+pca = PCA(n_components=10, whiten=False, svd_solver='randomized')
 Xtransformed = pca.fit_transform(X_scaled)
 plt.plot(Xtransformed)
 plt.show()
@@ -671,8 +717,6 @@ plt.show()
 plt.plot(np.cumsum(np.round(pca.explained_variance_ratio_, decimals=4)*100))
 plt.show()
 
-
-from cascade.cpm_model import return_PCR
 B, lambdas = return_PCR(X_scaled, n_components=10)
 plt.plot(B)
 plt.show()
@@ -681,14 +725,12 @@ fa = FactorAnalysis(n_components=10)
 Xtransformed = fa.fit_transform(X_scaled)
 plt.plot(Xtransformed)
 plt.show()
-
-ncomponents = 5
 
 nadd_pca = 1
 # Make regression model
 fitted_parameter_normed_pca = np.zeros((data.shape[0],
-                                        ncomponents+nadd_pca+1))
-fitted_parameter_pca = np.zeros((data.shape[0], ncomponents+nadd_pca+1))
+                                        ncomponents_pca+nadd_pca+1))
+fitted_parameter_pca = np.zeros((data.shape[0], ncomponents_pca+nadd_pca+1))
 fitted_parameter_pca_back_trans = \
     np.zeros((data.shape[0], data.shape[0]+nadd_pca+1))
 fitted_parameter_normed_pca_back_trans = \
@@ -698,19 +740,19 @@ fitted_relative_TD_trans_pca = np.zeros((data.shape[0]))
 reg_parameter_pca = np.zeros((data.shape[0]))
 reg_parameter2_pca = np.zeros((data.shape[0]))
 for idata, index_reg in idx_list:
-
-#    print(idata, index_reg)
+    # print(idata, index_reg)
     y = data[idata, :].copy()
     yerr = error_data[idata, :].copy()
     weights = yerr**-2
 
     RS = RobustScaler(with_scaling=False)
-    y_scaled = RS.fit_transform(y.reshape(-1,1))
+    y_scaled = RS.fit_transform(y.reshape(-1, 1))
 
     RS = RobustScaler(with_scaling=False)
     X_scaled = RS.fit_transform(data[index_reg, :].T)
 
-    pca = PCA(n_components=ncomponents, whiten=False, svd_solver='auto')
+    pca = PCA(n_components=ncomponents_pca,
+              whiten=False, svd_solver='randomized')
     Xtransformed = pca.fit_transform(X_scaled)
 #    pca.fit(data[index_reg, :])
 #    print(np.cumsum(np.round(pca.explained_variance_ratio_, decimals=4)*100))
@@ -767,16 +809,17 @@ for idata, index_reg in idx_list:
     par_trans3 = par_trans2.copy()
     par_trans3[-2] = par_trans3[-2] - np.sum(RS.center_ * par_trans)
 #    plt.plot(np.dot(par_trans3, reg_matrix3))
-#    plt.plot(np.dot(np.dot(np.linalg.inv(pc_matrix3), par_trans3), pc_design_matrix3))
+#    plt.plot(np.dot(np.dot(np.linalg.inv(pc_matrix3), par_trans3),
+#                    pc_design_matrix3))
 #    plt.show()
 
     fitted_parameter_pca_back_trans[idata,
                                     np.append(index_reg,
-                                              np.arange(-(nadd+1), 0))] = \
+                                              np.arange(-(nadd_pca+1), 0))] = \
         par_trans3
     fitted_parameter_normed_pca_back_trans[idata,
                                            np.append(index_reg,
-                                                     np.arange(-(nadd+1),
+                                                     np.arange(-(nadd_pca+1),
                                                                0))] = \
         np.dot(np.linalg.inv(pc_matrix3), par_trans3)
 
@@ -793,9 +836,9 @@ for idata, index_reg in idx_list:
 #    plt.plot(y)
 #    plt.plot(np.dot(reg_matrix.T,
 #                    fitted_parameter_pca[idata, :]))
-#    plt.plot(lcmodel_obs*fitted_parameter_pca[idata, -1] + fitted_parameter_pca[idata, -2])
-##    plt.plot(np.dot(reg_matrix.T, par_temp))
-##    plt.plot(lcmodel_obs*fitted_parameter_pca[idata, -1])
+#    plt.plot(lcmodel_obs*fitted_parameter_pca[idata, -1]+fitted_parameter_pca[idata, -2])
+# #    plt.plot(np.dot(reg_matrix.T, par_temp))
+# #    plt.plot(lcmodel_obs*fitted_parameter_pca[idata, -1])
 #    plt.show()
 
     lc_cal = 1.0 - np.dot(reg_matrix.T, par_temp) / \
@@ -808,10 +851,10 @@ for idata, index_reg in idx_list:
 
 #    plt.plot(lc_cal)
 #    plt.plot(np.dot(reg_matrix2.T, fitted_relative_TD_pca[idata]))
-#    plt.plot((fitted_parameter_pca[idata,-1] / (fitted_parameter_pca[idata,-2] -
+#    plt.plot((fitted_parameter_pca[idata,-1]/(fitted_parameter_pca[idata,-2] -
 #             fitted_parameter_pca[idata,-1]) * lcmodel_obs))
-##    plt.plot((np.dot(reg_matrix.T, fitted_parameter_pca[idata, :])-
-##              np.dot(reg_matrix.T, par_temp))/ fitted_parameter_pca[idata,-2])
+# #    plt.plot((np.dot(reg_matrix.T, fitted_parameter_pca[idata, :])-
+# #              np.dot(reg_matrix.T, par_temp))/fitted_parameter_pca[idata,-2])
 #    plt.show()
 
     lc_cal_trans = \
@@ -828,10 +871,11 @@ for idata, index_reg in idx_list:
 
 ##########################################################
 Wpca = (fitted_parameter_normed_pca_back_trans[:, :-(nadd_pca+1)].T /
-     np.sum(fitted_parameter_normed_pca_back_trans[:, :-1], axis=1)).T
+        np.sum(fitted_parameter_normed_pca_back_trans[:, :-1], axis=1)).T
 Kpca = Wpca - (np.identity(data.shape[0]))
 
-est_sub_signal = -model_flux_fullres*np.dot(Wpca, (modelTD_fullres/model_flux_fullres))
+est_sub_signal = \
+    -model_flux_fullres*np.dot(Wpca, (modelTD_fullres/model_flux_fullres))
 
 fig, ax = plt.subplots(figsize=(9, 7))
 for item in ([ax.title, ax.xaxis.label, ax.yaxis.label] +
@@ -876,13 +920,17 @@ plt.show()
 ################################################################
 # Transit calculations
 ################################################################
+meanTD = np.mean(modelTD_fullres/model_flux_fullres)
+fitted_relative_TD_trans_pca_mean_sub = \
+    fitted_relative_TD_trans_pca - np.mean(fitted_relative_TD_trans_pca)
 
 corrected_relative_TD_trans_pca = np.dot(pinv2(Kpca, rcond=1.e-4),
-                                     -fitted_relative_TD_trans_pca)
-corrected_relative_TD_trans_pca = corrected_relative_TD_trans_pca - \
+                                         -fitted_relative_TD_trans_pca)
+corrected_relative_TD_trans_pca_mean_sub = corrected_relative_TD_trans_pca - \
     np.mean(corrected_relative_TD_trans_pca)
 
-meanTD = np.mean(modelTD_fullres/model_flux_fullres)
+corrected_eclipse_via_transit_using_PCA = \
+    transit_to_eclipse(corrected_relative_TD_trans_pca_mean_sub+meanTD)
 
 fig, ax = plt.subplots(figsize=(9, 7))
 for item in ([ax.title, ax.xaxis.label, ax.yaxis.label] +
@@ -890,55 +938,97 @@ for item in ([ax.title, ax.xaxis.label, ax.yaxis.label] +
     item.set_fontsize(20)
 ax.plot(modelTD_fullres/model_flux_fullres, label='True transit depth',
         color='b', zorder=4)
-ax.plot(fitted_relative_TD_trans_pca*(1.0-meanTD) + meanTD,
-        label='Derived uncorrected depth', color='orange')
-#ax.errorbar(np.arange(len(fitted_relative_TD_trans_pca)),
-#            fitted_relative_TD_trans_pca*(1.0-meanTD) + meanTD,
-#            yerr=error_relative_TD_trans_pca*(1.0-meanTD),
-#            fmt=".k", lw=3, fillstyle='full', markersize=10, zorder=3,
-#            alpha=0.9, ecolor="orange", color="orange",
-#            markeredgecolor='orange', markerfacecolor='orange')
-ax.plot(corrected_relative_TD_trans_pca*(1.0-meanTD) + meanTD,
-        label='Corrected derived depth', color='g', zorder=6)
-#ax.errorbar(np.arange(len(corrected_relative_TD_trans_pca)),
-#            corrected_relative_TD_trans_pca*(1.0-meanTD) + meanTD,
-#            yerr=error_relative_TD_trans_pca*(1.0-meanTD),
-#            fmt=".k", lw=3, fillstyle='full', markersize=10, zorder=6,
-#            alpha=0.9, ecolor="g", color="g",
-#            markeredgecolor='g', markerfacecolor='g')
+plt.fill_between(np.arange(len(modelTD_fullres)),
+                 modelTD_fullres /
+                 (model_flux_fullres)-theoretical_noise_limit,
+                 modelTD_fullres /
+                 (model_flux_fullres)+theoretical_noise_limit,
+                 color='gray', alpha=0.5)
+ax.plot(fitted_relative_TD_trans_pca_mean_sub + meanTD,
+        label='Derived uncorrected depth with {} PCA components'.
+        format(ncomponents_pca), color='orange')
+ax.plot(corrected_relative_TD_trans_pca_mean_sub + meanTD,
+        label='Corrected derived depth with PCA', color='g', zorder=6)
 ax.legend(loc='best')
 ax.set_xlabel("Data number")
 ax.set_ylabel("Relative depth")
 plt.title('Transit depth')
 ax.set_ylim([-0.0, 0.6])
 plt.show()
+fig.savefig(os.path.join(save_path, 'pca_transit.png'), bbox_inches='tight')
 
-
-
-############################################################
+################################################################
+# Eclpise calculations
+################################################################
 mean_ecl = np.mean(modelTD_fullres/(model_flux_fullres-modelTD_fullres))
 meanTD = np.mean(modelTD_fullres/model_flux_fullres)
 
-fitted_relative_TD_pca = fitted_relative_TD_pca-np.mean(fitted_relative_TD_pca)
+fitted_relative_TD_pca_mean_sub = \
+    fitted_relative_TD_pca-np.mean(fitted_relative_TD_pca)
 
-fitted_relative_TD_trans_pca = \
-    fitted_relative_TD_trans_pca-np.mean(fitted_relative_TD_trans_pca)
-eclipse_depth_via_transit_pca = \
-    transit_to_eclipse(fitted_relative_TD_trans_pca+meanTD)
+corrected_relative_TD_pca = np.dot(pinv2(Kpca, rcond=1.e-4),
+                                   -fitted_relative_TD_pca)
+corrected_relative_TD_pca_mean_sub = corrected_relative_TD_pca - \
+    np.mean(corrected_relative_TD_pca)
+
 
 fig, ax = plt.subplots(figsize=(9, 7))
 for item in ([ax.title, ax.xaxis.label, ax.yaxis.label] +
              ax.get_xticklabels() + ax.get_yticklabels()):
     item.set_fontsize(20)
-ax.plot(modelTD_fullres/(model_flux_fullres-modelTD_fullres), label='Model', color='b', zorder=4)
+ax.plot(modelTD_fullres/(model_flux_fullres-modelTD_fullres),
+        label='Model', color='b', zorder=4)
 plt.fill_between(np.arange(len(modelTD_fullres)),
-                 modelTD_fullres/(model_flux_fullres-modelTD_fullres)-theoretical_noise_limit,
-                 modelTD_fullres/(model_flux_fullres-modelTD_fullres)+theoretical_noise_limit,
+                 modelTD_fullres /
+                 (model_flux_fullres-modelTD_fullres)-theoretical_noise_limit,
+                 modelTD_fullres /
+                 (model_flux_fullres-modelTD_fullres)+theoretical_noise_limit,
                  color='gray', alpha=0.5)
-ax.plot(fitted_relative_TD_pca+mean_ecl,  # *(1+mean_ecl) + mean_ecl,
-        label='Derived uncorrected depth with PCA', color='orange', zorder=5)
-ax.plot(eclipse_depth_via_transit_pca, zorder=6,
-        label='Derived uncorrected depth with PCA via transit', color='red')
+ax.plot(fitted_relative_TD_pca_mean_sub+mean_ecl,  # *(1+mean_ecl) + mean_ecl,
+        label='Derived uncorrected depth with {} PCA components'.
+        format(ncomponents_pca), color='orange', zorder=5)
+ax.plot(corrected_relative_TD_pca_mean_sub + mean_ecl,
+        label='Corrected Eclipse value derived with PCA',
+        color='green', zorder=8)
+ax.legend(loc='best')
+ax.set_xlabel("Data number")
+ax.set_ylabel("Fp/Fs")
+ax.set_ylim([-0.0, 0.8])
+plt.title('Eclipse depth')
+plt.show()
+
+############################################################
+# Comparing PCA and direct regressor model
+############################################################
+mean_ecl = np.mean(modelTD_fullres/(model_flux_fullres-modelTD_fullres))
+meanTD = np.mean(modelTD_fullres/model_flux_fullres)
+
+fitted_relative_TD_pca_mean_sub = \
+    fitted_relative_TD_pca-np.mean(fitted_relative_TD_pca)
+
+fitted_relative_TD_trans_pca_mean_sub = \
+    fitted_relative_TD_trans_pca-np.mean(fitted_relative_TD_trans_pca)
+eclipse_depth_via_transit_pca = \
+    transit_to_eclipse(fitted_relative_TD_trans_pca_mean_sub+meanTD)
+
+fig, ax = plt.subplots(figsize=(9, 7))
+for item in ([ax.title, ax.xaxis.label, ax.yaxis.label] +
+             ax.get_xticklabels() + ax.get_yticklabels()):
+    item.set_fontsize(20)
+ax.plot(modelTD_fullres/(model_flux_fullres-modelTD_fullres),
+        label='Model', color='b', zorder=4)
+plt.fill_between(np.arange(len(modelTD_fullres)),
+                 modelTD_fullres /
+                 (model_flux_fullres-modelTD_fullres)-theoretical_noise_limit,
+                 modelTD_fullres /
+                 (model_flux_fullres-modelTD_fullres)+theoretical_noise_limit,
+                 color='gray', alpha=0.5)
+ax.plot(corrected_eclipse_via_transit_using_PCA,
+        label='Derived Eclipse value with PCA via Transit value',
+        color='orange', zorder=5)
+ax.plot(corrected_relative_TD_pca_mean_sub + mean_ecl,
+        label='Derived Eclipse value with PCA',
+        color='red', zorder=6)
 ax.plot(corrected_eclipse_via_transit, label='Via Transit value',
         color='black', zorder=7)
 ax.plot(corrected_relative_TD*(1.0+mean_ecl) + mean_ecl,

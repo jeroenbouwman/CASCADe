@@ -10,6 +10,7 @@ from pandas.plotting import autocorrelation_plot
 import cascade
 from cascade.utilities import spectres
 import seaborn as sns
+from scipy.linalg import pinv2
 
 sns.set_style("white")
 
@@ -72,7 +73,10 @@ wave0 = tso.observation.dataset.wavelength
 wave0_min = np.ma.min(wave0).data.value
 wave0_max = np.ma.max(wave0).data.value
 
-plt.imshow(np.ma.median(tso.observation.dataset.data[:, :, :], axis=2),
+med_science_data_image = \
+    np.ma.median(tso.observation.dataset.data[:, :, :], axis=2)
+med_science_data_image.set_fill_value(np.nan)
+plt.imshow(med_science_data_image.filled().value,
            origin='lower',
            cmap='hot',
            interpolation='nearest',
@@ -422,6 +426,7 @@ spec_instr_model_tsiaras = ascii.read(path_old+'wasp12b_tsiaras.txt',
                                       data_start=0)
 wave_tsiaras = (spec_instr_model_tsiaras['col1']*u.micron)
 flux_tsiaras = (spec_instr_model_tsiaras['col2']*100*u.percent)
+error_tsiaras = (spec_instr_model_tsiaras['col3']*100*u.percent)
 
 # tso.exoplanet_spectrum.spectrum.wavelength_unit = u.micrometer
 mask_use = tso.exoplanet_spectrum.spectrum.wavelength.mask
@@ -435,57 +440,81 @@ rebinned_spec, rebinned_error = \
              spec_errs=tso.exoplanet_spectrum.
              spectrum.uncertainty.data.value[~mask_use])
 
-W = (tso.exoplanet_spectrum.weighted_normed_parameters[:-2, :] /
+####################################
+# TEST derived signal correction
+####################################
+ndim_reg, ndim_lam = tso.exoplanet_spectrum.weighted_normed_parameters.shape
+ndim_diff = ndim_reg - ndim_lam
+W = (tso.exoplanet_spectrum.weighted_normed_parameters[:-ndim_diff, :] /
      np.ma.sum(tso.exoplanet_spectrum.weighted_normed_parameters[:-1, :],
                axis=0)).T
 K = W - np.identity(W.shape[0])
-from scipy.linalg import pinv2
 K.set_fill_value(0.0)
 weighted_signal = tso.exoplanet_spectrum.weighted_signal.copy()
 weighted_signal.set_fill_value(0.0)
 
-bla = np.dot(pinv2(K.filled(), rcond=0.001),
-             -weighted_signal.filled())
-
-bla = bla-np.ma.median(bla)
+corrected_spectrum = np.dot(pinv2(K.filled(), rcond=1.e-3),
+                            -weighted_signal.filled())
+corrected_spectrum = corrected_spectrum-np.ma.median(corrected_spectrum)
 planet_radius = \
     (u.Quantity(tso.cascade_parameters.object_radius).to(u.m) /
      u.Quantity(tso.cascade_parameters.
                 object_radius_host_star).to(u.m))
 planet_radius = planet_radius.decompose().value
-bla = (bla * (1.0 - planet_radius**2) +
-       planet_radius**2)
+corrected_spectrum = (corrected_spectrum * (1.0 - planet_radius**2) +
+                      planet_radius**2)*100
 
-fig, ax = plt.subplots(figsize=(7, 4))
+corrected_rebinned_spec, corrected_rebinned_error = \
+    spectres(rebinned_wave,
+             tso.exoplanet_spectrum.spectrum.wavelength.data.value[~mask_use],
+             corrected_spectrum[~mask_use],
+             spec_errs=tso.exoplanet_spectrum.spectrum.uncertainty.
+             data.value[~mask_use])
+
+fig, ax = plt.subplots(figsize=(7, 5))
 for item in ([ax.title, ax.xaxis.label, ax.yaxis.label] +
              ax.get_xticklabels() + ax.get_yticklabels()):
     item.set_fontsize(20)
-ax.plot(rebinned_wave, rebinned_spec, color="black", lw=4, alpha=0.9)
+ax.plot(rebinned_wave, rebinned_spec, color="black", lw=5, alpha=0.9,
+        zorder=5)
 ax.errorbar(rebinned_wave, rebinned_spec, yerr=rebinned_error,
-            fmt=".k", color="black", lw=4,
+            fmt=".k", color="black", lw=5,
             alpha=0.9, ecolor="black",
             markeredgecolor='black', fillstyle='full', markersize=10,
-            markerfacecolor='black', zorder=3)
-ax.plot(wave_mandell, flux_mandell, color="r", lw=3, alpha=0.9)
+            markerfacecolor='black', zorder=5)
+ax.plot(wave_mandell, flux_mandell, color="r", lw=5, alpha=0.9, zorder=4)
 ax.errorbar(wave_mandell.value, flux_mandell.value, yerr=error_mandell.value,
-            fmt=".k", color="r", lw=2,
+            fmt=".k", color="r", lw=5,
             alpha=0.9, ecolor="r",
             markeredgecolor='r', fillstyle='full', markersize=10,
-            markerfacecolor='r', zorder=3)
-ax.plot(wave_tsiaras, flux_tsiaras, color="magenta", lw=3, alpha=0.9)
-ax.plot(tso.exoplanet_spectrum.spectrum.wavelength,
-        tso.exoplanet_spectrum.spectrum.data, lw=3, alpha=0.5, color='blue')
-ax.errorbar(tso.exoplanet_spectrum.spectrum.wavelength.data.value,
-            tso.exoplanet_spectrum.spectrum.data.data.value,
-            yerr=tso.exoplanet_spectrum.spectrum.uncertainty.data.value,
-            fmt=".k", color='blue', lw=3, alpha=0.5, ecolor='blue',
-            markerfacecolor='blue',
-            markeredgecolor='blue', fillstyle='full', markersize=10,
-            zorder=4)
-ax.plot(tso.exoplanet_spectrum.spectrum.wavelength, bla*100, lw=4, zorder=6)
+            markerfacecolor='r', zorder=4)
+ax.plot(wave_tsiaras, flux_tsiaras, color="y", lw=5, alpha=0.9, zorder=3)
+ax.errorbar(wave_tsiaras.value, flux_tsiaras.value, yerr=error_tsiaras.value,
+            fmt=".k", color="y", lw=5,
+            alpha=0.9, ecolor="y",
+            markeredgecolor='y', fillstyle='full', markersize=10,
+            markerfacecolor='y', zorder=3)
+#ax.plot(tso.exoplanet_spectrum.spectrum.wavelength,
+#        tso.exoplanet_spectrum.spectrum.data, lw=3, alpha=0.5, color='gray',
+#        zorder=2)
+#ax.errorbar(tso.exoplanet_spectrum.spectrum.wavelength.data.value,
+#            tso.exoplanet_spectrum.spectrum.data.data.value,
+#            yerr=tso.exoplanet_spectrum.spectrum.uncertainty.data.value,
+#            fmt=".k", color='gray', lw=3, alpha=0.5, ecolor='gray',
+#            markerfacecolor='gray',
+#            markeredgecolor='gray', fillstyle='full', markersize=10,
+#            zorder=2)
+ax.plot(rebinned_wave, corrected_rebinned_spec, color="green", lw=4,
+        alpha=0.9, zorder=6)
+ax.errorbar(rebinned_wave, corrected_rebinned_spec,
+            yerr=corrected_rebinned_error,
+            fmt=".k", color="green", lw=4,
+            alpha=0.9, ecolor="green",
+            markeredgecolor='green', fillstyle='full', markersize=10,
+            markerfacecolor='green', zorder=6)
 axes = plt.gca()
 axes.set_xlim([1.1, 1.7])
-axes.set_ylim([1.2, 1.5])
+axes.set_ylim([1.25, 1.55])
 ax.set_ylabel('Transit depth')
 ax.set_xlabel('Wavelength')
 plt.show()

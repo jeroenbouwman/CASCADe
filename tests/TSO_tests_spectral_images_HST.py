@@ -16,6 +16,7 @@ from pandas.plotting import autocorrelation_plot
 import cascade
 from cascade.utilities import spectres
 import seaborn as sns
+from scipy.linalg import pinv2
 
 sns.set_style("white")
 
@@ -78,7 +79,10 @@ wave0 = tso.observation.dataset.wavelength
 wave0_min = np.ma.min(wave0).data.value
 wave0_max = np.ma.max(wave0).data.value
 
-plt.imshow(np.ma.median(tso.observation.dataset.data[:, :, :], axis=2),
+med_science_data_image = \
+    np.ma.median(tso.observation.dataset.data[:, :, :], axis=2)
+med_science_data_image.set_fill_value(np.nan)
+plt.imshow(med_science_data_image.filled().value,
            origin='lower',
            cmap='hot',
            interpolation='nearest',
@@ -312,7 +316,7 @@ tso.return_all_design_matrices()
 #       third: [0]
 
 
-i_pixel_in_extraction_mask = 150
+i_pixel_in_extraction_mask = 120
 reg_list = \
     tso.cpm.regressor_list[0][i_pixel_in_extraction_mask][1][0]
 reg_matrix = tso.cpm.design_matrix[0][i_pixel_in_extraction_mask][0]
@@ -429,6 +433,13 @@ ax.set_aspect(128.0 / delta_lam)
 ax.set_xlabel('Pixel Number Spatial Direction')
 ax.set_ylabel('Wavelength')
 
+# correct the extracted planetary signal for non uniform subtraction
+# of averige signal
+tso.execute("correct_extracted_spectrum")
+
+##############################
+# Read resuls from literature
+##############################
 path_old = '/home/bouwman/'
 spec_instr_model_mandell = ascii.read(path_old+'WASP19b_mandell.txt',
                                       data_start=0)
@@ -458,54 +469,44 @@ rebinned_spec, rebinned_error = \
              spec_errs=tso.exoplanet_spectrum.
              spectrum.uncertainty.data.value[~mask_use])
 
-W = (tso.exoplanet_spectrum.weighted_normed_parameters[:-2, :] /
+####################################
+# TEST derived signal correction
+####################################
+ndim_reg, ndim_lam = tso.exoplanet_spectrum.weighted_normed_parameters.shape
+ndim_diff = ndim_reg - ndim_lam
+W = (tso.exoplanet_spectrum.weighted_normed_parameters[:-ndim_diff, :] /
      np.ma.sum(tso.exoplanet_spectrum.weighted_normed_parameters[:-1, :],
                axis=0)).T
 K = W - np.identity(W.shape[0])
-from scipy.linalg import pinv2
 K.set_fill_value(0.0)
 weighted_signal = tso.exoplanet_spectrum.weighted_signal.copy()
 weighted_signal.set_fill_value(0.0)
 
-bla = np.dot(pinv2(K.filled(), rcond=0.001),
-             -weighted_signal.filled())
-
-
-#from scipy.linalg import lstsq
-#res = lstsq(K.filled(), -weighted_signal.filled(), cond=0.8)
-#bla=res[0]
-
-
-#reg_par = {'lam0': 1.e-7, 'lam1': 1.e0, 'nlam': 100}
-#lam_reg0 = reg_par["lam0"]  # lowest value of regularization parameter
-#lam_reg1 = reg_par["lam1"]   # highest
-#ngrid_lam = reg_par["nlam"]  # number of points in grid
-## array to hold values of regularization parameter grid
-#delta_lam = np.abs(np.log10(lam_reg1) - np.log10(lam_reg0)) / (ngrid_lam-1)
-#lam_reg_array = 10**(np.log10(lam_reg0) +
-#                     np.linspace(0, ngrid_lam-1, ngrid_lam)*delta_lam)
-#
-#from sklearn import linear_model
-#RCV = linear_model.RidgeCV(fit_intercept=False, alphas=lam_reg_array)
-##RCV = linear_model.RidgeCV(fit_intercept=False)
-#RCV.fit(K.filled(), -weighted_signal.filled())
-#bla = RCV.coef_
-
-bla = bla-np.ma.median(bla)
+corrected_spectrum = np.dot(pinv2(K.filled(), rcond=1.e-3),
+                            -weighted_signal.filled())
+corrected_spectrum = corrected_spectrum-np.ma.median(corrected_spectrum)
 planet_radius = \
     (u.Quantity(tso.cascade_parameters.object_radius).to(u.m) /
      u.Quantity(tso.cascade_parameters.
                 object_radius_host_star).to(u.m))
 planet_radius = planet_radius.decompose().value
-bla = (bla * (1.0 - planet_radius**2) +
-       planet_radius**2)
+corrected_spectrum = (corrected_spectrum * (1.0 - planet_radius**2) +
+                      planet_radius**2)*100
+
+corrected_rebinned_spec, corrected_rebinned_error = \
+    spectres(rebinned_wave,
+             tso.exoplanet_spectrum.spectrum.wavelength.data.value[~mask_use],
+             corrected_spectrum[~mask_use],
+             spec_errs=tso.exoplanet_spectrum.spectrum.uncertainty.
+             data.value[~mask_use])
 
 fig, ax = plt.subplots(figsize=(7, 5))
 for item in ([ax.title, ax.xaxis.label, ax.yaxis.label] +
              ax.get_xticklabels() + ax.get_yticklabels()):
     item.set_fontsize(20)
-ax.plot(rebinned_wave, rebinned_spec-0.05, color="black", lw=5, alpha=0.9, zorder=5)
-ax.errorbar(rebinned_wave, rebinned_spec-0.05, yerr=rebinned_error,
+ax.plot(rebinned_wave, rebinned_spec, color="black", lw=5, alpha=0.9,
+        zorder=5)
+ax.errorbar(rebinned_wave, rebinned_spec, yerr=rebinned_error,
             fmt=".k", color="black", lw=5,
             alpha=0.9, ecolor="black",
             markeredgecolor='black', fillstyle='full', markersize=10,
@@ -522,17 +523,24 @@ ax.errorbar(wave_huitson.value, flux_huitson.value, yerr=error_huitson.value,
             alpha=0.9, ecolor="y",
             markeredgecolor='y', fillstyle='full', markersize=10,
             markerfacecolor='y', zorder=3)
-ax.plot(tso.exoplanet_spectrum.spectrum.wavelength,
-        tso.exoplanet_spectrum.spectrum.data-0.05, lw=3, alpha=0.5, color='gray',
-        zorder=2)
-ax.errorbar(tso.exoplanet_spectrum.spectrum.wavelength.data.value,
-            tso.exoplanet_spectrum.spectrum.data.data.value-0.05,
-            yerr=tso.exoplanet_spectrum.spectrum.uncertainty.data.value,
-            fmt=".k", color='gray', lw=3, alpha=0.5, ecolor='gray',
-            markerfacecolor='gray',
-            markeredgecolor='gray', fillstyle='full', markersize=10,
-            zorder=2)
-ax.plot(tso.exoplanet_spectrum.spectrum.wavelength, bla*100-0.05 , lw=4, zorder=6)
+#ax.plot(tso.exoplanet_spectrum.spectrum.wavelength,
+#        tso.exoplanet_spectrum.spectrum.data, lw=3, alpha=0.5, color='gray',
+#        zorder=2)
+#ax.errorbar(tso.exoplanet_spectrum.spectrum.wavelength.data.value,
+#            tso.exoplanet_spectrum.spectrum.data.data.value,
+#            yerr=tso.exoplanet_spectrum.spectrum.uncertainty.data.value,
+#            fmt=".k", color='gray', lw=3, alpha=0.5, ecolor='gray',
+#            markerfacecolor='gray',
+#            markeredgecolor='gray', fillstyle='full', markersize=10,
+#            zorder=2)
+ax.plot(rebinned_wave, corrected_rebinned_spec, color="green", lw=4,
+        alpha=0.9, zorder=5)
+ax.errorbar(rebinned_wave, corrected_rebinned_spec,
+            yerr=corrected_rebinned_error,
+            fmt=".k", color="green", lw=4,
+            alpha=0.9, ecolor="green",
+            markeredgecolor='green', fillstyle='full', markersize=10,
+            markerfacecolor='green', zorder=5)
 axes = plt.gca()
 axes.set_xlim([1.1, 1.7])
 axes.set_ylim([1.9, 2.1])

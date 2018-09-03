@@ -38,7 +38,7 @@ __all__ = ['Vmag', 'Kmag', 'Rho_jup', 'Rho_jup', 'KmagToJy', 'JytoKmag',
            'EquilibriumTemperature', 'get_calalog', 'parse_database',
            'convert_spectrum_to_brighness_temperature', 'combine_spectra',
            'extract_exoplanet_data', 'lightcuve', 'batman_model',
-           'masked_array_input']
+           'masked_array_input', 'eclipse_to_transit', 'transit_to_eclipse']
 
 
 # enable cds to be able to use certain quantities defined in this system
@@ -512,6 +512,22 @@ def convert_spectrum_to_brighness_temperature(wavelength: u.micron,
         return brighness_temperature, error_brighness_temperature
 
 
+def eclipse_to_transit(eclipse):
+    """
+    Converts eclipse spectrum to transit spectrum
+    """
+    transit = 1.0/((1.0/eclipse)+1.0)
+    return transit
+
+
+def transit_to_eclipse(transit):
+    """
+    Converts transit spectrum to eclipse spectrum
+    """
+    eclipse = 1.0/((1.0/transit)-1.0)
+    return eclipse
+
+
 def combine_spectra(identifier_list=[], path=""):
     """
     Convienience function to combine multiple extracted spectra
@@ -695,7 +711,7 @@ def parse_database(catalog_name, update=True):
         table_list = [table_temp]
     if catalog_name == "NASAEXOPLANETARCHIVE":
         references = table_list[0]["REFERENCES"]
-        pub_date_list=[]
+        pub_date_list = []
         for ref in references:
             pub_date_str = re.findall(' (\d{4})" href', ref)
             if len(pub_date_str) == 0:
@@ -817,8 +833,9 @@ def extract_exoplanet_data(data_list, target_name_or_position, coord_unit=None,
                 if idata == 0:
                     table_list = [new_table]
                 else:
-                    table_temp = join(table_list[0], new_table, join_type='left',
-                                      keys='NAME')
+                    table_temp = \
+                        join(table_list[0], new_table, join_type='left',
+                             keys='NAME')
                     table_temp.add_index("NAME")
                     table_list = [table_temp.copy()]
             except KeyError as e:
@@ -873,10 +890,11 @@ def extract_exoplanet_data(data_list, target_name_or_position, coord_unit=None,
             gc.collect()
             if multiple_entries_flag:
                 # make sure to pick the latest values
-                #idx_update_time = np.argsort(new_table['ROWUPDATE'])[::-1]
+                # idx_update_time = np.argsort(new_table['ROWUPDATE'])[::-1]
                 # idx_update_time = np.argsort(new_table['PUBYEAR'])[::-1]
                 idx_good_period = ~new_table['PERLOWER'].data.mask
-                idx_update_time = np.argsort(new_table[idx_good_period]['PUBYEAR'])[::-1]
+                idx_update_time = \
+                    np.argsort(new_table[idx_good_period]['PUBYEAR'])[::-1]
                 table_selection = new_table[idx_good_period][idx_update_time]
                 table_temp_multi = Table(masked=True)
                 for cn in new_table.keys():

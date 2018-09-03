@@ -23,6 +23,7 @@ from astropy.visualization import quantity_support
 from matplotlib import pyplot as plt
 from matplotlib.ticker import MaxNLocator, ScalarFormatter
 from scipy import interpolate
+from scipy.linalg import pinv2
 from tqdm import tqdm
 import seaborn as sns
 from sklearn.preprocessing import RobustScaler
@@ -69,6 +70,7 @@ class TSOSuite:
                 "select_regressors": self.select_regressors,
                 "calibrate_timeseries": self.calibrate_timeseries,
                 "extract_spectrum": self.extract_spectrum,
+                "correct_extracted_spectrum": self.correct_extracted_spectrum,
                 "save_results": self.save_results,
                 "plot_results": self.plot_results}
 
@@ -166,9 +168,10 @@ class TSOSuite:
         # calculate median (over time) background
         median_background = np.ma.median(background.data,
                                          axis=background.data.ndim-1)
-        median_background = np.ma.array(median_background.data *
-                                        background.data_unit,
-                                        mask=median_background.mask)
+# BUG FIX
+#        median_background = np.ma.array(median_background.data *
+#                                        background.data_unit,
+#                                        mask=median_background.mask)
         # tile to format of science data
         tiling = (tuple([(background.data.shape)[-1]]) +
                   tuple(np.ones(background.data.ndim-1).astype(int)))
@@ -234,6 +237,7 @@ class TSOSuite:
             filter_index = \
                 [slice(il - (nfilter-1)//2, il+(nfilter-1)//2+1, None)] + \
                 [slice(None)]*(ndim-1)
+            filter_index = tuple(filter_index)
             # reformat to masked array without quantity
             temp_data = np.ma.array(data_in.data.data.value, mask=data_in.mask)
             # median along time axis
@@ -354,7 +358,7 @@ class TSOSuite:
         ndim = lcmodel_cal.ndim
         selection1 = [slice(1)]*(ndim-1)+[slice(None)]
         time_cal = np.squeeze(self.observation.dataset.time.
-                              data.value[selection1])
+                              data.value[tuple(selection1)])
         # select data before and after transit
         idx_before = np.where(time_cal < Tstart)[0]
         idx_after = np.where(time_cal > Tend)[0]
@@ -368,7 +372,7 @@ class TSOSuite:
         selection1 = [slice(None)]*(ndim-1) + \
             [slice(idx_start, idx_end)]
         if cal_signal_pos != 'after':
-            lcmodel_cal[selection1] = -1.0
+            lcmodel_cal[tuple(selection1)] = -1.0
         idx_start = idx_after[0] + max_cal_points//4
         idx_end = idx_start + max_cal_points//2
         selection2 = [slice(None)]*(ndim-1) + \
@@ -546,16 +550,13 @@ class TSOSuite:
             trace_list.append(pos_trace.data)
 
         pos_slit = np.asarray([item for sublist in pos_list
-                               for item in sublist],
-                              dtype=np.dtype('Float64'))
-        median_pos = np.asarray(median_pos_list,
-                                dtype=np.dtype('Float64'))
+                               for item in sublist], dtype=np.float64)
+        median_pos = np.asarray(median_pos_list, dtype=np.float64)
         # if nodded combine traces.
         if len(trace_list) == 2:
             pos_trace = np.squeeze(np.mean(trace_list, axis=0))
         else:
-            pos_trace = np.squeeze(np.asarray(trace_list,
-                                              dtype=np.float64))
+            pos_trace = np.squeeze(np.asarray(trace_list, dtype=np.float64))
 
         # make sure position is given on time grid acociated with data
         f = interpolate.interp1d(time_use[0, 0, :], pos_slit,
@@ -1350,7 +1351,8 @@ class TSOSuite:
             selection1 = [slice(None)]*(ndim-1)+[0]
         wavelength_image = \
             np.ma.array(self.observation.dataset.wavelength.
-                        data.value[selection1], mask=extraction_mask)
+                        data.value[tuple(selection1)],
+                        mask=extraction_mask)
         if wavelength_image.ndim == 1:
             wavelength_image = wavelength_image[:, None]
 
@@ -1514,6 +1516,75 @@ class TSOSuite:
             self.exoplanet_spectrum.calibration_correction = \
                 calibration_correction_spectrum
 
+    def correct_extracted_spectrum(self):
+        """
+        Make correction for non-uniform subtraction of transit signal due to
+        differences in the relative weighting of the regressors
+        """
+        try:
+            median_eclipse_depth = \
+                float(self.cascade_parameters.observations_median_signal)
+        except AttributeError:
+            raise AttributeError("No median signal depth defined. \
+                                 Aborting correcting planetary spectrum")
+        try:
+            transittype = self.model.transittype
+        except AttributeError:
+            raise AttributeError("Type of observaton unknown. \
+                                 Aborting correcting planetary spectrum")
+        try:
+            planet_radius = \
+                (u.Quantity(self.cascade_parameters.object_radius).to(u.m) /
+                 u.Quantity(self.cascade_parameters.
+                            object_radius_host_star).to(u.m))
+            planet_radius = planet_radius.decompose().value
+        except AttributeError:
+            raise AttributeError("Planet or Stellar radius not defined. \
+                                 Aborting correcting planetary spectrum")
+        try:
+            results = self.exoplanet_spectrum
+        except AttributeError:
+            raise AttributeError("No planetery spectectrum defined \
+                                 Aborting correcting planetary spectrum")
+        ndim_reg, ndim_lam = \
+            self.exoplanet_spectrum.weighted_normed_parameters.shape
+        ndim_diff = ndim_reg - ndim_lam
+        W = (self.exoplanet_spectrum.
+             weighted_normed_parameters[:-ndim_diff, :] /
+             np.ma.sum(self.exoplanet_spectrum.
+                       weighted_normed_parameters[:-1, :], axis=0)).T
+        K = W - np.identity(W.shape[0])
+        K.set_fill_value(0.0)
+        weighted_signal = self.exoplanet_spectrum.weighted_signal.copy()
+        weighted_signal.set_fill_value(0.0)
+
+        corrected_spectrum = np.dot(pinv2(K.filled(), rcond=1.e-3),
+                                    -weighted_signal.filled())
+        corrected_spectrum = corrected_spectrum - \
+            np.ma.median(corrected_spectrum)
+
+        if transittype == 'secondary':
+            # eclipse
+            corrected_spectrum = (corrected_spectrum *
+                                  (1.0 + median_eclipse_depth) +
+                                  median_eclipse_depth)
+        else:
+            # transit
+            corrected_spectrum = (corrected_spectrum *
+                                  (1.0 - planet_radius**2) +
+                                  planet_radius**2)
+
+        corrected_exoplanet_spectrum = \
+            SpectralData(wavelength=results.spectrum.wavelength,
+                         wavelength_unit=results.spectrum.wavelength_unit,
+                         data=corrected_spectrum,
+                         uncertainty=results.spectrum.uncertainty,
+                         data_unit=u.dimensionless_unscaled,
+                         mask=results.spectrum.mask)
+        corrected_exoplanet_spectrum.data_unit = u.percent
+        self.exoplanet_spectrum.corrected_spectrum = \
+            corrected_exoplanet_spectrum
+
     def save_results(self):
         """
         Save results
@@ -1556,6 +1627,26 @@ class TSOSuite:
         t.write(save_path+observations_id+'_exoplanet_spectra.fits',
                 format='fits', overwrite=True)
 
+        try:
+            t = Table()
+            col = MaskedColumn(data=results.corrected_spectrum.wavelength,
+                               unit=results.corrected_spectrum.wavelength_unit,
+                               name='Wavelength')
+            t.add_column(col)
+            col = MaskedColumn(data=results.corrected_spectrum.data,
+                               unit=results.corrected_spectrum.data_unit,
+                               name='Flux')
+            t.add_column(col)
+            col = MaskedColumn(data=results.corrected_spectrum.uncertainty,
+                               unit=results.corrected_spectrum.data_unit,
+                               name='Error')
+            t.add_column(col)
+            t.write(save_path+observations_id +
+                    '_corrected_exoplanet_spectra.fits',
+                    format='fits', overwrite=True)
+        except AttributeError:
+            pass
+
         if transittype == 'secondary':
             t = Table()
             col = MaskedColumn(data=results.brightness_temperature.wavelength,
@@ -1580,6 +1671,7 @@ class TSOSuite:
         Plot the extracted planetary spectrum and scaled signal on the
         detector.
         """
+        np.warnings.filterwarnings('ignore')
         try:
             results = copy.deepcopy(self.exoplanet_spectrum)
         except AttributeError:
@@ -1824,6 +1916,6 @@ class TSOSuite:
                 ax.set_xlabel('Wavelength [{}]'.format(results.
                               calibration_correction.wavelength_unit))
                 plt.show()
-                plt.show()
                 fig.savefig(save_path+observations_id +
                             '_calibration_SNR.png', bbox_inches='tight')
+        np.warnings.filterwarnings('default')
