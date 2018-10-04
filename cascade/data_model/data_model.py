@@ -402,7 +402,7 @@ class SpectralDataTimeSeries(SpectralData):
             tiling = (self._data.shape)[:-ntile] + \
                 tuple(np.ones(ntile).astype(int))
             time_out = np.tile(self._time, tiling)
-        if time_out == ():
+        if time_out.shape == ():
             return np.ma.array(np.array([time_out]) * unit_out,
                                mask=self.mask)
         else:

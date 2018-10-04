@@ -67,6 +67,7 @@ class TSOSuite:
                 "define_eclipse_model": self.define_eclipse_model,
                 "determine_source_position": self.determine_source_position,
                 "set_extraction_mask": self.set_extraction_mask,
+                "optimal_extraction": self.optimal_extraction,
                 "select_regressors": self.select_regressors,
                 "calibrate_timeseries": self.calibrate_timeseries,
                 "extract_spectrum": self.extract_spectrum,
@@ -654,6 +655,83 @@ class TSOSuite:
             ExtractionMask = ExtractionMaskperNod
 
         self.cpm.extraction_mask = ExtractionMask
+
+    def optimal_extraction(self):
+        """
+        Optimally extract spectrum using procedure of
+        Horne 1986, PASP 98, 609
+
+        Output:
+            1d Spectra
+        """
+        try:
+            dataset = self.observation.dataset
+        except AttributeError:
+            raise AttributeError("Spectral dataset not found. Aborting "
+                                 "optimal extraction.")
+        try:
+            obs_has_backgr = ast.literal_eval(self.cascade_parameters.
+                                              observations_has_background)
+            if obs_has_backgr:
+                assert dataset.isBackgroundSubtracted is True
+            assert dataset.isSigmaCliped is True
+        except (AttributeError, AssertionError):
+            raise AssertionError("Spectral dataset not background subtracted "
+                                 "and/or sigma clipped. Aborting "
+                                 "optimal extraction.")
+        try:
+            ExtractionMask = self.cpm.extraction_mask
+        except AttributeError:
+            raise AttributeError("No extraction mask found. \
+                                 Aborting optimal extraction")
+        try:
+            cleaned_data = self.cpm.cleaned_data
+        except AttributeError:
+            raise AttributeError("No cleaned data found. \
+                                 Aborting optimal extraction")
+        try:
+            obs_data = self.cascade_parameters.observations_data
+        except AttributeError:
+            raise AttributeError("No observation data type set. \
+                                 Aborting optimal extraction")
+        try:
+            isNodded = self.observation.dataset.isNodded
+        except AttributeError:
+            raise AttributeError("Observational strategy not properly set. \
+                                 Aborting optimal extraction.")
+        if not obs_data == "SPECTRAL_IMAGE":
+            warnings.warn("Data are no spectral images. "
+                          "Aborting optimal extraction")
+            return
+
+        extraction_profile = np.ma.array(cleaned_data.data.value.copy(),
+                                         mask=cleaned_data.mask.copy())
+        extraction_profile[extraction_profile < 0.0] = 0.0
+        extraction_profile = extraction_profile / \
+            np.ma.sum(extraction_profile, axis=1, keepdims=True)
+
+        data = np.ma.array(dataset.data.data.value.copy(),
+                           mask=dataset.mask.copy())
+        variance = np.ma.array(dataset.uncertainty.data.value.copy()**2,
+                               mask=dataset.mask.copy())
+
+        npix, mpix, ntime = data.shape
+        if not isNodded:
+            ntime_max = ntime
+        else:
+            ntime_max = ntime // 2
+        for inod, mask in enumerate(ExtractionMask):
+            mask_use = np.tile(mask.T, (ntime_max, 1, 1)).T
+            P = extraction_profile[:, :, inod*ntime_max:(inod+1)*ntime_max]
+            P.mask = np.ma.mask_or(P.mask, mask_use)
+            fsimple = np.ma.sum(data, axis=1)
+            f = np.ma.sum(P*data/variance, axis=1)/np.ma.sum(P**2/variance, axis=1)
+        plt.imshow(f)
+        plt.show()
+        plt.plot(f)
+        plt.show()
+        plt.plot(fsimple)
+        plt.show()
 
     def select_regressors(self):
         """
@@ -1339,6 +1417,25 @@ class TSOSuite:
                                  or not consistent with spectral images or \
                                  cubes. Aborting extraction of \
                                  planetary spectrum")
+        try:
+            cleaned_data = self.cpm.cleaned_data
+            cleaned_data = np.ma.array(cleaned_data.data.value.copy(),
+                                       mask=cleaned_data.mask.copy())
+            if cleaned_data.ndim == 2:
+                cleaned_data = cleaned_data[:, None, :]
+            extraction_weights = np.ma.mean(cleaned_data, axis=2)
+            extraction_weights[extraction_weights < 0.0] = 0.0
+            extraction_weights = extraction_weights / \
+                np.ma.sum(extraction_weights, axis=1, keepdims=True)
+#            extraction_weights = np.ones_like(calibrated_error)
+#            extraction_weights = extraction_weights / \
+#                np.ma.sum(extraction_weights, axis=1, keepdims=True)
+        except AttributeError as e:
+            print(e)
+            extraction_weights = np.ones_like(calibrated_error)
+            extraction_weights = extraction_weights / \
+                np.ma.sum(extraction_weights, axis=1, keepdims=True)
+
         calibrated_weighted_image = calibrated_signal/calibrated_error**2
 
         extraction_mask = calibrated_signal.mask
@@ -1362,17 +1459,20 @@ class TSOSuite:
         #                               calibrated_signal.mask)
         # calibrated_signal.mask = mask_temp
         # calibrated_error.mask = mask_temp
-        weighted_signal = np.ma.average(calibrated_signal, axis=1,
-                                        weights=(np.ma.ones((npix, mpix)) /
-                                                 calibrated_error)**2)
-        weighted_signal_error = np.ma.ones((npix)) / \
-            np.ma.sum((np.ma.ones((npix, mpix)) /
-                       calibrated_error)**2, axis=1)
+        weighted_signal = np.ma.sum(calibrated_signal*extraction_weights /
+                                    calibrated_error**2, axis=1) / \
+            np.ma.sum(extraction_weights * np.ma.ones((npix, mpix)) /
+                      calibrated_error**2, axis=1)
+
+        weighted_signal_error = np.ma.sum(extraction_weights**2, axis=1) / \
+            np.ma.sum(extraction_weights * np.ma.ones((npix, mpix)) /
+                      calibrated_error**2, axis=1)
         weighted_signal_error = np.ma.sqrt(weighted_signal_error)
 
         weighted_signal_wavelength = \
             np.ma.average(wavelength_image, axis=1,
-                          weights=(np.ma.ones((npix, mpix)) /
+                          weights=(extraction_weights *
+                                   np.ma.ones((npix, mpix)) /
                                    calibrated_error)**2)
         nintegrations = residual.shape[-1]
 #        residual_unit = residual.data.unit
@@ -1380,34 +1480,51 @@ class TSOSuite:
 #                                    mask = residual.mask)
         weighted_residual = \
             np.ma.average(residual, axis=1,
-                          weights=(np.ma.ones((npix, mpix, nintegrations)) /
+                          weights=(np.tile(extraction_weights.T,
+                                           (nintegrations, 1, 1)).T *
+                                   np.ma.ones((npix, mpix, nintegrations)) /
                                    np.tile(calibrated_error.copy().T,
                                            (nintegrations, 1, 1)).T)**2)
 
         weighted_normed_parameters = \
             np.ma.average(par_normed, axis=2,
-                          weights=(np.ma.ones(par_normed.shape) /
+                          weights=(np.tile(extraction_weights,
+                                           (par_normed.shape[0], 1, 1)) *
+                                   np.ma.ones(par_normed.shape) /
                                    np.tile(calibrated_error.copy(),
                                            (par_normed.shape[0], 1, 1)))**2)
         weighted_aic = \
-            np.ma.average(aic, axis=1,
-                          weights=(np.ma.ones((npix, mpix)) /
-                                   calibrated_error)**2)
+            np.ma.average(aic, axis=1, weights=(extraction_weights *
+                                                np.ma.ones((npix, mpix)) /
+                                                calibrated_error)**2)
 
         if add_calibration_signal:
             # mask_temp = np.logical_or(self.cpm.extraction_mask[0],
             #                           calibrated_cal_signal.mask)
             # calibrated_cal_signal.mask = mask_temp
             # calibrated_cal_signal_error.mask = mask_temp
-            weighted_cal_signal = \
-                np.ma.average(calibrated_cal_signal, axis=1,
-                              weights=(np.ma.ones((npix, mpix)) /
-                                       calibrated_cal_signal_error)**2)
+            weighted_cal_signal = np.ma.sum(calibrated_cal_signal *
+                                            extraction_weights /
+                                            calibrated_cal_signal_error**2,
+                                            axis=1) / \
+                np.ma.sum(extraction_weights * np.ma.ones((npix, mpix)) /
+                          calibrated_cal_signal_error**2, axis=1)
 
-            weighted_cal_signal_error = np.ma.ones((npix)) / \
-                np.ma.sum((np.ma.ones((npix, mpix)) /
-                           calibrated_cal_signal_error)**2, axis=1)
+            weighted_cal_signal_error = np.ma.sum(extraction_weights**2,
+                                                  axis=1) / \
+                np.ma.sum(extraction_weights * np.ma.ones((npix, mpix)) /
+                          calibrated_cal_signal_error**2, axis=1)
             weighted_cal_signal_error = np.ma.sqrt(weighted_cal_signal_error)
+
+#            weighted_cal_signal = \
+#                np.ma.average(calibrated_cal_signal, axis=1,
+#                              weights=(np.ma.ones((npix, mpix)) /
+#                                       calibrated_cal_signal_error)**2)
+
+#            weighted_cal_signal_error = np.ma.ones((npix)) / \
+#                np.ma.sum((np.ma.ones((npix, mpix)) /
+#                           calibrated_cal_signal_error)**2, axis=1)
+#            weighted_cal_signal_error = np.ma.sqrt(weighted_cal_signal_error)
 
         if transittype == 'secondary':
             # Eclipse

@@ -34,7 +34,7 @@ tso = cascade.TSO.TSOSuite()
 path = cascade.initialize.default_initialization_path
 tso = cascade.TSO.TSOSuite("cascade_test_cpm.ini",
                            "cascade_test_object.ini",
-                           "cascade_test_data_spectral_images.ini", path=path)
+                           "cascade_test_data_spectral_images2.ini", path=path)
 print(tso.cascade_parameters)
 print(cascade.initialize.cascade_configuration)
 print(tso.cascade_parameters.isInitialized)
@@ -57,7 +57,7 @@ assert tso.cascade_parameters.isInitialized is False
 tso = cascade.TSO.TSOSuite()
 path = cascade.initialize.default_initialization_path
 tso.execute("initialize", "cascade_test_cpm.ini", "cascade_test_object.ini",
-            "cascade_test_data_spectral_images.ini", path=path)
+            "cascade_test_data_spectral_images2.ini", path=path)
 print(tso.cascade_parameters)
 print(cascade.initialize.cascade_configuration)
 print(tso.cascade_parameters.isInitialized)
@@ -215,43 +215,6 @@ assert tso.observation.dataset.isSigmaCliped is True
 # create a cleaned version of the spectral data
 tso.execute("create_cleaned_dataset")
 
-
-# eclipse model
-tso.execute("define_eclipse_model")
-
-plt.imshow(tso.model.light_curve_interpolated[0][:, 0, :],
-           origin='lower',
-           cmap='Reds',
-           interpolation='nearest',
-           aspect='auto',
-           extent=[0, image0.shape[1], wave0_min, wave0_max])
-plt.colorbar().set_label("Normalised depth")
-plt.xlabel("Number of integration")
-plt.ylabel("Wavelength")
-plt.title('Lightcurve model')
-plt.show()
-
-with quantity_support():
-    plt.plot(tso.observation.dataset.time.data[80, 18, :],
-             tso.model.light_curve_interpolated[0][80, 18, :])
-    plt.xlabel("Phase")
-    plt.ylabel("Normalised depth")
-    plt.show()
-
-# calibration signal
-plt.imshow(tso.model.calibration_signal[0][:, 0, :],
-           origin='lower',
-           cmap='Reds',
-           interpolation='nearest')
-plt.colorbar().set_label("Normalised depth")
-plt.xlabel("Number of integration")
-plt.ylabel("Pixel number dispersion direction")
-plt.title('Calibration lightcurve model')
-plt.show()
-
-print(tso.model.transit_timing)
-assert tso.model.transit_timing == [0.4827232723272327, 0.5172767276727672]
-
 # determine position of source from data set
 tso.execute("determine_source_position")
 
@@ -332,14 +295,14 @@ plt.show()
 # read file containing derived pointing using peakup array
 path_to_save_file = \
     ('/home/bouwman/SST_OBSERVATIONS/projects_HD189733/REDUCED_DATA/'
-     'HD_189733_combined_SL_A/S16.1.0/SL1/')
-filename_save_file = 'pointing_offsets_sl1_A.save'
+     'HD_189733_combined_SL_B/S16.1.0/SL1/')
+filename_save_file = 'pointing_offsets_sl1_B.save'
 movement_AOR = readsav(os.path.join(path_to_save_file, filename_save_file))
 
-xmovement_slit = movement_AOR['x_offset_spectrum_fit_sl1_a']
-xmovement_peakup = movement_AOR['x_offset_image_fit_sl1_a']
-ymovement_peakup = movement_AOR['offset_image_fit_sl1_a']
-phase = movement_AOR['phase_spectrum_fit_sl1_a']
+xmovement_slit = movement_AOR['x_offset_spectrum_fit_sl1_b']
+xmovement_peakup = movement_AOR['x_offset_image_fit_sl1_b']
+ymovement_peakup = movement_AOR['offset_image_fit_sl1_b']
+phase = movement_AOR['phase_spectrum_fit_sl1_b']
 
 fig = plt.figure(figsize=(10, 8))
 ax1 = plt.subplot(1, 1, 1)
@@ -385,6 +348,9 @@ plt.ylabel("Data number in wavelength direction")
 plt.xlabel("Data number in spatial direction")
 plt.title("Extraction Mask")
 plt.show()
+
+# optimally extract spectrum of target star
+tso.execute("optimal_extraction")
 
 # setup regressors
 tso.execute("select_regressors")
@@ -469,6 +435,43 @@ plt.show()
 
 plt.plot(data_masked.filled().value[30:40, :].T)
 plt.show()
+
+# eclipse model
+tso.execute("define_eclipse_model")
+
+plt.imshow(tso.model.light_curve_interpolated[0][:, 0, :],
+           origin='lower',
+           cmap='Reds',
+           interpolation='nearest',
+           aspect='auto',
+           extent=[0, image0.shape[1], wave0_min, wave0_max])
+plt.colorbar().set_label("Normalised depth")
+plt.xlabel("Number of integration")
+plt.ylabel("Wavelength")
+plt.title('Lightcurve model')
+plt.show()
+
+with quantity_support():
+    plt.plot(tso.observation.dataset.time.data[80, 18, :],
+             tso.model.light_curve_interpolated[0][80, 18, :])
+    plt.xlabel("Phase")
+    plt.ylabel("Normalised depth")
+    plt.show()
+
+# calibration signal
+plt.imshow(tso.model.calibration_signal[0][:, 0, :],
+           origin='lower',
+           cmap='Reds',
+           interpolation='nearest')
+plt.colorbar().set_label("Normalised depth")
+plt.xlabel("Number of integration")
+plt.ylabel("Pixel number dispersion direction")
+plt.title('Calibration lightcurve model')
+plt.show()
+
+print(tso.model.transit_timing)
+assert tso.model.transit_timing == [0.4827232723272327, 0.5172767276727672]
+
 
 # create calibrated time series and derive planetary signal
 tso.execute("calibrate_timeseries")
@@ -556,9 +559,9 @@ corrected_spectrum = (corrected_spectrum * (1.0 + median_eclipse_depth) +
 path_old = '/home/bouwman/SST_OBSERVATIONS/projects_HD189733/REDUCED_DATA/'
 spec_instr_model_ian = ascii.read(path_old+'results_ian.dat', data_start=1)
 wave_ian = (spec_instr_model_ian['lam_micron']*u.micron)
-flux_ian = (spec_instr_model_ian['depthA'] *
+flux_ian = (spec_instr_model_ian['depthB'] *
             u.dimensionless_unscaled).to(u.percent)
-error_ian = (spec_instr_model_ian['errorA'] *
+error_ian = (spec_instr_model_ian['errorB'] *
              u.dimensionless_unscaled).to(u.percent)
 fig, ax = plt.subplots(figsize=(13, 9))
 for item in ([ax.title, ax.xaxis.label, ax.yaxis.label] +

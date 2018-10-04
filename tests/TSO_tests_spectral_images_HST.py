@@ -117,41 +117,6 @@ assert tso.observation.dataset.isSigmaCliped is True
 # create a cleaned version of the spectral data
 tso.execute("create_cleaned_dataset")
 
-# eclipse model
-tso.execute("define_eclipse_model")
-
-plt.imshow(tso.model.light_curve_interpolated[0][:, 0, :],
-           origin='lower',
-           cmap='Reds',
-           interpolation='nearest',
-           aspect='auto',
-           extent=[0, data0.shape[0], wave0_min, wave0_max])
-plt.colorbar().set_label("Normalised depth")
-plt.xlabel("Number of integration")
-plt.ylabel("Wavelength")
-plt.title('Lightcurve model')
-plt.show()
-
-with quantity_support():
-    plt.plot(tso.observation.dataset.time.data[80, 85, :],
-             tso.model.light_curve_interpolated[0][80, 85, :])
-    plt.xlabel("Phase")
-    plt.ylabel("Normalised depth")
-    plt.show()
-
-# calibration signal
-plt.imshow(tso.model.calibration_signal[0][:, 0, :],
-           origin='lower',
-           cmap='Reds',
-           interpolation='nearest')
-plt.colorbar().set_label("Normalised depth")
-plt.xlabel("Number of integration")
-plt.ylabel("Pixel number dispersion direction")
-plt.title('Calibration lightcurve model')
-plt.show()
-
-print(tso.model.transit_timing)
-
 # determine position of source from data set
 tso.execute("determine_source_position")
 
@@ -295,6 +260,9 @@ plt.xlabel("Data number in spatial direction")
 plt.title("Extraction Mask")
 plt.show()
 
+# optimally extract spectrum of target star
+tso.execute("optimal_extraction")
+
 # setup regressors
 tso.execute("select_regressors")
 
@@ -375,6 +343,41 @@ plt.xlabel("Integration Number")
 plt.ylabel("Regressor Number")
 plt.title('Clipped regressor matrix')
 plt.show()
+
+# eclipse model
+tso.execute("define_eclipse_model")
+
+plt.imshow(tso.model.light_curve_interpolated[0][:, 0, :],
+           origin='lower',
+           cmap='Reds',
+           interpolation='nearest',
+           aspect='auto',
+           extent=[0, data0.shape[0], wave0_min, wave0_max])
+plt.colorbar().set_label("Normalised depth")
+plt.xlabel("Number of integration")
+plt.ylabel("Wavelength")
+plt.title('Lightcurve model')
+plt.show()
+
+with quantity_support():
+    plt.plot(tso.observation.dataset.time.data[80, 85, :],
+             tso.model.light_curve_interpolated[0][80, 85, :])
+    plt.xlabel("Phase")
+    plt.ylabel("Normalised depth")
+    plt.show()
+
+# calibration signal
+plt.imshow(tso.model.calibration_signal[0][:, 0, :],
+           origin='lower',
+           cmap='Reds',
+           interpolation='nearest')
+plt.colorbar().set_label("Normalised depth")
+plt.xlabel("Number of integration")
+plt.ylabel("Pixel number dispersion direction")
+plt.title('Calibration lightcurve model')
+plt.show()
+
+print(tso.model.transit_timing)
 
 # create calibrated time series and derive planetary signal
 tso.execute("calibrate_timeseries")

@@ -483,15 +483,15 @@ class HSTWFC3(InstrumentBase):
                              filter: {}".format(self.par["inst_cal_filter"]))
 
         # WARNING fits data is single precision!!
-        spectral_image_cube = np.array(spectral_image_cube, dtype='float64')
+        spectral_image_cube = np.array(spectral_image_cube, dtype=np.float64)
         spectral_image_unc_cube = \
-            np.array(spectral_image_unc_cube, dtype='float64')
+            np.array(spectral_image_unc_cube, dtype=np.float64)
         spectral_image_dq_cube = \
-            np.array(spectral_image_dq_cube, dtype='float64')
+            np.array(spectral_image_dq_cube, dtype=np.float64)
         calibration_image_cube = \
-            np.array(calibration_image_cube, dtype='float64')
-        time = np.array(time, dtype='float64')
-        cal_time = np.array(cal_time, dtype='float64')
+            np.array(calibration_image_cube, dtype=np.float64)
+        time = np.array(time, dtype=np.float64)
+        cal_time = np.array(cal_time, dtype=np.float64)
 
         idx_time_sort = np.argsort(time)
         time = time[idx_time_sort]
@@ -603,7 +603,7 @@ class HSTWFC3(InstrumentBase):
         idx_max = int(np.max(trace['wavelength_pixel'].value[mask_max]))
         dim = self.data.data.shape
         if len(dim) <= 2:
-            roi = np.zeros((dim[0]), dtype=np.dtype("bool"))
+            roi = np.zeros((dim[0]), dtype=np.bool)
             roi[0:idx_min] = True
             roi[idx_max+1:] = True
         else:
@@ -611,7 +611,7 @@ class HSTWFC3(InstrumentBase):
                                      value[idx_min:idx_max]))
             min_idx_pix = center_pix - roi_width//2
             max_idx_pix = center_pix + roi_width//2
-            roi = np.ones((dim[:-1]), dtype=np.dtype("bool"))
+            roi = np.ones((dim[:-1]), dtype=np.bool)
             roi[idx_min:idx_max, min_idx_pix:max_idx_pix] = False
         try:
             self.wfc3_cal
@@ -1657,7 +1657,7 @@ class SpitzerIRS(InstrumentBase):
         """
         dim = data.shape
         if len(dim) <= 2:
-            roi = np.zeros((dim[0]), dtype=np.dtype("bool"))
+            roi = np.zeros((dim[0]), dtype=np.bool)
             roi[0] = True
             roi[-1] = True
         else:
@@ -1684,7 +1684,7 @@ class SpitzerIRS(InstrumentBase):
         order_masks = fits.getdata(order_mask_file_name, ext=0)
 
         if self.par['inst_order'] == '1':
-            mask = np.ones(shape=order_masks.shape, dtype=np.dtype('Bool'))
+            mask = np.ones(shape=order_masks.shape, dtype=np.bool)
             mask[order_masks == 1] = False
             # as there are often problems at the edge of the detector array,
             # cut first and last row
@@ -1697,7 +1697,7 @@ class SpitzerIRS(InstrumentBase):
         elif (self.par['inst_order'] == '2') or \
                 (self.par['inst_order'] == '3'):
             # SL2 or LL2
-            mask1 = np.ones(shape=order_masks.shape, dtype=np.dtype('Bool'))
+            mask1 = np.ones(shape=order_masks.shape, dtype=np.bool)
             mask1[order_masks == 2] = False
             # as there are often problems at the edge of the detector array,
             # cut first and last row
@@ -1708,7 +1708,7 @@ class SpitzerIRS(InstrumentBase):
             # remove first row
             mask1[idx_row[np.logical_not(row_check)][0], :] = True
             # SL3 or LL3
-            mask2 = np.ones(shape=order_masks.shape, dtype=np.dtype('Bool'))
+            mask2 = np.ones(shape=order_masks.shape, dtype=np.bool)
             mask2[order_masks == 3] = False
             # as there are often problems at the edge of the detector array,
             # cut first and last row

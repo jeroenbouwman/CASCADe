@@ -45,11 +45,11 @@ cascade.initialize.configurator(path+"cascade_test_cpm.ini",
 
 # model parameters defining noise strength and data dimensions
 model_name = 'test_model21'
-noise_factor = 5.0e-1    # systematic noise amplitude
-noise_factor2 = 3.0e-1   # random noise amplitude
+noise_factor = 1.0e-3    # systematic noise amplitude
+noise_factor2 = 5.0e-1   # random noise amplitude
 ndata = 300
 nwave = 130
-ncomponents_pca = 101
+ncomponents_pca = 11
 
 save_path = os.path.join(cascade.initialize.cascade_configuration.
                          cascade_save_path, model_name)
@@ -1041,3 +1041,17 @@ ax.set_ylim([-0.0, 0.8])
 plt.title('Eclipse depth')
 plt.show()
 ##########################################
+rsrf = fitted_parameter[:, -1] / (fitted_relative_TD*(1.0+mean_ecl) + mean_ecl)
+
+rsrf = fitted_parameter[:, -1] / (fitted_relative_TD)
+
+plt.plot(rsrf)
+plt.plot(model_flux_fullres-modelTD_fullres)
+plt.show()
+
+plt.plot(rsrf/(model_flux_fullres-modelTD_fullres))
+plt.show()
+
+plt.plot(modelTD_fullres/model_flux_fullres)
+
+

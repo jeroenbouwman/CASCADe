@@ -12,6 +12,7 @@ import seaborn as sns
 from cascade.utilities import spectres
 from astropy.convolution import Box1DKernel, convolve
 from astropy.stats import sigma_clip
+from sklearn.preprocessing import RobustScaler
 from scipy.linalg import pinv2
 
 sns.set_style("white")

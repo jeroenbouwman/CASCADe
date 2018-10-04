@@ -22,9 +22,9 @@ tso = cascade.TSO.TSOSuite()
 
 # initialization with ini files
 path = cascade.initialize.default_initialization_path
-tso = cascade.TSO.TSOSuite("cascade_test_cpm.ini",
+tso = cascade.TSO.TSOSuite("cascade_test_cpm_spectra.ini",
                            "cascade_test_object.ini",
-                           "cascade_test_data_spectra2.ini", path=path)
+                           "cascade_test_data_spectra.ini", path=path)
 
 print(tso.cascade_parameters)
 print(cascade.initialize.cascade_configuration)
@@ -47,8 +47,9 @@ assert tso.cascade_parameters.isInitialized is False
 # create TSO object and initialize
 tso = cascade.TSO.TSOSuite()
 path = cascade.initialize.default_initialization_path
-tso.execute("initialize", "cascade_test_cpm.ini", "cascade_test_object.ini",
-            "cascade_test_data_spectra2.ini", path=path)
+tso.execute("initialize", "cascade_test_cpm_spectra.ini",
+            "cascade_test_object.ini",
+            "cascade_test_data_spectra.ini", path=path)
 
 print(tso.cascade_parameters)
 print(cascade.initialize.cascade_configuration)
@@ -416,9 +417,9 @@ corrected_spectrum = (corrected_spectrum * (1.0 + median_eclipse_depth) +
 path_old = '/home/bouwman/SST_OBSERVATIONS/projects_HD189733/REDUCED_DATA/'
 spec_instr_model_ian = ascii.read(path_old+'results_ian.dat', data_start=1)
 wave_ian = (spec_instr_model_ian['lam_micron']*u.micron)
-flux_ian = (spec_instr_model_ian['depthB'] *
+flux_ian = (spec_instr_model_ian['depthA'] *
             u.dimensionless_unscaled).to(u.percent)
-error_ian = (spec_instr_model_ian['errorB'] *
+error_ian = (spec_instr_model_ian['errorA'] *
              u.dimensionless_unscaled).to(u.percent)
 fig, ax = plt.subplots(figsize=(13, 9))
 for item in ([ax.title, ax.xaxis.label, ax.yaxis.label] +
