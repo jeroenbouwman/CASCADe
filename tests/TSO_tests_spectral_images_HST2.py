@@ -10,7 +10,12 @@ from pandas.plotting import autocorrelation_plot
 import cascade
 from cascade.utilities import spectres
 import seaborn as sns
-from scipy.linalg import pinv2
+# from scipy.linalg import pinv2
+from time import sleep
+import warnings
+from sklearn.preprocessing import RobustScaler
+
+warnings.simplefilter("ignore")
 
 sns.set_style("white")
 
@@ -29,6 +34,7 @@ tso = cascade.TSO.TSOSuite("initialize", "cascade_test_HST_cpm2.ini",
 
 assert tso.cascade_parameters == cascade.initialize.cascade_configuration
 assert tso.cascade_parameters.isInitialized is True
+sleep(1.0)
 
 # load data
 tso.execute("load_data")
@@ -96,8 +102,8 @@ plt.ylabel("Pixel number")
 plt.title('Collapsed mask science data')
 plt.show()
 
-time0 = tso.observation.dataset.time[80, 85, :].copy()
-data0 = tso.observation.dataset.data[80, 85, :].copy()
+time0 = tso.observation.dataset.time[100, 152, :].copy()
+data0 = tso.observation.dataset.data[100, 152, :].copy()
 time0.set_fill_value(np.nan)
 data0.set_fill_value(np.nan)
 with quantity_support():
@@ -111,40 +117,12 @@ assert tso.observation.dataset.isSigmaCliped is True
 # create a cleaned version of the spectral data
 tso.execute("create_cleaned_dataset")
 
-# eclipse model
-tso.execute("define_eclipse_model")
-
-plt.imshow(tso.model.light_curve_interpolated[0][:, 0, :],
-           origin='lower',
-           cmap='Reds',
-           interpolation='nearest',
-           aspect='auto',
-           extent=[0, image0.shape[1], wave0_min, wave0_max])
-plt.colorbar().set_label("Normalised depth")
-plt.xlabel("Number of integration")
-plt.ylabel("Wavelength")
-plt.title('Lightcurve model')
-plt.show()
-
+extracted_spectra = np.ma.sum(tso.cpm.cleaned_data, axis=1)
+extracted_spectra.set_fill_value(np.nan)
 with quantity_support():
-    plt.plot(tso.observation.dataset.time.data[80+64, 85+64, :],
-             tso.model.light_curve_interpolated[0][80+64, 85+64, :])
-    plt.xlabel("Phase")
-    plt.ylabel("Normalised depth")
+    plt.plot(extracted_spectra.filled())
+    plt.title("1D spectra based on cleaned data")
     plt.show()
-
-# calibration signal
-plt.imshow(tso.model.calibration_signal[0][:, 0, :],
-           origin='lower',
-           cmap='Reds',
-           interpolation='nearest')
-plt.colorbar().set_label("Normalised depth")
-plt.xlabel("Number of integration")
-plt.ylabel("Pixel number dispersion direction")
-plt.title('Calibration lightcurve model')
-plt.show()
-
-print(tso.model.transit_timing)
 
 # determine position of source from data set
 tso.execute("determine_source_position")
@@ -276,6 +254,48 @@ plt.xlabel("Data number in spatial direction")
 plt.title("Extraction Mask")
 plt.show()
 
+# optimally extract spectrum of target star
+tso.execute("optimal_extraction")
+
+assert hasattr(tso.cpm, 'extraction_profile') is True
+
+extracted_spectra = tso.observation.dataset_optimal_extracted.data
+time = tso.observation.dataset_optimal_extracted.time
+wavelength = tso.observation.dataset_optimal_extracted.wavelength
+cleaned_data = tso.cpm.cleaned_data
+cleaned_data.set_fill_value(np.NaN)
+
+mean_wavelength = np.ma.mean(wavelength, axis=1)
+mean_wavelength.set_fill_value(np.NaN)
+mean_time = np.ma.mean(time, axis=0)
+mean_time.set_fill_value(np.NaN)
+mean_spectra2 = np.ma.mean(extracted_spectra, axis=1)
+mean_spectra2.set_fill_value(np.NaN)
+
+with quantity_support():
+    fig, ax = plt.subplots(figsize=(7, 5))
+    ax.plot(mean_time.filled(),
+            np.ma.mean(np.ma.sum(cleaned_data, axis=1), axis=0),
+            color='gray', lw=3, label='Tapered')
+    ax.plot(mean_time.filled(),
+            np.ma.mean(extracted_spectra, axis=0).filled(), lw=3,
+            alpha=0.6, color='red', label='Optimal')
+    ax.legend(loc='best')
+    ax.set_title('Comparison optimal and tapered extraction')
+    ax.set_xlabel('Phase')
+    plt.show()
+with quantity_support():
+    fig, ax = plt.subplots(figsize=(7, 5))
+    ax.plot(mean_wavelength.filled(),
+            np.ma.mean(np.ma.sum(cleaned_data, axis=1).filled(), axis=1),
+            color='gray', lw=3, label='Tapered')
+    ax.plot(mean_wavelength.filled(),
+            mean_spectra2.filled(), lw=3,
+            alpha=0.6, color='red', label='Optimal')
+    ax.legend(loc='best')
+    ax.set_title('Comparison optimal and tapered extraction')
+    plt.show()
+
 # setup regressors
 tso.execute("select_regressors")
 
@@ -297,7 +317,7 @@ tso.return_all_design_matrices()
 #       third: [0]
 
 
-i_pixel_in_extraction_mask = 150
+i_pixel_in_extraction_mask = 392
 reg_list = \
     tso.cpm.regressor_list[0][i_pixel_in_extraction_mask][1][0]
 reg_matrix = tso.cpm.design_matrix[0][i_pixel_in_extraction_mask][0]
@@ -357,6 +377,60 @@ plt.ylabel("Regressor Number")
 plt.title('Clipped regressor matrix')
 plt.show()
 
+# eclipse model
+tso.execute("define_eclipse_model")
+
+plt.imshow(tso.model.light_curve_interpolated[0][:, 0, :],
+           origin='lower',
+           cmap='Reds',
+           interpolation='nearest',
+           aspect='auto',
+           extent=[0, image0.shape[1], wave0_min, wave0_max])
+plt.colorbar().set_label("Normalised depth")
+plt.xlabel("Number of integration")
+plt.ylabel("Wavelength")
+plt.title('Lightcurve model')
+plt.show()
+
+with quantity_support():
+    plt.plot(tso.observation.dataset.time.data[80+64, 85+64, :],
+             tso.model.light_curve_interpolated[0][80+64, 85+64, :])
+    plt.xlabel("Phase")
+    plt.ylabel("Normalised depth")
+    plt.show()
+
+RS = RobustScaler(with_scaling=True)
+RS.fit(tso.model.light_curve_interpolated[0][80, 85, :].reshape(-1, 1))
+X_scaled = \
+  RS.transform(tso.model.light_curve_interpolated[0][80, 85, :].reshape(-1, 1))
+RS = RobustScaler(with_scaling=True)
+RS.fit(np.ma.mean(extracted_spectra, axis=0).filled().reshape(-1, 1))
+X2_scaled = \
+  RS.transform(np.ma.mean(extracted_spectra, axis=0).filled().reshape(-1, 1))
+
+plt.plot(tso.observation.dataset.time.data[80, 85, :], X_scaled.squeeze(),
+         lw=3, alpha=0.6, color='blue', label='Model')
+plt.plot(mean_time.filled(), X2_scaled, lw=3,
+         alpha=0.6, color='red', label='Data')
+plt.xlabel("Phase")
+plt.ylabel("Normalised depth")
+plt.title('Comparison Model and optimal mean signal')
+plt.show()
+
+# calibration signal
+plt.imshow(tso.model.calibration_signal[0][:, 0, :],
+           origin='lower',
+           cmap='Reds',
+           interpolation='nearest')
+plt.colorbar().set_label("Normalised depth")
+plt.xlabel("Number of integration")
+plt.ylabel("Pixel number dispersion direction")
+plt.title('Calibration lightcurve model')
+plt.show()
+
+print(tso.model.transit_timing)
+sleep(1.0)
+
 # create calibrated time series and derive planetary signal
 tso.execute("calibrate_timeseries")
 
@@ -414,6 +488,13 @@ ax.set_aspect(128.0 / delta_lam)
 ax.set_xlabel('Pixel Number Spatial Direction')
 ax.set_ylabel('Wavelength')
 
+# correct the extracted planetary signal for non uniform subtraction
+# of averige signal
+tso.execute("correct_extracted_spectrum")
+
+##############################
+# Read resuls from literature
+##############################
 path_old = '/home/bouwman//'
 spec_instr_model_mandell = ascii.read(path_old+'WASP12b_mandell.txt',
                                       data_start=0)
@@ -432,7 +513,7 @@ error_tsiaras = (spec_instr_model_tsiaras['col3']*100*u.percent)
 mask_use = tso.exoplanet_spectrum.spectrum.wavelength.mask
 
 rebinned_wave = \
-    tso.exoplanet_spectrum.spectrum.wavelength.data.value[~mask_use][3:-3:6]
+    tso.exoplanet_spectrum.spectrum.wavelength.data.value[~mask_use][3:-4:6]
 rebinned_spec, rebinned_error = \
     spectres(rebinned_wave,
              tso.exoplanet_spectrum.spectrum.wavelength.data.value[~mask_use],
@@ -440,35 +521,13 @@ rebinned_spec, rebinned_error = \
              spec_errs=tso.exoplanet_spectrum.
              spectrum.uncertainty.data.value[~mask_use])
 
-####################################
-# TEST derived signal correction
-####################################
-ndim_reg, ndim_lam = tso.exoplanet_spectrum.weighted_normed_parameters.shape
-ndim_diff = ndim_reg - ndim_lam
-W = (tso.exoplanet_spectrum.weighted_normed_parameters[:-ndim_diff, :] /
-     np.ma.sum(tso.exoplanet_spectrum.weighted_normed_parameters[:-1, :],
-               axis=0)).T
-K = W - np.identity(W.shape[0])
-K.set_fill_value(0.0)
-weighted_signal = tso.exoplanet_spectrum.weighted_signal.copy()
-weighted_signal.set_fill_value(0.0)
-
-corrected_spectrum = np.dot(pinv2(K.filled(), rcond=1.e-3),
-                            -weighted_signal.filled())
-corrected_spectrum = corrected_spectrum-np.ma.median(corrected_spectrum)
-planet_radius = \
-    (u.Quantity(tso.cascade_parameters.object_radius).to(u.m) /
-     u.Quantity(tso.cascade_parameters.
-                object_radius_host_star).to(u.m))
-planet_radius = planet_radius.decompose().value
-corrected_spectrum = (corrected_spectrum * (1.0 - planet_radius**2) +
-                      planet_radius**2)*100
-
 corrected_rebinned_spec, corrected_rebinned_error = \
     spectres(rebinned_wave,
-             tso.exoplanet_spectrum.spectrum.wavelength.data.value[~mask_use],
-             corrected_spectrum[~mask_use],
-             spec_errs=tso.exoplanet_spectrum.spectrum.uncertainty.
+             tso.exoplanet_spectrum.corrected_spectrum.wavelength.
+             data.value[~mask_use],
+             tso.exoplanet_spectrum.corrected_spectrum.data.
+             data.value[~mask_use],
+             spec_errs=tso.exoplanet_spectrum.corrected_spectrum.uncertainty.
              data.value[~mask_use])
 
 fig, ax = plt.subplots(figsize=(7, 5))

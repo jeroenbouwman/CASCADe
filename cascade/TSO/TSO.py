@@ -14,7 +14,10 @@ import warnings
 
 import astropy.units as u
 import numpy as np
-from astropy.convolution import Gaussian2DKernel, interpolate_replace_nans
+from astropy.convolution import interpolate_replace_nans
+from astropy.convolution import Gaussian1DKernel
+from astropy.convolution import convolve as ap_convolve
+from astropy.convolution import Kernel as apKernel
 # from skimage.feature import register_translation
 from astropy.stats import sigma_clip
 from astropy.stats import akaike_info_criterion
@@ -24,6 +27,7 @@ from matplotlib import pyplot as plt
 from matplotlib.ticker import MaxNLocator, ScalarFormatter
 from scipy import interpolate
 from scipy.linalg import pinv2
+from scipy.ndimage import binary_dilation
 from tqdm import tqdm
 import seaborn as sns
 from sklearn.preprocessing import RobustScaler
@@ -36,6 +40,8 @@ from ..exoplanet_tools import (convert_spectrum_to_brighness_temperature,
 from ..initialize import (cascade_configuration, configurator,
                           default_initialization_path)
 from ..instruments import Observation
+from ..data_model import SpectralDataTimeSeries
+from ..utilities import write_timeseries_to_fits
 
 __all__ = ['TSOSuite']
 
@@ -169,10 +175,6 @@ class TSOSuite:
         # calculate median (over time) background
         median_background = np.ma.median(background.data,
                                          axis=background.data.ndim-1)
-# BUG FIX
-#        median_background = np.ma.array(median_background.data *
-#                                        background.data_unit,
-#                                        mask=median_background.mask)
         # tile to format of science data
         tiling = (tuple([(background.data.shape)[-1]]) +
                   tuple(np.ones(background.data.ndim-1).astype(int)))
@@ -286,33 +288,47 @@ class TSOSuite:
         except AttributeError:
             raise AttributeError("Convolution kernel not set. Aborting the "
                                  "creation of a cleaned dataset.")
+        try:
+            stdv_kernel_time = float(self.cascade_parameters.
+                                     cpm_stdv_kernel_time_axis)
+        except AttributeError:
+            raise AttributeError("Parameters for time dependenccy "
+                                 "convolution kernel not set. "
+                                 "Aborting optimal extraction.")
 
         spectral_image_using_roi = np.ma.array(dataset.data.data.value.copy(),
-                                               mask=dataset.mask.copy())
+                                               mask=dataset.mask.copy(),
+                                               fill_value=np.nan)
+
         ndim = spectral_image_using_roi.ndim
         shape = spectral_image_using_roi.shape
         data_unit = dataset.data.data.unit
 
         if ndim == 2:
             RS = RobustScaler(with_scaling=True)
-            spectral_image_using_roi.set_fill_value(0.0)
-            data_scaled = RS.fit_transform(spectral_image_using_roi.filled())
-            spectral_image_using_roi.data[...] = data_scaled
+            data_scaled = RS.fit_transform(spectral_image_using_roi.filled().T)
+            spectral_image_using_roi = \
+                np.ma.array(data_scaled.T, mask=spectral_image_using_roi.mask)
 
         spectral_image_using_roi[roi_mask] = 0.0
         spectral_image_using_roi.mask[roi_mask] = False
         spectral_image_using_roi.set_fill_value(np.nan)
 
-        if ndim > 2:
-            kernel = np.dstack([np.zeros_like(kernel), kernel,
-                                np.zeros_like(kernel)])
+        kernel_size = kernel.shape[0]
+        kernel_1d = Gaussian1DKernel(stdv_kernel_time, x_size=kernel_size)
+        kernel = np.repeat(np.expand_dims(kernel, axis=ndim-1),
+                           (kernel_size), axis=ndim-1)
+        selection = tuple([slice(None)])+tuple([None])*(ndim-1)
+        kernel = kernel*kernel_1d.array[selection].T
+        kernel = kernel/np.sum(kernel)
 
         cleaned_spectral_image_using_roi = \
-            interpolate_replace_nans(spectral_image_using_roi.filled(), kernel)
+            interpolate_replace_nans(spectral_image_using_roi.filled(),
+                                     kernel, boundary='extend')
 
         if ndim == 2:
             cleaned_spectral_image_using_roi = \
-                RS.inverse_transform(cleaned_spectral_image_using_roi)
+                RS.inverse_transform(cleaned_spectral_image_using_roi.T).T
 
         try:
             self.cpm
@@ -364,21 +380,22 @@ class TSOSuite:
         idx_before = np.where(time_cal < Tstart)[0]
         idx_after = np.where(time_cal > Tend)[0]
         # check the duration of the time series out of transit
-        max_cal_points = np.min([len(idx_before), len(idx_after)])
+        max_cal_points_before = len(idx_before)
+        max_cal_points_after = len(idx_after)
         # inject signal of half the the duration of the transit
         # place calibration signal in the midle of the time sequence before
         # or after the actual transit.
-        idx_end = idx_before[-1] - max_cal_points//4
-        idx_start = idx_end - max_cal_points//2
-        selection1 = [slice(None)]*(ndim-1) + \
-            [slice(idx_start, idx_end)]
-        if cal_signal_pos != 'after':
+        if cal_signal_pos == 'before':
+            idx_end = idx_before[-1] - max_cal_points_before//4
+            idx_start = idx_end - max_cal_points_before//2
+            selection1 = [slice(None)]*(ndim-1) + \
+                [slice(idx_start, idx_end)]
             lcmodel_cal[tuple(selection1)] = -1.0
-        idx_start = idx_after[0] + max_cal_points//4
-        idx_end = idx_start + max_cal_points//2
-        selection2 = [slice(None)]*(ndim-1) + \
-            [slice(idx_start, idx_end)]
-        if cal_signal_pos != 'before':
+        else:
+            idx_start = idx_after[0] + max_cal_points_after//4
+            idx_end = idx_start + max_cal_points_after//2
+            selection2 = [slice(None)]*(ndim-1) + \
+                [slice(idx_start, idx_end)]
             lcmodel_cal[selection2] = -1.0
 
         if isNodded:
@@ -656,14 +673,115 @@ class TSOSuite:
 
         self.cpm.extraction_mask = ExtractionMask
 
+    def _create_edge_mask(self, kernel, roi_mask_cube):
+        """
+        Create an edge mask to mask all pixels for which the convolution kernel
+        extends beyond the ROI
+        Input:
+            kernel
+
+            roi_mask
+
+        Output:
+            edge_mask
+        """
+        dilation_mask = np.ones(kernel.shape)
+
+        edge_mask = (binary_dilation(roi_mask_cube,  structure=dilation_mask,
+                                     border_value=True) ^ roi_mask_cube)
+        return edge_mask
+
+    def _create_extraction_profile(self, cleaned_data_with_roi_mask,
+                                   extracted_spectra, kernel,
+                                   mask_for_extraction):
+        """
+        Create the normilzed source profile used for optimal extraction.
+        The cleaned data is convolved with an appropriate kernel to smooth the
+        profile and to increase the SNR. On the edges, where the kernel extends
+        over the boundary, non convolved data is used to prevent edge effects
+
+        Input:
+           cleaned_data_with_roi_mask
+
+           extracted_spectra
+
+           kernel
+
+           mask_for_extraction
+
+        Output:
+            extraction_profile
+        """
+        npix, mpix, ntime = cleaned_data_with_roi_mask.shape
+        roi_mask = cleaned_data_with_roi_mask.mask.copy()
+        extraction_profile_nc = (
+            cleaned_data_with_roi_mask.data.copy() /
+            np.repeat(np.expand_dims(extracted_spectra.data, axis=1),
+                      (mpix), axis=1))
+
+        edge_mask = self._create_edge_mask(kernel, roi_mask)
+
+        extraction_profile = ap_convolve(extraction_profile_nc, kernel,
+                                         mask=mask_for_extraction,
+                                         boundary=None,
+                                         nan_treatment='interpolate',
+                                         fill_value=np.NaN)
+        extraction_profile = np.ma.array(extraction_profile, mask=roi_mask,
+                                         hard_mask=False, fill_value=np.NaN)
+        extraction_profile[edge_mask] = extraction_profile_nc[edge_mask]
+        extraction_profile.harden_mask()
+        extraction_profile[extraction_profile < 0.0] = 0.0
+        extraction_profile = extraction_profile / \
+            np.ma.sum(extraction_profile, axis=1, keepdims=True)
+
+        return extraction_profile
+
+    def _create_3dKernel(self, sigma_time):
+        """
+        Create a 3d Kernel from 2d Instrument specific Kernel
+        to include time dimention
+
+        Input:
+           sigma_time
+
+        Output:
+            3dKernel
+        """
+        try:
+            kernel = self.observation.instrument_calibration.convolution_kernel
+        except AttributeError:
+            raise AttributeError("No Kernel found. \
+                                 Aborting 3d Kernel creation")
+
+        kernel_size = kernel.shape[0]
+        kernel_time_dimension = Gaussian1DKernel(sigma_time,
+                                                 x_size=kernel_size)
+        kernel3d = np.repeat(np.expand_dims(kernel, axis=2),
+                             (kernel_size), axis=2)
+        kernel3d = kernel3d*kernel_time_dimension.array[:, None, None].T
+        kernel3d = apKernel(kernel3d)
+        kernel3d._separable = True
+        kernel3d.normalize()
+
+        return kernel3d
+
     def optimal_extraction(self):
         """
         Optimally extract spectrum using procedure of
         Horne 1986, PASP 98, 609
 
         Output:
-            1d Spectra
+            Optimally extracted 1d Spectra
         """
+        try:
+            obs_data = self.cascade_parameters.observations_data
+        except AttributeError:
+            raise AttributeError("No observation data type set. "
+                                 "Aborting optimal extraction")
+        if not obs_data == "SPECTRAL_IMAGE":
+            warnings.warn("Data are no spectral images. "
+                          "Aborting optimal extraction")
+            return
         try:
             dataset = self.observation.dataset
         except AttributeError:
@@ -682,56 +800,232 @@ class TSOSuite:
         try:
             ExtractionMask = self.cpm.extraction_mask
         except AttributeError:
-            raise AttributeError("No extraction mask found. \
-                                 Aborting optimal extraction")
+            raise AttributeError("No extraction mask found. "
+                                 "Aborting optimal extraction")
         try:
             cleaned_data = self.cpm.cleaned_data
         except AttributeError:
-            raise AttributeError("No cleaned data found. \
-                                 Aborting optimal extraction")
-        try:
-            obs_data = self.cascade_parameters.observations_data
-        except AttributeError:
-            raise AttributeError("No observation data type set. \
-                                 Aborting optimal extraction")
+            raise AttributeError("No cleaned data found. "
+                                 "Aborting optimal extraction")
         try:
             isNodded = self.observation.dataset.isNodded
         except AttributeError:
-            raise AttributeError("Observational strategy not properly set. \
-                                 Aborting optimal extraction.")
-        if not obs_data == "SPECTRAL_IMAGE":
-            warnings.warn("Data are no spectral images. "
-                          "Aborting optimal extraction")
-            return
+            raise AttributeError("Observational strategy not properly set. "
+                                 "Aborting optimal extraction.")
+        try:
+            max_iter = \
+                int(self.cascade_parameters.cpm_max_iter_optimal_extraction)
+            nsigma = \
+                float(self.cascade_parameters.cpm_sigma_optimal_extraction)
+            stdv_kernel_time = float(self.cascade_parameters.
+                                     cpm_stdv_kernel_time_axis)
+        except AttributeError:
+            raise AttributeError("Parameters for optimal extraction not set. "
+                                 "Aborting optimal extraction.")
+        try:
+            position = self.cpm.position
+            median_pos = [str(mp) for mp in self.cpm.median_position]
+            position_unit = u.pix
+        except AttributeError:
+            raise AttributeError("Source position is not determined. "
+                                 "Aborting optimal extraction.")
 
-        extraction_profile = np.ma.array(cleaned_data.data.value.copy(),
-                                         mask=cleaned_data.mask.copy())
-        extraction_profile[extraction_profile < 0.0] = 0.0
-        extraction_profile = extraction_profile / \
-            np.ma.sum(extraction_profile, axis=1, keepdims=True)
-
+        data_cleaned = np.ma.array(cleaned_data.data.value.copy(),
+                                   mask=cleaned_data.mask.copy())
         data = np.ma.array(dataset.data.data.value.copy(),
                            mask=dataset.mask.copy())
+        data_unit = dataset.data_unit
         variance = np.ma.array(dataset.uncertainty.data.value.copy()**2,
                                mask=dataset.mask.copy())
+        wavelength = np.ma.array(dataset.wavelength.data.value.copy(),
+                                 mask=dataset.mask.copy())
+        wavelength_unit = dataset.wavelength_unit
+        time = np.ma.array(dataset.time.data.value.copy(),
+                           mask=dataset.mask.copy())
+        time_unit = dataset.time_unit
+        time_bjd = np.ma.array(dataset.time_bjd.data.value.copy(),
+                               mask=dataset.mask.copy())
+        time_bjd_unit = dataset.time_bjd_unit
+
+        kernel3d = self._create_3dKernel(stdv_kernel_time)
 
         npix, mpix, ntime = data.shape
         if not isNodded:
             ntime_max = ntime
         else:
             ntime_max = ntime // 2
-        for inod, mask in enumerate(ExtractionMask):
-            mask_use = np.tile(mask.T, (ntime_max, 1, 1)).T
-            P = extraction_profile[:, :, inod*ntime_max:(inod+1)*ntime_max]
-            P.mask = np.ma.mask_or(P.mask, mask_use)
-            fsimple = np.ma.sum(data, axis=1)
-            f = np.ma.sum(P*data/variance, axis=1)/np.ma.sum(P**2/variance, axis=1)
-        plt.imshow(f)
-        plt.show()
-        plt.plot(f)
-        plt.show()
-        plt.plot(fsimple)
-        plt.show()
+        for inod, extr_mask in enumerate(ExtractionMask):
+            extr_mask_cube = np.tile(~extr_mask.T,
+                                     (ntime_max, 1, 1)).T.astype(int)
+            mask_for_extraction = \
+                data_cleaned.mask[:, :, inod*ntime_max:(inod+1)*ntime_max]
+            data_for_profile = \
+                data_cleaned[:, :, inod*ntime_max:(inod+1)*ntime_max]
+
+            # initial guess of extracted spectra and extraction profile
+            extracted_spectra = np.ma.sum(data_for_profile, axis=1)
+
+            extraction_profile = \
+                self._create_extraction_profile(data_for_profile,
+                                                extracted_spectra,
+                                                kernel3d, mask_for_extraction)
+
+            # Equivalent to Iteration over step 5 to 7 in Horne et al 1986
+            iiter = 0
+            mask_save = mask_for_extraction.copy()
+            number_different_masked = -1
+            pbar = tqdm(total=max_iter+1, dynamic_ncols=True,
+                        desc='Creating extracton profile')
+            while (number_different_masked != 0) and (iiter <= max_iter):
+
+                mask_flaged_data = \
+                    np.ma.where((data - extraction_profile *
+                                np.ma.repeat(np.expand_dims(extracted_spectra,
+                                                            axis=1), (mpix),
+                                             axis=1)
+                                 )**2 > nsigma**2 * variance, 0.0, 1.0)
+                mask_flaged_data = np.where(mask_flaged_data.filled() == 0,
+                                            True, False)
+                number_different_masked = \
+                    (np.sum(mask_save != mask_flaged_data))
+                pbar.set_postfix_str('# of pixels not previously masked: {}'.
+                                     format(number_different_masked))
+                pbar.refresh()
+                mask_save = mask_flaged_data.copy()
+                mask = (~mask_flaged_data).astype(int) * extr_mask_cube
+                mask_for_profile = np.ma.logical_or(mask_for_extraction,
+                                                    mask_flaged_data)
+
+                extraction_profile =\
+                    self._create_extraction_profile(data_for_profile,
+                                                    extracted_spectra,
+                                                    kernel3d,
+                                                    mask_for_profile)
+
+                iiter += 1
+                pbar.update(1)
+            pbar.close()
+            if not (number_different_masked != 0):
+                warnings.warn("Mask not converged in optimal spectral "
+                              "extraction. {} mask values not converged. An "
+                              "increase of the maximum number of iteration "
+                              "steps might be advisable.".
+                              format(number_different_masked))
+
+            # Equivalent to Iteration over step 7 and 8 in Horne et al 1986
+            iiter = 0
+            mask_save = mask_for_extraction.copy()
+            number_different_masked = -1
+            pbar = tqdm(total=max_iter+1, dynamic_ncols=True,
+                        desc='Optimally extracting spectra')
+            while (number_different_masked != 0) and (iiter <= max_iter):
+
+                mask_flaged_data = \
+                    np.ma.where((data - extraction_profile *
+                                 np.ma.repeat(
+                                              np.expand_dims(extracted_spectra,
+                                                             axis=1),
+                                              (mpix), axis=1)
+                                 )**2 > nsigma**2 * variance, 0.0, 1.0)
+                mask_flaged_data = \
+                    np.where(mask_flaged_data.filled() == 0, True, False)
+                number_different_masked = \
+                    (np.sum(mask_save != mask_flaged_data))
+                pbar.set_postfix_str('# of pixels not previously masked: '
+                                     '{}'.format(number_different_masked))
+                pbar.refresh()
+                mask_save = mask_flaged_data.copy()
+                mask = (~mask_flaged_data).astype(int) * extr_mask_cube
+
+                extracted_spectra = \
+                    np.ma.sum(mask*extraction_profile*data/variance, axis=1) /\
+                    np.ma.sum(mask*extraction_profile**2/variance, axis=1)
+                variance_extracted_spectrum = \
+                    np.ma.sum(mask*extraction_profile, axis=1) / \
+                    np.ma.sum(mask*extraction_profile**2/variance, axis=1)
+
+                iiter += 1
+                pbar.update(1)
+            pbar.close()
+            if not (number_different_masked != 0):
+                warnings.warn("Mask not converged in optimal spectral "
+                              "extraction. {} mask values not converged. "
+                              "An increase of the maximum number of "
+                              "iteration steps might be advisable.".
+                              format(number_different_masked))
+
+# TEST
+        median_signal = np.ma.median(extracted_spectra)
+        extracted_spectra = extracted_spectra/median_signal
+        variance_extracted_spectrum = (variance_extracted_spectrum /
+                                       median_signal**2)
+        data_unit = u.Unit(median_signal*data_unit)
+
+        wavelength_extracted_spectrum = \
+            np.ma.sum(mask*extraction_profile**2*wavelength/variance,
+                      axis=1) /\
+            np.ma.sum(mask*extraction_profile**2/variance, axis=1)
+        uncertainty_extracted_spectrum = \
+            np.ma.sqrt(variance_extracted_spectrum)
+        time_extracted_spectrum = \
+            np.ma.sum(mask*extraction_profile**2*time/variance, axis=1) /\
+            np.ma.sum(mask*extraction_profile**2/variance, axis=1)
+        time_bjd_extracted_spectrum = \
+            np.ma.sum(mask*extraction_profile**2*time_bjd/variance, axis=1) /\
+            np.ma.sum(mask*extraction_profile**2/variance, axis=1)
+        position_extracted_spectrum = \
+            np.ma.sum(mask*extraction_profile**2*position/variance, axis=1) /\
+            np.ma.sum(mask*extraction_profile**2/variance, axis=1)
+
+        data_product = self.observation.dataset_parameters['obs_data_product']
+        data_product_optimal = 'COE'
+        dataFileNames = dataset.dataFiles
+        dataFileNameNew = [fname.split("/")[-1].replace(data_product,
+                           data_product_optimal) for fname in dataFileNames]
+
+        target_name = self.observation.dataset_parameters['obs_target_name']
+        observation_path = self.observation.dataset_parameters['obs_path']
+        instrument_name = self.observation.dataset_parameters['inst_inst_name']
+        path_to_files = os.path.join(observation_path,
+                                     instrument_name,
+                                     target_name,
+                                     'SPECTRA/')
+        os.makedirs(path_to_files, exist_ok=True)
+
+        SpectralTimeSeries = \
+            SpectralDataTimeSeries(wavelength=wavelength_extracted_spectrum,
+                                   wavelength_unit=wavelength_unit,
+                                   data=extracted_spectra,
+                                   data_unit=data_unit,
+                                   time=time_extracted_spectrum,
+                                   time_unit=time_unit,
+                                   uncertainty=uncertainty_extracted_spectrum,
+                                   position=position_extracted_spectrum,
+                                   position_unit=position_unit,
+                                   median_position=median_pos[inod],
+                                   time_bjd=time_bjd_extracted_spectrum,
+                                   time_bjd_unit=time_bjd_unit,
+                                   target_name=target_name,
+                                   isRampFitted=True,
+                                   isNodded=isNodded,
+                                   dataFiles=dataFileNameNew)
+        try:
+            self.cpm
+        except AttributeError:
+            self.cpm = SimpleNamespace()
+        finally:
+            self.cpm.extraction_profile = extraction_profile
+            self.cpm.extraction_profile_mask = mask
+        try:
+            self.observation
+        except AttributeError:
+            self.observation = SimpleNamespace()
+        finally:
+            self.observation.dataset_optimal_extracted = SpectralTimeSeries
+
+        write_timeseries_to_fits(SpectralTimeSeries, path_to_files)
+
+        return
 
     def select_regressors(self):
         """
@@ -826,57 +1120,43 @@ class TSOSuite:
         self.cpm.regressor_list = regressor_list_nod
 
     @staticmethod
-    def get_design_matrix(data_in, regressor_selection, nrebin, clip=False,
-                          clip_pctl_time=0.01, clip_pctl_regressors=0.01,
-                          center_matrix=False, stdv_kernel=1.5):
+    def get_design_matrix(cleaned_data_in, original_mask_in,
+                          regressor_selection, nrebin, clip=False,
+                          clip_pctl_time=0.00, clip_pctl_regressors=0.00,
+                          center_matrix=False):
         """
         Return the design matrix based on the data set itself
         """
-        dim = data_in.data.shape
-        data_unit = data_in.data.unit
+        dim = cleaned_data_in.data.shape
+        data_unit = cleaned_data_in.data.unit
         (il, ir), (idx_cal, trace) = regressor_selection
         ncal = len(idx_cal)
-        design_matrix = data_in[idx_cal, trace, :].copy()
-        design_matrix = design_matrix.reshape(ncal//nrebin, nrebin, dim[-1], 1)
-        design_matrix = np.ma.median((np.ma.median(design_matrix, axis=3)),
-                                     axis=1)
-        if clip:
-            median_signal = np.ma.median(design_matrix, axis=1)
-            idx_sort = np.ma.argsort(median_signal)
-            sorted_matrix = design_matrix[idx_sort, :]
+        design_matrix = cleaned_data_in[idx_cal, trace, :].copy()
+        original_mask_design_matrix = \
+            original_mask_in[idx_cal, trace, :].copy()
 
+        if clip:
             # clip the worst data along time axis
             # number of good measurements at a given time
-            number_of_bad_data = np.ma.count(sorted_matrix, axis=0)
+            number_of_bad_data = np.sum(original_mask_design_matrix, axis=0)
             idx_bad = np.argsort(number_of_bad_data)
             nclip = np.rint(dim[-1]*clip_pctl_time).astype(int)
-            idx_clip_time = idx_bad[:nclip]
+            if nclip > 0:
+                idx_clip_time = idx_bad[-nclip:]
+                design_matrix.mask[:, idx_clip_time] = True
 
             # clip the worst regressors
             # number of good measurements for regressor.
-            number_of_bad_data = np.ma.count(sorted_matrix, axis=1)
+            number_of_bad_data = np.sum(original_mask_design_matrix, axis=1)
             idx_bad = np.argsort(number_of_bad_data)
             nclip = np.rint(dim[0]*clip_pctl_regressors).astype(int)
-            idx_clip_regressor = idx_bad[:nclip]
+            if nclip > 0:
+                idx_clip_regressor = idx_bad[-nclip:]
+                design_matrix.mask[idx_clip_regressor, :] = True
 
-            # define kernel used to replace bad data
-            kernel = Gaussian2DKernel(x_stddev=stdv_kernel)
-            # set masked data to NaN and sort data to signal value
-
-            np.ma.set_fill_value(sorted_matrix, float("NaN"))
-            # create a "reconstructed" image with NaNs replaced by
-            # interpolated values
-            cleaned_matrix = \
-                interpolate_replace_nans(sorted_matrix.filled().value,
-                                         kernel)
-            cleaned_mask = np.ma.make_mask_none(cleaned_matrix.shape)
-            cleaned_mask[:, idx_clip_time] = True
-            cleaned_mask[idx_clip_regressor, :] = True
-
-            idx_reverse = np.argsort(idx_sort)
-            design_matrix = \
-                np.ma.array(cleaned_matrix[idx_reverse, :],
-                            mask=cleaned_mask[idx_reverse, :])
+        design_matrix = design_matrix.reshape(ncal//nrebin, nrebin, dim[-1], 1)
+        design_matrix = np.ma.median((np.ma.median(design_matrix, axis=3)),
+                                     axis=1)
 
         if center_matrix:
             mean_dm = np.ma.mean(design_matrix, axis=1)
@@ -917,8 +1197,8 @@ class TSOSuite:
         return data_out
 
     def return_all_design_matrices(self, clip=False,
-                                   clip_pctl_time=0.01,
-                                   clip_pctl_regressors=0.01,
+                                   clip_pctl_time=0.00,
+                                   clip_pctl_regressors=0.00,
                                    center_matrix=False):
         """
         Setup the regression matrix based on the sub set of the data slected
@@ -933,8 +1213,7 @@ class TSOSuite:
         """
         try:
             data_in = self.observation.dataset
-# TEST
-#            data_in = self.cpm.cleaned_data
+            cleaned_data_in = self.cpm.cleaned_data
         except AttributeError:
             raise AttributeError("No Valid data found. \
                                  Aborting setting up of regression matrix")
@@ -949,30 +1228,21 @@ class TSOSuite:
             raise AttributeError("The rebin factor regressors is not defined. \
                                  Check the initialiation of the TSO object. \
                                  Aborting setting regressors")
-        try:
-            stdv_kernel = \
-                float(self.cascade_parameters.cpm_stdv_interpolation_kernel)
-        except AttributeError:
-            raise AttributeError("The standard deviation of the interpolation\
-                                 kernel is not defined. \
-                                 Check the initialiation of the TSO object. \
-                                 Aborting getting of the design matrici")
 
-        data_use = self.reshape_data(data_in.data)
-# TEST
-#        data_use = self.reshape_data(data_in)
+        original_mask_data_use = self.reshape_data(data_in.data).mask
+        data_use = self.reshape_data(cleaned_data_in)
         design_matrix_list_nod = []
         for regressor_list in regressor_list_nods:
             design_matrix_list = []
             for regressor_selection in regressor_list:
                 regressor_matrix = \
                     self.get_design_matrix(
-                            data_use, regressor_selection,
+                            data_use, original_mask_data_use,
+                            regressor_selection,
                             nrebin, clip=clip,
                             clip_pctl_time=clip_pctl_time,
                             clip_pctl_regressors=clip_pctl_regressors,
-                            center_matrix=center_matrix,
-                            stdv_kernel=stdv_kernel)
+                            center_matrix=center_matrix)
                 design_matrix_list.append([regressor_matrix])
             design_matrix_list_nod.append(design_matrix_list)
         self.cpm.design_matrix = design_matrix_list_nod
@@ -983,8 +1253,7 @@ class TSOSuite:
         """
         try:
             data_in = self.observation.dataset
-# TEST
-#            data_in_clean = self.cpm.cleaned_data
+            data_in_clean = self.cpm.cleaned_data
         except AttributeError:
             raise AttributeError("No Valid data found. \
                                  Aborting time series calibration")
@@ -1051,19 +1320,10 @@ class TSOSuite:
         except AttributeError:
             raise AttributeError("Regularization parameters not found. \
                                  Aborting time series calibration")
-        try:
-            stdv_kernel = \
-                float(self.cascade_parameters.cpm_stdv_interpolation_kernel)
-        except AttributeError:
-            raise AttributeError("The standard deviation of the interpolation\
-                                 kernel is not defined. \
-                                 Check the initialiation of the TSO object. \
-                                 Aborting time series calibration")
 
         # reshape input data to general 3D shape.
-        data_use = self.reshape_data(data_in.data)
-# TEST
-#        data_use = self.reshape_data(data_in_clean)
+        original_mask_data_use = self.reshape_data(data_in.data).mask
+        data_use = self.reshape_data(data_in_clean)
         unc_use = self.reshape_data(data_in.uncertainty)
         time_use = self.reshape_data(data_in.time)
         position_use = self.reshape_data(position)
@@ -1151,11 +1411,11 @@ class TSOSuite:
                 (il, ir), (idx_cal, trace) = regressor_selection
                 regressor_matrix = \
                     self.get_design_matrix(
-                            data_use, regressor_selection,
+                            data_use, original_mask_data_use,
+                            regressor_selection,
                             nrebin, clip=True,
                             clip_pctl_time=clip_pctl_time,
-                            clip_pctl_regressors=clip_pctl_regressors,
-                            stdv_kernel=stdv_kernel)
+                            clip_pctl_regressors=clip_pctl_regressors)
                 # remove bad regressors
                 idx_cut = np.all(regressor_matrix.mask, axis=1)
                 idx_regressors_used = idx_cal[~idx_cut]
@@ -1197,7 +1457,7 @@ class TSOSuite:
                 y.mask[idx_bad_time] = True
                 yerr.mask[idx_bad_time] = True
                 np.ma.set_fill_value(y, 0.0)
-                np.ma.set_fill_value(yerr, 1.0e8)
+                np.ma.set_fill_value(yerr, np.ma.median(y)*1.e3)
                 weights = 1.0/yerr.filled().value**2
 
                 # add other regressors: constant, time, position along slit,
@@ -1207,7 +1467,8 @@ class TSOSuite:
 #                RS = RobustScaler(with_scaling=False)
 #                X_scaled = RS.fit_transform(design_matrix.T)
 #
-#                pca = PCA(n_components=np.min([10,len(idx_regressors_used)]), whiten=True)
+#                pca = PCA(n_components=np.min([10,len(idx_regressors_used)]),
+#                          whiten=True)
 #                pca.fit(X_scaled.T)
 
 #                design_matrix = pca.components_
@@ -1250,7 +1511,8 @@ class TSOSuite:
                 fitted_parameters.data[:, il, ir] = P[len(P)-nadd:]
                 error_fitted_parameters.data[:, il, ir] = Perr[len(P)-nadd:]
 # HACK
-#                fitted_parameters_normed.data[np.arange(len(Pnormed)), il, ir] = Pnormed
+#                fitted_parameters_normed.data[np.arange(len(Pnormed)),
+#                                              il, ir] = Pnormed
                 fitted_parameters_normed.data[np.append(idx_regressors_used,
                                                         np.arange(-(nadd), 0)),
                                               il, ir] = Pnormed
@@ -1285,7 +1547,11 @@ class TSOSuite:
                     calibrated_lightcurve = np.dot(design_matrix, P) / \
                                             np.dot(design_matrix,
                                                    Ptemp) - 1.0
-                calibrated_time_series.data[il, ir, :] = calibrated_lightcurve
+                calibrated_lightcurve =\
+                    np.ma.masked_invalid(calibrated_lightcurve)
+                calibrated_lightcurve.set_fill_value(0.0)
+                calibrated_time_series.data[il, ir, :] = \
+                    calibrated_lightcurve.filled()
                 # fit again for final normalized transit/eclipse depth
                 if add_calibration_signal:
                     final_lc_model = np.vstack([zcal, z]).T
@@ -1294,7 +1560,8 @@ class TSOSuite:
 
                 P_final, Perr_final, opt_reg_par_final, _, _, _ = \
                     solve_linear_equation(final_lc_model,
-                                          calibrated_lightcurve, weights,
+                                          calibrated_lightcurve.filled(),
+                                          weights,
                                           cv_method=cv_method,
                                           reg_par=reg_par)
                 # transit/eclipse signal
@@ -1418,23 +1685,18 @@ class TSOSuite:
                                  cubes. Aborting extraction of \
                                  planetary spectrum")
         try:
-            cleaned_data = self.cpm.cleaned_data
-            cleaned_data = np.ma.array(cleaned_data.data.value.copy(),
-                                       mask=cleaned_data.mask.copy())
-            if cleaned_data.ndim == 2:
-                cleaned_data = cleaned_data[:, None, :]
-            extraction_weights = np.ma.mean(cleaned_data, axis=2)
-            extraction_weights[extraction_weights < 0.0] = 0.0
+            extraction_weights = \
+                np.ma.mean(self.cpm.extraction_profile, axis=-1)
+            extraction_weigths_mask = \
+                np.ma.mean(self.cpm.extraction_profile_mask, axis=-1)
             extraction_weights = extraction_weights / \
                 np.ma.sum(extraction_weights, axis=1, keepdims=True)
-#            extraction_weights = np.ones_like(calibrated_error)
-#            extraction_weights = extraction_weights / \
-#                np.ma.sum(extraction_weights, axis=1, keepdims=True)
         except AttributeError as e:
             print(e)
             extraction_weights = np.ones_like(calibrated_error)
             extraction_weights = extraction_weights / \
                 np.ma.sum(extraction_weights, axis=1, keepdims=True)
+            extraction_weigths_mask = np.ones_like(calibrated_error)
 
         calibrated_weighted_image = calibrated_signal/calibrated_error**2
 
@@ -1459,19 +1721,24 @@ class TSOSuite:
         #                               calibrated_signal.mask)
         # calibrated_signal.mask = mask_temp
         # calibrated_error.mask = mask_temp
-        weighted_signal = np.ma.sum(calibrated_signal*extraction_weights /
+        weighted_signal = np.ma.sum(extraction_weigths_mask *
+                                    calibrated_signal * extraction_weights /
                                     calibrated_error**2, axis=1) / \
-            np.ma.sum(extraction_weights * np.ma.ones((npix, mpix)) /
+            np.ma.sum(extraction_weigths_mask * extraction_weights *
+                      np.ma.ones((npix, mpix)) /
                       calibrated_error**2, axis=1)
 
-        weighted_signal_error = np.ma.sum(extraction_weights**2, axis=1) / \
-            np.ma.sum(extraction_weights * np.ma.ones((npix, mpix)) /
+        weighted_signal_error = np.ma.sum(extraction_weigths_mask *
+                                          extraction_weights**2, axis=1) / \
+            np.ma.sum(extraction_weigths_mask * extraction_weights *
+                      np.ma.ones((npix, mpix)) /
                       calibrated_error**2, axis=1)
         weighted_signal_error = np.ma.sqrt(weighted_signal_error)
 
         weighted_signal_wavelength = \
             np.ma.average(wavelength_image, axis=1,
-                          weights=(extraction_weights *
+                          weights=(extraction_weigths_mask *
+                                   extraction_weights *
                                    np.ma.ones((npix, mpix)) /
                                    calibrated_error)**2)
         nintegrations = residual.shape[-1]
@@ -1480,7 +1747,8 @@ class TSOSuite:
 #                                    mask = residual.mask)
         weighted_residual = \
             np.ma.average(residual, axis=1,
-                          weights=(np.tile(extraction_weights.T,
+                          weights=(np.tile((extraction_weigths_mask *
+                                           extraction_weights).T,
                                            (nintegrations, 1, 1)).T *
                                    np.ma.ones((npix, mpix, nintegrations)) /
                                    np.tile(calibrated_error.copy().T,
@@ -1488,13 +1756,15 @@ class TSOSuite:
 
         weighted_normed_parameters = \
             np.ma.average(par_normed, axis=2,
-                          weights=(np.tile(extraction_weights,
+                          weights=(np.tile(extraction_weigths_mask *
+                                           extraction_weights,
                                            (par_normed.shape[0], 1, 1)) *
                                    np.ma.ones(par_normed.shape) /
                                    np.tile(calibrated_error.copy(),
                                            (par_normed.shape[0], 1, 1)))**2)
         weighted_aic = \
-            np.ma.average(aic, axis=1, weights=(extraction_weights *
+            np.ma.average(aic, axis=1, weights=(extraction_weigths_mask *
+                                                extraction_weights *
                                                 np.ma.ones((npix, mpix)) /
                                                 calibrated_error)**2)
 
@@ -1504,15 +1774,19 @@ class TSOSuite:
             # calibrated_cal_signal.mask = mask_temp
             # calibrated_cal_signal_error.mask = mask_temp
             weighted_cal_signal = np.ma.sum(calibrated_cal_signal *
+                                            extraction_weigths_mask *
                                             extraction_weights /
                                             calibrated_cal_signal_error**2,
                                             axis=1) / \
-                np.ma.sum(extraction_weights * np.ma.ones((npix, mpix)) /
+                np.ma.sum(extraction_weigths_mask * extraction_weights *
+                          np.ma.ones((npix, mpix)) /
                           calibrated_cal_signal_error**2, axis=1)
 
-            weighted_cal_signal_error = np.ma.sum(extraction_weights**2,
+            weighted_cal_signal_error = np.ma.sum(extraction_weigths_mask *
+                                                  extraction_weights**2,
                                                   axis=1) / \
-                np.ma.sum(extraction_weights * np.ma.ones((npix, mpix)) /
+                np.ma.sum(extraction_weigths_mask * extraction_weights *
+                          np.ma.ones((npix, mpix)) /
                           calibrated_cal_signal_error**2, axis=1)
             weighted_cal_signal_error = np.ma.sqrt(weighted_cal_signal_error)
 
@@ -1906,7 +2180,18 @@ class TSOSuite:
                                mask=results.spectrum.wavelength.mask)
         flux_temp = np.ma.array(results.spectrum.data.data.value,
                                 mask=results.spectrum.data.mask)
-
+        try:
+            wav_temp_corrected = \
+                np.ma.array(results.corrected_spectrum.wavelength.data.value,
+                            mask=results.corrected_spectrum.wavelength.mask)
+            flux_temp_corrected = \
+                np.ma.array(results.corrected_spectrum.data.data.value,
+                            mask=results.corrected_spectrum.data.mask)
+            err_temp_correced = \
+                np.ma.array(results.corrected_spectrum.uncertainty.data.value,
+                            mask=results.corrected_spectrum.uncertainty.mask)
+        except AttributeError:
+            pass
 #        with quantity_support():
         fig, ax = plt.subplots(figsize=(7, 4))
         for item in ([ax.title, ax.xaxis.label, ax.yaxis.label] +
@@ -1917,7 +2202,18 @@ class TSOSuite:
         ax.errorbar(wav_temp, flux_temp, yerr=err_temp,
                     fmt=".k", color='blue', lw=3, alpha=0.7, ecolor='blue',
                     markerfacecolor='blue', markeredgecolor='blue',
-                    fillstyle='full', markersize=10)
+                    fillstyle='full', markersize=10, label='Not-Corrected')
+        try:
+            ax.plot(wav_temp_corrected, flux_temp_corrected,
+                    lw=3, alpha=0.7, color='green')
+            ax.errorbar(wav_temp_corrected, flux_temp_corrected,
+                        yerr=err_temp_correced,
+                        fmt=".k", color='green', lw=3, alpha=0.7,
+                        ecolor='green',
+                        markerfacecolor='green', markeredgecolor='green',
+                        fillstyle='full', markersize=10, label='Corrected')
+        except NameError:
+            pass
         axes = plt.gca()
         axes.set_xlim([0.95*np.ma.min(wav_temp), 1.05*np.ma.max(wav_temp)])
         if transittype == 'secondary':
@@ -1931,6 +2227,7 @@ class TSOSuite:
                           spectrum.data_unit))
         ax.set_xlabel('Wavelength [{}]'.format(results.
                       spectrum.wavelength_unit))
+        ax.legend(loc='best')
         plt.show()
         fig.savefig(save_path+observations_id+'_exoplanet_spectra.png',
                     bbox_inches='tight')
@@ -1981,7 +2278,7 @@ class TSOSuite:
                         bbox_inches='tight')
 
         if add_calibration_signal:
-            # Bug FIX for errorbar not having quantaty support
+            # Bug FIX for errorbar not having quantity support
             wav_corr_temp = np.ma.array(results.calibration_correction.
                                         wavelength.data.value, mask=results.
                                         calibration_correction.mask)

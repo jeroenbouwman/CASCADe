@@ -190,9 +190,42 @@ RS = RobustScaler(with_scaling=True)
 RS.fit(cleaned_image_test_roi.T)
 X_scaled_masked = RS.transform(cleaned_image_test_roi.T)
 bla = np.ma.array(X_scaled_masked, mask=cleaned_image_test_roi.T.mask)
-plt.plot(np.ma.array(X_scaled_masked, mask=cleaned_image_test_roi.T.mask))
+plt.plot(bla)
 plt.plot(np.ma.median(bla, axis=1))
-plt.ylim([-4,4])
+plt.ylim([-4, 4])
+plt.show()
+
+RS = RobustScaler(with_scaling=True)
+RS.fit(image0.T)
+X_scaled_masked = RS.transform(image0.T)
+bla = np.ma.array(X_scaled_masked, mask=image0.T.mask)
+plt.plot(bla)
+plt.plot(np.ma.median(bla, axis=1))
+plt.ylim([-4, 4])
+plt.show()
+
+from astropy.convolution import Gaussian2DKernel, interpolate_replace_nans
+from astropy.convolution import Gaussian1DKernel
+kernel = tso.observation.instrument_calibration.convolution_kernel
+kernel_size = kernel.shape[0]
+kernel_1d = Gaussian1DKernel(0.2, x_size=kernel_size)
+kernel = np.repeat(np.expand_dims(kernel, axis=1),
+                    (kernel_size), axis=1)
+kernel = kernel*kernel_1d.array[:, None].T
+kernel = kernel/np.sum(kernel)
+
+image0b = np.ma.array(tso.observation.dataset.data.data.value.copy(),
+                      mask=tso.observation.dataset.mask)
+image0b.set_fill_value(np.nan)
+RS = RobustScaler(with_scaling=True)
+RS.fit(image0b.T)
+X_scaled_masked = RS.transform(image0b.T)
+bla = np.ma.array(X_scaled_masked, mask=image0b.T.mask)
+bla.set_fill_value(np.nan)
+bla2 = interpolate_replace_nans(bla.filled().T, kernel, boundary='extend')
+plt.plot(bla2.T)
+plt.plot(np.ma.median(bla2.T, axis=1))
+plt.ylim([-4, 4])
 plt.show()
 
 ################################################################
@@ -393,26 +426,15 @@ plt.show()
 # of averige signal
 tso.execute("correct_extracted_spectrum")
 
-####################################
-# TEST derived signal correction
-####################################
-ndim_reg, ndim_lam = tso.exoplanet_spectrum.weighted_normed_parameters.shape
-ndim_diff = ndim_reg - ndim_lam
-W = (tso.exoplanet_spectrum.weighted_normed_parameters[:-ndim_diff, :] /
-     np.ma.sum(tso.exoplanet_spectrum.weighted_normed_parameters[:-1, :],
-               axis=0)).T
-K = W - np.identity(W.shape[0])
-K.set_fill_value(0.0)
-weighted_signal = tso.exoplanet_spectrum.weighted_signal.copy()
-weighted_signal.set_fill_value(0.0)
+################################################
+# Read resuls from literature/other methods
+################################################
+wavelength_corrected_spectrum = (tso.exoplanet_spectrum.corrected_spectrum.
+                                 wavelength)
+corrected_spectrum = (tso.exoplanet_spectrum.corrected_spectrum.data)
 
-corrected_spectrum = np.dot(pinv2(K.filled(), rcond=1.e-3),
-                            -weighted_signal.filled())
-corrected_spectrum = corrected_spectrum-np.ma.median(corrected_spectrum)
-median_eclipse_depth = \
-    float(tso.cascade_parameters.observations_median_signal)
-corrected_spectrum = (corrected_spectrum * (1.0 + median_eclipse_depth) +
-                      median_eclipse_depth)*100
+error_corrected_spectrum = (tso.exoplanet_spectrum.corrected_spectrum.
+                            uncertainty)
 
 path_old = '/home/bouwman/SST_OBSERVATIONS/projects_HD189733/REDUCED_DATA/'
 spec_instr_model_ian = ascii.read(path_old+'results_ian.dat', data_start=1)
@@ -421,7 +443,8 @@ flux_ian = (spec_instr_model_ian['depthA'] *
             u.dimensionless_unscaled).to(u.percent)
 error_ian = (spec_instr_model_ian['errorA'] *
              u.dimensionless_unscaled).to(u.percent)
-fig, ax = plt.subplots(figsize=(13, 9))
+
+fig, ax = plt.subplots(figsize=(10, 7))
 for item in ([ax.title, ax.xaxis.label, ax.yaxis.label] +
              ax.get_xticklabels() + ax.get_yticklabels()):
     item.set_fontsize(20)
@@ -440,13 +463,12 @@ ax.errorbar(tso.exoplanet_spectrum.spectrum.wavelength.data.value,
             markerfacecolor='blue',
             markeredgecolor='blue', fillstyle='full', markersize=10,
             zorder=4)
-ax.plot(tso.exoplanet_spectrum.corrected_spectrum.wavelength,
-        tso.exoplanet_spectrum.corrected_spectrum.data,
+ax.plot(wavelength_corrected_spectrum,
+        corrected_spectrum,
         lw=3, zorder=6, color='green')
-ax.errorbar(tso.exoplanet_spectrum.corrected_spectrum.wavelength.data.value,
-            tso.exoplanet_spectrum.corrected_spectrum.data.data.value,
-            yerr=tso.exoplanet_spectrum.corrected_spectrum.
-            uncertainty.data.value,
+ax.errorbar(wavelength_corrected_spectrum.data.value,
+            corrected_spectrum.data.value,
+            yerr=error_corrected_spectrum.data.value,
             fmt=".k", color='green', lw=3, alpha=0.5, ecolor='green',
             markerfacecolor='green',
             markeredgecolor='green', fillstyle='full', markersize=10,

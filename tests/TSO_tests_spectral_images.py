@@ -19,7 +19,8 @@ import seaborn as sns
 import warnings
 from scipy.io import readsav
 from skimage.feature import register_translation
-from scipy.linalg import pinv2
+# from scipy.linalg import pinv2
+from time import sleep
 
 warnings.simplefilter("ignore")
 
@@ -32,7 +33,7 @@ tso = cascade.TSO.TSOSuite()
 
 # initialization with ini files
 path = cascade.initialize.default_initialization_path
-tso = cascade.TSO.TSOSuite("cascade_test_cpm.ini",
+tso = cascade.TSO.TSOSuite("cascade_test_cpm2.ini",
                            "cascade_test_object.ini",
                            "cascade_test_data_spectral_images2.ini", path=path)
 print(tso.cascade_parameters)
@@ -56,13 +57,14 @@ assert tso.cascade_parameters.isInitialized is False
 # create TSO object and initialize providing ini files
 tso = cascade.TSO.TSOSuite()
 path = cascade.initialize.default_initialization_path
-tso.execute("initialize", "cascade_test_cpm.ini", "cascade_test_object.ini",
+tso.execute("initialize", "cascade_test_cpm2.ini", "cascade_test_object.ini",
             "cascade_test_data_spectral_images2.ini", path=path)
 print(tso.cascade_parameters)
 print(cascade.initialize.cascade_configuration)
 print(tso.cascade_parameters.isInitialized)
 assert tso.cascade_parameters == cascade.initialize.cascade_configuration
 assert tso.cascade_parameters.isInitialized is True
+sleep(1.0)
 
 # load data
 tso.execute("load_data")
@@ -215,6 +217,14 @@ assert tso.observation.dataset.isSigmaCliped is True
 # create a cleaned version of the spectral data
 tso.execute("create_cleaned_dataset")
 
+extracted_spectra = np.ma.sum(tso.cpm.cleaned_data, axis=1)
+extracted_spectra.set_fill_value(np.nan)
+with quantity_support():
+    plt.plot(extracted_spectra.filled())
+    plt.title("1D spectra based on cleaned data")
+    plt.show()
+
+
 # determine position of source from data set
 tso.execute("determine_source_position")
 
@@ -352,6 +362,45 @@ plt.show()
 # optimally extract spectrum of target star
 tso.execute("optimal_extraction")
 
+assert hasattr(tso.cpm, 'extraction_profile') is True
+
+extracted_spectra = tso.observation.dataset_optimal_extracted.data
+time = tso.observation.dataset_optimal_extracted.time
+wavelength = tso.observation.dataset_optimal_extracted.wavelength
+cleaned_data = tso.cpm.cleaned_data
+cleaned_data.set_fill_value(np.NaN)
+
+mean_wavelength = np.ma.mean(wavelength, axis=1)
+mean_wavelength.set_fill_value(np.NaN)
+mean_time = np.ma.mean(time, axis=0)
+mean_time.set_fill_value(np.NaN)
+mean_spectra2 = np.ma.mean(extracted_spectra, axis=1)
+mean_spectra2.set_fill_value(np.NaN)
+
+with quantity_support():
+    fig, ax = plt.subplots(figsize=(7, 5))
+    ax.plot(mean_time.filled(),
+            np.ma.mean(np.ma.sum(cleaned_data, axis=1), axis=0),
+            color='gray', lw=3, label='Tapered')
+    ax.plot(mean_time.filled(),
+            np.ma.mean(extracted_spectra, axis=0).filled(), lw=3,
+            alpha=0.6, color='red', label='Optimal')
+    ax.legend(loc='best')
+    ax.set_title('Comparison optimal and tapered extraction')
+    ax.set_xlabel('Phase')
+    plt.show()
+with quantity_support():
+    fig, ax = plt.subplots(figsize=(7, 5))
+    ax.plot(mean_wavelength.filled(),
+            np.ma.mean(np.ma.sum(cleaned_data, axis=1).filled(), axis=1),
+            color='gray', lw=3, label='Tapered')
+    ax.plot(mean_wavelength.filled(),
+            mean_spectra2.filled(), lw=3,
+            alpha=0.6, color='red', label='Optimal')
+    ax.legend(loc='best')
+    ax.set_title('Comparison optimal and tapered extraction')
+    plt.show()
+
 # setup regressors
 tso.execute("select_regressors")
 
@@ -471,7 +520,7 @@ plt.show()
 
 print(tso.model.transit_timing)
 assert tso.model.transit_timing == [0.4827232723272327, 0.5172767276727672]
-
+sleep(1.0)
 
 # create calibrated time series and derive planetary signal
 tso.execute("calibrate_timeseries")
@@ -535,26 +584,11 @@ plt.show()
 # of averige signal
 tso.execute("correct_extracted_spectrum")
 
-####################################
-# TEST derived signal correction
-####################################
-ndim_reg, ndim_lam = tso.exoplanet_spectrum.weighted_normed_parameters.shape
-ndim_diff = ndim_reg - ndim_lam
-W = (tso.exoplanet_spectrum.weighted_normed_parameters[:-ndim_diff, :] /
-     np.ma.sum(tso.exoplanet_spectrum.weighted_normed_parameters[:-1, :],
-               axis=0)).T
-K = W - np.identity(W.shape[0])
-K.set_fill_value(0.0)
-weighted_signal = tso.exoplanet_spectrum.weighted_signal.copy()
-weighted_signal.set_fill_value(0.0)
-
-corrected_spectrum = np.dot(pinv2(K.filled(), rcond=1.e-3),
-                            -weighted_signal.filled())
-corrected_spectrum = corrected_spectrum-np.ma.median(corrected_spectrum)
-median_eclipse_depth = \
-    float(tso.cascade_parameters.observations_median_signal)
-corrected_spectrum = (corrected_spectrum * (1.0 + median_eclipse_depth) +
-                      median_eclipse_depth)*100
+wavelength_corrected_spectrum = \
+    tso.exoplanet_spectrum.corrected_spectrum.wavelength
+corrected_spectrum = tso.exoplanet_spectrum.corrected_spectrum.data
+error_corrected_spectrum = \
+    tso.exoplanet_spectrum.corrected_spectrum.uncertainty
 
 path_old = '/home/bouwman/SST_OBSERVATIONS/projects_HD189733/REDUCED_DATA/'
 spec_instr_model_ian = ascii.read(path_old+'results_ian.dat', data_start=1)
@@ -582,11 +616,11 @@ ax.errorbar(tso.exoplanet_spectrum.spectrum.wavelength.data.value,
             markerfacecolor='blue',
             markeredgecolor='blue', fillstyle='full', markersize=10,
             zorder=4)
-ax.plot(tso.exoplanet_spectrum.spectrum.wavelength, corrected_spectrum,
+ax.plot(wavelength_corrected_spectrum, corrected_spectrum,
         lw=3, zorder=6, color='green')
-ax.errorbar(tso.exoplanet_spectrum.spectrum.wavelength.data.value,
-            corrected_spectrum,
-            yerr=tso.exoplanet_spectrum.spectrum.uncertainty.data.value,
+ax.errorbar(wavelength_corrected_spectrum.data.value,
+            corrected_spectrum.data.value,
+            yerr=error_corrected_spectrum.data.value,
             fmt=".k", color='green', lw=3, alpha=0.5, ecolor='green',
             markerfacecolor='green',
             markeredgecolor='green', fillstyle='full', markersize=10,

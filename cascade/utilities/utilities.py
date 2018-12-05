@@ -9,8 +9,71 @@ This Module defines some utility functions used in cascade
 import numpy as np
 import os
 import fnmatch
+from astropy.io import fits
 
-__all__ = ['find','spectres']
+__all__ = ['write_timeseries_to_fits', 'find', 'spectres']
+
+
+def write_timeseries_to_fits(data, path):
+    """
+    Write spectral timeseries data object to fits files
+    """
+    ndim = data.data.ndim
+    ntime = data.data.shape[-1]
+    try:
+        dataFiles = data.dataFiles
+    except AttributeError:
+        if ndim == 2:
+            fileBase = "spectrum"
+        elif ndim == 3:
+            fileBase = "image"
+        else:
+            fileBase = "image_cube"
+        dataFiles = [fileBase+"_{}.fits".format(it) for it in range(ntime)]
+
+    if ndim == 2:
+        for itime, fileName in enumerate(dataFiles):
+            hdr = fits.Header()
+            try:
+                hdr['TARGET'] = data.target_name
+            except AttributeError:
+                pass
+            hdr['COMMENT'] = "Created by CASCADe pipeline"
+            hdr['PHASE'] = np.ma.mean(data.time[..., itime]).value
+            try:
+                hdr['TIME_BJD'] = np.ma.mean(data.time_bjd[..., itime]).value
+                hdr['TBJDUNIT'] = data.time_bjd_unit.to_string()
+            except AttributeError:
+                pass
+            try:
+                hdr['POSITION'] = np.ma.mean(data.position[..., itime]).value
+                hdr['PUNIT'] = data.position_unit.to_string()
+            except AttributeError:
+                pass
+            try:
+                hdr['MEDPOS'] = float(data.median_position)
+                hdr['MPUNIT'] = data.position_unit.to_string()
+            except AttributeError:
+                pass
+            primary_hdu = fits.PrimaryHDU(header=hdr)
+            hdu = fits.BinTableHDU.from_columns(
+                    [fits.Column(name='LAMBDA', format='D',
+                                 unit=data.wavelength_unit.to_string(),
+                                 array=data.wavelength.data.value[..., itime]),
+                     fits.Column(name='FLUX', format='D',
+                                 unit=data.data_unit.to_string(),
+                                 array=data.data.data.value[..., itime]),
+                     fits.Column(name='FERROR', format='D',
+                                 unit=data.data_unit.to_string(),
+                                 array=data.uncertainty.data.value[..., itime]),
+                     fits.Column(name='MASK', format='L',
+                                 array=data.mask[..., itime])
+                     ])
+
+            hdul = fits.HDUList([primary_hdu, hdu])
+            hdul.writeto(os.path.join(path, fileName), overwrite=True)
+    elif ndim > 2:
+        pass
 
 
 def find(pattern, path):

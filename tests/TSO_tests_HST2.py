@@ -10,10 +10,10 @@ import pandas as pd
 from pandas.plotting import autocorrelation_plot
 import seaborn as sns
 from cascade.utilities import spectres
-from astropy.convolution import Box1DKernel, convolve
-from astropy.stats import sigma_clip
+# from astropy.convolution import Box1DKernel, convolve
+# from astropy.stats import sigma_clip
 from sklearn.preprocessing import RobustScaler
-from scipy.linalg import pinv2
+# from scipy.linalg import pinv2
 from time import sleep
 import warnings
 
@@ -29,9 +29,10 @@ tso.execute("reset")
 
 # initialization with ini files
 path = cascade.initialize.default_initialization_path
-tso = cascade.TSO.TSOSuite("initialize", "cascade_test_HST_cpm_spectra_coe.ini",
-                           "cascade_test_HST_object.ini",
-                           "cascade_test_HST_data_spectra_coe.ini", path=path)
+tso = cascade.TSO.TSOSuite("initialize",
+                           "cascade_test_HST_cpm_spectra2_coe.ini",
+                           "cascade_test_HST_object2.ini",
+                           "cascade_test_HST_data_spectra2_coe.ini", path=path)
 
 print(tso.cascade_parameters)
 print(cascade.initialize.cascade_configuration)
@@ -60,12 +61,13 @@ plt.ylabel("Wavelength")
 plt.title('Science data')
 plt.show()
 
+
 time = tso.observation.dataset.time[80, :].copy()
 time.set_fill_value(np.nan)
 flux = tso.observation.dataset.data[80, :].copy()
 flux.set_fill_value(np.nan)
 with quantity_support():
-    plt.plot(time.filled(),flux.filled())
+    plt.plot(time.filled(), flux.filled())
     plt.show()
 wavelength = tso.observation.dataset.wavelength[:, 0].copy()
 wavelength.set_fill_value(np.nan)
@@ -78,8 +80,7 @@ with quantity_support():
 print(tso.observation.dataset.time.data.shape)
 print(type(tso.observation.dataset.time.data))
 print(tso.observation.dataset.time.data.unit)
-assert tso.observation.dataset.time.data.shape == (128, 274)
-#assert tso.observation.dataset.time.data.shape == (129, 274)
+assert tso.observation.dataset.time.data.shape == (256, 484)
 assert type(tso.observation.dataset.time.data) == u.quantity.Quantity
 assert tso.observation.dataset.time.data.unit == u.dimensionless_unscaled
 
@@ -333,17 +334,14 @@ RS = RobustScaler(with_scaling=True)
 RS.fit(tso.model.light_curve_interpolated[0][80, :].reshape(-1, 1))
 X_scaled = \
   RS.transform(tso.model.light_curve_interpolated[0][80, :].reshape(-1, 1))
-
-mean_data = np.ma.array(tso.cpm.cleaned_data.data.value,
-                        mask=tso.cpm.cleaned_data.mask)
-mean_data = np.ma.mean(mean_data, axis=0)
+mean_data = np.ma.mean(tso.cpm.cleaned_data, axis=0)
 mean_data.set_fill_value(np.NaN)
 RS = RobustScaler(with_scaling=True)
 RS.fit(mean_data.filled().reshape(-1, 1))
 X2_scaled = \
   RS.transform(mean_data.filled().reshape(-1, 1))
 
-plt.plot(tso.observation.dataset.time.data[80, :], X_scaled.squeeze()*0.78,
+plt.plot(tso.observation.dataset.time.data[80, :], X_scaled.squeeze()*0.88,
          lw=3, alpha=0.6, color='blue', label='Model')
 plt.plot(tso.observation.dataset.time.data[80, :], X2_scaled.squeeze(), lw=3,
          alpha=0.6, color='red', label='Data')
@@ -413,39 +411,36 @@ tso.execute("correct_extracted_spectrum")
 ##############################
 # Read resuls from literature
 ##############################
-path_old = '/home/bouwman/'
-spec_instr_model_mandell = ascii.read(path_old+'WASP19b_mandell.txt',
+path_old = '/home/bouwman//'
+
+corrections_wasp12_stevenson = ascii.read(path_old+'WASP12b_corrections.txt',
+                                      data_start=1)
+wave_correction = (corrections_wasp12_stevenson['col1']*u.micron +
+                   corrections_wasp12_stevenson['col2']*u.micron)/2.0
+corection_signal = (1.0 +
+                    corrections_wasp12_stevenson['col5']+
+                    corrections_wasp12_stevenson['col7'])
+corrected_signal_stevenson2014 = corrections_wasp12_stevenson['col9']*1.02
+error_corrected_signal_stevenson2014 = corrections_wasp12_stevenson['col10']*1.02
+
+spec_instr_model_mandell = ascii.read(path_old+'WASP12b_mandell.txt',
                                       data_start=0)
 wave_mandell = (spec_instr_model_mandell['col1']*u.micron)
 flux_mandell = (spec_instr_model_mandell['col2']*u.percent)
 error_mandell = (spec_instr_model_mandell['col3']*u.percent)
 
-# =============================================================================
-#
-# tso.exoplanet_spectrum.spectrum.wavelength_unit = u.micrometer
-# mask_use = tso.exoplanet_spectrum.spectrum.wavelength.mask
-# box_1D_kernel = Box1DKernel(6)
-# conv_spec = convolve(tso.exoplanet_spectrum.spectrum.data.data.value,
-#                      box_1D_kernel,
-#                      boundary='extend')
-# filtered_data = sigma_clip(tso.exoplanet_spectrum.spectrum.data.data.value -
-#                            conv_spec, sigma=4, iters=5)
-# mask_use = mask_use | filtered_data.mask
-# rebinned_wave = \
-#     tso.exoplanet_spectrum.spectrum.wavelength.data.value[~mask_use][4:-4:6]
-# rebinned_spec, rebinned_error = \
-#     spectres(rebinned_wave,
-#              tso.exoplanet_spectrum.spectrum.wavelength.data.value[~mask_use],
-#              tso.exoplanet_spectrum.spectrum.data.data.value[~mask_use],
-#              spec_errs=tso.exoplanet_spectrum.spectrum.uncertainty.
-#              data.value[~mask_use])
-# =============================================================================
+path_old = '/home/bouwman//'
+spec_instr_model_tsiaras = ascii.read(path_old+'wasp12b_tsiaras.txt',
+                                      data_start=0)
+wave_tsiaras = (spec_instr_model_tsiaras['col1']*u.micron)
+flux_tsiaras = (spec_instr_model_tsiaras['col2']*100*u.percent)
+error_tsiaras = (spec_instr_model_tsiaras['col3']*100*u.percent)
 
 # tso.exoplanet_spectrum.spectrum.wavelength_unit = u.micrometer
 mask_use = tso.exoplanet_spectrum.spectrum.wavelength.mask
-# rebin to same resolution as published result
+
 rebinned_wave = \
-    tso.exoplanet_spectrum.spectrum.wavelength.data.value[~mask_use][3:-4:6]
+    tso.exoplanet_spectrum.spectrum.wavelength.data.value[~mask_use][4:-3:6]
 rebinned_spec, rebinned_error = \
     spectres(rebinned_wave,
              tso.exoplanet_spectrum.spectrum.wavelength.data.value[~mask_use],
@@ -462,45 +457,66 @@ corrected_rebinned_spec, corrected_rebinned_error = \
              spec_errs=tso.exoplanet_spectrum.corrected_spectrum.uncertainty.
              data.value[~mask_use])
 
+from scipy import interpolate
+f = interpolate.interp1d(wave_correction.value, corection_signal,
+                         fill_value='extrapolate')
+corrected_rebinned_spec = corrected_rebinned_spec*f(rebinned_wave)/1.03
+corrected_rebinned_error = corrected_rebinned_error*f(rebinned_wave)/1.03
+rebinned_spec = rebinned_spec*f(rebinned_wave)/1.03
+rebinned_error = rebinned_error*f(rebinned_wave)/1.03
 
 fig, ax = plt.subplots(figsize=(7, 5))
 for item in ([ax.title, ax.xaxis.label, ax.yaxis.label] +
              ax.get_xticklabels() + ax.get_yticklabels()):
     item.set_fontsize(20)
-ax.plot(rebinned_wave, rebinned_spec, color="black", lw=2, alpha=0.9)
+ax.plot(rebinned_wave, rebinned_spec, color="black", lw=5, alpha=0.9,
+        zorder=5)
 ax.errorbar(rebinned_wave, rebinned_spec, yerr=rebinned_error,
-            fmt=".k", color="black", lw=2,
+            fmt=".k", color="black", lw=5,
             alpha=0.9, ecolor="black",
             markeredgecolor='black', fillstyle='full', markersize=10,
-            markerfacecolor='black', zorder=3)
-ax.plot(wave_mandell, flux_mandell, color="r", lw=4, alpha=0.9, zorder=4)
-ax.errorbar(wave_mandell.value, flux_mandell.value, yerr=error_mandell.value,
-            fmt=".k", color="r", lw=4,
+            markerfacecolor='black', zorder=5)
+ax.plot(wave_correction, corrected_signal_stevenson2014,
+        color="red", lw=5, alpha=0.9, zorder=4)
+ax.errorbar(wave_correction.value, corrected_signal_stevenson2014,
+            yerr=error_corrected_signal_stevenson2014,
+            fmt=".k", color="r", lw=5,
             alpha=0.9, ecolor="r",
             markeredgecolor='r', fillstyle='full', markersize=10,
             markerfacecolor='r', zorder=4)
-#ax.plot(tso.exoplanet_spectrum.spectrum.wavelength,
-#        tso.exoplanet_spectrum.spectrum.data-2, lw=3, alpha=0.5, color='blue')
-#ax.errorbar(tso.exoplanet_spectrum.spectrum.wavelength.data.value,
+ax.plot(wave_mandell, flux_mandell, color="r", lw=5, alpha=0.9, zorder=4)
+#ax.errorbar(wave_mandell.value, flux_mandell.value, yerr=error_mandell.value,
+#            fmt=".k", color="r", lw=5,
+#            alpha=0.9, ecolor="r",
+#            markeredgecolor='r', fillstyle='full', markersize=10,
+#            markerfacecolor='r', zorder=4)
+#ax.plot(wave_tsiaras, flux_tsiaras, color="y", lw=5, alpha=0.9, zorder=3)
+#ax.errorbar(wave_tsiaras.value, flux_tsiaras.value, yerr=error_tsiaras.value,
+#            fmt=".k", color="y", lw=5,
+#            alpha=0.9, ecolor="y",
+#            markeredgecolor='y', fillstyle='full', markersize=10,
+#            markerfacecolor='y', zorder=3)
+# ax.plot(tso.exoplanet_spectrum.spectrum.wavelength,
+#        tso.exoplanet_spectrum.spectrum.data, lw=3, alpha=0.5, color='gray',
+#        zorder=2)
+# ax.errorbar(tso.exoplanet_spectrum.spectrum.wavelength.data.value,
 #            tso.exoplanet_spectrum.spectrum.data.data.value,
 #            yerr=tso.exoplanet_spectrum.spectrum.uncertainty.data.value,
-#            fmt=".k", color='blue', lw=3, alpha=0.5, ecolor='blue',
-#            markerfacecolor='blue',
-#            markeredgecolor='blue', fillstyle='full', markersize=10,
-#            zorder=4)
-#ax.plot(tso.exoplanet_spectrum.spectrum.wavelength, corrected_spectrum,
-#        lw=3, zorder=6, color='green')
+#            fmt=".k", color='gray', lw=3, alpha=0.5, ecolor='gray',
+#            markerfacecolor='gray',
+#            markeredgecolor='gray', fillstyle='full', markersize=10,
+#            zorder=2)
 ax.plot(rebinned_wave, corrected_rebinned_spec, color="green", lw=4,
-        alpha=0.9, zorder=5)
+        alpha=0.9, zorder=6)
 ax.errorbar(rebinned_wave, corrected_rebinned_spec,
             yerr=corrected_rebinned_error,
             fmt=".k", color="green", lw=4,
             alpha=0.9, ecolor="green",
             markeredgecolor='green', fillstyle='full', markersize=10,
-            markerfacecolor='green', zorder=5)
+            markerfacecolor='green', zorder=6)
 axes = plt.gca()
 axes.set_xlim([1.1, 1.7])
-axes.set_ylim([1.9, 2.2])
+axes.set_ylim([1.25, 1.55])
 ax.set_ylabel('Transit depth')
 ax.set_xlabel('Wavelength')
 plt.show()

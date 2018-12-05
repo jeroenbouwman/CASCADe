@@ -22,6 +22,7 @@ from astropy import coordinates as coord
 from astropy.wcs import WCS
 from astropy.stats import sigma_clipped_stats
 from astropy.convolution import Gaussian2DKernel, interpolate_replace_nans
+from astropy.convolution import Gaussian1DKernel
 from photutils import IRAFStarFinder
 import pandas as pd
 from scipy import interpolate
@@ -50,6 +51,7 @@ class Observation(object):
         self.__check_observation_type()
         observations = self.__do_observations(observatory_name)
         self.dataset = observations.data
+        self.dataset_parameters = observations.par
         if hasattr(observations, 'data_background'):
             self.dataset_background = observations.data_background
         self.observatory = observations.name
@@ -182,12 +184,14 @@ class HSTWFC3(InstrumentBase):
     the Hubble Space Telescope
     """
 
-    __valid_sub_array = {'IRSUB128', 'IRSUB256', 'IRSUB512'}
+    __valid_sub_array = {'IRSUB128', 'IRSUB256', 'IRSUB512', 'GRISM128',
+                         'GRISM512'}
     __valid_spectroscopic_filter = {'G141'}
-    __valid_imaging_filter = {'F139M', 'F132N'}
+    __valid_imaging_filter = {'F139M', 'F132N', 'F167N'}
     __valid_beams = {'A'}
     __valid_data = {'SPECTRUM', 'SPECTRAL_IMAGE'}
     __valid_observing_strategy = {'STARING'}
+    __valid_data_products = {'SPC', 'flt', 'COE'}
 
     def __init__(self):
 
@@ -250,6 +254,7 @@ class HSTWFC3(InstrumentBase):
         obs_cal_path = cascade_configuration.observations_cal_path
         obs_id = cascade_configuration.observations_id
         obs_cal_version = cascade_configuration.observations_cal_version
+        obs_data_product = cascade_configuration.observations_data_product
         obs_target_name = cascade_configuration.observations_target_name
         obs_has_backgr = ast.literal_eval(cascade_configuration.
                                           observations_has_background)
@@ -299,6 +304,11 @@ class HSTWFC3(InstrumentBase):
                      check your init file for the following \
                      valid types: {}. Aborting loading \
                      data".format(self.__valid_beams))
+        if not (obs_data_product in self.__valid_data_products):
+            raise ValueError("Data product not recognized, \
+                     check your init file for the following \
+                     valid types: {}. Aborting loading \
+                     data".format(self.__valid_data_products))
         par = collections.OrderedDict(inst_inst_name=inst_inst_name,
                                       inst_filter=inst_filter,
                                       inst_cal_filter=inst_cal_filter,
@@ -313,6 +323,7 @@ class HSTWFC3(InstrumentBase):
                                       obs_cal_path=obs_cal_path,
                                       obs_id=obs_id,
                                       obs_cal_version=obs_cal_version,
+                                      obs_data_product=obs_data_product,
                                       obs_target_name=obs_target_name,
                                       obs_has_backgr=obs_has_backgr,
                                       obs_uses_backgr_model=obs_uses_backgr_model)
@@ -338,7 +349,8 @@ class HSTWFC3(InstrumentBase):
                                      self.par['inst_inst_name'],
                                      target_name,
                                      'SPECTRA/')
-        data_files = find(self.par['obs_id'] + '*.SPC.fits', path_to_files)
+        data_files = find(self.par['obs_id'] + '*' +
+                          self.par['obs_data_product']+'.fits', path_to_files)
 
         # number of integrations
         nintegrations = len(data_files)
@@ -354,7 +366,10 @@ class HSTWFC3(InstrumentBase):
         spectral_data = np.zeros((nwavelength, nintegrations))
         uncertainty_spectral_data = np.zeros((nwavelength, nintegrations))
         wavelength_data = np.zeros((nwavelength, nintegrations))
+        mask = np.ma.make_mask_none(spectral_data.shape)
+        position = np.zeros((nintegrations))
         time = np.zeros((nintegrations))
+        phase = np.zeros((nintegrations))
         for im, spectral_data_file in enumerate(tqdm(data_files,
                                                      dynamic_ncols=True)):
             # WARNING fits data is single precision!!
@@ -362,42 +377,73 @@ class HSTWFC3(InstrumentBase):
             spectral_data[:, im] = spectrum['FLUX']
             uncertainty_spectral_data[:, im] = spectrum['FERROR']
             wavelength_data[:, im] = spectrum['LAMBDA']
-            exptime = fits.getval(spectral_data_file, "EXPTIME", ext=0)
-            expstart = fits.getval(spectral_data_file, "EXPSTART", ext=0)
-            time[im] = expstart + 0.5*(exptime/(24.0*3600.0))
-
+            try:
+                mask[:, im] = spectrum['MASK']
+            except:
+                pass
+            try:
+                position[im] = fits.getval(spectral_data_file, "POSITION",
+                                           ext=0)
+            except KeyError:
+                pass
+            try:
+                phase[im] = fits.getval(spectral_data_file, "PHASE", ext=0)
+                hasPhase = True
+            except KeyError:
+                hasPhase = False
+            try:
+                time[im] = fits.getval(spectral_data_file, "TIME_BJD", ext=0)
+                hasTimeBJD = True
+            except KeyError:
+                hasTimeBJD = False
+                exptime = fits.getval(spectral_data_file, "EXPTIME", ext=0)
+                expstart = fits.getval(spectral_data_file, "EXPSTART", ext=0)
+                time[im] = expstart + 0.5*(exptime/(24.0*3600.0))
+# BUG FIX
+#        if hasPhase:
+#            idx = np.argsort(phase)
+#        else:
         idx = np.argsort(time)
         time = time[idx]
         spectral_data = spectral_data[:, idx]
         uncertainty_spectral_data = uncertainty_spectral_data[:, idx]
         wavelength_data = wavelength_data[:, idx]
+        mask = mask[:, idx]
         data_files = [data_files[i] for i in idx]
+        phase = phase[idx]
+        position = position[idx]
 
-        # convert to BJD
-        ra_target = fits.getval(data_files[0], "RA_TARG")
-        dec_target = fits.getval(data_files[0], "DEC_TARG")
-        target_coord = coord.SkyCoord(ra_target, dec_target,
-                                      unit=(u.deg, u.deg), frame='icrs')
-        time_obs = Time(time, format='mjd', scale='utc',
-                        location=('0d', '0d'))
-        ltt_bary_jpl = time_obs.light_travel_time(target_coord,
-                                                  ephemeris='jpl')
-        time_barycentre = time_obs.tdb + ltt_bary_jpl
-        time = time_barycentre.jd
+        if (not hasTimeBJD) and (not hasPhase):
+            # convert to BJD
+            ra_target = fits.getval(data_files[0], "RA_TARG")
+            dec_target = fits.getval(data_files[0], "DEC_TARG")
+            target_coord = coord.SkyCoord(ra_target, dec_target,
+                                          unit=(u.deg, u.deg), frame='icrs')
+            time_obs = Time(time, format='mjd', scale='utc',
+                            location=('0d', '0d'))
+            ltt_bary_jpl = time_obs.light_travel_time(target_coord,
+                                                      ephemeris='jpl')
+            time_barycentre = time_obs.tdb + ltt_bary_jpl
+            time = time_barycentre.jd
 
-        # orbital phase
-        phase = (time - self.par['obj_ephemeris']) / self.par['obj_period']
-        phase = phase - np.int(np.max(phase))
-        if np.max(phase) < 0.0:
-            phase = phase + 1.0
+        if not hasPhase:
+            # orbital phase
+            phase = (time - self.par['obj_ephemeris']) / self.par['obj_period']
+            phase = phase - np.int(np.max(phase))
+            if np.max(phase) < 0.0:
+                phase = phase + 1.0
 
         # set the units of the observations
-        flux_unit = u.Unit("erg cm-2 s-1 Angstrom-1")
-        wave_unit = u.Unit('Angstrom')
+        if self.par['obs_data_product'] == 'COE':
+            flux_unit = u.Unit("electron/s")
+            wave_unit = u.Unit('micron')
+            time_unit = u.day
+        else:
+            flux_unit = u.Unit("erg cm-2 s-1 Angstrom-1")
+            wave_unit = u.Unit('Angstrom')
+            time_unit = u.day
 
-        mask = np.ma.make_mask_none(spectral_data.shape)
-
-        position = np.zeros_like(spectral_data)
+        time = time * time_unit
 
         self._define_convolution_kernel()
 
@@ -409,9 +455,11 @@ class HSTWFC3(InstrumentBase):
                                    uncertainty=uncertainty_spectral_data,
                                    time=phase,
                                    mask=mask,
+                                   time_bjd=time,
                                    position=position,
                                    isRampFitted=True,
-                                   isNodded=False)
+                                   isNodded=False,
+                                   dataFiles=data_files)
         return SpectralTimeSeries
 
     def get_spectral_images(self, is_background=False):
@@ -430,7 +478,8 @@ class HSTWFC3(InstrumentBase):
                                      self.par['inst_inst_name'],
                                      target_name,
                                      'SPECTRAL_IMAGES/')
-        data_files = find(self.par['obs_id'] + '*_flt.fits', path_to_files)
+        data_files = find(self.par['obs_id'] + '*_' +
+                          self.par['obs_data_product']+'.fits', path_to_files)
 
         # check if time series data can be found
         if len(data_files) < 2:
@@ -510,7 +559,8 @@ class HSTWFC3(InstrumentBase):
         nintegrations, mpix, npix = spectral_image_cube.shape
         nintegrations_cal, ypix_cal, xpix_cal = calibration_image_cube.shape
 
-        mask = (spectral_image_dq_cube != 0)
+        mask = ((spectral_image_dq_cube != 0) &
+                (spectral_image_dq_cube != 8192))
 
         # convert to BJD
         ra_target = fits.getval(spectral_data_files[0], "RA_TARG")
@@ -556,6 +606,9 @@ class HSTWFC3(InstrumentBase):
         spectral_image_unc_cube = spectral_image_unc_cube.T * flux_unit
         mask = mask.T
 
+        time_unit = u.day
+        time = time * time_unit
+
         # position = self.wfc3_cal.relative_source_shift['cross_disp_shift']
         # position = -position-np.median(-position)
 
@@ -568,7 +621,8 @@ class HSTWFC3(InstrumentBase):
                                    # position=position,
                                    time_bjd=time,
                                    isRampFitted=True,
-                                   isNodded=False)
+                                   isNodded=False,
+                                   dataFiles=spectral_data_files)
         if is_background and self.par['obs_uses_backgr_model']:
             self._get_background_cal_data()
             SpectralTimeSeries = self._fit_background(SpectralTimeSeries)
@@ -579,7 +633,11 @@ class HSTWFC3(InstrumentBase):
         Define the instrument specific convolution kernel which will be used
         in the correction procedure of bad pixels
         """
-        kernel = Gaussian2DKernel(x_stddev=0.2, y_stddev=3.0, theta=-0.0)
+        if self.par["obs_data"] == 'SPECTRUM':
+            kernel = Gaussian1DKernel(2.0, x_size=13)
+        else:
+            kernel = Gaussian2DKernel(x_stddev=0.2, y_stddev=2.0,
+                                      theta=-0.0092, x_size=5, y_size=13)
         try:
             self.wfc3_cal
         except AttributeError:
@@ -594,11 +652,14 @@ class HSTWFC3(InstrumentBase):
         """
         if self.par["inst_beam"] == 'A':
             wavelength_min = 1.082*u.micron
-            wavelength_max = 1.674*u.micron
-            roi_width = 40
+            wavelength_max = 1.678*u.micron
+            # wavelength_min = 1.100*u.micron
+            # wavelength_max = 1.670*u.micron
+            roi_width = 30
         trace = self.spectral_trace.copy()
         mask_min = trace['wavelength'] > wavelength_min
         mask_max = trace['wavelength'] < wavelength_max
+        mask_not_defined = trace['wavelength'] == 0.
         idx_min = int(np.min(trace['wavelength_pixel'].value[mask_min]))
         idx_max = int(np.max(trace['wavelength_pixel'].value[mask_max]))
         dim = self.data.data.shape
@@ -606,6 +667,7 @@ class HSTWFC3(InstrumentBase):
             roi = np.zeros((dim[0]), dtype=np.bool)
             roi[0:idx_min] = True
             roi[idx_max+1:] = True
+            roi[mask_not_defined] = True
         else:
             center_pix = int(np.mean(trace['positional_pixel'].
                                      value[idx_min:idx_max]))
@@ -826,14 +888,15 @@ class HSTWFC3(InstrumentBase):
         np.ma.set_fill_value(image_cube_use, float("NaN"))
         kernel = Gaussian2DKernel(x_stddev=3.0, y_stddev=0.2, theta=0.0)
         image0 = image_cube_use[0, :, :]
-        cleaned_image0 = interpolate_replace_nans(image0.filled(), kernel)
+        cleaned_image0 = interpolate_replace_nans(image0.filled(),
+                                                  kernel, boundary='extend')
 
         yshift = np.zeros((nintegrations))
         xshift = np.zeros((nintegrations))
         for it in range(nintegrations):
             cleaned_shifted_image = \
                 interpolate_replace_nans(image_cube_use[it, :, :].filled(),
-                                         kernel)
+                                         kernel, boundary='extend')
             # subpixel precision by oversmpling pixel by a factor of 100
             shift, error, diffphase = \
                 register_translation(cleaned_image0,
@@ -1020,14 +1083,14 @@ class HSTWFC3(InstrumentBase):
             ptable_aperture_filter = \
                 ptable_aperture[(ptable_aperture.FILTER == inst_filter)]
             if ptable_aperture_filter.shape[0] == 1:
-                XREF = ptable_aperture.XREF.values
-                YREF = ptable_aperture.YREF.values
+                XREF = ptable_aperture_filter.XREF.values
+                YREF = ptable_aperture_filter.YREF.values
             else:
                 ptable_grism_filter = \
                     ptable_aperture[(ptable_aperture.FILTER.isnull())]
                 if ptable_grism_filter.shape[0] == 1:
-                    XREF = ptable_aperture.XREF.values
-                    YREF = ptable_aperture.YREF.values
+                    XREF = ptable_grism_filter.XREF.values
+                    YREF = ptable_grism_filter.YREF.values
                 else:
                     raise ValueError("Filter or Aperture not found in, \
                      reference pixel calibration file, Aborting")
@@ -1289,6 +1352,7 @@ class SpitzerIRS(InstrumentBase):
     __valid_orders = {'1', '2'}
     __valid_data = {'SPECTRUM', 'SPECTRAL_IMAGE', 'SPECTRAL_DETECTOR_CUBE'}
     __valid_observing_strategy = {'STARING', 'NODDED'}
+    __valid_data_products = {'droop', 'COE'}
 
     def __init__(self):
 
@@ -1329,6 +1393,7 @@ class SpitzerIRS(InstrumentBase):
         """
         Retrieve all relevant parameters defining the instrument and data setup
         """
+        inst_inst_name = cascade_configuration.instrument
         inst_mode = cascade_configuration.instrument_mode
         inst_order = cascade_configuration.instrument_order
         obj_period = \
@@ -1342,6 +1407,7 @@ class SpitzerIRS(InstrumentBase):
         obs_path = cascade_configuration.observations_path
         obs_cal_path = cascade_configuration.observations_cal_path
         obs_cal_version = cascade_configuration.observations_cal_version
+        obs_data_product = cascade_configuration.observations_data_product
         obs_id = cascade_configuration.observations_id
         obs_target_name = cascade_configuration.observations_target_name
         obs_has_backgr = ast.literal_eval(cascade_configuration.
@@ -1371,7 +1437,13 @@ class SpitzerIRS(InstrumentBase):
                      check your init file for the following \
                      valid types: {}. \
                      Aborting loading data".format(self.__valid_orders))
-        par = collections.OrderedDict(inst_mode=inst_mode,
+        if not (obs_data_product in self.__valid_data_products):
+            raise ValueError("Data product not recognized, \
+                     check your init file for the following \
+                     valid types: {}. Aborting loading \
+                     data".format(self.__valid_data_products))
+        par = collections.OrderedDict(inst_inst_name=inst_inst_name,
+                                      inst_mode=inst_mode,
                                       inst_order=inst_order,
                                       obj_period=obj_period,
                                       obj_ephemeris=obj_ephemeris,
@@ -1379,6 +1451,7 @@ class SpitzerIRS(InstrumentBase):
                                       obs_data=obs_data,
                                       obs_path=obs_path,
                                       obs_cal_path=obs_cal_path,
+                                      obs_data_product=obs_data_product,
                                       obs_cal_version=obs_cal_version,
                                       obs_id=obs_id,
                                       obs_target_name=obs_target_name,
@@ -1422,7 +1495,7 @@ class SpitzerIRS(InstrumentBase):
         # get the FOVID from the header and check for nodded observations
         try:
             fovid = fits.getval(image_file, "FOVID", ext=0)
-        except:
+        except KeyError:
             print("FOVID not set in fits files")
             print("Using 'observations_mode' parameter instead")
             if self.par['obs_mode'] == "STARING":
@@ -1440,7 +1513,7 @@ class SpitzerIRS(InstrumentBase):
             flux_unit_string = flux_unit_string.replace("e-", "electron")
             flux_unit_string = flux_unit_string.replace("sec", "s")
             flux_unit = u.Unit(flux_unit_string)
-        except:
+        except KeyError:
             print("No flux unit set in fits files")
             flux_unit = u.dimensionless_unscaled
 
@@ -1497,6 +1570,7 @@ class SpitzerIRS(InstrumentBase):
                                                     mask=mask,
                                                     uncertainty=uncertainty,
                                                     position=position,
+                                                    time_bjd=time,
                                                     isRampFitted=True,
                                                     isNodded=isNodded)
         return SpectralTimeSeries
@@ -1564,7 +1638,7 @@ class SpitzerIRS(InstrumentBase):
         # get the FOVID from the header and check for nodded observations
         try:
             fovid = fits.getval(image_file, "FOVID", ext=0)
-        except:
+        except KeyError:
             print("FOVID not set in fits files")
             print("Using 'observations_mode' parameter instead")
             if self.par['obs_mode'] == "STARING":
@@ -1582,7 +1656,7 @@ class SpitzerIRS(InstrumentBase):
             flux_unit_string = flux_unit_string.replace("e-", "electron")
             flux_unit_string = flux_unit_string.replace("sec", "s")
             flux_unit = u.Unit(flux_unit_string)
-        except:
+        except KeyError:
             print("No flux unit set in fits files")
             flux_unit = u.dimensionless_unscaled
 
@@ -1633,8 +1707,10 @@ class SpitzerIRS(InstrumentBase):
                                                     data=data, time=phase,
                                                     uncertainty=uncertainty,
                                                     mask=mask,
+                                                    time_bjd=time,
                                                     isRampFitted=True,
-                                                    isNodded=isNodded)
+                                                    isNodded=isNodded,
+                                                    dataFiles=data_files)
         return SpectralTimeSeries
 
     def _define_convolution_kernel(self):
@@ -1642,7 +1718,11 @@ class SpitzerIRS(InstrumentBase):
         Define the instrument specific convolution kernel which will be used
         in the correction procedure of bad pixels
         """
-        kernel = Gaussian2DKernel(x_stddev=0.3, y_stddev=2.0, theta=-0.1)
+        if self.par["obs_data"] == 'SPECTRUM':
+            kernel = Gaussian1DKernel(2.2, x_size=13)
+        else:
+            kernel = Gaussian2DKernel(x_stddev=0.2, y_stddev=2.2, theta=-0.076,
+                                      x_size=5, y_size=13)
         try:
             self.IRS_cal
         except AttributeError:
@@ -1826,7 +1906,7 @@ class SpitzerIRS(InstrumentBase):
         # get the FOVID from the header and check for nodded observations
         try:
             fovid = fits.getval(image_file, "FOVID", ext=0)
-        except:
+        except KeyError:
             print("FOVID not set in fits files")
             print("Using 'observations_mode' parameter instead")
             if self.par['obs_mode'] == "STARING":
@@ -1844,7 +1924,7 @@ class SpitzerIRS(InstrumentBase):
             flux_unit_string = flux_unit_string.replace("e-", "electron")
             flux_unit_string = flux_unit_string.replace("sec", "s")
             flux_unit = u.Unit(flux_unit_string)
-        except:
+        except KeyError:
             print("No flux unit set in fits files")
             flux_unit = u.dimensionless_unscaled
 

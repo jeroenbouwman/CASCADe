@@ -91,8 +91,12 @@ plt.show()
 
 plt.plot(shifted_image_rescaled[19, 10*nrescale:30*nrescale, :])
 plt.show()
+plt.plot(shifted_image_rescaled[19, 70*nrescale:100*nrescale, :])
+plt.show()
 
 plt.plot(shifted_pixel_number_rescaled[19, 10*nrescale:30*nrescale, :])
+plt.show()
+plt.plot(shifted_pixel_number_rescaled[19, 70*nrescale:100*nrescale, :])
 plt.show()
 
 median_shifted_image_rescaled = np.ma.median(shifted_image_rescaled, axis=2)

@@ -16,7 +16,12 @@ from pandas.plotting import autocorrelation_plot
 import cascade
 from cascade.utilities import spectres
 import seaborn as sns
-from scipy.linalg import pinv2
+# from scipy.linalg import pinv2
+from time import sleep
+import warnings
+from sklearn.preprocessing import RobustScaler
+
+warnings.simplefilter("ignore")
 
 sns.set_style("white")
 
@@ -35,6 +40,7 @@ tso = cascade.TSO.TSOSuite("initialize", "cascade_test_HST_cpm.ini",
 
 assert tso.cascade_parameters == cascade.initialize.cascade_configuration
 assert tso.cascade_parameters.isInitialized is True
+sleep(1.0)
 
 # load data
 tso.execute("load_data")
@@ -116,6 +122,13 @@ assert tso.observation.dataset.isSigmaCliped is True
 
 # create a cleaned version of the spectral data
 tso.execute("create_cleaned_dataset")
+
+extracted_spectra = np.ma.sum(tso.cpm.cleaned_data, axis=1)
+extracted_spectra.set_fill_value(np.nan)
+with quantity_support():
+    plt.plot(extracted_spectra.filled())
+    plt.title("1D spectra based on cleaned data")
+    plt.show()
 
 # determine position of source from data set
 tso.execute("determine_source_position")
@@ -263,6 +276,45 @@ plt.show()
 # optimally extract spectrum of target star
 tso.execute("optimal_extraction")
 
+assert hasattr(tso.cpm, 'extraction_profile') is True
+
+extracted_spectra = tso.observation.dataset_optimal_extracted.data
+time = tso.observation.dataset_optimal_extracted.time
+wavelength = tso.observation.dataset_optimal_extracted.wavelength
+cleaned_data = tso.cpm.cleaned_data
+cleaned_data.set_fill_value(np.NaN)
+
+mean_wavelength = np.ma.mean(wavelength, axis=1)
+mean_wavelength.set_fill_value(np.NaN)
+mean_time = np.ma.mean(time, axis=0)
+mean_time.set_fill_value(np.NaN)
+mean_spectra2 = np.ma.mean(extracted_spectra, axis=1)
+mean_spectra2.set_fill_value(np.NaN)
+
+with quantity_support():
+    fig, ax = plt.subplots(figsize=(7, 5))
+    ax.plot(mean_time.filled(),
+            np.ma.mean(np.ma.sum(cleaned_data, axis=1), axis=0),
+            color='gray', lw=3, label='Tapered')
+    ax.plot(mean_time.filled(),
+            np.ma.mean(extracted_spectra, axis=0).filled(), lw=3,
+            alpha=0.6, color='red', label='Optimal')
+    ax.legend(loc='best')
+    ax.set_title('Comparison optimal and tapered extraction')
+    ax.set_xlabel('Phase')
+    plt.show()
+with quantity_support():
+    fig, ax = plt.subplots(figsize=(7, 5))
+    ax.plot(mean_wavelength.filled(),
+            np.ma.mean(np.ma.sum(cleaned_data, axis=1).filled(), axis=1),
+            color='gray', lw=3, label='Tapered')
+    ax.plot(mean_wavelength.filled(),
+            mean_spectra2.filled(), lw=3,
+            alpha=0.6, color='red', label='Optimal')
+    ax.legend(loc='best')
+    ax.set_title('Comparison optimal and tapered extraction')
+    plt.show()
+
 # setup regressors
 tso.execute("select_regressors")
 
@@ -366,6 +418,24 @@ with quantity_support():
     plt.ylabel("Normalised depth")
     plt.show()
 
+RS = RobustScaler(with_scaling=True)
+RS.fit(tso.model.light_curve_interpolated[0][80, 85, :].reshape(-1, 1))
+X_scaled = \
+  RS.transform(tso.model.light_curve_interpolated[0][80, 85, :].reshape(-1, 1))
+RS = RobustScaler(with_scaling=True)
+RS.fit(np.ma.mean(extracted_spectra, axis=0).filled().reshape(-1, 1))
+X2_scaled = \
+  RS.transform(np.ma.mean(extracted_spectra, axis=0).filled().reshape(-1, 1))
+
+plt.plot(tso.observation.dataset.time.data[80, 85, :], X_scaled.squeeze()*0.84,
+         lw=3, alpha=0.6, color='blue', label='Model')
+plt.plot(mean_time.filled(), X2_scaled, lw=3,
+         alpha=0.6, color='red', label='Data')
+plt.xlabel("Phase")
+plt.ylabel("Normalised depth")
+plt.title('Comparison Model and optimal mean signal')
+plt.show()
+
 # calibration signal
 plt.imshow(tso.model.calibration_signal[0][:, 0, :],
            origin='lower',
@@ -378,6 +448,7 @@ plt.title('Calibration lightcurve model')
 plt.show()
 
 print(tso.model.transit_timing)
+sleep(1.0)
 
 # create calibrated time series and derive planetary signal
 tso.execute("calibrate_timeseries")
@@ -464,7 +535,7 @@ error_huitson = np.sqrt(2)*rel_error*flux_huitson
 mask_use = tso.exoplanet_spectrum.spectrum.wavelength.mask
 
 rebinned_wave = \
-    tso.exoplanet_spectrum.spectrum.wavelength.data.value[~mask_use][3:-3:6]
+    tso.exoplanet_spectrum.spectrum.wavelength.data.value[~mask_use][4:-3:6]
 rebinned_spec, rebinned_error = \
     spectres(rebinned_wave,
              tso.exoplanet_spectrum.spectrum.wavelength.data.value[~mask_use],
@@ -472,35 +543,13 @@ rebinned_spec, rebinned_error = \
              spec_errs=tso.exoplanet_spectrum.
              spectrum.uncertainty.data.value[~mask_use])
 
-####################################
-# TEST derived signal correction
-####################################
-ndim_reg, ndim_lam = tso.exoplanet_spectrum.weighted_normed_parameters.shape
-ndim_diff = ndim_reg - ndim_lam
-W = (tso.exoplanet_spectrum.weighted_normed_parameters[:-ndim_diff, :] /
-     np.ma.sum(tso.exoplanet_spectrum.weighted_normed_parameters[:-1, :],
-               axis=0)).T
-K = W - np.identity(W.shape[0])
-K.set_fill_value(0.0)
-weighted_signal = tso.exoplanet_spectrum.weighted_signal.copy()
-weighted_signal.set_fill_value(0.0)
-
-corrected_spectrum = np.dot(pinv2(K.filled(), rcond=1.e-3),
-                            -weighted_signal.filled())
-corrected_spectrum = corrected_spectrum-np.ma.median(corrected_spectrum)
-planet_radius = \
-    (u.Quantity(tso.cascade_parameters.object_radius).to(u.m) /
-     u.Quantity(tso.cascade_parameters.
-                object_radius_host_star).to(u.m))
-planet_radius = planet_radius.decompose().value
-corrected_spectrum = (corrected_spectrum * (1.0 - planet_radius**2) +
-                      planet_radius**2)*100
-
 corrected_rebinned_spec, corrected_rebinned_error = \
     spectres(rebinned_wave,
-             tso.exoplanet_spectrum.spectrum.wavelength.data.value[~mask_use],
-             corrected_spectrum[~mask_use],
-             spec_errs=tso.exoplanet_spectrum.spectrum.uncertainty.
+             tso.exoplanet_spectrum.corrected_spectrum.wavelength.
+             data.value[~mask_use],
+             tso.exoplanet_spectrum.corrected_spectrum.data.
+             data.value[~mask_use],
+             spec_errs=tso.exoplanet_spectrum.corrected_spectrum.uncertainty.
              data.value[~mask_use])
 
 fig, ax = plt.subplots(figsize=(7, 5))
