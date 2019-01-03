@@ -399,9 +399,9 @@ plt.show()
 with quantity_support():
     mask_use = ~tso.observation.dataset.data[80, :].mask
     fig, ax = plt.subplots(figsize=(7, 5))
-    ax.plot(tso.observation.dataset.time.data[80, mask_use],
+    ax.scatter(tso.observation.dataset.time.data[80, mask_use],
             tso.observation.dataset.data.data[80, mask_use], label='Data')
-    ax.plot(tso.observation.dataset.time.data[80, mask_use],
+    ax.scatter(tso.observation.dataset.time.data[80, mask_use],
             tso.calibration_results.model_time_series.data[80, 0, mask_use],
             label='Model')
     ax.legend(loc='best')
@@ -486,12 +486,12 @@ image0 = np.ma.array(residual_time_series.data,
                      mask=residual_time_series.mask)
 image0.set_fill_value(np.nan)
 image0 = image0[:, 0, :].filled().value
-# model = tso.calibration_results.model_time_series[:,0,:].data.value
-# image0 = image0/np.sqrt(model)
-wave0 = tso.observation.dataset._wavelength
-wave0_min = np.min(wave0)
-wave0_max = np.max(wave0)
-plt.imshow(image0,
+wave0 = np.ma.median(tso.observation.dataset.wavelength, axis=1)
+iw_min = np.ma.argmin(wave0)
+iw_max = np.ma.argmax(wave0)
+wave0_min = wave0[iw_min].value
+wave0_max = wave0[iw_max].value
+plt.imshow(image0[iw_min:iw_max, :],
            origin='lower',
            cmap='hot',
            interpolation='nearest',

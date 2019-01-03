@@ -45,11 +45,11 @@ cascade.initialize.configurator(path+"cascade_test_cpm.ini",
 
 # model parameters defining noise strength and data dimensions
 model_name = 'test_model21'
-noise_factor = 1.0e-3    # systematic noise amplitude
+noise_factor = 4.0e-1    # systematic noise amplitude
 noise_factor2 = 5.0e-1   # random noise amplitude
 ndata = 300
 nwave = 130
-ncomponents_pca = 11
+ncomponents_pca = 5
 
 save_path = os.path.join(cascade.initialize.cascade_configuration.
                          cascade_save_path, model_name)
@@ -740,78 +740,65 @@ fitted_relative_TD_trans_pca = np.zeros((data.shape[0]))
 reg_parameter_pca = np.zeros((data.shape[0]))
 reg_parameter2_pca = np.zeros((data.shape[0]))
 for idata, index_reg in idx_list:
-    # print(idata, index_reg)
+    print(idata, '---')
     y = data[idata, :].copy()
     yerr = error_data[idata, :].copy()
     weights = yerr**-2
 
     RS = RobustScaler(with_scaling=False)
-    y_scaled = RS.fit_transform(y.reshape(-1, 1))
-
-    RS = RobustScaler(with_scaling=False)
     X_scaled = RS.fit_transform(data[index_reg, :].T)
+    print(X_scaled.shape)
 
     pca = PCA(n_components=ncomponents_pca,
               whiten=False, svd_solver='randomized')
     Xtransformed = pca.fit_transform(X_scaled)
-#    pca.fit(data[index_reg, :])
-#    print(np.cumsum(np.round(pca.explained_variance_ratio_, decimals=4)*100))
+    print(pca.components_.shape)
+    print(Xtransformed.shape)
 
-#    from cascade.cpm_model import return_PCR
-#    B, lambdas = return_PCR(data[index_reg, :].T, n_components=ncomponents)
-#    fa = FactorAnalysis(n_components=ncomponents)
-#    fa.fit(data[index_reg, :])
-#    fa.fit(X_scaled.T)
+    Xback = pca.inverse_transform(Xtransformed)
+    Xback = RS.inverse_transform(Xback)
 
     reg_matrix = np.vstack([Xtransformed.T, np.ones_like(lcmodel_obs),
                             lcmodel_obs])
-    reg_matrix2 = np.vstack([X_scaled.T, np.ones_like(lcmodel_obs),
-                            lcmodel_obs])
     reg_matrix3 = np.vstack([data[index_reg, :], np.ones_like(lcmodel_obs),
                             lcmodel_obs])
-#    reg_matrix = np.vstack([pca.components_, lcmodel_obs])
-#    reg_matrix = np.vstack([B.T, lcmodel_obs])
-#    reg_matrix = np.vstack([fa.components_, np.ones_like(lcmodel_obs),
+#    reg_matrix3 = np.vstack([Xback.T, np.ones_like(lcmodel_obs),
 #                            lcmodel_obs])
-#    reg_matrix = np.vstack([np.ones_like(lcmodel_obs), lcmodel_obs])
 
     pc_matrix = np.diag(1.0/np.linalg.norm(reg_matrix.T, axis=0))
     pc_matrix3 = np.diag(1.0/np.linalg.norm(reg_matrix3.T, axis=0))
-#    pc_matrix[:-2] = 1.0
-#    pc_matrix = np.identity(len(pc_matrix))
+
     pc_design_matrix = np.dot(reg_matrix.T, pc_matrix).T
     pc_design_matrix3 = np.dot(reg_matrix3.T, pc_matrix3).T
 
-#    plt.plot(pc_design_matrix.T)
-#    plt.show()
-
     reg_par = {'lam0': 1.e-12, 'lam1': 1.e4, 'nlam': 120}
-    par = solve_linear_equation(pc_design_matrix.T, y, reg_par=reg_par,
-                                feature_scaling=None, weights=weights)
-    reg_parameter_pca[idata] = par[2]
-    fitted_parameter_normed_pca[idata, :] = par[0]
-    fitted_parameter_pca[idata, :] = \
-        np.dot(pc_matrix, par[0])
+    P, Perr, opt_reg_par, _, Pnormed, _ = \
+        solve_linear_equation(reg_matrix.T, y, reg_par=reg_par,
+                              feature_scaling=True, weights=weights)
+    par = (P, Perr, opt_reg_par)
+    reg_parameter_pca[idata] = opt_reg_par
+    fitted_parameter_normed_pca[idata, :] = Pnormed
+    fitted_parameter_pca[idata, :] = P
+
+
+#    par = solve_linear_equation(pc_design_matrix.T, y, reg_par=reg_par,
+#                                feature_scaling=None, weights=weights)
+#    reg_parameter_pca[idata] = par[2]
+#    fitted_parameter_normed_pca[idata, :] = par[0]
+#    fitted_parameter_pca[idata, :] = \
+#        np.dot(pc_matrix, par[0])
+
+
 
     par_temp = fitted_parameter_pca[idata, :].copy()
     par_temp[-1] = 0
 
-    par_trans = np.dot((pca.components_).T, np.dot(pc_matrix, par[0])[:-2])
-#    plt.plot(y_scaled)
-#    plt.plot(np.dot(X_scaled, par_trans))
-#    plt.plot(np.dot(Xtransformed, np.dot(pc_matrix, par[0])[:-2]))
-#    plt.show()
+    par_trans = np.dot((pca.components_).T, fitted_parameter_pca[idata, :-2])
 
-#    plt.plot(y)
-#    plt.plot(np.dot(fitted_parameter_pca[idata, :], reg_matrix))
+#    par_trans = np.dot((pca.components_).T, np.dot(pc_matrix, par[0])[:-2])
     par_trans2 = np.append(par_trans, fitted_parameter_pca[idata, -2:])
-#    plt.plot(np.dot(par_trans2, reg_matrix2))
     par_trans3 = par_trans2.copy()
     par_trans3[-2] = par_trans3[-2] - np.sum(RS.center_ * par_trans)
-#    plt.plot(np.dot(par_trans3, reg_matrix3))
-#    plt.plot(np.dot(np.dot(np.linalg.inv(pc_matrix3), par_trans3),
-#                    pc_design_matrix3))
-#    plt.show()
 
     fitted_parameter_pca_back_trans[idata,
                                     np.append(index_reg,
@@ -823,24 +810,6 @@ for idata, index_reg in idx_list:
                                                                0))] = \
         np.dot(np.linalg.inv(pc_matrix3), par_trans3)
 
-#    from scipy.linalg import svd
-#    from sklearn.utils.extmath import svd_flip
-#    u, s, vt = svd(X_scaled, full_matrices=False)
-#    u, vt = svd_flip(u, vt)
-#    plt.plot(pca.components_[0, :])
-#    plt.plot(vt[0, :])
-#    plt.show()
-
-#    plt.show()
-
-#    plt.plot(y)
-#    plt.plot(np.dot(reg_matrix.T,
-#                    fitted_parameter_pca[idata, :]))
-#    plt.plot(lcmodel_obs*fitted_parameter_pca[idata, -1]+fitted_parameter_pca[idata, -2])
-# #    plt.plot(np.dot(reg_matrix.T, par_temp))
-# #    plt.plot(lcmodel_obs*fitted_parameter_pca[idata, -1])
-#    plt.show()
-
     lc_cal = 1.0 - np.dot(reg_matrix.T, par_temp) / \
         np.dot(reg_matrix.T, fitted_parameter_pca[idata, :])
 
@@ -849,13 +818,6 @@ for idata, index_reg in idx_list:
     par2 = solve_linear_equation(reg_matrix2.T, lc_cal, reg_par=reg_par)
     fitted_relative_TD_pca[idata] = par2[0]
 
-#    plt.plot(lc_cal)
-#    plt.plot(np.dot(reg_matrix2.T, fitted_relative_TD_pca[idata]))
-#    plt.plot((fitted_parameter_pca[idata,-1]/(fitted_parameter_pca[idata,-2] -
-#             fitted_parameter_pca[idata,-1]) * lcmodel_obs))
-# #    plt.plot((np.dot(reg_matrix.T, fitted_parameter_pca[idata, :])-
-# #              np.dot(reg_matrix.T, par_temp))/fitted_parameter_pca[idata,-2])
-#    plt.show()
 
     lc_cal_trans = \
         np.dot(reg_matrix.T,

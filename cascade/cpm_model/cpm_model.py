@@ -20,7 +20,7 @@ __all__ = ['solve_linear_equation', 'return_PCR']
 
 def solve_linear_equation(design_matrix, data, weights=None, cv_method='gcv',
                           reg_par={"lam0": 1.e-6, "lam1": 1.e2, "nlam": 60},
-                          feature_scaling='norm'):
+                          feature_scaling='norm', degrees_of_freedom=None):
     """
     Solve linear system using SVD with TIKHONOV regularization
 
@@ -210,9 +210,14 @@ def solve_linear_equation(design_matrix, data, weights=None, cv_method='gcv',
         np.linalg.multi_dot([U[:, :dim_dm[1]], np.identity(dim_dm[1]) - F,
                              U[:, :dim_dm[1]].T, data_weighted])
 
-    # calculate the sum of squared errors (squared norm of the residual vactor)
+    # calculate the sum of squared errors (squared norm of the residual vector)
+    if degrees_of_freedom is not None:
+        effective_degrees_of_freedom = (dim_dm[0] - degrees_of_freedom)
+    else:
+        effective_degrees_of_freedom = (dim_dm[0] - dim_dm[1])
     sigma_hat_sqr = np.dot(residual_reg.T, residual_reg) / \
-        (dim_dm[0] - dim_dm[1])
+        effective_degrees_of_freedom
+# BUG FIX correct????????????????
 
     # calculate the errors on the fit parameters
     err_fit_parameters = np.sqrt(sigma_hat_sqr *

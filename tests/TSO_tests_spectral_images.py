@@ -33,9 +33,9 @@ tso = cascade.TSO.TSOSuite()
 
 # initialization with ini files
 path = cascade.initialize.default_initialization_path
-tso = cascade.TSO.TSOSuite("cascade_test_cpm2.ini",
+tso = cascade.TSO.TSOSuite("cascade_test_cpm.ini",
                            "cascade_test_object.ini",
-                           "cascade_test_data_spectral_images2.ini", path=path)
+                           "cascade_test_data_spectral_images.ini", path=path)
 print(tso.cascade_parameters)
 print(cascade.initialize.cascade_configuration)
 print(tso.cascade_parameters.isInitialized)
@@ -57,8 +57,8 @@ assert tso.cascade_parameters.isInitialized is False
 # create TSO object and initialize providing ini files
 tso = cascade.TSO.TSOSuite()
 path = cascade.initialize.default_initialization_path
-tso.execute("initialize", "cascade_test_cpm2.ini", "cascade_test_object.ini",
-            "cascade_test_data_spectral_images2.ini", path=path)
+tso.execute("initialize", "cascade_test_cpm.ini", "cascade_test_object.ini",
+            "cascade_test_data_spectral_images.ini", path=path)
 print(tso.cascade_parameters)
 print(cascade.initialize.cascade_configuration)
 print(tso.cascade_parameters.isInitialized)
@@ -305,14 +305,14 @@ plt.show()
 # read file containing derived pointing using peakup array
 path_to_save_file = \
     ('/home/bouwman/SST_OBSERVATIONS/projects_HD189733/REDUCED_DATA/'
-     'HD_189733_combined_SL_B/S16.1.0/SL1/')
-filename_save_file = 'pointing_offsets_sl1_B.save'
+     'HD_189733_combined_SL_A/S16.1.0/SL1/')
+filename_save_file = 'pointing_offsets_sl1_A.save'
 movement_AOR = readsav(os.path.join(path_to_save_file, filename_save_file))
 
-xmovement_slit = movement_AOR['x_offset_spectrum_fit_sl1_b']
-xmovement_peakup = movement_AOR['x_offset_image_fit_sl1_b']
-ymovement_peakup = movement_AOR['offset_image_fit_sl1_b']
-phase = movement_AOR['phase_spectrum_fit_sl1_b']
+xmovement_slit = movement_AOR['x_offset_spectrum_fit_sl1_a']
+xmovement_peakup = movement_AOR['x_offset_image_fit_sl1_a']
+ymovement_peakup = movement_AOR['offset_image_fit_sl1_a']
+phase = movement_AOR['phase_spectrum_fit_sl1_a']
 
 fig = plt.figure(figsize=(10, 8))
 ax1 = plt.subplot(1, 1, 1)
@@ -383,7 +383,8 @@ with quantity_support():
             np.ma.mean(np.ma.sum(cleaned_data, axis=1), axis=0),
             color='gray', lw=3, label='Tapered')
     ax.plot(mean_time.filled(),
-            np.ma.mean(extracted_spectra, axis=0).filled(), lw=3,
+            np.ma.mean(extracted_spectra,
+                       axis=0).filled().to(cleaned_data.data.unit), lw=3,
             alpha=0.6, color='red', label='Optimal')
     ax.legend(loc='best')
     ax.set_title('Comparison optimal and tapered extraction')
@@ -395,7 +396,7 @@ with quantity_support():
             np.ma.mean(np.ma.sum(cleaned_data, axis=1).filled(), axis=1),
             color='gray', lw=3, label='Tapered')
     ax.plot(mean_wavelength.filled(),
-            mean_spectra2.filled(), lw=3,
+            mean_spectra2.filled().to(cleaned_data.data.unit), lw=3,
             alpha=0.6, color='red', label='Optimal')
     ax.legend(loc='best')
     ax.set_title('Comparison optimal and tapered extraction')

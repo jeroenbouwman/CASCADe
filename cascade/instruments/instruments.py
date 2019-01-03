@@ -185,7 +185,7 @@ class HSTWFC3(InstrumentBase):
     """
 
     __valid_sub_array = {'IRSUB128', 'IRSUB256', 'IRSUB512', 'GRISM128',
-                         'GRISM512'}
+                         'GRISM256', 'GRISM512'}
     __valid_spectroscopic_filter = {'G141'}
     __valid_imaging_filter = {'F139M', 'F132N', 'F167N'}
     __valid_beams = {'A'}
@@ -585,11 +585,15 @@ class HSTWFC3(InstrumentBase):
         phase = phase - np.int(np.max(phase))
         if np.max(phase) < 0.0:
             phase = phase + 1.0
+        if np.min(phase) > 0.5:
+            phase = phase - 1.0
         cal_phase = (cal_time - self.par['obj_ephemeris']) / \
             self.par['obj_period']
         cal_phase = cal_phase - np.int(np.max(cal_phase))
         if np.max(cal_phase) < 0.0:
             cal_phase = cal_phase + 1.0
+        if np.min(cal_phase) > 0.5:
+            cal_phase = cal_phase - 1.0
 
         # self._determine_relative_source_position(spectral_image_cube, mask)
         self._define_convolution_kernel()
@@ -634,10 +638,10 @@ class HSTWFC3(InstrumentBase):
         in the correction procedure of bad pixels
         """
         if self.par["obs_data"] == 'SPECTRUM':
-            kernel = Gaussian1DKernel(2.0, x_size=13)
+            kernel = Gaussian1DKernel(4.0, x_size=19)
         else:
-            kernel = Gaussian2DKernel(x_stddev=0.2, y_stddev=2.0,
-                                      theta=-0.0092, x_size=5, y_size=13)
+            kernel = Gaussian2DKernel(x_stddev=0.2, y_stddev=4.0,
+                                      theta=-0.0092, x_size=5, y_size=19)
         try:
             self.wfc3_cal
         except AttributeError:
@@ -655,7 +659,7 @@ class HSTWFC3(InstrumentBase):
             wavelength_max = 1.678*u.micron
             # wavelength_min = 1.100*u.micron
             # wavelength_max = 1.670*u.micron
-            roi_width = 30
+            roi_width = 15
         trace = self.spectral_trace.copy()
         mask_min = trace['wavelength'] > wavelength_min
         mask_max = trace['wavelength'] < wavelength_max
@@ -1362,6 +1366,7 @@ class SpitzerIRS(InstrumentBase):
         else:
             self.data = self.load_data()
         self.spectral_trace = self.get_spectral_trace()
+        self._define_region_of_interest()
         try:
             self.instrument_calibration = self.IRS_cal
         except AttributeError:
@@ -1563,7 +1568,7 @@ class SpitzerIRS(InstrumentBase):
         self._define_convolution_kernel()
 
         # ROI
-        self._define_region_of_interest(data)
+        #self._define_region_of_interest(data)
 
         SpectralTimeSeries = SpectralDataTimeSeries(wavelength=wavelength,
                                                     data=data, time=phase,
@@ -1701,7 +1706,7 @@ class SpitzerIRS(InstrumentBase):
         self._define_convolution_kernel()
 
         # ROI
-        self._define_region_of_interest(data)
+        #self._define_region_of_interest(data)
 
         SpectralTimeSeries = SpectralDataTimeSeries(wavelength=wave_cal,
                                                     data=data, time=phase,
@@ -1731,11 +1736,11 @@ class SpitzerIRS(InstrumentBase):
             self.IRS_cal.convolution_kernel = kernel
         return
 
-    def _define_region_of_interest(self, data):
+    def _define_region_of_interest(self):
         """
         Defines region on detector which containes the intended target star.
         """
-        dim = data.shape
+        dim = self.data.data.shape
         if len(dim) <= 2:
             roi = np.zeros((dim[0]), dtype=np.bool)
             roi[0] = True
@@ -1969,7 +1974,7 @@ class SpitzerIRS(InstrumentBase):
         self._define_convolution_kernel()
 
         # ROI
-        self._define_region_of_interest(data)
+        #self._define_region_of_interest(data)
 
         SpectralTimeSeries = SpectralDataTimeSeries(wavelength=wave_cal,
                                                     data=data, time=phase,

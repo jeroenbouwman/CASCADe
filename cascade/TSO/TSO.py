@@ -31,7 +31,7 @@ from scipy.ndimage import binary_dilation
 from tqdm import tqdm
 import seaborn as sns
 from sklearn.preprocessing import RobustScaler
-# from sklearn.decomposition import PCA
+from sklearn.decomposition import PCA
 
 from ..cpm_model import solve_linear_equation
 from ..data_model import SpectralData
@@ -88,7 +88,7 @@ class TSOSuite:
         if command not in self.__valid_commands:
             raise ValueError("Command not recognized, \
                              check your data reduction command for the \
-                             following valid commans: {}. Aborting \
+                             following valid commands: {}. Aborting \
                              command".format(self.__valid_commands.keys()))
         else:
             if command == "initialize":
@@ -116,7 +116,7 @@ class TSOSuite:
 
     def reset_TSO(self):
         """
-        Reset initialization of TSO object
+        Reset initialization of TSO object by removing all loaded parameters.
         """
         self.cascade_parameters.reset()
 
@@ -128,7 +128,8 @@ class TSOSuite:
 
     def subtract_background(self):
         """
-        Subtract median background from science observations
+        Subtract median background determined from data or background model
+        from the science observations.
         """
         try:
             obs_has_backgr = ast.literal_eval(self.cascade_parameters.
@@ -190,11 +191,15 @@ class TSOSuite:
     def sigma_clip_data_cosmic(data, sigma):
         """
         Sigma Clip in time.
+
         Input:
+        ------
             data
             mask
             sigma
-        Output
+
+        Output:
+        -------
             updated mask
         """
         # time axis always the last axis in data,
@@ -1068,6 +1073,12 @@ class TSOSuite:
             raise AttributeError("The rebin factor regressors is not defined. \
                                  Check the initialiation of the TSO object. \
                                  Aborting setting regressors")
+        try:
+            cpm_use_pca = ast.literal_eval(self.cascade_parameters.cpm_use_pca)
+        except AttributeError:
+            warnings.warn("Use PCA switch not defined. "
+                          "Assuming direct regression model")
+            cpm_use_pca = False
 
         dim = data_in.data.shape
         regressor_list_nod = []
@@ -1092,28 +1103,37 @@ class TSOSuite:
                 # define wavelength range to use for calibration
                 il_cal_min = max(il-DeltaPix, 0)
                 il_cal_max = min(il+DeltaPix, dim[0]-1)
-                idx_cal = idx_all[np.where(((idx_all < il_cal_min) |
-                                            (idx_all > il_cal_max)))]
 
-                # trace at source position
-                trace = np.rint(spectral_trace + median_position).astype(int)
-                trace = trace - (trace[il] - ir)
-                trace = trace[idx_cal]
+                if cpm_use_pca:
+                    idx_select = np.where(((idx_all_wave < il_cal_min) |
+                                          (idx_all_wave > il_cal_max)))
+                    regressor_list.append([(il, ir),
+                                           (idx_all_wave[idx_select],
+                                            idx_all_spatial[idx_select])])
+                else:
+                    idx_cal = idx_all[np.where(((idx_all < il_cal_min) |
+                                                (idx_all > il_cal_max)))]
 
-                # get all pixels following trace within Extraction Aperture
-                index_in_aperture = \
-                    np.logical_not(extracton_mask[idx_cal, trace])
-                trace = trace[index_in_aperture]
-                idx_cal = idx_cal[index_in_aperture]
+                    # trace at source position
+                    trace = np.rint(spectral_trace +
+                                    median_position).astype(int)
+                    trace = trace - (trace[il] - ir)
+                    trace = trace[idx_cal]
 
-                # check if number of calibration pixels can be rebinned
-                # by factor nrebin
-                if (len(idx_cal) % nrebin) != 0:
-                    ncut = -(len(idx_cal) % nrebin)
-                    idx_cal = idx_cal[:ncut]
-                    trace = trace[:ncut]
+                    # get all pixels following trace within Extraction Aperture
+                    index_in_aperture = \
+                        np.logical_not(extracton_mask[idx_cal, trace])
+                    trace = trace[index_in_aperture]
+                    idx_cal = idx_cal[index_in_aperture]
 
-                regressor_list.append([(il, ir), (idx_cal, trace)])
+                    # check if number of calibration pixels can be rebinned
+                    # by factor nrebin
+                    if (len(idx_cal) % nrebin) != 0:
+                        ncut = -(len(idx_cal) % nrebin)
+                        idx_cal = idx_cal[:ncut]
+                        trace = trace[:ncut]
+
+                    regressor_list.append([(il, ir), (idx_cal, trace)])
 
             regressor_list_nod.append(regressor_list)
 
@@ -1122,10 +1142,24 @@ class TSOSuite:
     @staticmethod
     def get_design_matrix(cleaned_data_in, original_mask_in,
                           regressor_selection, nrebin, clip=False,
-                          clip_pctl_time=0.00, clip_pctl_regressors=0.00,
-                          center_matrix=False):
+                          clip_pctl_time=0.00, clip_pctl_regressors=0.00):
         """
         Return the design matrix based on the data set itself
+        Input:
+        ------
+            cleaned_data_in
+                time series data with bad pixels corrected
+            original_mask_in
+                data mask before cleaning
+            regressor_selection
+            nrebin
+            clip
+            clip_pctl_time
+            clip_pctl_regressors
+
+        Output:
+        ------
+            Design Matirx
         """
         dim = cleaned_data_in.data.shape
         data_unit = cleaned_data_in.data.unit
@@ -1157,10 +1191,6 @@ class TSOSuite:
         design_matrix = design_matrix.reshape(ncal//nrebin, nrebin, dim[-1], 1)
         design_matrix = np.ma.median((np.ma.median(design_matrix, axis=3)),
                                      axis=1)
-
-        if center_matrix:
-            mean_dm = np.ma.mean(design_matrix, axis=1)
-            design_matrix = design_matrix - mean_dm[:, np.newaxis]
 
         design_matrix = np.ma.array(design_matrix.data*data_unit,
                                     mask=design_matrix.mask)
@@ -1198,8 +1228,7 @@ class TSOSuite:
 
     def return_all_design_matrices(self, clip=False,
                                    clip_pctl_time=0.00,
-                                   clip_pctl_regressors=0.00,
-                                   center_matrix=False):
+                                   clip_pctl_regressors=0.00):
         """
         Setup the regression matrix based on the sub set of the data slected
         to be used as calibrators.
@@ -1241,8 +1270,7 @@ class TSOSuite:
                             regressor_selection,
                             nrebin, clip=clip,
                             clip_pctl_time=clip_pctl_time,
-                            clip_pctl_regressors=clip_pctl_regressors,
-                            center_matrix=center_matrix)
+                            clip_pctl_regressors=clip_pctl_regressors)
                 design_matrix_list.append([regressor_matrix])
             design_matrix_list_nod.append(design_matrix_list)
         self.cpm.design_matrix = design_matrix_list_nod
@@ -1320,6 +1348,43 @@ class TSOSuite:
         except AttributeError:
             raise AttributeError("Regularization parameters not found. \
                                  Aborting time series calibration")
+        try:
+            use_pca = ast.literal_eval(self.cascade_parameters.cpm_use_pca)
+        except AttributeError:
+            warnings.warn("Use PCA switch not defined. "
+                          "Assuming direct regression model")
+            use_pca = False
+        finally:
+            if use_pca:
+                add_offset = True
+                try:
+                    number_of_pca_components = \
+                        int(self.cascade_parameters.
+                            cpm_number_of_pca_components)
+                except AttributeError:
+                    raise AttributeError("Number of PCA components need "
+                                         "to be set when using use_pca=True. "
+                                         "Aborting time series calibration")
+            else:
+                add_offset = False
+        try:
+            use_pca_filter = \
+               ast.literal_eval(self.cascade_parameters.cpm_use_pca_filter)
+        except AttributeError:
+            warnings.warn("Use PCA as filter switch not defined. "
+                          "Assuming no filtering direct regression model")
+            use_pca_filter = False
+        finally:
+            if use_pca_filter:
+                try:
+                    number_of_pca_components = \
+                        int(self.cascade_parameters.
+                            cpm_number_of_pca_components)
+                except AttributeError:
+                    raise AttributeError("Number of PCA components need "
+                                         "to be set when using "
+                                         "use_pca_filter=True. "
+                                         "Aborting time series calibration")
 
         # reshape input data to general 3D shape.
         original_mask_data_use = self.reshape_data(data_in.data).mask
@@ -1334,8 +1399,12 @@ class TSOSuite:
 
         # number of additional regressors
         nadd = 1
-        if add_time:
+        if add_offset:
+            nadd += 1
+        if add_time and not add_offset:
             nadd += 2
+        elif add_time and add_offset:
+            nadd += 1
         if add_position:
             nadd += 1
         if add_calibration_signal:
@@ -1406,182 +1475,243 @@ class TSOSuite:
             # loop over pixels
             # regressor list contains tuples ;isting pixel indx and
             # the indici of the calibration pixels
-            for regressor_selection in tqdm(regressor_list,
-                                            dynamic_ncols=True):
-                (il, ir), (idx_cal, trace) = regressor_selection
-                regressor_matrix = \
-                    self.get_design_matrix(
-                            data_use, original_mask_data_use,
-                            regressor_selection,
-                            nrebin, clip=True,
-                            clip_pctl_time=clip_pctl_time,
-                            clip_pctl_regressors=clip_pctl_regressors)
-                # remove bad regressors
-                idx_cut = np.all(regressor_matrix.mask, axis=1)
-                idx_regressors_used = idx_cal[~idx_cut]
-                regressor_matrix = regressor_matrix[~idx_cut, :]
-                # add calibration signal to all regressors
-                if add_calibration_signal:
-                    temp_cal = np.tile(calibration_signal_use[inod][il, ir, :],
-                                       (regressor_matrix.shape[0], 1))
-                    temp_cal = np.ma.masked_greater(temp_cal, -1.0)
-                    regressor_matrix = regressor_matrix + \
-                        (np.ma.median(regressor_matrix *
-                                      calibration_signal_depth*temp_cal,
-                                      axis=1) * temp_cal.data.T).T * \
-                        regressor_matrix.data.unit
+            iter_bad_reg = 0
+            max_iter_bad_reg = 1
+            do_iter_bad_regressor = True
+            while (iter_bad_reg <= max_iter_bad_reg) and do_iter_bad_regressor:
+                for regressor_selection in tqdm(regressor_list,
+                                                dynamic_ncols=True):
+                    (il, ir), (idx_cal, trace) = regressor_selection
+                    regressor_matrix = \
+                        self.get_design_matrix(
+                                data_use, original_mask_data_use,
+                                regressor_selection,
+                                nrebin, clip=True,
+                                clip_pctl_time=clip_pctl_time,
+                                clip_pctl_regressors=clip_pctl_regressors)
+                    # remove bad regressors
+                    idx_cut = np.all(regressor_matrix.mask, axis=1)
+                    idx_regressors_used = idx_cal[~idx_cut]
+                    regressor_matrix = regressor_matrix[~idx_cut, :]
+                    # add calibration signal to all regressors
+                    if add_calibration_signal:
+                        temp_cal = \
+                            np.tile(calibration_signal_use[inod][il, ir, :],
+                                    (regressor_matrix.shape[0], 1))
+                        temp_cal = np.ma.masked_greater(temp_cal, -1.0)
+                        regressor_matrix = regressor_matrix + \
+                            (np.ma.median(regressor_matrix *
+                                          calibration_signal_depth*temp_cal,
+                                          axis=1) * temp_cal.data.T).T * \
+                            regressor_matrix.data.unit
 
-                # select data (y=signal, yerr = error signal)
-                y = data_use[il, ir, :].copy()
-                yerr = unc_use[il, ir, :].copy()
-                np.ma.set_fill_value(y, 0.0)
-                np.ma.set_fill_value(yerr, 1.0e8)
+                    # select data (y=signal, yerr = error signal)
+                    y = data_use[il, ir, :].copy()
+                    y.mask = original_mask_data_use[il, ir, :].copy()
+                    yerr = unc_use[il, ir, :].copy()
+                    np.ma.set_fill_value(y, 0.0)
+                    np.ma.set_fill_value(yerr, 1.0e8)
 
-                if add_calibration_signal:
-                    zcal = calibration_signal_use[inod][il, ir, :].copy()
-                    idx_temp = np.where(zcal > -1.0)
-                    temp_ma = np.ma.array(y*calibration_signal_depth*zcal)
-                    temp_ma.mask[idx_temp] = True
-                    y = y + np.ma.median(temp_ma)*zcal
+                    if add_calibration_signal:
+                        zcal = calibration_signal_use[inod][il, ir, :].copy()
+                        idx_temp = np.where(zcal > -1.0)
+                        temp_ma = np.ma.array(y*calibration_signal_depth*zcal)
+                        temp_ma.mask[idx_temp] = True
+                        y = y + np.ma.median(temp_ma)*zcal
 
-                # select aditional regressors (x = phase,
-                # z = ligthcurve model, r = position)
-                x = time_use[il, ir, :].data.value.copy()
-                z = lightcurve_model_use[inod][il, ir, :].copy()
-                r = position_use[il, ir, :].copy()
+                    # select aditional regressors (x: orbital phase,
+                    # z: ligthcurve model, r: source position)
+                    x = time_use[il, ir, :].data.value.copy()
+                    z = lightcurve_model_use[inod][il, ir, :].copy()
+                    r = position_use[il, ir, :].copy()
 
-                # flag bad data in time and give low weight
-                idx_bad_time = \
-                    np.logical_or(y.mask,
-                                  np.all(regressor_matrix.mask, axis=0))
-                y.mask[idx_bad_time] = True
-                yerr.mask[idx_bad_time] = True
-                np.ma.set_fill_value(y, 0.0)
-                np.ma.set_fill_value(yerr, np.ma.median(y)*1.e3)
-                weights = 1.0/yerr.filled().value**2
+                    # flag bad data in time and give low weight
+                    idx_bad_time = \
+                        np.logical_or(y.mask,
+                                      np.all(regressor_matrix.mask, axis=0))
+                    y.mask[idx_bad_time] = True
+                    yerr.mask[idx_bad_time] = True
+                    np.ma.set_fill_value(y, 0.0)
+                    np.ma.set_fill_value(yerr, np.ma.median(y)*1.e3)
+                    weights = 1.0/yerr.filled().value**2
 
-                # add other regressors: constant, time, position along slit,
-                # lightcure model
-                design_matrix = regressor_matrix.data.value  # uses clean data
-# HACK
-#                RS = RobustScaler(with_scaling=False)
-#                X_scaled = RS.fit_transform(design_matrix.T)
-#
-#                pca = PCA(n_components=np.min([10,len(idx_regressors_used)]),
-#                          whiten=True)
-#                pca.fit(X_scaled.T)
+                    # create design matrix using either the timeseries
+                    # directly or the PCA components
+                    # uses clean data
+                    design_matrix = regressor_matrix.data.value
+                    if (not use_pca) and (use_pca_filter):
+                        RS = RobustScaler(with_scaling=False)
+                        X_scaled = RS.fit_transform(design_matrix.T)
+                        pca = \
+                            PCA(n_components=np.min([number_of_pca_components,
+                                                     len(idx_regressors_used)]
+                                                    ),
+                                whiten=False, svd_solver='auto')
+                        Xtransformed = pca.fit_transform(X_scaled)
+                        Xback = pca.inverse_transform(Xtransformed)
+                        Xback = RS.inverse_transform(Xback)
+                        design_matrix = Xback.T
+                    # add other regressors: constant, time,
+                    # position along slit, lightcure model
+                    if add_offset:
+                        design_matrix = np.vstack((design_matrix,
+                                                   np.ones_like(x)))
+                    if add_time and not add_offset:
+                        design_matrix = np.vstack((design_matrix,
+                                                   np.ones_like(x), x))
+                    elif add_time and add_offset:
+                        design_matrix = np.vstack((design_matrix, x))
+                    if add_position:
+                        design_matrix = np.vstack((design_matrix, r))
+                    if add_calibration_signal:
+                        design_matrix = np.vstack((design_matrix, zcal))
+                    design_matrix = np.vstack((design_matrix, z)).T
 
-#                design_matrix = pca.components_
-# END HACK
-                if add_time:
-                    design_matrix = np.vstack((design_matrix,
-                                               np.ones_like(x), x))
-                if add_position:
-                    design_matrix = np.vstack((design_matrix, r))
-                if add_calibration_signal:
-                    design_matrix = np.vstack((design_matrix, zcal))
-                design_matrix = np.vstack((design_matrix, z)).T
+                    if use_pca:
+                        design_matrix_direct = design_matrix.copy()
+                        additional_components = design_matrix.T[-nadd:, :].copy()
+                        design_matrix = regressor_matrix.data.value
+                        RS = RobustScaler(with_scaling=False)
+                        X_scaled = RS.fit_transform(design_matrix.T)
+                        pca = \
+                            PCA(n_components=np.min([number_of_pca_components,
+                                                     len(idx_regressors_used)
+                                                     ]),
+                                whiten=False, svd_solver='auto')
+                        Xtransformed = pca.fit_transform(X_scaled)
+                        design_matrix = Xtransformed.T
+                        design_matrix = np.vstack((design_matrix,
+                                                   additional_components)).T
 
-                if np.any(~np.isfinite(design_matrix)):
-                    plt.imshow(design_matrix)
-                    plt.show()
-# HACK
-#                pc_matrix = np.diag(1.0/np.linalg.norm(design_matrix, axis=0))
-#                pc_matrix[:-(nadd)] = 1.0
+                    if np.any(~np.isfinite(design_matrix)):
+                        plt.imshow(design_matrix)
+                        plt.show()
 
-#                pc_design_matrix = np.dot(design_matrix, pc_matrix)
-#                P, Perr, opt_reg_par = \
-#                    solve_linear_equation(pc_design_matrix,
-#                                          y.filled().value, weights,
-#                                          cv_method=cv_method,
-#                                          reg_par=reg_par,
-#                                          feature_scaling=None)
-#                Pnormed = P.copy()
-#                P[:] = np.dot(pc_matrix, P[:])
-#                Perr[:] = np.dot(pc_matrix, Perr[:])
-                # solve linear Eq.
-                P, Perr, opt_reg_par, _, Pnormed, _ = \
-                    solve_linear_equation(design_matrix,
-                                          y.filled().value, weights,
-                                          cv_method=cv_method,
-                                          reg_par=reg_par)
-# END HACK
-                # store results
-                optimal_regularization_parameter.data[il, ir] = opt_reg_par
-                fitted_parameters.data[:, il, ir] = P[len(P)-nadd:]
-                error_fitted_parameters.data[:, il, ir] = Perr[len(P)-nadd:]
-# HACK
-#                fitted_parameters_normed.data[np.arange(len(Pnormed)),
-#                                              il, ir] = Pnormed
-                fitted_parameters_normed.data[np.append(idx_regressors_used,
-                                                        np.arange(-(nadd), 0)),
-                                              il, ir] = Pnormed
-# END HACK
-                model_time_series[il, ir, :] = \
-                    np.dot(design_matrix, P)*data_unit
-                residual = y.filled() - np.dot(design_matrix, P)*data_unit
-                residual_time_series[il, ir, :] = \
-                    np.ma.array(residual, mask=y.mask)
-                lnL = -0.5*np.sum(weights*(residual.value)**2)
-                n_samples, n_params = design_matrix.shape
-                AIC[il, ir] = akaike_info_criterion(lnL, n_params, n_samples)
-                ##################################
-                # calculate the spectrum!!!!!!!!!#
-                ##################################
-                # Here we only need to use the fittted model not the actual
-                # data. First, define model fit without lightcurve model
-                Ptemp = P.copy()
-                if add_calibration_signal:
-                    Ptemp[-2:] = 0.0
-                else:
-                    Ptemp[-1] = 0.0
-                # Then calculate the calibrated normalized lightcurve
-                # for eiter eclipse or transit
-                if self.model.transittype == 'secondary':
-                    # eclipse is normalized to stellar flux
-                    calibrated_lightcurve = 1.0 - np.dot(design_matrix,
-                                                         Ptemp) / \
-                                                  np.dot(design_matrix, P)
-                else:
-                    # transit is normalized to flux-baseline outside transit
-                    calibrated_lightcurve = np.dot(design_matrix, P) / \
-                                            np.dot(design_matrix,
-                                                   Ptemp) - 1.0
-                calibrated_lightcurve =\
-                    np.ma.masked_invalid(calibrated_lightcurve)
-                calibrated_lightcurve.set_fill_value(0.0)
-                calibrated_time_series.data[il, ir, :] = \
-                    calibrated_lightcurve.filled()
-                # fit again for final normalized transit/eclipse depth
-                if add_calibration_signal:
-                    final_lc_model = np.vstack([zcal, z]).T
-                else:
-                    final_lc_model = z[:, None]
+                    # solve linear Eq.
+                    P, Perr, opt_reg_par, pc_matrix_sle, Pnormed, _ = \
+                        solve_linear_equation(design_matrix,
+                                              y.filled().value, weights,
+                                              cv_method=cv_method,
+                                              reg_par=reg_par,
+                                              degrees_of_freedom=2)
 
-                P_final, Perr_final, opt_reg_par_final, _, _, _ = \
-                    solve_linear_equation(final_lc_model,
-                                          calibrated_lightcurve.filled(),
-                                          weights,
-                                          cv_method=cv_method,
-                                          reg_par=reg_par)
-                # transit/eclipse signal
-                data_driven_image.data[il, ir] = P_final[-1]
-                # combine errors of lightcurve calibration and
-                # transit/eclipse fit
-                error_data_driven_image.data[il, ir] = \
-                    np.sqrt((Perr_final[-1])**2 +
-                            ((Perr[-1]/P[-1]) *
-                             data_driven_image.data[il, ir])**2)
-                # fit results to the injected calibration signal
-                if add_calibration_signal:
-                    calibration_image.data[il, ir] = P_final[-2]
+                    # store results
+                    optimal_regularization_parameter.data[il, ir] = opt_reg_par
+                    if use_pca:
+                        # back transform
+                        par_trans = np.dot((pca.components_).T, P[:-nadd])
+                        par_trans2 = np.append(par_trans, P[-nadd:])
+                        # constant offset always present as
+                        # first additional regr.
+                        par_trans2[-nadd] = par_trans2[-nadd] - \
+                            np.sum(RS.center_ * par_trans)
+                        fitted_parameters.data[:, il, ir] = par_trans2[-nadd:]
+                        error_fitted_parameters.data[:, il, ir] = \
+                            Perr[len(P)-nadd:]
+                        pc_matrix = \
+                            np.diag(1.0/np.linalg.norm(design_matrix_direct,
+                                                       axis=0))
+                        fitted_parameters_normed.\
+                            data[np.append(idx_regressors_used,
+                                           np.arange(-(nadd), 0)), il, ir] = \
+                            np.dot(np.linalg.inv(pc_matrix), par_trans2)
+                    else:
+                        fitted_parameters.data[:, il, ir] = P[len(P)-nadd:]
+                        error_fitted_parameters.data[:, il, ir] = \
+                            Perr[len(P)-nadd:]
+                        fitted_parameters_normed.\
+                            data[np.append(idx_regressors_used,
+                                           np.arange(-(nadd), 0)), il, ir] = \
+                            Pnormed
+
+                    model_time_series[il, ir, :] = \
+                        np.dot(design_matrix, P)*data_unit
+                    model_time_series.mask[il, ir, idx_bad_time] = True
+                    residual = y.filled() - np.dot(design_matrix, P)*data_unit
+                    residual_time_series[il, ir, :] = \
+                        np.ma.array(residual, mask=y.mask)
+                    lnL = -0.5*np.sum(weights*(residual.value)**2)
+                    n_samples, n_params = design_matrix.shape
+                    AIC[il, ir] = akaike_info_criterion(lnL, n_params, n_samples)
+                    ##################################
+                    # calculate the spectrum!!!!!!!!!#
+                    ##################################
+                    # Here we only need to use the fittted model not the actual
+                    # data. First, define model fit without lightcurve model
+                    Ptemp = P.copy()
+                    if add_calibration_signal:
+                        Ptemp[-2:] = 0.0
+                    else:
+                        Ptemp[-1] = 0.0
+                    # Then calculate the calibrated normalized lightcurve
+                    # for eiter eclipse or transit
+                    if self.model.transittype == 'secondary':
+                        # eclipse is normalized to stellar flux
+                        calibrated_lightcurve = 1.0 - np.dot(design_matrix,
+                                                             Ptemp) / \
+                                                      np.dot(design_matrix, P)
+                    else:
+                        # transit is normalized to flux-baseline
+                        # outside transit
+                        calibrated_lightcurve = np.dot(design_matrix, P) / \
+                                                np.dot(design_matrix,
+                                                       Ptemp) - 1.0
+                    calibrated_lightcurve =\
+                        np.ma.masked_invalid(calibrated_lightcurve)
+                    calibrated_lightcurve.set_fill_value(0.0)
+                    calibrated_time_series.data[il, ir, :] = \
+                        calibrated_lightcurve.filled()
+                    # fit again for final normalized transit/eclipse depth
+                    if add_calibration_signal:
+                        final_lc_model = np.vstack([zcal, z]).T
+                    else:
+                        final_lc_model = z[:, None]
+
+                    P_final, Perr_final, opt_reg_par_final, _, _, _ = \
+                        solve_linear_equation(final_lc_model,
+                                              calibrated_lightcurve.filled(),
+                                              weights,
+                                              cv_method=cv_method,
+                                              reg_par=reg_par)
+                    # transit/eclipse signal
+                    data_driven_image.data[il, ir] = P_final[-1]
                     # combine errors of lightcurve calibration and
                     # transit/eclipse fit
-                    error_calibration_image.data[il, ir] = \
-                        np.sqrt((Perr_final[-2])**2 +
-                                ((Perr[-2]/P[-2]) *
-                                 calibration_image.data[il, ir])**2)
-
+                    error_data_driven_image.data[il, ir] = \
+                        np.sqrt((Perr_final[-1])**2 +
+                                ((Perr[-1]/P[-1]) *
+                                 data_driven_image.data[il, ir])**2)
+#                        Perr[-1] / (P[-1]/P_final[-1])
+                    # fit results to the injected calibration signal
+                    if add_calibration_signal:
+                        calibration_image.data[il, ir] = P_final[-2]
+                        # combine errors of lightcurve calibration and
+                        # transit/eclipse fit
+                        error_calibration_image.data[il, ir] = \
+                            np.sqrt((Perr_final[-2])**2 +
+                                    ((Perr[-2]/P[-2]) *
+                                     calibration_image.data[il, ir])**2)
+                    # loop end pixels
+                idx_bad = \
+                    np.unravel_index(np.ma.argsort(AIC, endwith=False,
+                                                   axis=None)[::-1], AIC.shape)
+                nbad = int(np.ma.count(AIC, axis=None) * 0.00)
+                if (nbad > 0) and (iter_bad_reg < max_iter_bad_reg):
+                    bad_reg = list(zip(idx_bad[0][0:nbad], idx_bad[1][0:nbad]))
+                    # update regressor_list
+                    for ip, regressor_selection in enumerate(regressor_list):
+                        idx_good_reg = \
+                            [not (reg_indx in bad_reg)
+                             for reg_indx in zip(regressor_selection[1][0],
+                                                 regressor_selection[1][1])]
+                        regressor_list[ip][1] = \
+                            (regressor_selection[1][0][idx_good_reg],
+                             regressor_selection[1][1][idx_good_reg])
+                else:
+                    do_iter_bad_regressor = False
+                # loop end nods
+                iter_bad_reg += 1
+            # end while
         try:
             self.calibration_results
         except AttributeError:
@@ -2106,9 +2236,8 @@ class TSOSuite:
             raise AttributeError("No dataset found. "
                                  "Aborting plotting results")
 
-        sns.set_style("white")
-        sns.set_context("notebook", font_scale=1.5,
-                        rc={"lines.linewidth": 2.5})
+        sns.set_context("talk", font_scale=1.5, rc={"lines.linewidth": 2.5})
+        sns.set_style("white", {"xtick.bottom": True, "ytick.left": True})
 
         try:
             residual_time_series = \
@@ -2145,9 +2274,9 @@ class TSOSuite:
 
         if (results.weighted_image.shape[1] <= 1):
             fig, ax = plt.subplots(figsize=(7, 5))
-            for item in ([ax.title, ax.xaxis.label, ax.yaxis.label] +
-                         ax.get_xticklabels() + ax.get_yticklabels()):
-                item.set_fontsize(20)
+#            for item in ([ax.title, ax.xaxis.label, ax.yaxis.label] +
+#                         ax.get_xticklabels() + ax.get_yticklabels()):
+#                item.set_fontsize(20)
             ax.plot(results.spectrum.wavelength,
                     np.ma.abs(results.weighted_image), lw=3)
             ax.set_ylabel('| Signal * weight |')
@@ -2156,9 +2285,9 @@ class TSOSuite:
             plt.show()
         else:
             fig, ax = plt.subplots(figsize=(6, 6))
-            for item in ([ax.title, ax.xaxis.label, ax.yaxis.label] +
-                         ax.get_xticklabels() + ax.get_yticklabels()):
-                item.set_fontsize(20)
+#            for item in ([ax.title, ax.xaxis.label, ax.yaxis.label] +
+#                         ax.get_xticklabels() + ax.get_yticklabels()):
+#                item.set_fontsize(20)
             cmap = plt.cm.gist_heat
             cmap.set_bad('black', 1.)
             p = ax.imshow(np.ma.abs(results.weighted_image),
@@ -2194,9 +2323,9 @@ class TSOSuite:
             pass
 #        with quantity_support():
         fig, ax = plt.subplots(figsize=(7, 4))
-        for item in ([ax.title, ax.xaxis.label, ax.yaxis.label] +
-                     ax.get_xticklabels() + ax.get_yticklabels()):
-            item.set_fontsize(20)
+#        for item in ([ax.title, ax.xaxis.label, ax.yaxis.label] +
+#                     ax.get_xticklabels() + ax.get_yticklabels()):
+#            item.set_fontsize(20)
         ax.plot(results.spectrum.wavelength, results.spectrum.data,
                 lw=3, alpha=0.7, color='blue')
         ax.errorbar(wav_temp, flux_temp, yerr=err_temp,
@@ -2227,7 +2356,11 @@ class TSOSuite:
                           spectrum.data_unit))
         ax.set_xlabel('Wavelength [{}]'.format(results.
                       spectrum.wavelength_unit))
-        ax.legend(loc='best')
+        ax.legend(loc='lower left', fancybox=True, framealpha=1.0,
+                  ncol=2, mode="expand",
+                  bbox_to_anchor=(0, 0.95, 1, 0.2), shadow=True,
+                  handleheight=1.5, labelspacing=0.05,
+                  fontsize=13).set_zorder(11)
         plt.show()
         fig.savefig(save_path+observations_id+'_exoplanet_spectra.png',
                     bbox_inches='tight')
@@ -2249,9 +2382,9 @@ class TSOSuite:
                             mask=results.brightness_temperature.data.mask)
 
             fig, ax = plt.subplots(figsize=(7, 4))
-            for item in ([ax.title, ax.xaxis.label, ax.yaxis.label] +
-                         ax.get_xticklabels() + ax.get_yticklabels()):
-                item.set_fontsize(20)
+#            for item in ([ax.title, ax.xaxis.label, ax.yaxis.label] +
+#                         ax.get_xticklabels() + ax.get_yticklabels()):
+#                item.set_fontsize(20)
             ax.plot(results.brightness_temperature.wavelength,
                     results.brightness_temperature.data,
                     lw=3, alpha=0.7, color='blue')
@@ -2291,9 +2424,9 @@ class TSOSuite:
                             mask=results.calibration_correction.mask)
 
             fig, ax = plt.subplots(figsize=(7, 4))
-            for item in ([ax.title, ax.xaxis.label, ax.yaxis.label] +
-                         ax.get_xticklabels() + ax.get_yticklabels()):
-                item.set_fontsize(20)
+#            for item in ([ax.title, ax.xaxis.label, ax.yaxis.label] +
+#                         ax.get_xticklabels() + ax.get_yticklabels()):
+#                item.set_fontsize(20)
             ax.plot(results.calibration_correction.wavelength,
                     results.calibration_correction.data)
             ax.errorbar(wav_corr_temp, cal_corr_temp,
@@ -2317,9 +2450,9 @@ class TSOSuite:
 
             with quantity_support():
                 fig, ax = plt.subplots(figsize=(7, 4))
-                for item in ([ax.title, ax.xaxis.label, ax.yaxis.label] +
-                             ax.get_xticklabels() + ax.get_yticklabels()):
-                    item.set_fontsize(20)
+#                for item in ([ax.title, ax.xaxis.label, ax.yaxis.label] +
+#                             ax.get_xticklabels() + ax.get_yticklabels()):
+#                    item.set_fontsize(20)
                 ax.plot(results.spectrum.wavelength, snr_cal)
                 ax.plot(results.spectrum.wavelength, snr_signal)
                 axes = plt.gca()
