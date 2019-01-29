@@ -1397,6 +1397,9 @@ class TSOSuite:
         data_unit = data_use.data.unit
         nlambda, nspatial, ntime = data_use.shape
 
+# TEST
+        # add_offset = True
+
         # number of additional regressors
         nadd = 1
         if add_offset:
@@ -1569,7 +1572,8 @@ class TSOSuite:
 
                     if use_pca:
                         design_matrix_direct = design_matrix.copy()
-                        additional_components = design_matrix.T[-nadd:, :].copy()
+                        additional_components = \
+                            design_matrix.T[-nadd:, :].copy()
                         design_matrix = regressor_matrix.data.value
                         RS = RobustScaler(with_scaling=False)
                         X_scaled = RS.fit_transform(design_matrix.T)
@@ -1601,13 +1605,19 @@ class TSOSuite:
                         # back transform
                         par_trans = np.dot((pca.components_).T, P[:-nadd])
                         par_trans2 = np.append(par_trans, P[-nadd:])
+                        par_trans_err = np.dot((pca.components_).T,
+                                               P[:-nadd]+Perr[:-nadd])
+                        par_trans_err2 = np.append(par_trans_err,
+                                                   P[-nadd:]+Perr[-nadd:])
                         # constant offset always present as
                         # first additional regr.
                         par_trans2[-nadd] = par_trans2[-nadd] - \
                             np.sum(RS.center_ * par_trans)
+                        par_trans_err2[-nadd] = par_trans_err2[-nadd] - \
+                            np.sum(RS.center_ * par_trans_err)
                         fitted_parameters.data[:, il, ir] = par_trans2[-nadd:]
                         error_fitted_parameters.data[:, il, ir] = \
-                            Perr[len(P)-nadd:]
+                            np.abs(par_trans2[-nadd:]-par_trans_err2[-nadd:])
                         pc_matrix = \
                             np.diag(1.0/np.linalg.norm(design_matrix_direct,
                                                        axis=0))
@@ -1632,7 +1642,8 @@ class TSOSuite:
                         np.ma.array(residual, mask=y.mask)
                     lnL = -0.5*np.sum(weights*(residual.value)**2)
                     n_samples, n_params = design_matrix.shape
-                    AIC[il, ir] = akaike_info_criterion(lnL, n_params, n_samples)
+                    AIC[il, ir] = akaike_info_criterion(lnL, n_params,
+                                                        n_samples)
                     ##################################
                     # calculate the spectrum!!!!!!!!!#
                     ##################################
@@ -1679,7 +1690,8 @@ class TSOSuite:
                     # transit/eclipse fit
                     error_data_driven_image.data[il, ir] = \
                         np.sqrt((Perr_final[-1])**2 +
-                                ((Perr[-1]/P[-1]) *
+                                ((error_fitted_parameters.data[-1, il, ir] /
+                                  fitted_parameters.data[-1, il, ir]) *
                                  data_driven_image.data[il, ir])**2)
 #                        Perr[-1] / (P[-1]/P_final[-1])
                     # fit results to the injected calibration signal
@@ -1689,7 +1701,8 @@ class TSOSuite:
                         # transit/eclipse fit
                         error_calibration_image.data[il, ir] = \
                             np.sqrt((Perr_final[-2])**2 +
-                                    ((Perr[-2]/P[-2]) *
+                                    ((error_fitted_parameters.data[-2, il, ir] /
+                                      fitted_parameters.data[-2, il, ir]) *
                                      calibration_image.data[il, ir])**2)
                     # loop end pixels
                 idx_bad = \
@@ -2067,6 +2080,12 @@ class TSOSuite:
         except AttributeError:
             raise AttributeError("No planetery spectectrum defined \
                                  Aborting correcting planetary spectrum")
+        try:
+            rcond_limit = float(self.cascade_parameters.
+                                cpm_relative_sig_value_limit)
+        except AttributeError:
+            rcond_limit = 1.e-2
+
         ndim_reg, ndim_lam = \
             self.exoplanet_spectrum.weighted_normed_parameters.shape
         ndim_diff = ndim_reg - ndim_lam
@@ -2079,7 +2098,18 @@ class TSOSuite:
         weighted_signal = self.exoplanet_spectrum.weighted_signal.copy()
         weighted_signal.set_fill_value(0.0)
 
-        corrected_spectrum = np.dot(pinv2(K.filled(), rcond=1.e-3),
+        from sklearn.linear_model import RidgeCV
+
+#        clf = RidgeCV(alphas=[1e-9, 1e-7, 1e-6, 1e-4, 1e-3, 1e-2, 1e-1, 1, 10],
+#                      gcv_mode='svd',
+#                      cv=5,
+#                      fit_intercept=False).fit(K.filled(),
+#                                               weighted_signal.filled())
+#        corrected_spectrum = clf.predict(K.filled())
+#        corrected_spectrum = np.linalg.lstsq(K.filled(),
+#                                             -weighted_signal.filled(),
+#                                             rcond=rcond_limit)[0]
+        corrected_spectrum = np.dot(pinv2(K.filled(), rcond=rcond_limit),
                                     -weighted_signal.filled())
         corrected_spectrum = corrected_spectrum - \
             np.ma.median(corrected_spectrum)
