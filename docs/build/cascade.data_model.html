@@ -1,0 +1,323 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>cascade.data_model package &#8212; CASCADe 1.0 documentation</title>
+    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="cascade.exoplanet_tools package" href="cascade.exoplanet_tools.html" />
+    <link rel="prev" title="cascade.cpm_model package" href="cascade.cpm_model.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="section" id="cascade-data-model-package">
+<h1>cascade.data_model package<a class="headerlink" href="#cascade-data-model-package" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="submodules">
+<h2>Submodules<a class="headerlink" href="#submodules" title="Permalink to this headline">¶</a></h2>
+</div>
+<div class="section" id="module-cascade.data_model.data_model">
+<span id="cascade-data-model-data-model-module"></span><h2>cascade.data_model.data_model module<a class="headerlink" href="#module-cascade.data_model.data_model" title="Permalink to this headline">¶</a></h2>
+<p>Created on Sun Jul 10 16:14:19 2016</p>
+<p>&#64;author: bouwman</p>
+<dl class="class">
+<dt id="cascade.data_model.data_model.SpectralData">
+<em class="property">class </em><code class="descclassname">cascade.data_model.data_model.</code><code class="descname">SpectralData</code><span class="sig-paren">(</span><em>wavelength=nan</em>, <em>wavelength_unit=None</em>, <em>data=nan</em>, <em>data_unit=None</em>, <em>uncertainty=nan</em>, <em>mask=False</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#cascade.data_model.data_model.SpectralData" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">cascade.data_model.data_model.InstanceDescriptorMixin</span></code></p>
+<p>Class defining basic properties of spectral data
+INPUT, required:
+—————–
+wavelength</p>
+<blockquote>
+<div>wavelength of data (can be frequencies)</div></blockquote>
+<dl class="docutils">
+<dt>wavelenth_unit</dt>
+<dd>The physical unit of the wavelength (uses astropy.units)</dd>
+<dt>data</dt>
+<dd>spectral data</dd>
+<dt>data_unit</dt>
+<dd>the physical unit of the data (uses astropy.units)</dd>
+<dt>uncertainty</dt>
+<dd>uncertainty on spectral data</dd>
+<dt>mask</dt>
+<dd>mask defining masked data</dd>
+</dl>
+<dl class="docutils">
+<dt><a href="#id1"><span class="problematic" id="id2">**</span></a>kwargs</dt>
+<dd>any auxilary data relevant to the spectral data
+(like position, detector temperature etc.)
+If unit is not explicitly given a unit atribute is added.
+Input argument can be instance of astropy quantity.
+Auxilary atributes are added to instance of the SpectralData class
+and not to the class itself. Only the required input stated above
+is always defined for all instances.</dd>
+</dl>
+<p>Instance of SpectralData class.
+All data are stored internally as numppy arrays. Outputted data are
+astropy Quantities unless no units (=None) are specified.</p>
+<dl class="attribute">
+<dt id="cascade.data_model.data_model.SpectralData.data">
+<code class="descname">data</code><a class="headerlink" href="#cascade.data_model.data_model.SpectralData.data" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="cascade.data_model.data_model.SpectralData.data_unit">
+<code class="descname">data_unit</code><a class="headerlink" href="#cascade.data_model.data_model.SpectralData.data_unit" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="cascade.data_model.data_model.SpectralData.mask">
+<code class="descname">mask</code><a class="headerlink" href="#cascade.data_model.data_model.SpectralData.mask" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="cascade.data_model.data_model.SpectralData.uncertainty">
+<code class="descname">uncertainty</code><a class="headerlink" href="#cascade.data_model.data_model.SpectralData.uncertainty" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="cascade.data_model.data_model.SpectralData.wavelength">
+<code class="descname">wavelength</code><a class="headerlink" href="#cascade.data_model.data_model.SpectralData.wavelength" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="cascade.data_model.data_model.SpectralData.wavelength_unit">
+<code class="descname">wavelength_unit</code><a class="headerlink" href="#cascade.data_model.data_model.SpectralData.wavelength_unit" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="cascade.data_model.data_model.SpectralDataTimeSeries">
+<em class="property">class </em><code class="descclassname">cascade.data_model.data_model.</code><code class="descname">SpectralDataTimeSeries</code><span class="sig-paren">(</span><em>wavelength=nan</em>, <em>wavelength_unit=None</em>, <em>data=array([[nan]])</em>, <em>data_unit=None</em>, <em>uncertainty=array([[nan]])</em>, <em>mask=False</em>, <em>time=nan</em>, <em>time_unit=None</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#cascade.data_model.data_model.SpectralDataTimeSeries" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#cascade.data_model.data_model.SpectralData" title="cascade.data_model.data_model.SpectralData"><code class="xref py py-class docutils literal notranslate"><span class="pre">cascade.data_model.data_model.SpectralData</span></code></a></p>
+<p>Class defining timeseries of spectral data. This class inherits from
+SpectralData. The data now has one additional dimension: time
+Input:
+—–
+time</p>
+<blockquote>
+<div>time of observation</div></blockquote>
+<dl class="docutils">
+<dt>time_unit</dt>
+<dd>physical unit of time data</dd>
+</dl>
+<dl class="attribute">
+<dt id="cascade.data_model.data_model.SpectralDataTimeSeries.time">
+<code class="descname">time</code><a class="headerlink" href="#cascade.data_model.data_model.SpectralDataTimeSeries.time" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="cascade.data_model.data_model.SpectralDataTimeSeries.time_unit">
+<code class="descname">time_unit</code><a class="headerlink" href="#cascade.data_model.data_model.SpectralDataTimeSeries.time_unit" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="module-cascade.data_model">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-cascade.data_model" title="Permalink to this headline">¶</a></h2>
+<p>CASCADe init file</p>
+<p>&#64;author: bouwman</p>
+<dl class="class">
+<dt id="cascade.data_model.SpectralData">
+<em class="property">class </em><code class="descclassname">cascade.data_model.</code><code class="descname">SpectralData</code><span class="sig-paren">(</span><em>wavelength=nan</em>, <em>wavelength_unit=None</em>, <em>data=nan</em>, <em>data_unit=None</em>, <em>uncertainty=nan</em>, <em>mask=False</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#cascade.data_model.SpectralData" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">cascade.data_model.data_model.InstanceDescriptorMixin</span></code></p>
+<p>Class defining basic properties of spectral data
+INPUT, required:
+—————–
+wavelength</p>
+<blockquote>
+<div>wavelength of data (can be frequencies)</div></blockquote>
+<dl class="docutils">
+<dt>wavelenth_unit</dt>
+<dd>The physical unit of the wavelength (uses astropy.units)</dd>
+<dt>data</dt>
+<dd>spectral data</dd>
+<dt>data_unit</dt>
+<dd>the physical unit of the data (uses astropy.units)</dd>
+<dt>uncertainty</dt>
+<dd>uncertainty on spectral data</dd>
+<dt>mask</dt>
+<dd>mask defining masked data</dd>
+</dl>
+<dl class="docutils">
+<dt><a href="#id3"><span class="problematic" id="id4">**</span></a>kwargs</dt>
+<dd>any auxilary data relevant to the spectral data
+(like position, detector temperature etc.)
+If unit is not explicitly given a unit atribute is added.
+Input argument can be instance of astropy quantity.
+Auxilary atributes are added to instance of the SpectralData class
+and not to the class itself. Only the required input stated above
+is always defined for all instances.</dd>
+</dl>
+<p>Instance of SpectralData class.
+All data are stored internally as numppy arrays. Outputted data are
+astropy Quantities unless no units (=None) are specified.</p>
+<dl class="attribute">
+<dt id="cascade.data_model.SpectralData.data">
+<code class="descname">data</code><a class="headerlink" href="#cascade.data_model.SpectralData.data" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="cascade.data_model.SpectralData.data_unit">
+<code class="descname">data_unit</code><a class="headerlink" href="#cascade.data_model.SpectralData.data_unit" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="cascade.data_model.SpectralData.mask">
+<code class="descname">mask</code><a class="headerlink" href="#cascade.data_model.SpectralData.mask" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="cascade.data_model.SpectralData.uncertainty">
+<code class="descname">uncertainty</code><a class="headerlink" href="#cascade.data_model.SpectralData.uncertainty" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="cascade.data_model.SpectralData.wavelength">
+<code class="descname">wavelength</code><a class="headerlink" href="#cascade.data_model.SpectralData.wavelength" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="cascade.data_model.SpectralData.wavelength_unit">
+<code class="descname">wavelength_unit</code><a class="headerlink" href="#cascade.data_model.SpectralData.wavelength_unit" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="cascade.data_model.SpectralDataTimeSeries">
+<em class="property">class </em><code class="descclassname">cascade.data_model.</code><code class="descname">SpectralDataTimeSeries</code><span class="sig-paren">(</span><em>wavelength=nan</em>, <em>wavelength_unit=None</em>, <em>data=array([[nan]])</em>, <em>data_unit=None</em>, <em>uncertainty=array([[nan]])</em>, <em>mask=False</em>, <em>time=nan</em>, <em>time_unit=None</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#cascade.data_model.SpectralDataTimeSeries" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#cascade.data_model.data_model.SpectralData" title="cascade.data_model.data_model.SpectralData"><code class="xref py py-class docutils literal notranslate"><span class="pre">cascade.data_model.data_model.SpectralData</span></code></a></p>
+<p>Class defining timeseries of spectral data. This class inherits from
+SpectralData. The data now has one additional dimension: time
+Input:
+—–
+time</p>
+<blockquote>
+<div>time of observation</div></blockquote>
+<dl class="docutils">
+<dt>time_unit</dt>
+<dd>physical unit of time data</dd>
+</dl>
+<dl class="attribute">
+<dt id="cascade.data_model.SpectralDataTimeSeries.time">
+<code class="descname">time</code><a class="headerlink" href="#cascade.data_model.SpectralDataTimeSeries.time" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="cascade.data_model.SpectralDataTimeSeries.time_unit">
+<code class="descname">time_unit</code><a class="headerlink" href="#cascade.data_model.SpectralDataTimeSeries.time_unit" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</div>
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="index.html">
+              <img class="logo" src="_static/Exoplanets-A_Ecusson_Blanc_Alpha.png" alt="Logo"/>
+            </a></p>
+<h1 class="logo"><a href="index.html">CASCADe</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="modules.html">CASCADe</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="cascade.html">cascade package</a></li>
+<li class="toctree-l2"><a class="reference internal" href="setup.html">setup module</a></li>
+</ul>
+</li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+  <li><a href="modules.html">CASCADe</a><ul>
+  <li><a href="cascade.html">cascade package</a><ul>
+      <li>Previous: <a href="cascade.cpm_model.html" title="previous chapter">cascade.cpm_model package</a></li>
+      <li>Next: <a href="cascade.exoplanet_tools.html" title="next chapter">cascade.exoplanet_tools package</a></li>
+  </ul></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2019, Jeroen Bouwman.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.8.2</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="_sources/cascade.data_model.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>
