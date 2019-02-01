@@ -1,0 +1,245 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>cascade.initialize.initialize &#8212; CASCADe 0.9 beta documentation</title>
+    <link rel="stylesheet" href="../../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../../../" src="../../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+   
+  <link rel="stylesheet" href="../../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Source code for cascade.initialize.initialize</h1><div class="highlight"><pre>
+<span></span><span class="ch">#!/usr/bin/env python3</span>
+<span class="c1"># -*- coding: utf-8 -*-</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">This Module defines the functionality to generate and read .ini files which</span>
+<span class="sd">are used to initialize CASCADe.</span>
+
+<span class="sd">Created on Thu Mar 16 21:02:31 2017</span>
+
+<span class="sd">@author: bouwman</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">import</span> <span class="nn">configparser</span>
+<span class="kn">import</span> <span class="nn">os</span>
+
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;default_initialization_path&#39;</span><span class="p">,</span>
+           <span class="s1">&#39;generate_default_initialization&#39;</span><span class="p">,</span>
+           <span class="s1">&#39;configurator&#39;</span><span class="p">,</span>
+           <span class="s1">&#39;cascade_configuration&#39;</span><span class="p">]</span>
+
+<span class="n">default_initialization_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s1">&#39;HOME&#39;</span><span class="p">]</span> <span class="o">+</span> <span class="s2">&quot;/CASCADeInit/&quot;</span>
+
+
+<span class="c1"># &lt;codecell&gt;</span>
+<div class="viewcode-block" id="generate_default_initialization"><a class="viewcode-back" href="../../../cascade.initialize.html#cascade.initialize.initialize.generate_default_initialization">[docs]</a><span class="k">def</span> <span class="nf">generate_default_initialization</span><span class="p">():</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Convenience function to generate example .ini file for CASCADe</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">path</span> <span class="o">=</span> <span class="n">default_initialization_path</span>
+    <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="n">config</span> <span class="o">=</span> <span class="n">configparser</span><span class="o">.</span><span class="n">ConfigParser</span><span class="p">()</span>
+
+    <span class="n">config</span><span class="p">[</span><span class="s1">&#39;CASCADE&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;cascade_save_path&#39;</span><span class="p">:</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s1">&#39;HOME&#39;</span><span class="p">]}</span>
+    <span class="n">config</span><span class="p">[</span><span class="s1">&#39;CPM&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;cpm_cv_method&#39;</span><span class="p">:</span> <span class="s1">&#39;gvc&#39;</span><span class="p">,</span>
+                     <span class="s1">&#39;cpm_lam0&#39;</span><span class="p">:</span> <span class="s1">&#39;1.0e-6&#39;</span><span class="p">,</span>
+                     <span class="s1">&#39;cpm_lam1&#39;</span><span class="p">:</span> <span class="s1">&#39;1.0e2&#39;</span><span class="p">,</span>
+                     <span class="s1">&#39;cpm_nlam&#39;</span><span class="p">:</span> <span class="s1">&#39;60&#39;</span><span class="p">,</span>
+                     <span class="s1">&#39;cpm_sigma&#39;</span><span class="p">:</span> <span class="s1">&#39;3.0&#39;</span><span class="p">,</span>
+                     <span class="s1">&#39;cpm_nfilter&#39;</span><span class="p">:</span> <span class="s1">&#39;5&#39;</span><span class="p">,</span>
+                     <span class="s1">&#39;cpm_nextraction&#39;</span><span class="p">:</span> <span class="s1">&#39;5&#39;</span><span class="p">,</span>
+                     <span class="s1">&#39;cpm_DeltaPix&#39;</span><span class="p">:</span> <span class="s1">&#39;9&#39;</span><span class="p">,</span>
+                     <span class="s1">&#39;cpm_nrebin&#39;</span><span class="p">:</span> <span class="s1">&#39;1&#39;</span><span class="p">,</span>
+                     <span class="s1">&#39;cpm_stdv_kernel_time_axis&#39;</span><span class="p">:</span> <span class="s1">&#39;0.4&#39;</span><span class="p">,</span>
+                     <span class="s1">&#39;cpm_max_iter_optimal_extraction&#39;</span><span class="p">:</span> <span class="s1">&#39;7&#39;</span><span class="p">,</span>
+                     <span class="s1">&#39;cpm_sigma_optimal_extraction&#39;</span><span class="p">:</span> <span class="s1">&#39;4.0&#39;</span><span class="p">,</span>
+                     <span class="s1">&#39;cpm_add_time&#39;</span><span class="p">:</span> <span class="s1">&#39;True&#39;</span><span class="p">,</span>
+                     <span class="s1">&#39;cpm_add_postition&#39;</span><span class="p">:</span> <span class="s1">&#39;True&#39;</span><span class="p">,</span>
+                     <span class="s1">&#39;cpm_clip_percentile_time&#39;</span><span class="p">:</span> <span class="s1">&#39;0.01&#39;</span><span class="p">,</span>
+                     <span class="s1">&#39;cpm_clip_percentile_regressors&#39;</span><span class="p">:</span> <span class="s1">&#39;0.01&#39;</span><span class="p">,</span>
+                     <span class="s1">&#39;cpm_add_calibration_signal&#39;</span><span class="p">:</span> <span class="s1">&#39;True&#39;</span><span class="p">,</span>
+                     <span class="s1">&#39;cpm_calibration_signal_depth&#39;</span><span class="p">:</span> <span class="s1">&#39;0.02&#39;</span><span class="p">,</span>
+                     <span class="s1">&#39;cpm_calibration_signal_position&#39;</span><span class="p">:</span> <span class="s1">&#39;before&#39;</span><span class="p">}</span>
+    <span class="n">config</span><span class="p">[</span><span class="s1">&#39;INSTRUMENT&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;instrument_observatory&#39;</span><span class="p">:</span> <span class="s1">&#39;SPITZER&#39;</span><span class="p">,</span>
+                            <span class="s1">&#39;instrument&#39;</span><span class="p">:</span> <span class="s1">&#39;IRS&#39;</span><span class="p">,</span>
+                            <span class="s1">&#39;instrument_mode&#39;</span><span class="p">:</span> <span class="s1">&#39;SL&#39;</span><span class="p">,</span>
+                            <span class="s1">&#39;instrument_order&#39;</span><span class="p">:</span> <span class="s1">&#39;1&#39;</span><span class="p">}</span>
+    <span class="n">config</span><span class="p">[</span><span class="s1">&#39;OBSERVATIONS&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;observations_type&#39;</span><span class="p">:</span> <span class="s1">&#39;ECLIPSE&#39;</span><span class="p">,</span>
+                              <span class="s1">&#39;observations_mode&#39;</span><span class="p">:</span> <span class="s1">&#39;STARING&#39;</span><span class="p">,</span>
+                              <span class="s1">&#39;observations_data&#39;</span><span class="p">:</span> <span class="s1">&#39;SPECTRAL_IMAGE&#39;</span><span class="p">,</span>
+                              <span class="s1">&#39;observations_path&#39;</span><span class="p">:</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s1">&#39;HOME&#39;</span><span class="p">],</span>
+                              <span class="s1">&#39;observations_cal_path&#39;</span><span class="p">:</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s1">&#39;HOME&#39;</span><span class="p">],</span>
+                              <span class="s1">&#39;observations_id&#39;</span><span class="p">:</span> <span class="s1">&#39;&#39;</span><span class="p">,</span>
+                              <span class="s1">&#39;observations_cal_version&#39;</span><span class="p">:</span> <span class="s1">&#39;&#39;</span><span class="p">,</span>
+                              <span class="s1">&#39;observations_data_product&#39;</span><span class="p">:</span> <span class="s1">&#39;&#39;</span><span class="p">,</span>
+                              <span class="s1">&#39;observations_target_name&#39;</span><span class="p">:</span> <span class="s1">&#39;&#39;</span><span class="p">,</span>
+                              <span class="s1">&#39;observations_has_background&#39;</span><span class="p">:</span> <span class="s1">&#39;True&#39;</span><span class="p">,</span>
+                              <span class="s1">&#39;observations_background_id&#39;</span><span class="p">:</span> <span class="s1">&#39;&#39;</span><span class="p">,</span>
+                              <span class="s1">&#39;observations_background_name&#39;</span><span class="p">:</span> <span class="s1">&#39;&#39;</span><span class="p">,</span>
+                              <span class="s1">&#39;observations_median_signal&#39;</span><span class="p">:</span> <span class="s1">&#39;&#39;</span><span class="p">}</span>
+    <span class="n">config</span><span class="p">[</span><span class="s1">&#39;AUXILARY&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;auxilary_path&#39;</span><span class="p">:</span> <span class="s1">&#39;&#39;</span><span class="p">,</span>
+                          <span class="s1">&#39;auxilary_data&#39;</span><span class="p">:</span> <span class="s1">&#39;&#39;</span><span class="p">}</span>
+    <span class="n">config</span><span class="p">[</span><span class="s1">&#39;OBJECT&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;object_name&#39;</span><span class="p">:</span> <span class="s1">&#39;HD 189733 b&#39;</span><span class="p">,</span>
+                        <span class="s1">&#39;object_radius&#39;</span><span class="p">:</span> <span class="s1">&#39;1.151 Rjup&#39;</span><span class="p">,</span>
+                        <span class="s1">&#39;object_radius_host_star&#39;</span><span class="p">:</span> <span class="s1">&#39;0.752 Rsun&#39;</span><span class="p">,</span>
+                        <span class="s1">&#39;object_temperature_host_star&#39;</span><span class="p">:</span> <span class="s1">&#39;5040.0 K&#39;</span><span class="p">,</span>
+                        <span class="s1">&#39;object_semi_major_axis&#39;</span><span class="p">:</span> <span class="s1">&#39;0.03099 AU&#39;</span><span class="p">,</span>
+                        <span class="s1">&#39;object_inclination&#39;</span><span class="p">:</span> <span class="s1">&#39;85.78 deg&#39;</span><span class="p">,</span>
+                        <span class="s1">&#39;object_eccentricity&#39;</span><span class="p">:</span> <span class="s1">&#39;0.0041&#39;</span><span class="p">,</span>
+                        <span class="s1">&#39;object_omega&#39;</span><span class="p">:</span> <span class="s1">&#39;90.0 deg&#39;</span><span class="p">,</span>
+                        <span class="s1">&#39;object_period&#39;</span><span class="p">:</span> <span class="s1">&#39;2.218575200 d&#39;</span><span class="p">,</span>
+                        <span class="s1">&#39;object_ephemeris&#39;</span><span class="p">:</span> <span class="s1">&#39;2454279.436714 d&#39;</span><span class="p">}</span>
+    <span class="n">config</span><span class="p">[</span><span class="s1">&#39;CATALOG&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;catalog_use_catalog&#39;</span><span class="p">:</span> <span class="s1">&#39;True&#39;</span><span class="p">,</span>
+                         <span class="s1">&#39;catalog_name&#39;</span><span class="p">:</span> <span class="s1">&#39;EXOPLANETS.ORG&#39;</span><span class="p">,</span>
+                         <span class="s1">&#39;catalog_update&#39;</span><span class="p">:</span> <span class="s1">&#39;True&#39;</span><span class="p">}</span>
+    <span class="n">config</span><span class="p">[</span><span class="s1">&#39;MODEL&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;model_type&#39;</span><span class="p">:</span> <span class="s1">&#39;batman&#39;</span><span class="p">,</span>
+                       <span class="s1">&#39;model_limb darkening&#39;</span><span class="p">:</span> <span class="s1">&#39;quadratic&#39;</span><span class="p">,</span>
+                       <span class="s1">&#39;model_limb_darkening_coeff&#39;</span><span class="p">:</span> <span class="s1">&#39;[0.0, 0.0]&#39;</span><span class="p">,</span>
+                       <span class="s1">&#39;model_nphase_points&#39;</span><span class="p">:</span> <span class="s1">&#39;10000&#39;</span><span class="p">,</span>
+                       <span class="s1">&#39;model_phase_range&#39;</span><span class="p">:</span> <span class="s1">&#39;0.5&#39;</span><span class="p">}</span>
+
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">path</span> <span class="o">+</span> <span class="s1">&#39;cascade_default.ini&#39;</span><span class="p">,</span> <span class="s1">&#39;w&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">configfile</span><span class="p">:</span>
+        <span class="n">config</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">configfile</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="kc">True</span></div>
+
+
+<span class="c1"># &lt;codecell&gt;</span>
+<span class="k">def</span> <span class="nf">read_ini_files</span><span class="p">(</span><span class="o">*</span><span class="n">files</span><span class="p">):</span>
+    <span class="n">parser</span> <span class="o">=</span> <span class="n">configparser</span><span class="o">.</span><span class="n">ConfigParser</span><span class="p">()</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">optionxform</span> <span class="o">=</span> <span class="nb">str</span>  <span class="c1"># make option names case sensitive</span>
+    <span class="n">found</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="n">files</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">found</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Config file not found!&#39;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">parser</span>
+
+
+<span class="c1"># &lt;codecell&gt;</span>
+<span class="k">class</span> <span class="nc">_Singleton</span><span class="p">(</span><span class="nb">type</span><span class="p">):</span>
+    <span class="n">_instances</span> <span class="o">=</span> <span class="p">{}</span>
+
+    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">cls</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">cls</span><span class="o">.</span><span class="n">_instances</span><span class="p">:</span>
+            <span class="bp">cls</span><span class="o">.</span><span class="n">_instances</span><span class="p">[</span><span class="bp">cls</span><span class="p">]</span> <span class="o">=</span> <span class="nb">super</span><span class="p">(</span><span class="n">_Singleton</span><span class="p">,</span> <span class="bp">cls</span><span class="p">)</span><span class="o">.</span><span class="fm">__call__</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span>
+                                                                  <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+            <span class="bp">cls</span><span class="o">.</span><span class="n">isInitialized</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">cls</span><span class="o">.</span><span class="n">_instances</span><span class="p">[</span><span class="bp">cls</span><span class="p">]</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">cls</span><span class="o">.</span><span class="n">_instances</span><span class="p">[</span><span class="bp">cls</span><span class="p">]</span>
+
+
+<div class="viewcode-block" id="configurator"><a class="viewcode-back" href="../../../cascade.initialize.html#cascade.initialize.initialize.configurator">[docs]</a><span class="k">class</span> <span class="nc">configurator</span><span class="p">(</span><span class="nb">object</span><span class="p">,</span> <span class="n">metaclass</span><span class="o">=</span><span class="n">_Singleton</span><span class="p">):</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">file_names</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">file_names</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">parser</span> <span class="o">=</span> <span class="n">read_ini_files</span><span class="p">(</span><span class="o">*</span><span class="n">file_names</span><span class="p">)</span>
+            <span class="n">section_names</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">sections</span><span class="p">()</span>
+            <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">section_names</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="vm">__dict__</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">parser</span><span class="o">.</span><span class="n">items</span><span class="p">(</span><span class="n">name</span><span class="p">))</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">isInitialized</span> <span class="o">=</span> <span class="kc">True</span>
+
+<div class="viewcode-block" id="configurator.reset"><a class="viewcode-back" href="../../../cascade.initialize.html#cascade.initialize.initialize.configurator.reset">[docs]</a>    <span class="k">def</span> <span class="nf">reset</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">_dict_keys</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="vm">__dict__</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
+        <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">_dict_keys</span><span class="p">:</span>
+            <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__dict__</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">isInitialized</span> <span class="o">=</span> <span class="kc">False</span></div></div>
+
+<span class="c1"># &lt;codecell&gt;</span>
+<span class="n">cascade_configuration</span> <span class="o">=</span> <span class="n">configurator</span><span class="p">()</span>
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="../../../index.html">
+              <img class="logo" src="../../../_static/Exoplanets-A_Ecusson_Blanc_Alpha.png" alt="Logo"/>
+            </a></p>
+<h1 class="logo"><a href="../../../index.html">CASCADe</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../cascade.html">Modules of the CASCADe package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../howto.html">Using Cascade</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../../index.html">Documentation overview</a><ul>
+  <li><a href="../../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2019, Jeroen Bouwman.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.8.2</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

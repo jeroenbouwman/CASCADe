@@ -1,8 +1,31 @@
 # -*- coding: utf-8 -*-
-"""
-Created on Sun Jul 10 16:14:19 2016
+#
+# This file is part of CASCADe package
+#
+# Developed within the ExoplANETS-A H2020 program.
+#
+# See the COPYRIGHT file at the top-level directory of this distribution
+# for details of code ownership.
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
 
-@author: bouwman
+"""
+The TSO module is the main module of the CASCADe package.
+The classes defined in this module define the time series object and
+all routines acting upon the TSO instance to extract the spectrum of the
+transiting exoplanet.
 """
 import ast
 import copy
@@ -48,9 +71,28 @@ __all__ = ['TSOSuite']
 
 class TSOSuite:
     """
-    Transit Spectroscopy Object class
-    This is the main class containing data and functionality to determine
-    the spectra of transiting systems.
+    Transit Spectroscopy Object Suite class.
+
+    This is the main class containing the ligth curve data of and transiting
+    exoplanet and all functionality to calibrate and analyse the light curves
+    and to extractthe spectrum of the transiting exoplanet.
+
+    Parameters
+    ----------
+    init_files: 'list' of 'str'
+        List containing all the initialization files needed to run the
+        CASCADe code.
+
+    Raises
+    ------
+    ValueError
+        Raised when commands not recognized as valid
+
+    Examples
+    --------
+    To make instance of TSOSuite class
+
+    >>> tso = cascade.TSO.TSOSuite()
     """
     def __init__(self, *init_files, path=None):
         if path is None:
@@ -65,6 +107,10 @@ class TSOSuite:
 
     @property
     def __valid_commands(self):
+        """
+        Dictionary with all the valid commands which can be parsed to the
+        instance of the TSO object.
+        """
         return {"initialize": self.initialize_TSO, "reset": self.reset_TSO,
                 "load_data": self.load_data,
                 "subtract_background": self.subtract_background,
@@ -83,7 +129,7 @@ class TSOSuite:
 
     def execute(self, command, *init_files, path=None):
         """
-        Excecute specified command
+        Check if command is valid and excecute if True
         """
         if command not in self.__valid_commands:
             raise ValueError("Command not recognized, \
@@ -99,6 +145,11 @@ class TSOSuite:
     def initialize_TSO(self, *init_files, path=None):
         """
         Initialize TSO object
+
+        Attributes
+        ----------
+        cascade_parameters
+            cascade.initialize.initialize.configurator
         """
         if path is None:
             path = default_initialization_path
@@ -117,12 +168,30 @@ class TSOSuite:
     def reset_TSO(self):
         """
         Reset initialization of TSO object by removing all loaded parameters.
+
+        Examples
+        --------
+
+        >>> tso.execute("reset")
         """
         self.cascade_parameters.reset()
 
     def load_data(self):
         """
-        Load Data from file
+        Load the transit time series observations from file, for the
+        object, observatory, instrument and file location specified in the
+        loaded initialization files
+
+        Attributes
+        ----------
+        observation
+            cascade.instruments.instruments.Observation
+
+        Examples
+        --------
+        To make instance of TSOSuite class
+
+        >>> tso.execute("load_data")
         """
         self.observation = Observation()
 
@@ -192,14 +261,16 @@ class TSOSuite:
         """
         Sigma Clip in time.
 
-        Input:
-        ------
-            data
-            mask
-            sigma
+        Parameters
+        ---------
+        data
+            input data to be cliped
+        sigma
+            sigma value of sigmaclip
 
-        Output:
+        Returns
         -------
+        sigma_clip_mask
             updated mask
         """
         # time axis always the last axis in data,
@@ -431,17 +502,25 @@ class TSOSuite:
         from the data by deriving the "center of light" of the dispersed
         light.
 
-        Output:
-            spectral_trace:
-                The trace of the dispersed light on the detector normalized
-                to its median position. In case the data are extracted spectra,
-                the trace is zero.
-            position:
-                Postion of the source on the detector in the cross dispersion
-                directon as a function of time, normalized to the
-                median position.
-            median_position:
-                median source position.
+        Parameters
+        ----------
+        spectral_trace:
+            The trace of the dispersed light on the detector normalized
+            to its median position. In case the data are extracted spectra,
+            the trace is zero.
+        position:
+            Postion of the source on the detector in the cross dispersion
+            directon as a function of time, normalized to the
+            median position.
+        median_position:
+            median source position.
+
+        Returns
+        -------
+        position
+            position of source in time
+        med_position
+            median (in time) position of source
         """
         try:
             data_in = self.observation.dataset
@@ -609,7 +688,9 @@ class TSOSuite:
         a transit signal will be determined. The mask is set along the
         spectral trace with a pixel width of nExtractionWidth
 
-        Output:
+        Returns
+        -------
+        mask
             In case data are Spectra : 1D mask
             In case data are Spectral images or cubes: 2D mask
         """
@@ -682,13 +763,14 @@ class TSOSuite:
         """
         Create an edge mask to mask all pixels for which the convolution kernel
         extends beyond the ROI
-        Input:
-            kernel
+        Parameters
+        ----------
+        kernel
+        roi_mask
 
-            roi_mask
-
-        Output:
-            edge_mask
+        Returns
+        -------
+        edge_mask
         """
         dilation_mask = np.ones(kernel.shape)
 
@@ -705,17 +787,19 @@ class TSOSuite:
         profile and to increase the SNR. On the edges, where the kernel extends
         over the boundary, non convolved data is used to prevent edge effects
 
-        Input:
-           cleaned_data_with_roi_mask
+        Parameters
+        ----------
+        cleaned_data_with_roi_mask
 
-           extracted_spectra
+        extracted_spectra
 
-           kernel
+        kernel
 
-           mask_for_extraction
+        mask_for_extraction
 
-        Output:
-            extraction_profile
+        Returns
+        -------
+        extraction_profile
         """
         npix, mpix, ntime = cleaned_data_with_roi_mask.shape
         roi_mask = cleaned_data_with_roi_mask.mask.copy()
@@ -746,11 +830,13 @@ class TSOSuite:
         Create a 3d Kernel from 2d Instrument specific Kernel
         to include time dimention
 
-        Input:
-           sigma_time
+        Parameters
+        ----------
+        sigma_time
 
-        Output:
-            3dKernel
+        Returns
+        -------
+        3dKernel
         """
         try:
             kernel = self.observation.instrument_calibration.convolution_kernel
@@ -775,8 +861,9 @@ class TSOSuite:
         Optimally extract spectrum using procedure of
         Horne 1986, PASP 98, 609
 
-        Output:
-            Optimally extracted 1d Spectra
+        Returns
+        -------
+        Optimally extracted 1d Spectra
         """
         try:
             obs_data = self.cascade_parameters.observations_data
@@ -1145,6 +1232,7 @@ class TSOSuite:
                           clip_pctl_time=0.00, clip_pctl_regressors=0.00):
         """
         Return the design matrix based on the data set itself
+
         Input:
         ------
             cleaned_data_in

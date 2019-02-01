@@ -1,10 +1,29 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+# This file is part of CASCADe package
+#
+# Developed within the ExoplANETS-A H2020 program.
+#
+# See the COPYRIGHT file at the top-level directory of this distribution
+# for details of code ownership.
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
 """
 This Module defines the functionality to get catalog data on the targeted
-exoplanet and define the model ligth curve for the system
-
-@author: bouwman
+exoplanet and define the model ligth curve for the system.
+It also difines some usefull functionality for exoplanet atmosphere analysis.
 """
 
 import numpy as np
@@ -47,28 +66,52 @@ __all__ = ['Vmag', 'Kmag', 'Rho_jup', 'Rho_jup', 'KmagToJy', 'JytoKmag',
 ###########################################################################
 # astropy does not have V and K band magnitudes, we define it here ourself
 ###########################################################################
-# K band magnitude zeropoint Johnson-Cousins-Glass System.
 K0_vega = const.Constant('K0_vega', 'Kmag_zero_point_Vega', 640.0, u.Jy, 10.0,
                          'Bessell et al. (1998)')
+"""
+Definition of the Johnson-Cousins-Glass K band magnitude zero point
+"""
 Kwav_vega = const.Constant('Kwav_vega', 'Kmag_central_wave_Vega', 2.19,
                            u.micron, 0.01, 'Bessell et al. (1998)')
-# K band magnitude zeropoint 2MASS System.
+"""
+Definition of the Johnson-Cousins-Glass K band magnitude
+"""
+
 K0_2mass = const.Constant('K0_2mass', 'Kmag_zero_point_2MASS', 666.7,
                           u.Jy, 12.6, 'Cohen et al. (2003)')
+"""
+Definition of the 2MASS K band magnitude zero point
+"""
 Kwav_2mass = const.Constant('Kwav_2mass', 'Kmag_central_wave_2MASS',
                             2.159, u.micron, 0.011, 'Cohen et al. (2003)')
-# Define K band magnitude
+"""
+Definition of the 2MASS K band magnitude
+"""
+
 Kmag = u.def_unit(
     'Kmag', u.mag, format={'generic': 'Kmag', 'console': 'Kmag'})
+"""
+Definition of generic K band magnitude
+"""
 
-# K band magnitude zeropoint Johnson-Cousins-Glass System.
 V0_vega = const.Constant('V0_vega', 'Vmag_zero_point_Vega', 3636.0, u.Jy, 10.0,
                          'Bessell et al. (1998)')
+"""
+Definition of the V band magnitude zero point in the
+Johnson-Cousins-Glass system
+"""
 Vwav_vega = const.Constant('Vwav_vega', 'Vmag_central_wave_Vega', 0.545,
                            u.micron, 0.01, 'Bessell et al. (1998)')
+"""
+Definition of the Vega magnitude in the Johnson-Cousins-Glass system
+"""
+
 # Define V band magnitude
 Vmag = u.def_unit(
     'Vmag', u.mag, format={'generic': 'Vmag', 'console': 'Vmag'})
+"""
+Definition of a generic Vband magnitude
+"""
 
 unitcontext_with_mag = u.add_enabled_units([Kmag, Vmag])
 
@@ -271,11 +314,18 @@ exoplanets_table_units = collections.OrderedDict(
 # mask=[True, False, True, False])
 def masked_array_input(func):
     """
+    Decorator function to check and handel masked Quantities
+
     If one of the input arguments is wavelength or flux, the array can be
     a masked Quantity, masking out only 'bad' data. This decorator checks for
     masked arrays and upon finding the first masked array, passes the data
     and stores the mask to be used to create a masked Quantity after the
     function returns.
+
+    Parameters
+    ----------
+    func
+        Function to be decorated
     """
     @wraps(func)
     def __wrapper(*args, **kwargs):
@@ -311,7 +361,26 @@ def masked_array_input(func):
 
 @u.quantity_input
 def KmagToJy(magnitude: Kmag, system='Johnson'):
-    """Convert Kband Magnitudes to Jy"""
+    """
+    Convert Kband Magnitudes to Jy
+
+    Parameters
+    ----------
+    magnitude: 'Kmag'
+        Input K band magnitude to be converted to Jy.
+    system: 'str'
+        optional, either 'Johnson' or '2MASS', default is 'Johnson'
+
+    Returns
+    -------
+    flux
+        Flux in Jy, converted from input Kband magnitude
+
+    Raises
+    ------
+    AssertionError
+        raises error if Photometric system not recognized
+    """
     if system.strip().upper() == 'JOHNSON':
         Kmag_zero_point = K0_vega
     elif system.strip().upper() == '2MASS':
@@ -334,7 +403,26 @@ def KmagToJy(magnitude: Kmag, system='Johnson'):
 
 @u.quantity_input
 def JytoKmag(flux: u.Jy, system='Johnson'):
-    """Convert flux in Jy to Kband Magnitudes"""
+    """
+    Convert flux in Jy to Kband Magnitudes
+
+    Parameters
+    ----------
+    flux: 'Jy or equivalent'
+        Input Flux to be converted K band magnitude.
+    system: 'str'
+        optional, either 'Johnson' or '2MASS', default is 'Johnson'
+
+    Returns
+    -------
+    magnitude
+        Magnitude  converted from input fkux value
+
+    Raises
+    ------
+    AssertionError
+        raises error if Photometric system not recognized
+    """
     if system.strip().upper() == 'JOHNSON':
         Kmag_zero_point = K0_vega
     elif system.strip().upper() == '2MASS':
@@ -361,16 +449,17 @@ def Planck(wavelength: u.micron, temperature: u.K):
     """
     This function calculates the emisison from a Black Body.
 
-    Input:
-    ------
-    wavelength
+    Parameters
+    ----------
+    wavelength:
         Input wavelength in units of microns or equivalent
-    temperature
+    temperature:
         Input temperature in units of Kelvin or equivalent
 
-    Output:
+    Returns
     -------
-    B_nu in cgs units [ erg/s/cm2/Hz/sr]
+    blackbody:
+        B_nu in cgs units [ erg/s/cm2/Hz/sr]
     """
     return blackbody_nu(wavelength, temperature)
 
@@ -380,17 +469,17 @@ def SurfaceGravity(MassPlanet: u.M_jupiter, RadiusPlanet: u.R_jupiter):
     """
     Calculates surface gravity of planet
 
-    Input:
-    ------
+    Parameters
+    ----------
     MassPlanet
         Mass of planet in units of Jupiter mass or equivalent
     RadiusPlanet
         Radius of planet in units of Jupiter radius or equivalent
 
-    Output:
+    Returns
     -------
-
-    Surface gravity in units of  m s-2
+    sgrav
+        Surface gravity in units of  m s-2
     """
     sgrav = (const.G * MassPlanet / RadiusPlanet**2)
     return sgrav.to(u.m * u.s**-2)
@@ -402,8 +491,8 @@ def ScaleHeight(MeanMolecularMass: u.u, SurfaceGravity: u.m*u.s**-2,
     """
     Calculate the scaleheigth of the planet
 
-    Input:
-    ------
+    Parameters
+    ----------
     MeanMolecularMass
         in units of mass of the hydrogen atom or equivalent
     SurfaceGravity
@@ -411,8 +500,9 @@ def ScaleHeight(MeanMolecularMass: u.u, SurfaceGravity: u.m*u.s**-2,
     Temperature
         in units of K or equivalent
 
-    Output:
+    Returns
     -------
+    ScaleHeight
       scaleheigth in unit of km
     """
     ScaleHeight = (const.k_B * Temperature) / \
@@ -426,16 +516,17 @@ def TransitDepth(RadiusPlanet: u.R_jup, RadiusStar: u.R_sun):
     Calculates the depth of the planetary transit assuming one can
     neglect the emision from the night side of the planet.
 
-    Input:
-    ------
+    Parameters
+    ----------
     Radius Planet
-        in Jovian radii or equivalent
+        Planetary radius in Jovian radii or equivalent
     Radius Star
-        in Solar radii or equivalent
+        Stellar radius in Solar radii or equivalent
 
-    Output:
+    Returns
     -------
-    relative transit depth (unit less)
+    depth
+        Relative transit depth (unit less)
     """
     depth = (RadiusPlanet/RadiusStar)**2
     return depth.decompose()
@@ -447,21 +538,23 @@ def EquilibriumTemperature(StellarTemperature: u.K, StellarRadius: u.R_sun,
     """
     Calculate the Equlibrium Temperature of the Planet
 
-    Input:
-    ------
-    StellarTemperature
-        in units of K or equivalent
-    StellarRadius
-        in units of Solar Radii or equivalent
-    Albedo
-    SemiMajorAxis
-        in units of AU or equivalent
-    epsilon
+    Parameters
+    ----------
+    StellarTemperature:
+        Temperature of the central star in units of K or equivalent
+    StellarRadius:
+        Radius of the central star in units of Solar Radii or equivalent
+    Albedo:
+        Albedo of the planet.
+    SemiMajorAxis:
+        The semi-major axis of platetary orbit in units of AU or equivalent
+    epsilon:
         Green house effect parameter
 
-    Output:
+    Returns
     -------
-    Equlibrium Temperature
+    ET:
+        Equlibrium Temperature
     """
     ET = StellarTemperature * ((1.0-Albedo)/epsilon)**(0.25) * \
         np.sqrt(StellarRadius/(2.0*SemiMajorAxis))
@@ -480,6 +573,28 @@ def convert_spectrum_to_brighness_temperature(wavelength: u.micron,
     """
     Function to convert the secondary eclipse spectrum to brightness
     temperature.
+
+    Parameters
+    ----------
+    wavelength:
+        Wavelength in u.micron or equivalent unit.
+    contrast:
+        Contrast between planet and star in u.percent.
+    StellarTemperature:
+        Temperature if the star in u.K or equivalent unit.
+    StellarRadius:
+        Radius of the star in u.R_sun or equivalent unit.
+    RadiusPlanet:
+        Radius of the planet in u.R_jupiter or equivalent unit.
+    error:
+        (optional) Error on contrast in u.percent (standart value = None).
+
+    Returns
+    -------
+    brighness_temperature
+        Eclipse spectrum in units of brightness temperature.
+    error_brighness_temperature
+        (optional) Error on the spectrum in units of brightness temperature.
     """
     planet_temperature_grid = np.array([100.0 + 100.0*np.arange(38)]) * u.K
 
@@ -523,6 +638,16 @@ def eclipse_to_transit(eclipse):
 def transit_to_eclipse(transit):
     """
     Converts transit spectrum to eclipse spectrum
+
+    Parameters
+    ----------
+    transit:
+        Transit depth values to be converted
+
+    Returns
+    -------
+    eclipse:
+        eclipse depth values derived from input transit values
     """
     eclipse = 1.0/((1.0/transit)-1.0)
     return eclipse
@@ -532,15 +657,18 @@ def combine_spectra(identifier_list=[], path=""):
     """
     Convienience function to combine multiple extracted spectra
     of the same source by calculating a weighted averige.
-    Input:
-    ------
-        identifier_list
 
-        path
+    Parameters
+    ----------
+    identifier_list: 'list' of 'str'
+        List of file identifiers of the individual spectra to be combined
+    path: 'str'
+        path to the fits files
 
-    Output:
+    Returns
     -------
-        combined_spectrum
+    combined_spectrum : 'array_like'
+        The combined spectrum based on the spectra specified in the input list
     """
 
     spectrum = []
@@ -593,10 +721,18 @@ def combine_spectra(identifier_list=[], path=""):
 def get_calalog(catalog_name, update=True):
     """
     Get exoplanet catalog data
-    Input:
-    ------
-    catalog_name
+
+    Parameters
+    ----------
+    catalog_name: 'str'
         name of catalog to use
+    update: 'bool'
+        Boolian indicating if local calalog file will be updated
+
+    Returns
+    -------
+    files_downloaded: 'list' of 'str'
+        list of downloaded catalog files
     """
     valid_catalogs = ['TEPCAT', 'EXOPLANETS.ORG', 'NASAEXOPLANETARCHIVE']
     path = os.environ['HOME'] + "/CASCADeData/"
@@ -755,18 +891,23 @@ def extract_exoplanet_data(data_list, target_name_or_position, coord_unit=None,
                            coordinate_frame='icrs', search_radius=5*u.arcsec):
     """
     Extract the data record for a single target
-    Input:
-    data_list
+
+    Parameters
+    ----------
+    data_list: 'list' of 'astropy.Table'
         List containing table with exoplanet data
-    target_name_or_position
+    target_name_or_position:
         Name of the target or coordinates of the target for
         which the record is extracted
-    coord_unit
-        unit of coordinates e.g (u.hourangle, u.deg)
-    coordinate_frame
+    coord_unit:
+        Unit of coordinates e.g (u.hourangle, u.deg)
+    coordinate_frame:
         Frame of coordinate system e.g icrs
-    Output:
-        list containing data record of the specified planet
+
+    Returns
+    -------
+    table_list: 'list'
+        List containing data record of the specified planet
     """
     if not isinstance(target_name_or_position, str):
         raise TypeError("Input name of coordinate not a string")
@@ -928,6 +1069,9 @@ def extract_exoplanet_data(data_list, target_name_or_position, coord_unit=None,
 
 class lightcuve:
     """
+    Class defining lightcurve model used to model the observed
+    transit/eclipse observations.
+    Current valid lightcurve models: batman
     """
     valid_models = {'batman'}
 
@@ -952,6 +1096,9 @@ class lightcuve:
 
 class batman_model:
     """
+    This class defines the lightcurve model used to analyse the observed
+    transit/eclipse using the batman package by Laura Kreidberg.
+	reference: Kreidberg 2015, PASP 127, 1161
     """
     __valid_ttypes = {'ECLIPSE', 'TRANSIT'}
 
@@ -969,10 +1116,18 @@ class batman_model:
         transit or eclipse. We use the batman package to calculate the
         light curves.We assume here a symmetric transit signal, that the
         secondary transit is at phase 0.5 and primary transit at 0.0.
-        INPUT:
-        ------
-        InputParameter:
+
+        Parameters
+        ----------
+        InputParameter: 'dict'
             Ordered dict containing all needed inut parameter to define model
+
+        Returns
+        -------
+        tmodel: 'array_like'
+            Orbital phase of planet used for lightcurve model
+        lcmodel: 'array_like'
+            Normalized values of the lightcurve model
         """
         # basic batman parameters
         params = batman.TransitParams()
@@ -1012,6 +1167,15 @@ class batman_model:
         return tmodel, lcmodel
 
     def ReturnParFromIni(self):
+        """
+        Get relevant parameters for lightcurve model from CASCADe
+        intitialization files
+
+        Returns
+        -------
+        par: 'ordered_dict'
+            input model parameters for batman lightcurve model
+        """
         planet_radius = \
             (u.Quantity(cascade_configuration.object_radius).to(u.m) /
              u.Quantity(cascade_configuration.object_radius_host_star).to(u.m))
@@ -1053,6 +1217,15 @@ class batman_model:
         return par
 
     def ReturnParFromDB(self):
+        """
+        Get relevant parameters for lightcurve model from exoplanet database
+        specified in CASCADe initialization file
+
+        Returns
+        -------
+        par: 'ordered_dict'
+            input model parameters for batman lightcurve model
+        """
         catalog_name = cascade_configuration.catalog_name.strip()
         catalog_update = ast.literal_eval(cascade_configuration.catalog_update)
         catalog = parse_database(catalog_name, update=catalog_update)

@@ -1,0 +1,685 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>The cascade.exoplanet_tools module &#8212; CASCADe 0.9 beta documentation</title>
+    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="prev" title="The cascade.data_model module" href="cascade.data_model.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="section" id="module-cascade.exoplanet_tools.exoplanet_tools">
+<span id="the-cascade-exoplanet-tools-module"></span><h1>The cascade.exoplanet_tools module<a class="headerlink" href="#module-cascade.exoplanet_tools.exoplanet_tools" title="Permalink to this headline">¶</a></h1>
+<p>This Module defines the functionality to get catalog data on the targeted
+exoplanet and define the model ligth curve for the system.
+It also difines some usefull functionality for exoplanet atmosphere analysis.</p>
+<dl class="data">
+<dt id="cascade.exoplanet_tools.exoplanet_tools.Vmag">
+<code class="descname">Vmag</code><em class="property"> = Unit(&quot;Vmag&quot;)</em><a class="headerlink" href="#cascade.exoplanet_tools.exoplanet_tools.Vmag" title="Permalink to this definition">¶</a></dt>
+<dd><p>Definition of a generic Vband magnitude</p>
+</dd></dl>
+
+<dl class="data">
+<dt id="cascade.exoplanet_tools.exoplanet_tools.Kmag">
+<code class="descname">Kmag</code><em class="property"> = Unit(&quot;Kmag&quot;)</em><a class="headerlink" href="#cascade.exoplanet_tools.exoplanet_tools.Kmag" title="Permalink to this definition">¶</a></dt>
+<dd><p>Definition of generic K band magnitude</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="cascade.exoplanet_tools.exoplanet_tools.KmagToJy">
+<code class="descname">KmagToJy</code><span class="sig-paren">(</span><em>magnitude: Unit(&quot;Kmag&quot;)</em>, <em>system='Johnson'</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cascade/exoplanet_tools/exoplanet_tools.html#KmagToJy"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cascade.exoplanet_tools.exoplanet_tools.KmagToJy" title="Permalink to this definition">¶</a></dt>
+<dd><p>Convert Kband Magnitudes to Jy</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><dl class="first docutils">
+<dt><strong>magnitude: ‘Kmag’</strong></dt>
+<dd><p class="first last">Input K band magnitude to be converted to Jy.</p>
+</dd>
+<dt><strong>system: ‘str’</strong></dt>
+<dd><p class="first last">optional, either ‘Johnson’ or ‘2MASS’, default is ‘Johnson’</p>
+</dd>
+</dl>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><dl class="first docutils">
+<dt><strong>flux</strong></dt>
+<dd><p class="first last">Flux in Jy, converted from input Kband magnitude</p>
+</dd>
+</dl>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Raises:</th><td class="field-body"><dl class="first last docutils">
+<dt><strong>AssertionError</strong></dt>
+<dd><p class="first last">raises error if Photometric system not recognized</p>
+</dd>
+</dl>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="cascade.exoplanet_tools.exoplanet_tools.JytoKmag">
+<code class="descname">JytoKmag</code><span class="sig-paren">(</span><em>flux: Unit(&quot;Jy&quot;)</em>, <em>system='Johnson'</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cascade/exoplanet_tools/exoplanet_tools.html#JytoKmag"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cascade.exoplanet_tools.exoplanet_tools.JytoKmag" title="Permalink to this definition">¶</a></dt>
+<dd><p>Convert flux in Jy to Kband Magnitudes</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><dl class="first docutils">
+<dt><strong>flux: ‘Jy or equivalent’</strong></dt>
+<dd><p class="first last">Input Flux to be converted K band magnitude.</p>
+</dd>
+<dt><strong>system: ‘str’</strong></dt>
+<dd><p class="first last">optional, either ‘Johnson’ or ‘2MASS’, default is ‘Johnson’</p>
+</dd>
+</dl>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><dl class="first docutils">
+<dt><strong>magnitude</strong></dt>
+<dd><p class="first last">Magnitude  converted from input fkux value</p>
+</dd>
+</dl>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Raises:</th><td class="field-body"><dl class="first last docutils">
+<dt><strong>AssertionError</strong></dt>
+<dd><p class="first last">raises error if Photometric system not recognized</p>
+</dd>
+</dl>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="cascade.exoplanet_tools.exoplanet_tools.SurfaceGravity">
+<code class="descname">SurfaceGravity</code><span class="sig-paren">(</span><em>MassPlanet: Unit(&quot;jupiterMass&quot;)</em>, <em>RadiusPlanet: Unit(&quot;jupiterRad&quot;)</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cascade/exoplanet_tools/exoplanet_tools.html#SurfaceGravity"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cascade.exoplanet_tools.exoplanet_tools.SurfaceGravity" title="Permalink to this definition">¶</a></dt>
+<dd><p>Calculates surface gravity of planet</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><dl class="first docutils">
+<dt><strong>MassPlanet</strong></dt>
+<dd><p class="first last">Mass of planet in units of Jupiter mass or equivalent</p>
+</dd>
+<dt><strong>RadiusPlanet</strong></dt>
+<dd><p class="first last">Radius of planet in units of Jupiter radius or equivalent</p>
+</dd>
+</dl>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><dl class="first last docutils">
+<dt><strong>sgrav</strong></dt>
+<dd><p class="first last">Surface gravity in units of  m s-2</p>
+</dd>
+</dl>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="cascade.exoplanet_tools.exoplanet_tools.ScaleHeight">
+<code class="descname">ScaleHeight</code><span class="sig-paren">(</span><em>MeanMolecularMass: Unit(&quot;u&quot;)</em>, <em>SurfaceGravity: Unit(&quot;m / s2&quot;)</em>, <em>Temperature: Unit(&quot;K&quot;)</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cascade/exoplanet_tools/exoplanet_tools.html#ScaleHeight"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cascade.exoplanet_tools.exoplanet_tools.ScaleHeight" title="Permalink to this definition">¶</a></dt>
+<dd><p>Calculate the scaleheigth of the planet</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><dl class="first docutils">
+<dt><strong>MeanMolecularMass</strong></dt>
+<dd><p class="first last">in units of mass of the hydrogen atom or equivalent</p>
+</dd>
+<dt><strong>SurfaceGravity</strong></dt>
+<dd><p class="first last">in units of m s-2 or equivalent</p>
+</dd>
+<dt><strong>Temperature</strong></dt>
+<dd><p class="first last">in units of K or equivalent</p>
+</dd>
+</dl>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><dl class="first last docutils">
+<dt><strong>ScaleHeight</strong></dt>
+<dd><p class="first last">scaleheigth in unit of km</p>
+</dd>
+</dl>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="cascade.exoplanet_tools.exoplanet_tools.TransitDepth">
+<code class="descname">TransitDepth</code><span class="sig-paren">(</span><em>RadiusPlanet: Unit(&quot;jupiterRad&quot;)</em>, <em>RadiusStar: Unit(&quot;solRad&quot;)</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cascade/exoplanet_tools/exoplanet_tools.html#TransitDepth"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cascade.exoplanet_tools.exoplanet_tools.TransitDepth" title="Permalink to this definition">¶</a></dt>
+<dd><p>Calculates the depth of the planetary transit assuming one can
+neglect the emision from the night side of the planet.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><dl class="first docutils">
+<dt><strong>Radius Planet</strong></dt>
+<dd><p class="first last">Planetary radius in Jovian radii or equivalent</p>
+</dd>
+<dt><strong>Radius Star</strong></dt>
+<dd><p class="first last">Stellar radius in Solar radii or equivalent</p>
+</dd>
+</dl>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><dl class="first last docutils">
+<dt><strong>depth</strong></dt>
+<dd><p class="first last">Relative transit depth (unit less)</p>
+</dd>
+</dl>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="cascade.exoplanet_tools.exoplanet_tools.Planck">
+<code class="descname">Planck</code><span class="sig-paren">(</span><em>wavelength: Unit(&quot;micron&quot;)</em>, <em>temperature: Unit(&quot;K&quot;)</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cascade/exoplanet_tools/exoplanet_tools.html#Planck"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cascade.exoplanet_tools.exoplanet_tools.Planck" title="Permalink to this definition">¶</a></dt>
+<dd><p>This function calculates the emisison from a Black Body.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><dl class="first docutils">
+<dt><strong>wavelength:</strong></dt>
+<dd><p class="first last">Input wavelength in units of microns or equivalent</p>
+</dd>
+<dt><strong>temperature:</strong></dt>
+<dd><p class="first last">Input temperature in units of Kelvin or equivalent</p>
+</dd>
+</dl>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><dl class="first last docutils">
+<dt><strong>blackbody:</strong></dt>
+<dd><p class="first last">B_nu in cgs units [ erg/s/cm2/Hz/sr]</p>
+</dd>
+</dl>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="cascade.exoplanet_tools.exoplanet_tools.EquilibriumTemperature">
+<code class="descname">EquilibriumTemperature</code><span class="sig-paren">(</span><em>StellarTemperature: Unit(&quot;K&quot;)</em>, <em>StellarRadius: Unit(&quot;solRad&quot;)</em>, <em>SemiMajorAxis: Unit(&quot;AU&quot;)</em>, <em>Albedo=0.3</em>, <em>epsilon=0.7</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cascade/exoplanet_tools/exoplanet_tools.html#EquilibriumTemperature"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cascade.exoplanet_tools.exoplanet_tools.EquilibriumTemperature" title="Permalink to this definition">¶</a></dt>
+<dd><p>Calculate the Equlibrium Temperature of the Planet</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><dl class="first docutils">
+<dt><strong>StellarTemperature:</strong></dt>
+<dd><p class="first last">Temperature of the central star in units of K or equivalent</p>
+</dd>
+<dt><strong>StellarRadius:</strong></dt>
+<dd><p class="first last">Radius of the central star in units of Solar Radii or equivalent</p>
+</dd>
+<dt><strong>Albedo:</strong></dt>
+<dd><p class="first last">Albedo of the planet.</p>
+</dd>
+<dt><strong>SemiMajorAxis:</strong></dt>
+<dd><p class="first last">The semi-major axis of platetary orbit in units of AU or equivalent</p>
+</dd>
+<dt><strong>epsilon:</strong></dt>
+<dd><p class="first last">Green house effect parameter</p>
+</dd>
+</dl>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><dl class="first last docutils">
+<dt><strong>ET:</strong></dt>
+<dd><p class="first last">Equlibrium Temperature</p>
+</dd>
+</dl>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="cascade.exoplanet_tools.exoplanet_tools.get_calalog">
+<code class="descname">get_calalog</code><span class="sig-paren">(</span><em>catalog_name</em>, <em>update=True</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cascade/exoplanet_tools/exoplanet_tools.html#get_calalog"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cascade.exoplanet_tools.exoplanet_tools.get_calalog" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get exoplanet catalog data</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><dl class="first docutils">
+<dt><strong>catalog_name: ‘str’</strong></dt>
+<dd><p class="first last">name of catalog to use</p>
+</dd>
+<dt><strong>update: ‘bool’</strong></dt>
+<dd><p class="first last">Boolian indicating if local calalog file will be updated</p>
+</dd>
+</dl>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><dl class="first last docutils">
+<dt><strong>files_downloaded: ‘list’ of ‘str’</strong></dt>
+<dd><p class="first last">list of downloaded catalog files</p>
+</dd>
+</dl>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="cascade.exoplanet_tools.exoplanet_tools.parse_database">
+<code class="descname">parse_database</code><span class="sig-paren">(</span><em>catalog_name</em>, <em>update=True</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cascade/exoplanet_tools/exoplanet_tools.html#parse_database"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cascade.exoplanet_tools.exoplanet_tools.parse_database" title="Permalink to this definition">¶</a></dt>
+<dd><p>Read CSV files containing exoplanet catalog data</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="cascade.exoplanet_tools.exoplanet_tools.convert_spectrum_to_brighness_temperature">
+<code class="descname">convert_spectrum_to_brighness_temperature</code><span class="sig-paren">(</span><em>wavelength: Unit(&quot;micron&quot;)</em>, <em>contrast: Unit(&quot;%&quot;)</em>, <em>StellarTemperature: Unit(&quot;K&quot;)</em>, <em>StellarRadius: Unit(&quot;solRad&quot;)</em>, <em>RadiusPlanet: Unit(&quot;jupiterRad&quot;)</em>, <em>error: Unit(&quot;%&quot;) = None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cascade/exoplanet_tools/exoplanet_tools.html#convert_spectrum_to_brighness_temperature"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cascade.exoplanet_tools.exoplanet_tools.convert_spectrum_to_brighness_temperature" title="Permalink to this definition">¶</a></dt>
+<dd><p>Function to convert the secondary eclipse spectrum to brightness
+temperature.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><dl class="first docutils">
+<dt><strong>wavelength:</strong></dt>
+<dd><p class="first last">Wavelength in u.micron or equivalent unit.</p>
+</dd>
+<dt><strong>contrast:</strong></dt>
+<dd><p class="first last">Contrast between planet and star in u.percent.</p>
+</dd>
+<dt><strong>StellarTemperature:</strong></dt>
+<dd><p class="first last">Temperature if the star in u.K or equivalent unit.</p>
+</dd>
+<dt><strong>StellarRadius:</strong></dt>
+<dd><p class="first last">Radius of the star in u.R_sun or equivalent unit.</p>
+</dd>
+<dt><strong>RadiusPlanet:</strong></dt>
+<dd><p class="first last">Radius of the planet in u.R_jupiter or equivalent unit.</p>
+</dd>
+<dt><strong>error:</strong></dt>
+<dd><p class="first last">(optional) Error on contrast in u.percent (standart value = None).</p>
+</dd>
+</dl>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><dl class="first last docutils">
+<dt><strong>brighness_temperature</strong></dt>
+<dd><p class="first last">Eclipse spectrum in units of brightness temperature.</p>
+</dd>
+<dt><strong>error_brighness_temperature</strong></dt>
+<dd><p class="first last">(optional) Error on the spectrum in units of brightness temperature.</p>
+</dd>
+</dl>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="cascade.exoplanet_tools.exoplanet_tools.combine_spectra">
+<code class="descname">combine_spectra</code><span class="sig-paren">(</span><em>identifier_list=[]</em>, <em>path=''</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cascade/exoplanet_tools/exoplanet_tools.html#combine_spectra"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cascade.exoplanet_tools.exoplanet_tools.combine_spectra" title="Permalink to this definition">¶</a></dt>
+<dd><p>Convienience function to combine multiple extracted spectra
+of the same source by calculating a weighted averige.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><dl class="first docutils">
+<dt><strong>identifier_list: ‘list’ of ‘str’</strong></dt>
+<dd><p class="first last">List of file identifiers of the individual spectra to be combined</p>
+</dd>
+<dt><strong>path: ‘str’</strong></dt>
+<dd><p class="first last">path to the fits files</p>
+</dd>
+</dl>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><dl class="first last docutils">
+<dt><strong>combined_spectrum</strong> <span class="classifier-delimiter">:</span> <span class="classifier">‘array_like’</span></dt>
+<dd><p class="first last">The combined spectrum based on the spectra specified in the input list</p>
+</dd>
+</dl>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="cascade.exoplanet_tools.exoplanet_tools.extract_exoplanet_data">
+<code class="descname">extract_exoplanet_data</code><span class="sig-paren">(</span><em>data_list</em>, <em>target_name_or_position</em>, <em>coord_unit=None</em>, <em>coordinate_frame='icrs'</em>, <em>search_radius=&lt;Quantity 5. arcsec&gt;</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cascade/exoplanet_tools/exoplanet_tools.html#extract_exoplanet_data"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cascade.exoplanet_tools.exoplanet_tools.extract_exoplanet_data" title="Permalink to this definition">¶</a></dt>
+<dd><p>Extract the data record for a single target</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><dl class="first docutils">
+<dt><strong>data_list: ‘list’ of ‘astropy.Table’</strong></dt>
+<dd><p class="first last">List containing table with exoplanet data</p>
+</dd>
+<dt><strong>target_name_or_position:</strong></dt>
+<dd><p class="first last">Name of the target or coordinates of the target for
+which the record is extracted</p>
+</dd>
+<dt><strong>coord_unit:</strong></dt>
+<dd><p class="first last">Unit of coordinates e.g (u.hourangle, u.deg)</p>
+</dd>
+<dt><strong>coordinate_frame:</strong></dt>
+<dd><p class="first last">Frame of coordinate system e.g icrs</p>
+</dd>
+</dl>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><dl class="first last docutils">
+<dt><strong>table_list: ‘list’</strong></dt>
+<dd><p class="first last">List containing data record of the specified planet</p>
+</dd>
+</dl>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="class">
+<dt id="cascade.exoplanet_tools.exoplanet_tools.lightcuve">
+<em class="property">class </em><code class="descname">lightcuve</code><a class="reference internal" href="_modules/cascade/exoplanet_tools/exoplanet_tools.html#lightcuve"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cascade.exoplanet_tools.exoplanet_tools.lightcuve" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.7)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>Class defining lightcurve model used to model the observed
+transit/eclipse observations.
+Current valid lightcurve models: batman</p>
+<dl class="attribute">
+<dt id="cascade.exoplanet_tools.exoplanet_tools.lightcuve.valid_models">
+<code class="descname">valid_models</code><em class="property"> = {'batman'}</em><a class="headerlink" href="#cascade.exoplanet_tools.exoplanet_tools.lightcuve.valid_models" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="cascade.exoplanet_tools.exoplanet_tools.batman_model">
+<em class="property">class </em><code class="descname">batman_model</code><a class="reference internal" href="_modules/cascade/exoplanet_tools/exoplanet_tools.html#batman_model"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cascade.exoplanet_tools.exoplanet_tools.batman_model" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.7)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>This class defines the lightcurve model used to analyse the observed
+transit/eclipse using the batman package by Laura Kreidberg.</p>
+<blockquote>
+<div>reference: Kreidberg 2015, PASP 127, 1161</div></blockquote>
+<p class="rubric">Methods</p>
+<table border="1" class="longtable docutils">
+<colgroup>
+<col width="10%" />
+<col width="90%" />
+</colgroup>
+<tbody valign="top">
+<tr class="row-odd"><td><a class="reference internal" href="#cascade.exoplanet_tools.exoplanet_tools.batman_model.ReturnParFromDB" title="cascade.exoplanet_tools.exoplanet_tools.batman_model.ReturnParFromDB"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ReturnParFromDB</span></code></a>()</td>
+<td>Get relevant parameters for lightcurve model from exoplanet database specified in CASCADe initialization file</td>
+</tr>
+<tr class="row-even"><td><a class="reference internal" href="#cascade.exoplanet_tools.exoplanet_tools.batman_model.ReturnParFromIni" title="cascade.exoplanet_tools.exoplanet_tools.batman_model.ReturnParFromIni"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ReturnParFromIni</span></code></a>()</td>
+<td>Get relevant parameters for lightcurve model from CASCADe intitialization files</td>
+</tr>
+<tr class="row-odd"><td><a class="reference internal" href="#cascade.exoplanet_tools.exoplanet_tools.batman_model.define_batman_model" title="cascade.exoplanet_tools.exoplanet_tools.batman_model.define_batman_model"><code class="xref py py-obj docutils literal notranslate"><span class="pre">define_batman_model</span></code></a>(InputParameter)</td>
+<td>This function defines the light curve model used to analize the transit or eclipse.</td>
+</tr>
+</tbody>
+</table>
+<dl class="method">
+<dt id="cascade.exoplanet_tools.exoplanet_tools.batman_model.ReturnParFromDB">
+<code class="descname">ReturnParFromDB</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/cascade/exoplanet_tools/exoplanet_tools.html#batman_model.ReturnParFromDB"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cascade.exoplanet_tools.exoplanet_tools.batman_model.ReturnParFromDB" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get relevant parameters for lightcurve model from exoplanet database
+specified in CASCADe initialization file</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"><dl class="first last docutils">
+<dt><strong>par: ‘ordered_dict’</strong></dt>
+<dd><p class="first last">input model parameters for batman lightcurve model</p>
+</dd>
+</dl>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="cascade.exoplanet_tools.exoplanet_tools.batman_model.ReturnParFromIni">
+<code class="descname">ReturnParFromIni</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/cascade/exoplanet_tools/exoplanet_tools.html#batman_model.ReturnParFromIni"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cascade.exoplanet_tools.exoplanet_tools.batman_model.ReturnParFromIni" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get relevant parameters for lightcurve model from CASCADe
+intitialization files</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"><dl class="first last docutils">
+<dt><strong>par: ‘ordered_dict’</strong></dt>
+<dd><p class="first last">input model parameters for batman lightcurve model</p>
+</dd>
+</dl>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="staticmethod">
+<dt id="cascade.exoplanet_tools.exoplanet_tools.batman_model.define_batman_model">
+<em class="property">static </em><code class="descname">define_batman_model</code><span class="sig-paren">(</span><em>InputParameter</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cascade/exoplanet_tools/exoplanet_tools.html#batman_model.define_batman_model"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cascade.exoplanet_tools.exoplanet_tools.batman_model.define_batman_model" title="Permalink to this definition">¶</a></dt>
+<dd><p>This function defines the light curve model used to analize the
+transit or eclipse. We use the batman package to calculate the
+light curves.We assume here a symmetric transit signal, that the
+secondary transit is at phase 0.5 and primary transit at 0.0.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><dl class="first docutils">
+<dt><strong>InputParameter: ‘dict’</strong></dt>
+<dd><p class="first last">Ordered dict containing all needed inut parameter to define model</p>
+</dd>
+</dl>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><dl class="first last docutils">
+<dt><strong>tmodel: ‘array_like’</strong></dt>
+<dd><p class="first last">Orbital phase of planet used for lightcurve model</p>
+</dd>
+<dt><strong>lcmodel: ‘array_like’</strong></dt>
+<dd><p class="first last">Normalized values of the lightcurve model</p>
+</dd>
+</dl>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="function">
+<dt id="cascade.exoplanet_tools.exoplanet_tools.masked_array_input">
+<code class="descname">masked_array_input</code><span class="sig-paren">(</span><em>func</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cascade/exoplanet_tools/exoplanet_tools.html#masked_array_input"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cascade.exoplanet_tools.exoplanet_tools.masked_array_input" title="Permalink to this definition">¶</a></dt>
+<dd><p>Decorator function to check and handel masked Quantities</p>
+<p>If one of the input arguments is wavelength or flux, the array can be
+a masked Quantity, masking out only ‘bad’ data. This decorator checks for
+masked arrays and upon finding the first masked array, passes the data
+and stores the mask to be used to create a masked Quantity after the
+function returns.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><dl class="first last docutils">
+<dt><strong>func</strong></dt>
+<dd><p class="first last">Function to be decorated</p>
+</dd>
+</dl>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="cascade.exoplanet_tools.exoplanet_tools.eclipse_to_transit">
+<code class="descname">eclipse_to_transit</code><span class="sig-paren">(</span><em>eclipse</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cascade/exoplanet_tools/exoplanet_tools.html#eclipse_to_transit"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cascade.exoplanet_tools.exoplanet_tools.eclipse_to_transit" title="Permalink to this definition">¶</a></dt>
+<dd><p>Converts eclipse spectrum to transit spectrum</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="cascade.exoplanet_tools.exoplanet_tools.transit_to_eclipse">
+<code class="descname">transit_to_eclipse</code><span class="sig-paren">(</span><em>transit</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cascade/exoplanet_tools/exoplanet_tools.html#transit_to_eclipse"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cascade.exoplanet_tools.exoplanet_tools.transit_to_eclipse" title="Permalink to this definition">¶</a></dt>
+<dd><p>Converts transit spectrum to eclipse spectrum</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><dl class="first docutils">
+<dt><strong>transit:</strong></dt>
+<dd><p class="first last">Transit depth values to be converted</p>
+</dd>
+</dl>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><dl class="first last docutils">
+<dt><strong>eclipse:</strong></dt>
+<dd><p class="first last">eclipse depth values derived from input transit values</p>
+</dd>
+</dl>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="index.html">
+              <img class="logo" src="_static/Exoplanets-A_Ecusson_Blanc_Alpha.png" alt="Logo"/>
+            </a></p>
+<h1 class="logo"><a href="index.html">CASCADe</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="cascade.html">Modules of the CASCADe package</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="cascade.TSO.html">The cascade.TSO module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="cascade.cpm_model.html">The cascade.cpm_model module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="cascade.data_model.html">The cascade.data_model module</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">The cascade.exoplanet_tools module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="cascade.initialize.html">The cascade.initialize module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="cascade.instruments.html">The cascade.instruments module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="cascade.utilities.html">The cascade.utilities module</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="howto.html">Using Cascade</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+  <li><a href="cascade.html">Modules of the CASCADe package</a><ul>
+      <li>Previous: <a href="cascade.data_model.html" title="previous chapter">The cascade.data_model module</a></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2019, Jeroen Bouwman.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.8.2</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="_sources/cascade.exoplanet_tools.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

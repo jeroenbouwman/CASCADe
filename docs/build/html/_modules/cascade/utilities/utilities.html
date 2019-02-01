@@ -1,0 +1,333 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>cascade.utilities.utilities &#8212; CASCADe 0.9 beta documentation</title>
+    <link rel="stylesheet" href="../../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../../../" src="../../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+   
+  <link rel="stylesheet" href="../../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Source code for cascade.utilities.utilities</h1><div class="highlight"><pre>
+<span></span><span class="ch">#!/usr/bin/env python3</span>
+<span class="c1"># -*- coding: utf-8 -*-</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">This Module defines some utility functions used in cascade</span>
+
+<span class="sd">@author: bouwman</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">fnmatch</span>
+<span class="kn">from</span> <span class="nn">astropy.io</span> <span class="k">import</span> <span class="n">fits</span>
+
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;write_timeseries_to_fits&#39;</span><span class="p">,</span> <span class="s1">&#39;find&#39;</span><span class="p">,</span> <span class="s1">&#39;spectres&#39;</span><span class="p">]</span>
+
+
+<div class="viewcode-block" id="write_timeseries_to_fits"><a class="viewcode-back" href="../../../cascade.utilities.html#cascade.utilities.utilities.write_timeseries_to_fits">[docs]</a><span class="k">def</span> <span class="nf">write_timeseries_to_fits</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">path</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Write spectral timeseries data object to fits files</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">ndim</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">ndim</span>
+    <span class="n">ntime</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">dataFiles</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">dataFiles</span>
+    <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">ndim</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+            <span class="n">fileBase</span> <span class="o">=</span> <span class="s2">&quot;spectrum&quot;</span>
+        <span class="k">elif</span> <span class="n">ndim</span> <span class="o">==</span> <span class="mi">3</span><span class="p">:</span>
+            <span class="n">fileBase</span> <span class="o">=</span> <span class="s2">&quot;image&quot;</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">fileBase</span> <span class="o">=</span> <span class="s2">&quot;image_cube&quot;</span>
+        <span class="n">dataFiles</span> <span class="o">=</span> <span class="p">[</span><span class="n">fileBase</span><span class="o">+</span><span class="s2">&quot;_</span><span class="si">{}</span><span class="s2">.fits&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">it</span><span class="p">)</span> <span class="k">for</span> <span class="n">it</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">ntime</span><span class="p">)]</span>
+
+    <span class="k">if</span> <span class="n">ndim</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">itime</span><span class="p">,</span> <span class="n">fileName</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">dataFiles</span><span class="p">):</span>
+            <span class="n">hdr</span> <span class="o">=</span> <span class="n">fits</span><span class="o">.</span><span class="n">Header</span><span class="p">()</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">hdr</span><span class="p">[</span><span class="s1">&#39;TARGET&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">target_name</span>
+            <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
+                <span class="k">pass</span>
+            <span class="n">hdr</span><span class="p">[</span><span class="s1">&#39;COMMENT&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;Created by CASCADe pipeline&quot;</span>
+            <span class="n">hdr</span><span class="p">[</span><span class="s1">&#39;PHASE&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ma</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">time</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="n">itime</span><span class="p">])</span><span class="o">.</span><span class="n">value</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">hdr</span><span class="p">[</span><span class="s1">&#39;TIME_BJD&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ma</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">time_bjd</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="n">itime</span><span class="p">])</span><span class="o">.</span><span class="n">value</span>
+                <span class="n">hdr</span><span class="p">[</span><span class="s1">&#39;TBJDUNIT&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">time_bjd_unit</span><span class="o">.</span><span class="n">to_string</span><span class="p">()</span>
+            <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
+                <span class="k">pass</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">hdr</span><span class="p">[</span><span class="s1">&#39;POSITION&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ma</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">position</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="n">itime</span><span class="p">])</span><span class="o">.</span><span class="n">value</span>
+                <span class="n">hdr</span><span class="p">[</span><span class="s1">&#39;PUNIT&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">position_unit</span><span class="o">.</span><span class="n">to_string</span><span class="p">()</span>
+            <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
+                <span class="k">pass</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">hdr</span><span class="p">[</span><span class="s1">&#39;MEDPOS&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">median_position</span><span class="p">)</span>
+                <span class="n">hdr</span><span class="p">[</span><span class="s1">&#39;MPUNIT&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">position_unit</span><span class="o">.</span><span class="n">to_string</span><span class="p">()</span>
+            <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
+                <span class="k">pass</span>
+            <span class="n">primary_hdu</span> <span class="o">=</span> <span class="n">fits</span><span class="o">.</span><span class="n">PrimaryHDU</span><span class="p">(</span><span class="n">header</span><span class="o">=</span><span class="n">hdr</span><span class="p">)</span>
+            <span class="n">hdu</span> <span class="o">=</span> <span class="n">fits</span><span class="o">.</span><span class="n">BinTableHDU</span><span class="o">.</span><span class="n">from_columns</span><span class="p">(</span>
+                    <span class="p">[</span><span class="n">fits</span><span class="o">.</span><span class="n">Column</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;LAMBDA&#39;</span><span class="p">,</span> <span class="nb">format</span><span class="o">=</span><span class="s1">&#39;D&#39;</span><span class="p">,</span>
+                                 <span class="n">unit</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">wavelength_unit</span><span class="o">.</span><span class="n">to_string</span><span class="p">(),</span>
+                                 <span class="n">array</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">wavelength</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">value</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="n">itime</span><span class="p">]),</span>
+                     <span class="n">fits</span><span class="o">.</span><span class="n">Column</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;FLUX&#39;</span><span class="p">,</span> <span class="nb">format</span><span class="o">=</span><span class="s1">&#39;D&#39;</span><span class="p">,</span>
+                                 <span class="n">unit</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">data_unit</span><span class="o">.</span><span class="n">to_string</span><span class="p">(),</span>
+                                 <span class="n">array</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">value</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="n">itime</span><span class="p">]),</span>
+                     <span class="n">fits</span><span class="o">.</span><span class="n">Column</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;FERROR&#39;</span><span class="p">,</span> <span class="nb">format</span><span class="o">=</span><span class="s1">&#39;D&#39;</span><span class="p">,</span>
+                                 <span class="n">unit</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">data_unit</span><span class="o">.</span><span class="n">to_string</span><span class="p">(),</span>
+                                 <span class="n">array</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">uncertainty</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">value</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="n">itime</span><span class="p">]),</span>
+                     <span class="n">fits</span><span class="o">.</span><span class="n">Column</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;MASK&#39;</span><span class="p">,</span> <span class="nb">format</span><span class="o">=</span><span class="s1">&#39;L&#39;</span><span class="p">,</span>
+                                 <span class="n">array</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">mask</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="n">itime</span><span class="p">])</span>
+                     <span class="p">])</span>
+
+            <span class="n">hdul</span> <span class="o">=</span> <span class="n">fits</span><span class="o">.</span><span class="n">HDUList</span><span class="p">([</span><span class="n">primary_hdu</span><span class="p">,</span> <span class="n">hdu</span><span class="p">])</span>
+            <span class="n">hdul</span><span class="o">.</span><span class="n">writeto</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">fileName</span><span class="p">),</span> <span class="n">overwrite</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">ndim</span> <span class="o">&gt;</span> <span class="mi">2</span><span class="p">:</span>
+        <span class="k">pass</span></div>
+
+
+<div class="viewcode-block" id="find"><a class="viewcode-back" href="../../../cascade.utilities.html#cascade.utilities.utilities.find">[docs]</a><span class="k">def</span> <span class="nf">find</span><span class="p">(</span><span class="n">pattern</span><span class="p">,</span> <span class="n">path</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Return  a list of all data files</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">root</span><span class="p">,</span> <span class="n">dirs</span><span class="p">,</span> <span class="n">files</span> <span class="ow">in</span> <span class="n">os</span><span class="o">.</span><span class="n">walk</span><span class="p">(</span><span class="n">path</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">files</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">fnmatch</span><span class="o">.</span><span class="n">fnmatch</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">pattern</span><span class="p">):</span>
+                <span class="n">result</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">root</span><span class="p">,</span> <span class="n">name</span><span class="p">))</span>
+    <span class="k">return</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">result</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="spectres"><a class="viewcode-back" href="../../../cascade.utilities.html#cascade.utilities.utilities.spectres">[docs]</a><span class="k">def</span> <span class="nf">spectres</span><span class="p">(</span><span class="n">new_spec_wavs</span><span class="p">,</span> <span class="n">old_spec_wavs</span><span class="p">,</span> <span class="n">spec_fluxes</span><span class="p">,</span> <span class="n">spec_errs</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    SpectRes: A fast spectral resampling function.</span>
+<span class="sd">    Copyright (C) 2017  A. C. Carnall</span>
+<span class="sd">    Function for resampling spectra (and optionally associated uncertainties)</span>
+<span class="sd">    onto a new wavelength basis.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+
+<span class="sd">    new_spec_wavs : numpy.ndarray</span>
+<span class="sd">        Array containing the new wavelength sampling desired for the spectrum</span>
+<span class="sd">        or spectra.</span>
+
+<span class="sd">    old_spec_wavs : numpy.ndarray</span>
+<span class="sd">        1D array containing the current wavelength sampling of the spectrum or</span>
+<span class="sd">        spectra.</span>
+
+<span class="sd">    spec_fluxes : numpy.ndarray</span>
+<span class="sd">        Array containing spectral fluxes at the wavelengths specified in</span>
+<span class="sd">        old_spec_wavs, last dimension must correspond to the shape of</span>
+<span class="sd">        old_spec_wavs.</span>
+<span class="sd">        Extra dimensions before this may be used to include multiple spectra.</span>
+
+<span class="sd">    spec_errs : numpy.ndarray (optional)</span>
+<span class="sd">        Array of the same shape as spec_fluxes containing uncertainties</span>
+<span class="sd">        associated with each spectral flux value.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+
+<span class="sd">    resampled_fluxes : numpy.ndarray</span>
+<span class="sd">        Array of resampled flux values, first dimension is the same length</span>
+<span class="sd">        as new_spec_wavs, other dimensions are the same as spec_fluxes</span>
+
+<span class="sd">    resampled_errs : numpy.ndarray</span>
+<span class="sd">        Array of uncertainties associated with fluxes in resampled_fluxes.</span>
+<span class="sd">        Only returned if spec_errs was specified.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1"># Generate arrays of left hand side positions and widths for the</span>
+    <span class="c1"># old and new bins</span>
+    <span class="n">spec_lhs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">old_spec_wavs</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+    <span class="n">spec_widths</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">old_spec_wavs</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+    <span class="n">spec_lhs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">old_spec_wavs</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+    <span class="n">spec_lhs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">old_spec_wavs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="p">(</span><span class="n">old_spec_wavs</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">old_spec_wavs</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span><span class="o">/</span><span class="mi">2</span>
+    <span class="n">spec_widths</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">old_spec_wavs</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">old_spec_wavs</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">])</span>
+    <span class="n">spec_lhs</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span> <span class="o">=</span> <span class="p">(</span><span class="n">old_spec_wavs</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span> <span class="o">+</span> <span class="n">old_spec_wavs</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span><span class="o">/</span><span class="mi">2</span>
+    <span class="n">spec_widths</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">spec_lhs</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span> <span class="o">-</span> <span class="n">spec_lhs</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+
+    <span class="n">filter_lhs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">new_spec_wavs</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">filter_widths</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">new_spec_wavs</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+    <span class="n">filter_lhs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">new_spec_wavs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="p">(</span><span class="n">new_spec_wavs</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">new_spec_wavs</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span><span class="o">/</span><span class="mi">2</span>
+    <span class="n">filter_widths</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">new_spec_wavs</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">new_spec_wavs</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">])</span>
+    <span class="n">filter_lhs</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">new_spec_wavs</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">+</span><span class="p">(</span><span class="n">new_spec_wavs</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="n">new_spec_wavs</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">])</span><span class="o">/</span><span class="mi">2</span>
+    <span class="n">filter_lhs</span><span class="p">[</span><span class="mi">1</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">new_spec_wavs</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span> <span class="o">+</span> <span class="n">new_spec_wavs</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span><span class="o">/</span><span class="mi">2</span>
+    <span class="n">filter_widths</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">filter_lhs</span><span class="p">[</span><span class="mi">1</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">filter_lhs</span><span class="p">[:</span><span class="o">-</span><span class="mi">2</span><span class="p">]</span>
+
+    <span class="c1"># Check that the range of wavelengths to be resampled_fluxes onto</span>
+    <span class="c1"># falls within the initial sampling region</span>
+    <span class="k">if</span> <span class="n">filter_lhs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">spec_lhs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="ow">or</span> <span class="n">filter_lhs</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">&gt;</span> <span class="n">spec_lhs</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;spectres: The new wavelengths specified must </span><span class="se">\</span>
+<span class="s2">                         fall within the range of the old wavelength values.&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Generate output arrays to be populated</span>
+    <span class="n">resampled_fluxes</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">spec_fluxes</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="o">+</span><span class="n">new_spec_wavs</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">spec_errs</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">spec_errs</span><span class="o">.</span><span class="n">shape</span> <span class="o">!=</span> <span class="n">spec_fluxes</span><span class="o">.</span><span class="n">shape</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;If specified, spec_errs must be the same shape </span><span class="se">\</span>
+<span class="s2">                             as spec_fluxes.&quot;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">resampled_fluxes_errs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">resampled_fluxes</span><span class="p">)</span>
+
+    <span class="n">start</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">stop</span> <span class="o">=</span> <span class="mi">0</span>
+
+    <span class="c1"># Calculate the new spectral flux and uncertainty values,</span>
+    <span class="c1"># loop over the new bins</span>
+    <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">new_spec_wavs</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]):</span>
+
+        <span class="c1"># Find the first old bin which is partially covered by the new bin</span>
+        <span class="k">while</span> <span class="n">spec_lhs</span><span class="p">[</span><span class="n">start</span><span class="o">+</span><span class="mi">1</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="n">filter_lhs</span><span class="p">[</span><span class="n">j</span><span class="p">]:</span>
+            <span class="n">start</span> <span class="o">+=</span> <span class="mi">1</span>
+
+        <span class="c1"># Find the last old bin which is partially covered by the new bin</span>
+        <span class="k">while</span> <span class="n">spec_lhs</span><span class="p">[</span><span class="n">stop</span><span class="o">+</span><span class="mi">1</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">filter_lhs</span><span class="p">[</span><span class="n">j</span><span class="o">+</span><span class="mi">1</span><span class="p">]:</span>
+            <span class="n">stop</span> <span class="o">+=</span> <span class="mi">1</span>
+
+        <span class="c1"># If the new bin falls entirely within one old bin the are the same</span>
+        <span class="c1"># the new flux and new error are the same as for that bin</span>
+        <span class="k">if</span> <span class="n">stop</span> <span class="o">==</span> <span class="n">start</span><span class="p">:</span>
+
+            <span class="n">resampled_fluxes</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="n">spec_fluxes</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="n">start</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">spec_errs</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">resampled_fluxes_errs</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="n">spec_errs</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="n">start</span><span class="p">]</span>
+
+        <span class="c1"># Otherwise multiply the first and last old bin widths by P_ij,</span>
+        <span class="c1"># all the ones in between have P_ij = 1</span>
+        <span class="k">else</span><span class="p">:</span>
+
+            <span class="n">start_factor</span> <span class="o">=</span> <span class="p">(</span><span class="n">spec_lhs</span><span class="p">[</span><span class="n">start</span><span class="o">+</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">filter_lhs</span><span class="p">[</span><span class="n">j</span><span class="p">])</span> <span class="o">/</span> \
+                <span class="p">(</span><span class="n">spec_lhs</span><span class="p">[</span><span class="n">start</span><span class="o">+</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">spec_lhs</span><span class="p">[</span><span class="n">start</span><span class="p">])</span>
+            <span class="n">end_factor</span> <span class="o">=</span> <span class="p">(</span><span class="n">filter_lhs</span><span class="p">[</span><span class="n">j</span><span class="o">+</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">spec_lhs</span><span class="p">[</span><span class="n">stop</span><span class="p">])</span> <span class="o">/</span> \
+                <span class="p">(</span><span class="n">spec_lhs</span><span class="p">[</span><span class="n">stop</span><span class="o">+</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">spec_lhs</span><span class="p">[</span><span class="n">stop</span><span class="p">])</span>
+
+            <span class="n">spec_widths</span><span class="p">[</span><span class="n">start</span><span class="p">]</span> <span class="o">*=</span> <span class="n">start_factor</span>
+            <span class="n">spec_widths</span><span class="p">[</span><span class="n">stop</span><span class="p">]</span> <span class="o">*=</span> <span class="n">end_factor</span>
+
+            <span class="c1"># Populate the resampled_fluxes spectrum and uncertainty arrays</span>
+            <span class="n">resampled_fluxes</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">spec_widths</span><span class="p">[</span><span class="n">start</span><span class="p">:</span><span class="n">stop</span><span class="o">+</span><span class="mi">1</span><span class="p">]</span> <span class="o">*</span>
+                                              <span class="n">spec_fluxes</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="n">start</span><span class="p">:</span><span class="n">stop</span><span class="o">+</span><span class="mi">1</span><span class="p">],</span>
+                                              <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span> <span class="o">/</span> \
+                <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">spec_widths</span><span class="p">[</span><span class="n">start</span><span class="p">:</span><span class="n">stop</span><span class="o">+</span><span class="mi">1</span><span class="p">])</span>
+
+            <span class="k">if</span> <span class="n">spec_errs</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">resampled_fluxes_errs</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="n">j</span><span class="p">]</span> <span class="o">=</span> \
+                    <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">((</span><span class="n">spec_widths</span><span class="p">[</span><span class="n">start</span><span class="p">:</span><span class="n">stop</span><span class="o">+</span><span class="mi">1</span><span class="p">]</span> <span class="o">*</span>
+                                    <span class="n">spec_errs</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="n">start</span><span class="p">:</span><span class="n">stop</span><span class="o">+</span><span class="mi">1</span><span class="p">])</span><span class="o">**</span><span class="mi">2</span><span class="p">,</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
+                            <span class="p">)</span><span class="o">/</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">spec_widths</span><span class="p">[</span><span class="n">start</span><span class="p">:</span><span class="n">stop</span><span class="o">+</span><span class="mi">1</span><span class="p">])</span>
+
+            <span class="c1"># Put back the old bin widths to their initial values for later use</span>
+            <span class="n">spec_widths</span><span class="p">[</span><span class="n">start</span><span class="p">]</span> <span class="o">/=</span> <span class="n">start_factor</span>
+            <span class="n">spec_widths</span><span class="p">[</span><span class="n">stop</span><span class="p">]</span> <span class="o">/=</span> <span class="n">end_factor</span>
+
+    <span class="c1"># If errors were supplied return the resampled_fluxes spectrum and</span>
+    <span class="c1"># error arrays</span>
+    <span class="k">if</span> <span class="n">spec_errs</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">resampled_fluxes</span><span class="p">,</span> <span class="n">resampled_fluxes_errs</span>
+
+    <span class="c1"># Otherwise just return the resampled_fluxes spectrum array</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">resampled_fluxes</span></div>
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="../../../index.html">
+              <img class="logo" src="../../../_static/Exoplanets-A_Ecusson_Blanc_Alpha.png" alt="Logo"/>
+            </a></p>
+<h1 class="logo"><a href="../../../index.html">CASCADe</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../cascade.html">Modules of the CASCADe package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../howto.html">Using Cascade</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../../index.html">Documentation overview</a><ul>
+  <li><a href="../../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2019, Jeroen Bouwman.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.8.2</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>
