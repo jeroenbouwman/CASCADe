@@ -324,7 +324,7 @@ def masked_array_input(func):
 
     Parameters
     ----------
-    func
+    func : method
         Function to be decorated
     """
     @wraps(func)
@@ -366,14 +366,14 @@ def KmagToJy(magnitude: Kmag, system='Johnson'):
 
     Parameters
     ----------
-    magnitude: 'Kmag'
+    magnitude : 'Kmag'
         Input K band magnitude to be converted to Jy.
-    system: 'str'
+    system : 'str'
         optional, either 'Johnson' or '2MASS', default is 'Johnson'
 
     Returns
     -------
-    flux
+    flux : 'astropy.units.Quantity', u.Jy
         Flux in Jy, converted from input Kband magnitude
 
     Raises
@@ -408,14 +408,14 @@ def JytoKmag(flux: u.Jy, system='Johnson'):
 
     Parameters
     ----------
-    flux: 'Jy or equivalent'
+    flux : 'astropy.units.Quantity', 'u.Jy or equivalent'
         Input Flux to be converted K band magnitude.
-    system: 'str'
+    system : 'str'
         optional, either 'Johnson' or '2MASS', default is 'Johnson'
 
     Returns
     -------
-    magnitude
+    magnitude : 'astropy.units.Quantity', Kmag
         Magnitude  converted from input fkux value
 
     Raises
@@ -451,14 +451,14 @@ def Planck(wavelength: u.micron, temperature: u.K):
 
     Parameters
     ----------
-    wavelength:
+    wavelength : 'astropy.units.Quantity'
         Input wavelength in units of microns or equivalent
-    temperature:
+    temperature : 'astropy.units.Quantity'
         Input temperature in units of Kelvin or equivalent
 
     Returns
     -------
-    blackbody:
+    blackbody : 'astropy.units.Quantity'
         B_nu in cgs units [ erg/s/cm2/Hz/sr]
     """
     return blackbody_nu(wavelength, temperature)
@@ -471,14 +471,14 @@ def SurfaceGravity(MassPlanet: u.M_jupiter, RadiusPlanet: u.R_jupiter):
 
     Parameters
     ----------
-    MassPlanet
+    MassPlanet :
         Mass of planet in units of Jupiter mass or equivalent
-    RadiusPlanet
+    RadiusPlanet :
         Radius of planet in units of Jupiter radius or equivalent
 
     Returns
     -------
-    sgrav
+    sgrav :
         Surface gravity in units of  m s-2
     """
     sgrav = (const.G * MassPlanet / RadiusPlanet**2)
@@ -493,16 +493,16 @@ def ScaleHeight(MeanMolecularMass: u.u, SurfaceGravity: u.m*u.s**-2,
 
     Parameters
     ----------
-    MeanMolecularMass
+    MeanMolecularMass : 'astropy.units.Quantity'
         in units of mass of the hydrogen atom or equivalent
-    SurfaceGravity
+    SurfaceGravity : 'astropy.units.Quantity'
         in units of m s-2 or equivalent
-    Temperature
+    Temperature : 'astropy.units.Quantity'
         in units of K or equivalent
 
     Returns
     -------
-    ScaleHeight
+    ScaleHeight : 'astropy.units.Quantity'
       scaleheigth in unit of km
     """
     ScaleHeight = (const.k_B * Temperature) / \
@@ -518,14 +518,14 @@ def TransitDepth(RadiusPlanet: u.R_jup, RadiusStar: u.R_sun):
 
     Parameters
     ----------
-    Radius Planet
+    Radius Planet : 'astropy.units.Quantity'
         Planetary radius in Jovian radii or equivalent
-    Radius Star
+    Radius Star : 'astropy.units.Quantity'
         Stellar radius in Solar radii or equivalent
 
     Returns
     -------
-    depth
+    depth :
         Relative transit depth (unit less)
     """
     depth = (RadiusPlanet/RadiusStar)**2
@@ -540,21 +540,21 @@ def EquilibriumTemperature(StellarTemperature: u.K, StellarRadius: u.R_sun,
 
     Parameters
     ----------
-    StellarTemperature:
+    StellarTemperature : 'astropy.units.Quantity'
         Temperature of the central star in units of K or equivalent
-    StellarRadius:
+    StellarRadius : 'astropy.units.Quantity'
         Radius of the central star in units of Solar Radii or equivalent
-    Albedo:
+    Albedo : 'float'
         Albedo of the planet.
-    SemiMajorAxis:
+    SemiMajorAxis : 'astropy.units.Quantity'
         The semi-major axis of platetary orbit in units of AU or equivalent
-    epsilon:
+    epsilon : 'float'
         Green house effect parameter
 
     Returns
     -------
-    ET:
-        Equlibrium Temperature
+    ET : 'astropy.units.Quantity'
+        Equlibrium Temperature of the exoplanet
     """
     ET = StellarTemperature * ((1.0-Albedo)/epsilon)**(0.25) * \
         np.sqrt(StellarRadius/(2.0*SemiMajorAxis))
@@ -576,24 +576,24 @@ def convert_spectrum_to_brighness_temperature(wavelength: u.micron,
 
     Parameters
     ----------
-    wavelength:
+    wavelength :
         Wavelength in u.micron or equivalent unit.
-    contrast:
+    contrast :
         Contrast between planet and star in u.percent.
-    StellarTemperature:
+    StellarTemperature :
         Temperature if the star in u.K or equivalent unit.
-    StellarRadius:
+    StellarRadius :
         Radius of the star in u.R_sun or equivalent unit.
-    RadiusPlanet:
+    RadiusPlanet :
         Radius of the planet in u.R_jupiter or equivalent unit.
-    error:
+    error :
         (optional) Error on contrast in u.percent (standart value = None).
 
     Returns
     -------
-    brighness_temperature
+    brighness_temperature :
         Eclipse spectrum in units of brightness temperature.
-    error_brighness_temperature
+    error_brighness_temperature :
         (optional) Error on the spectrum in units of brightness temperature.
     """
     planet_temperature_grid = np.array([100.0 + 100.0*np.arange(38)]) * u.K
@@ -630,6 +630,16 @@ def convert_spectrum_to_brighness_temperature(wavelength: u.micron,
 def eclipse_to_transit(eclipse):
     """
     Converts eclipse spectrum to transit spectrum
+
+    Parameters
+    ----------
+    eclipse :
+        Transit depth values to be converted
+
+    Returns
+    -------
+    transit :
+        transit depth values derived from input eclipse values
     """
     transit = 1.0/((1.0/eclipse)+1.0)
     return transit
@@ -641,12 +651,12 @@ def transit_to_eclipse(transit):
 
     Parameters
     ----------
-    transit:
+    transit :
         Transit depth values to be converted
 
     Returns
     -------
-    eclipse:
+    eclipse :
         eclipse depth values derived from input transit values
     """
     eclipse = 1.0/((1.0/transit)-1.0)
@@ -660,9 +670,9 @@ def combine_spectra(identifier_list=[], path=""):
 
     Parameters
     ----------
-    identifier_list: 'list' of 'str'
+    identifier_list : 'list' of 'str'
         List of file identifiers of the individual spectra to be combined
-    path: 'str'
+    path : 'str'
         path to the fits files
 
     Returns
@@ -724,14 +734,14 @@ def get_calalog(catalog_name, update=True):
 
     Parameters
     ----------
-    catalog_name: 'str'
+    catalog_name : 'str'
         name of catalog to use
-    update: 'bool'
+    update : 'bool'
         Boolian indicating if local calalog file will be updated
 
     Returns
     -------
-    files_downloaded: 'list' of 'str'
+    files_downloaded : 'list' of 'str'
         list of downloaded catalog files
     """
     valid_catalogs = ['TEPCAT', 'EXOPLANETS.ORG', 'NASAEXOPLANETARCHIVE']
@@ -806,6 +816,30 @@ def get_calalog(catalog_name, update=True):
 def parse_database(catalog_name, update=True):
     """
     Read CSV files containing exoplanet catalog data
+
+    Parameters
+    ----------
+    catalog_name : 'str'
+        name of catalog to use
+    update : 'bool'
+        Boolian indicating if local calalog file will be updated
+
+    Returns
+    -------
+    table_list : 'list' of 'astropy.table.Table'
+        List containing astropy Tables with the parameters of the exoplanet
+        systems in the database.
+
+    Note
+    ----
+    The following exoplanet databases can be used:
+        The Transing exoplanet catalog (TEPCAT)
+        The NASA exoplanet Archive
+        The Exoplanet Orbit Database
+    Raises
+    ------
+    ValueError
+        Raises error if the input catalog is nor recognized
     """
     valid_catalogs = ['TEPCAT', 'EXOPLANETS.ORG', 'NASAEXOPLANETARCHIVE']
 
@@ -894,20 +928,21 @@ def extract_exoplanet_data(data_list, target_name_or_position, coord_unit=None,
 
     Parameters
     ----------
-    data_list: 'list' of 'astropy.Table'
+    data_list : 'list' of 'astropy.Table'
         List containing table with exoplanet data
-    target_name_or_position:
+    target_name_or_position :
         Name of the target or coordinates of the target for
         which the record is extracted
-    coord_unit:
+    coord_unit :
         Unit of coordinates e.g (u.hourangle, u.deg)
-    coordinate_frame:
+    coordinate_frame :
         Frame of coordinate system e.g icrs
 
     Returns
     -------
-    table_list: 'list'
+    table_list : 'list'
         List containing data record of the specified planet
+
     """
     if not isinstance(target_name_or_position, str):
         raise TypeError("Input name of coordinate not a string")
@@ -1072,6 +1107,23 @@ class lightcuve:
     Class defining lightcurve model used to model the observed
     transit/eclipse observations.
     Current valid lightcurve models: batman
+
+    Attributes
+    ---------
+    lc : 'array_like'
+        The lightcurve model
+    par : 'ordered_dict'
+        The lightcurve parameters
+
+    Notes
+    -----
+    Uses factory method to pick model/package used to calculate
+    the lightcurve model.
+
+    Raises
+    ------
+    ValueError
+        Error is raised if no valid lightcurve model is defined
     """
     valid_models = {'batman'}
 
@@ -1097,8 +1149,18 @@ class lightcuve:
 class batman_model:
     """
     This class defines the lightcurve model used to analyse the observed
-    transit/eclipse using the batman package by Laura Kreidberg.
-	reference: Kreidberg 2015, PASP 127, 1161
+    transit/eclipse using the batman package by Laura Kreidberg [1]_.
+
+    Attributes
+    ----------
+    lc : 'array_like'
+        The values of the lightcurve model
+    par : 'ordered_dict'
+        The model parameters difining the lightcurve model
+
+    References
+    ----------
+    .. [1] Kreidberg, L. 2015, PASP 127, 1161
     """
     __valid_ttypes = {'ECLIPSE', 'TRANSIT'}
 
@@ -1119,14 +1181,14 @@ class batman_model:
 
         Parameters
         ----------
-        InputParameter: 'dict'
+        InputParameter : 'dict'
             Ordered dict containing all needed inut parameter to define model
 
         Returns
         -------
-        tmodel: 'array_like'
+        tmodel : 'array_like'
             Orbital phase of planet used for lightcurve model
-        lcmodel: 'array_like'
+        lcmode : 'array_like'
             Normalized values of the lightcurve model
         """
         # basic batman parameters
@@ -1173,7 +1235,7 @@ class batman_model:
 
         Returns
         -------
-        par: 'ordered_dict'
+        par : 'ordered_dict'
             input model parameters for batman lightcurve model
         """
         planet_radius = \
@@ -1223,8 +1285,13 @@ class batman_model:
 
         Returns
         -------
-        par: 'ordered_dict'
+        par : 'ordered_dict'
             input model parameters for batman lightcurve model
+
+        Raises
+        ------
+        ValueError
+            Raises error in case the observation type is not recognized.
         """
         catalog_name = cascade_configuration.catalog_name.strip()
         catalog_update = ast.literal_eval(cascade_configuration.catalog_update)

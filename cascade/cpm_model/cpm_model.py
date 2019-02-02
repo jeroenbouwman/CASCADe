@@ -1,10 +1,28 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+# This file is part of CASCADe package
+#
+# Developed within the ExoplANETS-A H2020 program.
+#
+# See the COPYRIGHT file at the top-level directory of this distribution
+# for details of code ownership.
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
 """
-Routines used in causal pixel model
-
-Version 1.0
-
-@author: Jeroen Bouwman
-         MPIA Heidelberg
+The cpm_model module defines the solver and other functionality for the
+regression model used in causal pixel model.
 """
 from __future__ import print_function
 from __future__ import division
@@ -24,15 +42,43 @@ def solve_linear_equation(design_matrix, data, weights=None, cv_method='gcv',
     """
     Solve linear system using SVD with TIKHONOV regularization
 
-   For details see:
-       PHD thesis by Diana Maria SIMA, "Regularization techniques in
-            Model Fitting and Parameter estimation", KU Leuven 2006
-       Hogg et al 2010, "Data analysis recipies: Fitting a model to data"
-       Rust & O'Leaary, "Residual periodograms for choosing regularization
-             parameters for ill-posed porblems"
-       Krakauer et al "Using generalized cross-validationto select parameters
-               in inversions for regional carbon fluxes"
+    Parameters
+    ----------
+    design_matrx : 'ndarray, ndim=2'
+        Design matrix
+    data : 'ndarray'
+        Data
+    weights : 'ndarray'
+        Weights used in the linear least square minimization
+    cv_method : {'gvc'|'b95'|'B100'}
+        Method used to find optimal regularization parameter which can be:
+            "gvc" :  Generizalize Cross Validation [RECOMMENDED!!!]
+            "b95" :  normalized cumulatative periodogram using 95% limit
+            "B100":  normalized cumulatative periodogram
+    reg_par : 'dict'
+        Parameter describing search grid to find optimal regularization
+        parameter lambda:
+            {lam0 : minimum lambda
+            lam1 : maximum lambda
+            nlam : number of grid points}
+    feature_scaling : {'norm'|None}
+        if the value is set to 'norm' all features are normalized using L2
+        norm else no featue scaling is applied.
+    degrees_of_freedom : 'int'
+        Effective  degrees_of_freedom, if set to None the value is calculated
+        from the dimensions of the imput arrays.
 
+    Returns
+    -------
+    fit_results : 'tuple'
+        In case the feature_scaling is set to None, the tuble contains the
+        following parameters: (fit_parameters, err_fit_parameters, lam_reg)
+        else the following results are returned: (fit_parameters_scaled,
+        err_fit_parameters_scaled, lam_reg, pc_matrix, fit_parameters,
+        err_fit_parameters)
+
+    Notes
+    -----
     This routine solves the linear equation
 
     A x = y
@@ -41,33 +87,29 @@ def solve_linear_equation(design_matrix, data, weights=None, cv_method='gcv',
 
     ||y-A*x_hat||^2 + lambda * ||x_hat||^2
 
+    For details on the implementation see [1]_, [2]_, [3]_, [4]_
+    References
+    -----------
+    .. [1] PHD thesis by Diana Maria SIMA, "Regularization techniques in
+           Model Fitting and Parameter estimation", KU Leuven 2006
+    .. [2] Hogg et al 2010, "Data analysis recipies: Fitting a model to data"
+    .. [3] Rust & O'Leaary, "Residual periodograms for choosing regularization
+           parameters for ill-posed porblems"
+    .. [4] Krakauer et al "Using generalized cross-validationto select
+           parameters in inversions for regional carbon fluxes"
 
-    Input parameters:
+    Examples
+    --------
 
-        design_matrx:
-            Design matrix
+    >>> import numpy as np
+    >>> from cascade.cpm_model import solve_linear_equation
+    >>> A = np.array([[1, 0, -1], [0, 1, 0], [1, 0, 1], [1, 1, 0], [-1, 1, 0]])
+    >>> coef = np.array([4, 2, 7])
+    >>> b = np.dot(A, coef)
+    >>> b = b + np.random.normal(0.0, 0.01, size=b.size)
+    >>> results = solve_linear_equation(A, b)
+    >>> print(results)
 
-        data:
-            Data
-
-        weights:
-            Weights used in the linear least square minimization
-
-        cv_method:
-            Method used to find optimal regularization parameter which can be:
-                "gvc" :  Generizalize Cross Validation [RECOMMENDED!!!]
-                "b95" :  normalized cumulatative periodogram using 95% limit
-                "B100":  normalized cumulatative periodogram
-
-        reg_par:
-            Parameter describing search grid to find optimal regularization
-            parameter lambda:
-                lam0 : minimum lambda
-                lam1 : maximum lambda
-                nlam : number of grid points
-        feature_scaling:
-            norm : normalise features using L2 norm
-            None : no featue scaling
     """
     if feature_scaling is not None:
         # precondition regressors

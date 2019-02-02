@@ -27,6 +27,13 @@
     <div class="document">
       <div class="documentwrapper">
         <div class="bodywrapper">
+              <div class="related top">
+                &nbsp;
+  <nav id="rellinks">
+    <ul>
+    </ul>
+  </nav>
+              </div>
           
 
           <div class="body" role="main">
@@ -358,7 +365,7 @@
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
-<span class="sd">    func</span>
+<span class="sd">    func : method</span>
 <span class="sd">        Function to be decorated</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="nd">@wraps</span><span class="p">(</span><span class="n">func</span><span class="p">)</span>
@@ -400,14 +407,14 @@
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
-<span class="sd">    magnitude: &#39;Kmag&#39;</span>
+<span class="sd">    magnitude : &#39;Kmag&#39;</span>
 <span class="sd">        Input K band magnitude to be converted to Jy.</span>
-<span class="sd">    system: &#39;str&#39;</span>
+<span class="sd">    system : &#39;str&#39;</span>
 <span class="sd">        optional, either &#39;Johnson&#39; or &#39;2MASS&#39;, default is &#39;Johnson&#39;</span>
 
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
-<span class="sd">    flux</span>
+<span class="sd">    flux : &#39;astropy.units.Quantity&#39;, u.Jy</span>
 <span class="sd">        Flux in Jy, converted from input Kband magnitude</span>
 
 <span class="sd">    Raises</span>
@@ -442,14 +449,14 @@
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
-<span class="sd">    flux: &#39;Jy or equivalent&#39;</span>
+<span class="sd">    flux : &#39;astropy.units.Quantity&#39;, &#39;u.Jy or equivalent&#39;</span>
 <span class="sd">        Input Flux to be converted K band magnitude.</span>
-<span class="sd">    system: &#39;str&#39;</span>
+<span class="sd">    system : &#39;str&#39;</span>
 <span class="sd">        optional, either &#39;Johnson&#39; or &#39;2MASS&#39;, default is &#39;Johnson&#39;</span>
 
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
-<span class="sd">    magnitude</span>
+<span class="sd">    magnitude : &#39;astropy.units.Quantity&#39;, Kmag</span>
 <span class="sd">        Magnitude  converted from input fkux value</span>
 
 <span class="sd">    Raises</span>
@@ -485,14 +492,14 @@
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
-<span class="sd">    wavelength:</span>
+<span class="sd">    wavelength : &#39;astropy.units.Quantity&#39;</span>
 <span class="sd">        Input wavelength in units of microns or equivalent</span>
-<span class="sd">    temperature:</span>
+<span class="sd">    temperature : &#39;astropy.units.Quantity&#39;</span>
 <span class="sd">        Input temperature in units of Kelvin or equivalent</span>
 
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
-<span class="sd">    blackbody:</span>
+<span class="sd">    blackbody : &#39;astropy.units.Quantity&#39;</span>
 <span class="sd">        B_nu in cgs units [ erg/s/cm2/Hz/sr]</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">blackbody_nu</span><span class="p">(</span><span class="n">wavelength</span><span class="p">,</span> <span class="n">temperature</span><span class="p">)</span></div>
@@ -505,14 +512,14 @@
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
-<span class="sd">    MassPlanet</span>
+<span class="sd">    MassPlanet :</span>
 <span class="sd">        Mass of planet in units of Jupiter mass or equivalent</span>
-<span class="sd">    RadiusPlanet</span>
+<span class="sd">    RadiusPlanet :</span>
 <span class="sd">        Radius of planet in units of Jupiter radius or equivalent</span>
 
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
-<span class="sd">    sgrav</span>
+<span class="sd">    sgrav :</span>
 <span class="sd">        Surface gravity in units of  m s-2</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">sgrav</span> <span class="o">=</span> <span class="p">(</span><span class="n">const</span><span class="o">.</span><span class="n">G</span> <span class="o">*</span> <span class="n">MassPlanet</span> <span class="o">/</span> <span class="n">RadiusPlanet</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span>
@@ -527,16 +534,16 @@
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
-<span class="sd">    MeanMolecularMass</span>
+<span class="sd">    MeanMolecularMass : &#39;astropy.units.Quantity&#39;</span>
 <span class="sd">        in units of mass of the hydrogen atom or equivalent</span>
-<span class="sd">    SurfaceGravity</span>
+<span class="sd">    SurfaceGravity : &#39;astropy.units.Quantity&#39;</span>
 <span class="sd">        in units of m s-2 or equivalent</span>
-<span class="sd">    Temperature</span>
+<span class="sd">    Temperature : &#39;astropy.units.Quantity&#39;</span>
 <span class="sd">        in units of K or equivalent</span>
 
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
-<span class="sd">    ScaleHeight</span>
+<span class="sd">    ScaleHeight : &#39;astropy.units.Quantity&#39;</span>
 <span class="sd">      scaleheigth in unit of km</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">ScaleHeight</span> <span class="o">=</span> <span class="p">(</span><span class="n">const</span><span class="o">.</span><span class="n">k_B</span> <span class="o">*</span> <span class="n">Temperature</span><span class="p">)</span> <span class="o">/</span> \
@@ -552,14 +559,14 @@
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
-<span class="sd">    Radius Planet</span>
+<span class="sd">    Radius Planet : &#39;astropy.units.Quantity&#39;</span>
 <span class="sd">        Planetary radius in Jovian radii or equivalent</span>
-<span class="sd">    Radius Star</span>
+<span class="sd">    Radius Star : &#39;astropy.units.Quantity&#39;</span>
 <span class="sd">        Stellar radius in Solar radii or equivalent</span>
 
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
-<span class="sd">    depth</span>
+<span class="sd">    depth :</span>
 <span class="sd">        Relative transit depth (unit less)</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">depth</span> <span class="o">=</span> <span class="p">(</span><span class="n">RadiusPlanet</span><span class="o">/</span><span class="n">RadiusStar</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span>
@@ -574,21 +581,21 @@
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
-<span class="sd">    StellarTemperature:</span>
+<span class="sd">    StellarTemperature : &#39;astropy.units.Quantity&#39;</span>
 <span class="sd">        Temperature of the central star in units of K or equivalent</span>
-<span class="sd">    StellarRadius:</span>
+<span class="sd">    StellarRadius : &#39;astropy.units.Quantity&#39;</span>
 <span class="sd">        Radius of the central star in units of Solar Radii or equivalent</span>
-<span class="sd">    Albedo:</span>
+<span class="sd">    Albedo : &#39;float&#39;</span>
 <span class="sd">        Albedo of the planet.</span>
-<span class="sd">    SemiMajorAxis:</span>
+<span class="sd">    SemiMajorAxis : &#39;astropy.units.Quantity&#39;</span>
 <span class="sd">        The semi-major axis of platetary orbit in units of AU or equivalent</span>
-<span class="sd">    epsilon:</span>
+<span class="sd">    epsilon : &#39;float&#39;</span>
 <span class="sd">        Green house effect parameter</span>
 
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
-<span class="sd">    ET:</span>
-<span class="sd">        Equlibrium Temperature</span>
+<span class="sd">    ET : &#39;astropy.units.Quantity&#39;</span>
+<span class="sd">        Equlibrium Temperature of the exoplanet</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">ET</span> <span class="o">=</span> <span class="n">StellarTemperature</span> <span class="o">*</span> <span class="p">((</span><span class="mf">1.0</span><span class="o">-</span><span class="n">Albedo</span><span class="p">)</span><span class="o">/</span><span class="n">epsilon</span><span class="p">)</span><span class="o">**</span><span class="p">(</span><span class="mf">0.25</span><span class="p">)</span> <span class="o">*</span> \
         <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">StellarRadius</span><span class="o">/</span><span class="p">(</span><span class="mf">2.0</span><span class="o">*</span><span class="n">SemiMajorAxis</span><span class="p">))</span>
@@ -610,24 +617,24 @@
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
-<span class="sd">    wavelength:</span>
+<span class="sd">    wavelength :</span>
 <span class="sd">        Wavelength in u.micron or equivalent unit.</span>
-<span class="sd">    contrast:</span>
+<span class="sd">    contrast :</span>
 <span class="sd">        Contrast between planet and star in u.percent.</span>
-<span class="sd">    StellarTemperature:</span>
+<span class="sd">    StellarTemperature :</span>
 <span class="sd">        Temperature if the star in u.K or equivalent unit.</span>
-<span class="sd">    StellarRadius:</span>
+<span class="sd">    StellarRadius :</span>
 <span class="sd">        Radius of the star in u.R_sun or equivalent unit.</span>
-<span class="sd">    RadiusPlanet:</span>
+<span class="sd">    RadiusPlanet :</span>
 <span class="sd">        Radius of the planet in u.R_jupiter or equivalent unit.</span>
-<span class="sd">    error:</span>
+<span class="sd">    error :</span>
 <span class="sd">        (optional) Error on contrast in u.percent (standart value = None).</span>
 
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
-<span class="sd">    brighness_temperature</span>
+<span class="sd">    brighness_temperature :</span>
 <span class="sd">        Eclipse spectrum in units of brightness temperature.</span>
-<span class="sd">    error_brighness_temperature</span>
+<span class="sd">    error_brighness_temperature :</span>
 <span class="sd">        (optional) Error on the spectrum in units of brightness temperature.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">planet_temperature_grid</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">100.0</span> <span class="o">+</span> <span class="mf">100.0</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">38</span><span class="p">)])</span> <span class="o">*</span> <span class="n">u</span><span class="o">.</span><span class="n">K</span>
@@ -664,6 +671,16 @@
 <div class="viewcode-block" id="eclipse_to_transit"><a class="viewcode-back" href="../../../cascade.exoplanet_tools.html#cascade.exoplanet_tools.exoplanet_tools.eclipse_to_transit">[docs]</a><span class="k">def</span> <span class="nf">eclipse_to_transit</span><span class="p">(</span><span class="n">eclipse</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Converts eclipse spectrum to transit spectrum</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    eclipse :</span>
+<span class="sd">        Transit depth values to be converted</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    transit :</span>
+<span class="sd">        transit depth values derived from input eclipse values</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">transit</span> <span class="o">=</span> <span class="mf">1.0</span><span class="o">/</span><span class="p">((</span><span class="mf">1.0</span><span class="o">/</span><span class="n">eclipse</span><span class="p">)</span><span class="o">+</span><span class="mf">1.0</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">transit</span></div>
@@ -675,12 +692,12 @@
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
-<span class="sd">    transit:</span>
+<span class="sd">    transit :</span>
 <span class="sd">        Transit depth values to be converted</span>
 
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
-<span class="sd">    eclipse:</span>
+<span class="sd">    eclipse :</span>
 <span class="sd">        eclipse depth values derived from input transit values</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">eclipse</span> <span class="o">=</span> <span class="mf">1.0</span><span class="o">/</span><span class="p">((</span><span class="mf">1.0</span><span class="o">/</span><span class="n">transit</span><span class="p">)</span><span class="o">-</span><span class="mf">1.0</span><span class="p">)</span>
@@ -694,9 +711,9 @@
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
-<span class="sd">    identifier_list: &#39;list&#39; of &#39;str&#39;</span>
+<span class="sd">    identifier_list : &#39;list&#39; of &#39;str&#39;</span>
 <span class="sd">        List of file identifiers of the individual spectra to be combined</span>
-<span class="sd">    path: &#39;str&#39;</span>
+<span class="sd">    path : &#39;str&#39;</span>
 <span class="sd">        path to the fits files</span>
 
 <span class="sd">    Returns</span>
@@ -758,14 +775,14 @@
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
-<span class="sd">    catalog_name: &#39;str&#39;</span>
+<span class="sd">    catalog_name : &#39;str&#39;</span>
 <span class="sd">        name of catalog to use</span>
-<span class="sd">    update: &#39;bool&#39;</span>
+<span class="sd">    update : &#39;bool&#39;</span>
 <span class="sd">        Boolian indicating if local calalog file will be updated</span>
 
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
-<span class="sd">    files_downloaded: &#39;list&#39; of &#39;str&#39;</span>
+<span class="sd">    files_downloaded : &#39;list&#39; of &#39;str&#39;</span>
 <span class="sd">        list of downloaded catalog files</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">valid_catalogs</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;TEPCAT&#39;</span><span class="p">,</span> <span class="s1">&#39;EXOPLANETS.ORG&#39;</span><span class="p">,</span> <span class="s1">&#39;NASAEXOPLANETARCHIVE&#39;</span><span class="p">]</span>
@@ -840,6 +857,30 @@
 <div class="viewcode-block" id="parse_database"><a class="viewcode-back" href="../../../cascade.exoplanet_tools.html#cascade.exoplanet_tools.exoplanet_tools.parse_database">[docs]</a><span class="k">def</span> <span class="nf">parse_database</span><span class="p">(</span><span class="n">catalog_name</span><span class="p">,</span> <span class="n">update</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Read CSV files containing exoplanet catalog data</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    catalog_name : &#39;str&#39;</span>
+<span class="sd">        name of catalog to use</span>
+<span class="sd">    update : &#39;bool&#39;</span>
+<span class="sd">        Boolian indicating if local calalog file will be updated</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    table_list : &#39;list&#39; of &#39;astropy.table.Table&#39;</span>
+<span class="sd">        List containing astropy Tables with the parameters of the exoplanet</span>
+<span class="sd">        systems in the database.</span>
+
+<span class="sd">    Note</span>
+<span class="sd">    ----</span>
+<span class="sd">    The following exoplanet databases can be used:</span>
+<span class="sd">        The Transing exoplanet catalog (TEPCAT)</span>
+<span class="sd">        The NASA exoplanet Archive</span>
+<span class="sd">        The Exoplanet Orbit Database</span>
+<span class="sd">    Raises</span>
+<span class="sd">    ------</span>
+<span class="sd">    ValueError</span>
+<span class="sd">        Raises error if the input catalog is nor recognized</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">valid_catalogs</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;TEPCAT&#39;</span><span class="p">,</span> <span class="s1">&#39;EXOPLANETS.ORG&#39;</span><span class="p">,</span> <span class="s1">&#39;NASAEXOPLANETARCHIVE&#39;</span><span class="p">]</span>
 
@@ -928,20 +969,21 @@
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
-<span class="sd">    data_list: &#39;list&#39; of &#39;astropy.Table&#39;</span>
+<span class="sd">    data_list : &#39;list&#39; of &#39;astropy.Table&#39;</span>
 <span class="sd">        List containing table with exoplanet data</span>
-<span class="sd">    target_name_or_position:</span>
+<span class="sd">    target_name_or_position :</span>
 <span class="sd">        Name of the target or coordinates of the target for</span>
 <span class="sd">        which the record is extracted</span>
-<span class="sd">    coord_unit:</span>
+<span class="sd">    coord_unit :</span>
 <span class="sd">        Unit of coordinates e.g (u.hourangle, u.deg)</span>
-<span class="sd">    coordinate_frame:</span>
+<span class="sd">    coordinate_frame :</span>
 <span class="sd">        Frame of coordinate system e.g icrs</span>
 
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
-<span class="sd">    table_list: &#39;list&#39;</span>
+<span class="sd">    table_list : &#39;list&#39;</span>
 <span class="sd">        List containing data record of the specified planet</span>
+
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">target_name_or_position</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
         <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;Input name of coordinate not a string&quot;</span><span class="p">)</span>
@@ -1106,6 +1148,23 @@
 <span class="sd">    Class defining lightcurve model used to model the observed</span>
 <span class="sd">    transit/eclipse observations.</span>
 <span class="sd">    Current valid lightcurve models: batman</span>
+
+<span class="sd">    Attributes</span>
+<span class="sd">    ---------</span>
+<span class="sd">    lc : &#39;array_like&#39;</span>
+<span class="sd">        The lightcurve model</span>
+<span class="sd">    par : &#39;ordered_dict&#39;</span>
+<span class="sd">        The lightcurve parameters</span>
+
+<span class="sd">    Notes</span>
+<span class="sd">    -----</span>
+<span class="sd">    Uses factory method to pick model/package used to calculate</span>
+<span class="sd">    the lightcurve model.</span>
+
+<span class="sd">    Raises</span>
+<span class="sd">    ------</span>
+<span class="sd">    ValueError</span>
+<span class="sd">        Error is raised if no valid lightcurve model is defined</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">valid_models</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;batman&#39;</span><span class="p">}</span>
 
@@ -1131,8 +1190,18 @@
 <div class="viewcode-block" id="batman_model"><a class="viewcode-back" href="../../../cascade.exoplanet_tools.html#cascade.exoplanet_tools.exoplanet_tools.batman_model">[docs]</a><span class="k">class</span> <span class="nc">batman_model</span><span class="p">:</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    This class defines the lightcurve model used to analyse the observed</span>
-<span class="sd">    transit/eclipse using the batman package by Laura Kreidberg.</span>
-<span class="sd">	reference: Kreidberg 2015, PASP 127, 1161</span>
+<span class="sd">    transit/eclipse using the batman package by Laura Kreidberg [1]_.</span>
+
+<span class="sd">    Attributes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    lc : &#39;array_like&#39;</span>
+<span class="sd">        The values of the lightcurve model</span>
+<span class="sd">    par : &#39;ordered_dict&#39;</span>
+<span class="sd">        The model parameters difining the lightcurve model</span>
+
+<span class="sd">    References</span>
+<span class="sd">    ----------</span>
+<span class="sd">    .. [1] Kreidberg, L. 2015, PASP 127, 1161</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">__valid_ttypes</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;ECLIPSE&#39;</span><span class="p">,</span> <span class="s1">&#39;TRANSIT&#39;</span><span class="p">}</span>
 
@@ -1153,14 +1222,14 @@
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
-<span class="sd">        InputParameter: &#39;dict&#39;</span>
+<span class="sd">        InputParameter : &#39;dict&#39;</span>
 <span class="sd">            Ordered dict containing all needed inut parameter to define model</span>
 
 <span class="sd">        Returns</span>
 <span class="sd">        -------</span>
-<span class="sd">        tmodel: &#39;array_like&#39;</span>
+<span class="sd">        tmodel : &#39;array_like&#39;</span>
 <span class="sd">            Orbital phase of planet used for lightcurve model</span>
-<span class="sd">        lcmodel: &#39;array_like&#39;</span>
+<span class="sd">        lcmode : &#39;array_like&#39;</span>
 <span class="sd">            Normalized values of the lightcurve model</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="c1"># basic batman parameters</span>
@@ -1207,7 +1276,7 @@
 
 <span class="sd">        Returns</span>
 <span class="sd">        -------</span>
-<span class="sd">        par: &#39;ordered_dict&#39;</span>
+<span class="sd">        par : &#39;ordered_dict&#39;</span>
 <span class="sd">            input model parameters for batman lightcurve model</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">planet_radius</span> <span class="o">=</span> \
@@ -1257,8 +1326,13 @@
 
 <span class="sd">        Returns</span>
 <span class="sd">        -------</span>
-<span class="sd">        par: &#39;ordered_dict&#39;</span>
+<span class="sd">        par : &#39;ordered_dict&#39;</span>
 <span class="sd">            input model parameters for batman lightcurve model</span>
+
+<span class="sd">        Raises</span>
+<span class="sd">        ------</span>
+<span class="sd">        ValueError</span>
+<span class="sd">            Raises error in case the observation type is not recognized.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">catalog_name</span> <span class="o">=</span> <span class="n">cascade_configuration</span><span class="o">.</span><span class="n">catalog_name</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
         <span class="n">catalog_update</span> <span class="o">=</span> <span class="n">ast</span><span class="o">.</span><span class="n">literal_eval</span><span class="p">(</span><span class="n">cascade_configuration</span><span class="o">.</span><span class="n">catalog_update</span><span class="p">)</span>
@@ -1304,15 +1378,26 @@
 </pre></div>
 
           </div>
+              <div class="related bottom">
+                &nbsp;
+  <nav id="rellinks">
+    <ul>
+    </ul>
+  </nav>
+              </div>
           
         </div>
       </div>
       <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
         <div class="sphinxsidebarwrapper">
-            <p class="logo"><a href="../../../index.html">
-              <img class="logo" src="../../../_static/Exoplanets-A_Ecusson_Blanc_Alpha.png" alt="Logo"/>
-            </a></p>
-<h1 class="logo"><a href="../../../index.html">CASCADe</a></h1>
+<p class="logo">
+  <a href="../../../index.html">
+    <img class="logo" src="../../../_static/Exoplanets-A_Ecusson_Noir_Alpha.png" alt="Logo"/>
+    
+    <h1 class="logo logo-name">CASCADe</h1>
+    
+  </a>
+</p>
 
 
 
@@ -1322,10 +1407,10 @@
 
 
 <h3>Navigation</h3>
-<p class="caption"><span class="caption-text">Contents:</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="../../../cascade.html">Modules of the CASCADe package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../install.html">Howto Install CASCADe</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../howto.html">Using Cascade</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../cascade.html">Modules of the CASCADe package</a></li>
 </ul>
 
 <div class="relations">

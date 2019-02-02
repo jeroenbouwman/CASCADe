@@ -27,6 +27,13 @@
     <div class="document">
       <div class="documentwrapper">
         <div class="bodywrapper">
+              <div class="related top">
+                &nbsp;
+  <nav id="rellinks">
+    <ul>
+    </ul>
+  </nav>
+              </div>
           
 
           <div class="body" role="main">
@@ -666,7 +673,7 @@
             <span class="n">SpectralTimeSeries</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_fit_background</span><span class="p">(</span><span class="n">SpectralTimeSeries</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">SpectralTimeSeries</span></div>
 
-    <span class="k">def</span> <span class="nf">_define_convolution_kernel</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<div class="viewcode-block" id="HSTWFC3._define_convolution_kernel"><a class="viewcode-back" href="../../../cascade.instruments.html#cascade.instruments.instruments.HSTWFC3._define_convolution_kernel">[docs]</a>    <span class="k">def</span> <span class="nf">_define_convolution_kernel</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Define the instrument specific convolution kernel which will be used</span>
 <span class="sd">        in the correction procedure of bad pixels</span>
@@ -682,9 +689,9 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">wfc3_cal</span> <span class="o">=</span> <span class="n">SimpleNamespace</span><span class="p">()</span>
         <span class="k">finally</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">wfc3_cal</span><span class="o">.</span><span class="n">convolution_kernel</span> <span class="o">=</span> <span class="n">kernel</span>
-        <span class="k">return</span>
+        <span class="k">return</span></div>
 
-    <span class="k">def</span> <span class="nf">_define_region_of_interest</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<div class="viewcode-block" id="HSTWFC3._define_region_of_interest"><a class="viewcode-back" href="../../../cascade.instruments.html#cascade.instruments.instruments.HSTWFC3._define_region_of_interest">[docs]</a>    <span class="k">def</span> <span class="nf">_define_region_of_interest</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Defines region on detector which containes the intended target star.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
@@ -719,9 +726,9 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">wfc3_cal</span> <span class="o">=</span> <span class="n">SimpleNamespace</span><span class="p">()</span>
         <span class="k">finally</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">wfc3_cal</span><span class="o">.</span><span class="n">roi</span> <span class="o">=</span> <span class="n">roi</span>
-        <span class="k">return</span>
+        <span class="k">return</span></div>
 
-    <span class="k">def</span> <span class="nf">_get_background_cal_data</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<div class="viewcode-block" id="HSTWFC3._get_background_cal_data"><a class="viewcode-back" href="../../../cascade.instruments.html#cascade.instruments.instruments.HSTWFC3._get_background_cal_data">[docs]</a>    <span class="k">def</span> <span class="nf">_get_background_cal_data</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Get the calibration data from which the background in the science</span>
 <span class="sd">        images can be determined.  For further details see:</span>
@@ -804,9 +811,9 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">wfc3_cal</span><span class="o">.</span><span class="n">background_cal_data</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;zodi&quot;</span><span class="p">:</span> <span class="n">zodi</span><span class="o">.</span><span class="n">T</span><span class="p">,</span>
                                              <span class="s2">&quot;helium&quot;</span><span class="p">:</span> <span class="n">helium</span><span class="o">.</span><span class="n">T</span><span class="p">,</span>
                                              <span class="s2">&quot;scattered&quot;</span><span class="p">:</span> <span class="n">scattered</span><span class="o">.</span><span class="n">T</span><span class="p">}</span>
-        <span class="k">return</span>
+        <span class="k">return</span></div>
 
-    <span class="k">def</span> <span class="nf">_fit_background</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">science_data_in</span><span class="p">):</span>
+<div class="viewcode-block" id="HSTWFC3._fit_background"><a class="viewcode-back" href="../../../cascade.instruments.html#cascade.instruments.instruments.HSTWFC3._fit_background">[docs]</a>    <span class="k">def</span> <span class="nf">_fit_background</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">science_data_in</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Fits the background in the HST Grism data using the method described</span>
 <span class="sd">        in: http://www.stsci.edu/hst/wfc3/documents/ISRs/WFC3-2015-17.pdf</span>
@@ -901,9 +908,9 @@
                                    <span class="n">mask</span><span class="o">=</span><span class="n">mask_science_data_in</span><span class="p">,</span>
                                    <span class="n">isRampFitted</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
                                    <span class="n">isNodded</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">SpectralTimeSeries</span>
+        <span class="k">return</span> <span class="n">SpectralTimeSeries</span></div>
 
-    <span class="k">def</span> <span class="nf">_determine_relative_source_position</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">spectral_image_cube</span><span class="p">,</span> <span class="n">mask</span><span class="p">):</span>
+<div class="viewcode-block" id="HSTWFC3._determine_relative_source_position"><a class="viewcode-back" href="../../../cascade.instruments.html#cascade.instruments.instruments.HSTWFC3._determine_relative_source_position">[docs]</a>    <span class="k">def</span> <span class="nf">_determine_relative_source_position</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">spectral_image_cube</span><span class="p">,</span> <span class="n">mask</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Determine the shift of the spectra (source) relative to the first</span>
 <span class="sd">        integration. Note that it is important for this to work properly</span>
@@ -950,9 +957,9 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">wfc3_cal</span> <span class="o">=</span> <span class="n">SimpleNamespace</span><span class="p">()</span>
         <span class="k">finally</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">wfc3_cal</span><span class="o">.</span><span class="n">relative_source_shift</span> <span class="o">=</span> <span class="n">relative_source_shift</span>
-        <span class="k">return</span>
+        <span class="k">return</span></div>
 
-    <span class="k">def</span> <span class="nf">_determine_source_position_from_cal_image</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">calibration_image_cube</span><span class="p">,</span>
+<div class="viewcode-block" id="HSTWFC3._determine_source_position_from_cal_image"><a class="viewcode-back" href="../../../cascade.instruments.html#cascade.instruments.instruments.HSTWFC3._determine_source_position_from_cal_image">[docs]</a>    <span class="k">def</span> <span class="nf">_determine_source_position_from_cal_image</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">calibration_image_cube</span><span class="p">,</span>
                                                   <span class="n">calibration_data_files</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Determines the source position on the detector of the target source in</span>
@@ -997,9 +1004,9 @@
         <span class="k">finally</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">wfc3_cal</span><span class="o">.</span><span class="n">calibration_source_position</span> <span class="o">=</span> \
                 <span class="n">calibration_source_position</span>
-        <span class="k">return</span>
+        <span class="k">return</span></div>
 
-    <span class="k">def</span> <span class="nf">_read_grism_configuration_files</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<div class="viewcode-block" id="HSTWFC3._read_grism_configuration_files"><a class="viewcode-back" href="../../../cascade.instruments.html#cascade.instruments.instruments.HSTWFC3._read_grism_configuration_files">[docs]</a>    <span class="k">def</span> <span class="nf">_read_grism_configuration_files</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Gets the relevant data from WFC3 configuration files</span>
 <span class="sd">        &quot;&quot;&quot;</span>
@@ -1064,9 +1071,9 @@
         <span class="k">finally</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">wfc3_cal</span><span class="o">.</span><span class="n">DYDX</span> <span class="o">=</span> <span class="n">DYDX</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">wfc3_cal</span><span class="o">.</span><span class="n">DLDP</span> <span class="o">=</span> <span class="n">DLDP</span>
-        <span class="k">return</span>
+        <span class="k">return</span></div>
 
-    <span class="k">def</span> <span class="nf">_read_reference_pixel_file</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<div class="viewcode-block" id="HSTWFC3._read_reference_pixel_file"><a class="viewcode-back" href="../../../cascade.instruments.html#cascade.instruments.instruments.HSTWFC3._read_reference_pixel_file">[docs]</a>    <span class="k">def</span> <span class="nf">_read_reference_pixel_file</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Read the calibration file containig the definition</span>
 <span class="sd">        of the reference pixel appropriate for a given sub array and or filer</span>
@@ -1103,9 +1110,9 @@
         <span class="k">finally</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">wfc3_cal</span><span class="o">.</span><span class="n">reference_pixels</span> <span class="o">=</span> <span class="n">reference_pixels</span>
 
-        <span class="k">return</span>
+        <span class="k">return</span></div>
 
-    <span class="nd">@staticmethod</span>
+<div class="viewcode-block" id="HSTWFC3._search_ref_pixel_cal_file"><a class="viewcode-back" href="../../../cascade.instruments.html#cascade.instruments.instruments.HSTWFC3._search_ref_pixel_cal_file">[docs]</a>    <span class="nd">@staticmethod</span>
     <span class="k">def</span> <span class="nf">_search_ref_pixel_cal_file</span><span class="p">(</span><span class="n">ptable</span><span class="p">,</span> <span class="n">inst_aperture</span><span class="p">,</span> <span class="n">inst_filter</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Search the reference pixel calibration file for the reference pixel</span>
@@ -1132,9 +1139,9 @@
                 <span class="k">else</span><span class="p">:</span>
                     <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Filter or Aperture not found in, </span><span class="se">\</span>
 <span class="s2">                     reference pixel calibration file, Aborting&quot;</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">XREF</span><span class="p">,</span> <span class="n">YREF</span>
+        <span class="k">return</span> <span class="n">XREF</span><span class="p">,</span> <span class="n">YREF</span></div>
 
-    <span class="k">def</span> <span class="nf">_get_subarray_size</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">calibration_data</span><span class="p">,</span> <span class="n">spectral_data</span><span class="p">):</span>
+<div class="viewcode-block" id="HSTWFC3._get_subarray_size"><a class="viewcode-back" href="../../../cascade.instruments.html#cascade.instruments.instruments.HSTWFC3._get_subarray_size">[docs]</a>    <span class="k">def</span> <span class="nf">_get_subarray_size</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">calibration_data</span><span class="p">,</span> <span class="n">spectral_data</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">nintegrations</span><span class="p">,</span> <span class="n">nspatial</span><span class="p">,</span> <span class="n">nwavelength</span> <span class="o">=</span> <span class="n">spectral_data</span><span class="o">.</span><span class="n">shape</span>
@@ -1149,9 +1156,9 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">wfc3_cal</span> <span class="o">=</span> <span class="n">SimpleNamespace</span><span class="p">()</span>
         <span class="k">finally</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">wfc3_cal</span><span class="o">.</span><span class="n">subarray_sizes</span> <span class="o">=</span> <span class="n">subarray_sizes</span>
-        <span class="k">return</span>
+        <span class="k">return</span></div>
 
-    <span class="k">def</span> <span class="nf">_get_wavelength_calibration</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<div class="viewcode-block" id="HSTWFC3._get_wavelength_calibration"><a class="viewcode-back" href="../../../cascade.instruments.html#cascade.instruments.instruments.HSTWFC3._get_wavelength_calibration">[docs]</a>    <span class="k">def</span> <span class="nf">_get_wavelength_calibration</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Return the wavelength calibration</span>
 <span class="sd">        &quot;&quot;&quot;</span>
@@ -1175,7 +1182,7 @@
                                  <span class="n">yref_grism</span><span class="o">=</span><span class="n">reference_pixels</span><span class="p">[</span><span class="s2">&quot;YREF_GRISM&quot;</span><span class="p">][</span><span class="mi">0</span><span class="p">],</span>
                                  <span class="n">subarray</span><span class="o">=</span><span class="n">subarray_sizes</span><span class="p">[</span><span class="s1">&#39;cal_image_size&#39;</span><span class="p">],</span>
                                  <span class="n">subarray_grism</span><span class="o">=</span><span class="n">subarray_sizes</span><span class="p">[</span><span class="s1">&#39;science_image_size&#39;</span><span class="p">])</span>
-        <span class="k">return</span> <span class="n">wave_cal</span>
+        <span class="k">return</span> <span class="n">wave_cal</span></div>
 
 <div class="viewcode-block" id="HSTWFC3.get_spectral_trace"><a class="viewcode-back" href="../../../cascade.instruments.html#cascade.instruments.instruments.HSTWFC3.get_spectral_trace">[docs]</a>    <span class="k">def</span> <span class="nf">get_spectral_trace</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
@@ -1232,7 +1239,7 @@
 
         <span class="k">return</span> <span class="n">spectral_trace</span></div>
 
-    <span class="nd">@staticmethod</span>
+<div class="viewcode-block" id="HSTWFC3._WFC3Trace"><a class="viewcode-back" href="../../../cascade.instruments.html#cascade.instruments.instruments.HSTWFC3._WFC3Trace">[docs]</a>    <span class="nd">@staticmethod</span>
     <span class="k">def</span> <span class="nf">_WFC3Trace</span><span class="p">(</span><span class="n">xc</span><span class="p">,</span> <span class="n">yc</span><span class="p">,</span> <span class="n">DYDX</span><span class="p">,</span> <span class="n">xref</span><span class="o">=</span><span class="mi">522</span><span class="p">,</span> <span class="n">yref</span><span class="o">=</span><span class="mi">522</span><span class="p">,</span> <span class="n">xref_grism</span><span class="o">=</span><span class="mi">522</span><span class="p">,</span>
                    <span class="n">yref_grism</span><span class="o">=</span><span class="mi">522</span><span class="p">,</span> <span class="n">subarray</span><span class="o">=</span><span class="mi">256</span><span class="p">,</span> <span class="n">subarray_grism</span><span class="o">=</span><span class="mi">256</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
@@ -1268,9 +1275,9 @@
         <span class="n">idx_min</span> <span class="o">=</span> <span class="p">(</span><span class="n">subarray</span><span class="o">-</span><span class="n">subarray_grism</span><span class="p">)</span><span class="o">//</span><span class="mi">2</span>
         <span class="n">idx_max</span> <span class="o">=</span> <span class="p">(</span><span class="n">subarray</span><span class="o">-</span><span class="n">subarray_grism</span><span class="p">)</span><span class="o">//</span><span class="mi">2</span> <span class="o">+</span> <span class="n">subarray_grism</span>
         <span class="n">trace</span> <span class="o">=</span> <span class="n">trace</span><span class="p">[</span><span class="n">idx_min</span><span class="p">:</span><span class="n">idx_max</span><span class="p">]</span>
-        <span class="k">return</span> <span class="n">trace</span> <span class="o">+</span> <span class="n">yc</span> <span class="o">-</span> <span class="p">(</span><span class="mi">1014</span> <span class="o">-</span> <span class="n">subarray_grism</span><span class="p">)</span> <span class="o">//</span> <span class="mi">2</span>
+        <span class="k">return</span> <span class="n">trace</span> <span class="o">+</span> <span class="n">yc</span> <span class="o">-</span> <span class="p">(</span><span class="mi">1014</span> <span class="o">-</span> <span class="n">subarray_grism</span><span class="p">)</span> <span class="o">//</span> <span class="mi">2</span></div>
 
-    <span class="nd">@staticmethod</span>
+<div class="viewcode-block" id="HSTWFC3._WFC3Dispersion"><a class="viewcode-back" href="../../../cascade.instruments.html#cascade.instruments.instruments.HSTWFC3._WFC3Dispersion">[docs]</a>    <span class="nd">@staticmethod</span>
     <span class="k">def</span> <span class="nf">_WFC3Dispersion</span><span class="p">(</span><span class="n">xc</span><span class="p">,</span> <span class="n">yc</span><span class="p">,</span> <span class="n">DYDX</span><span class="p">,</span> <span class="n">DLDP</span><span class="p">,</span> <span class="n">xref</span><span class="o">=</span><span class="mi">522</span><span class="p">,</span> <span class="n">yref</span><span class="o">=</span><span class="mi">522</span><span class="p">,</span>
                         <span class="n">xref_grism</span><span class="o">=</span><span class="mi">522</span><span class="p">,</span> <span class="n">yref_grism</span><span class="o">=</span><span class="mi">522</span><span class="p">,</span> <span class="n">subarray</span><span class="o">=</span><span class="mi">256</span><span class="p">,</span>
                         <span class="n">subarray_grism</span><span class="o">=</span><span class="mi">256</span><span class="p">):</span>
@@ -1330,7 +1337,7 @@
         <span class="n">idx_min</span> <span class="o">=</span> <span class="p">(</span><span class="n">subarray</span><span class="o">-</span><span class="n">subarray_grism</span><span class="p">)</span><span class="o">//</span><span class="mi">2</span>
         <span class="n">idx_max</span> <span class="o">=</span> <span class="p">(</span><span class="n">subarray</span><span class="o">-</span><span class="n">subarray_grism</span><span class="p">)</span><span class="o">//</span><span class="mi">2</span> <span class="o">+</span> <span class="n">subarray_grism</span>
         <span class="n">wavelength</span> <span class="o">=</span> <span class="n">wavelength</span><span class="p">[</span><span class="n">idx_min</span><span class="p">:</span><span class="n">idx_max</span><span class="p">]</span> <span class="o">*</span> <span class="n">u</span><span class="o">.</span><span class="n">Angstrom</span>
-        <span class="k">return</span> <span class="n">wavelength</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">u</span><span class="o">.</span><span class="n">micron</span><span class="p">)</span></div>
+        <span class="k">return</span> <span class="n">wavelength</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">u</span><span class="o">.</span><span class="n">micron</span><span class="p">)</span></div></div>
 
 
 <div class="viewcode-block" id="Spitzer"><a class="viewcode-back" href="../../../cascade.instruments.html#cascade.instruments.instruments.Spitzer">[docs]</a><span class="k">class</span> <span class="nc">Spitzer</span><span class="p">(</span><span class="n">ObservatoryBase</span><span class="p">):</span>
@@ -1752,7 +1759,7 @@
                                                     <span class="n">dataFiles</span><span class="o">=</span><span class="n">data_files</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">SpectralTimeSeries</span></div>
 
-    <span class="k">def</span> <span class="nf">_define_convolution_kernel</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<div class="viewcode-block" id="SpitzerIRS._define_convolution_kernel"><a class="viewcode-back" href="../../../cascade.instruments.html#cascade.instruments.instruments.SpitzerIRS._define_convolution_kernel">[docs]</a>    <span class="k">def</span> <span class="nf">_define_convolution_kernel</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Define the instrument specific convolution kernel which will be used</span>
 <span class="sd">        in the correction procedure of bad pixels</span>
@@ -1768,9 +1775,9 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">IRS_cal</span> <span class="o">=</span> <span class="n">SimpleNamespace</span><span class="p">()</span>
         <span class="k">finally</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">IRS_cal</span><span class="o">.</span><span class="n">convolution_kernel</span> <span class="o">=</span> <span class="n">kernel</span>
-        <span class="k">return</span>
+        <span class="k">return</span></div>
 
-    <span class="k">def</span> <span class="nf">_define_region_of_interest</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<div class="viewcode-block" id="SpitzerIRS._define_region_of_interest"><a class="viewcode-back" href="../../../cascade.instruments.html#cascade.instruments.instruments.SpitzerIRS._define_region_of_interest">[docs]</a>    <span class="k">def</span> <span class="nf">_define_region_of_interest</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Defines region on detector which containes the intended target star.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
@@ -1789,9 +1796,9 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">IRS_cal</span> <span class="o">=</span> <span class="n">SimpleNamespace</span><span class="p">()</span>
         <span class="k">finally</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">IRS_cal</span><span class="o">.</span><span class="n">roi</span> <span class="o">=</span> <span class="n">roi</span>
-        <span class="k">return</span>
+        <span class="k">return</span></div>
 
-    <span class="k">def</span> <span class="nf">_get_order_mask</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<div class="viewcode-block" id="SpitzerIRS._get_order_mask"><a class="viewcode-back" href="../../../cascade.instruments.html#cascade.instruments.instruments.SpitzerIRS._get_order_mask">[docs]</a>    <span class="k">def</span> <span class="nf">_get_order_mask</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Gets the mask which defines the pixels used with a given spectral order</span>
 <span class="sd">        &quot;&quot;&quot;</span>
@@ -1838,9 +1845,9 @@
             <span class="c1"># remove first row</span>
             <span class="n">mask2</span><span class="p">[</span><span class="n">idx_row</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">logical_not</span><span class="p">(</span><span class="n">row_check</span><span class="p">)][</span><span class="mi">0</span><span class="p">],</span> <span class="p">:]</span> <span class="o">=</span> <span class="kc">True</span>
             <span class="n">mask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">logical_and</span><span class="p">(</span><span class="n">mask1</span><span class="p">,</span> <span class="n">mask2</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">mask</span>
+        <span class="k">return</span> <span class="n">mask</span></div>
 
-    <span class="k">def</span> <span class="nf">_get_wavelength_calibration</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<div class="viewcode-block" id="SpitzerIRS._get_wavelength_calibration"><a class="viewcode-back" href="../../../cascade.instruments.html#cascade.instruments.instruments.SpitzerIRS._get_wavelength_calibration">[docs]</a>    <span class="k">def</span> <span class="nf">_get_wavelength_calibration</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Get wavelength calibration file</span>
 <span class="sd">        &quot;&quot;&quot;</span>
@@ -1855,7 +1862,7 @@
             <span class="n">wave_unit_string</span> <span class="o">=</span> <span class="s1">&#39;um&#39;</span>
         <span class="n">wave_unit</span> <span class="o">=</span> <span class="n">u</span><span class="o">.</span><span class="n">Unit</span><span class="p">(</span><span class="n">wave_unit_string</span><span class="p">)</span>
         <span class="n">wave_cal</span> <span class="o">=</span> <span class="n">wave_cal</span> <span class="o">*</span> <span class="n">wave_unit</span>
-        <span class="k">return</span> <span class="n">wave_cal</span>
+        <span class="k">return</span> <span class="n">wave_cal</span></div>
 
 <div class="viewcode-block" id="SpitzerIRS.get_detector_cubes"><a class="viewcode-back" href="../../../cascade.instruments.html#cascade.instruments.instruments.SpitzerIRS.get_detector_cubes">[docs]</a>    <span class="k">def</span> <span class="nf">get_detector_cubes</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">is_background</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
@@ -2069,15 +2076,26 @@
 </pre></div>
 
           </div>
+              <div class="related bottom">
+                &nbsp;
+  <nav id="rellinks">
+    <ul>
+    </ul>
+  </nav>
+              </div>
           
         </div>
       </div>
       <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
         <div class="sphinxsidebarwrapper">
-            <p class="logo"><a href="../../../index.html">
-              <img class="logo" src="../../../_static/Exoplanets-A_Ecusson_Blanc_Alpha.png" alt="Logo"/>
-            </a></p>
-<h1 class="logo"><a href="../../../index.html">CASCADe</a></h1>
+<p class="logo">
+  <a href="../../../index.html">
+    <img class="logo" src="../../../_static/Exoplanets-A_Ecusson_Noir_Alpha.png" alt="Logo"/>
+    
+    <h1 class="logo logo-name">CASCADe</h1>
+    
+  </a>
+</p>
 
 
 
@@ -2087,10 +2105,10 @@
 
 
 <h3>Navigation</h3>
-<p class="caption"><span class="caption-text">Contents:</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="../../../cascade.html">Modules of the CASCADe package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../install.html">Howto Install CASCADe</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../howto.html">Using Cascade</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../cascade.html">Modules of the CASCADe package</a></li>
 </ul>
 
 <div class="relations">

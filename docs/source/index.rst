@@ -29,12 +29,11 @@ CASCADe API documentation
 =========================
 
 .. toctree::
-   :maxdepth: 2
-   :caption: Contents:
+   :maxdepth: 1
 
-   cascade
+   install
    howto
-
+   cascade
 
 Indices and tables
 ==================

@@ -27,13 +27,19 @@
     <div class="document">
       <div class="documentwrapper">
         <div class="bodywrapper">
+              <div class="related top">
+                &nbsp;
+  <nav id="rellinks">
+    <ul>
+    </ul>
+  </nav>
+              </div>
           
 
           <div class="body" role="main">
             
   <h1>Source code for cascade.TSO.TSO</h1><div class="highlight"><pre>
 <span></span><span class="c1"># -*- coding: utf-8 -*-</span>
-<span class="c1">#</span>
 <span class="c1"># This file is part of CASCADe package</span>
 <span class="c1">#</span>
 <span class="c1"># Developed within the ExoplANETS-A H2020 program.</span>
@@ -164,6 +170,27 @@
 <div class="viewcode-block" id="TSOSuite.execute"><a class="viewcode-back" href="../../../cascade.TSO.html#cascade.TSO.TSO.TSOSuite.execute">[docs]</a>    <span class="k">def</span> <span class="nf">execute</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">command</span><span class="p">,</span> <span class="o">*</span><span class="n">init_files</span><span class="p">,</span> <span class="n">path</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Check if command is valid and excecute if True</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        command:</span>
+<span class="sd">            Command to be excecuted. If valid the method corresponding</span>
+<span class="sd">            to the command will be excecuted</span>
+<span class="sd">        *init_files</span>
+<span class="sd">            Single or multiple file names of the .ini files containing the</span>
+<span class="sd">            parameters defining the observation and calibration settings.</span>
+<span class="sd">        path</span>
+<span class="sd">            (optional) Filepath to the .ini files, standard value in None</span>
+
+<span class="sd">        Raises</span>
+<span class="sd">        ------</span>
+<span class="sd">        ValueError</span>
+<span class="sd">            error is raised if command is not valid</span>
+
+<span class="sd">        Examples</span>
+<span class="sd">        --------</span>
+
+<span class="sd">        &gt;&gt;&gt; tso.execute(&#39;reset&#39;)</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="n">command</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">__valid_commands</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Command not recognized, </span><span class="se">\</span>
@@ -178,12 +205,31 @@
 
 <div class="viewcode-block" id="TSOSuite.initialize_TSO"><a class="viewcode-back" href="../../../cascade.TSO.html#cascade.TSO.TSO.TSOSuite.initialize_TSO">[docs]</a>    <span class="k">def</span> <span class="nf">initialize_TSO</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">init_files</span><span class="p">,</span> <span class="n">path</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Initialize TSO object</span>
+<span class="sd">        Initializes the TSO object by reading in a single or</span>
+<span class="sd">        multiple .ini files</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        *init_files</span>
+<span class="sd">            Single or multiple file names of the .ini files containing the</span>
+<span class="sd">            parameters defining the observation and calibration settings.</span>
+<span class="sd">        path</span>
+<span class="sd">            (optional) Filepath to the .ini files, standard value in None</span>
 
 <span class="sd">        Attributes</span>
 <span class="sd">        ----------</span>
 <span class="sd">        cascade_parameters</span>
 <span class="sd">            cascade.initialize.initialize.configurator</span>
+
+<span class="sd">        Raises</span>
+<span class="sd">        ------</span>
+<span class="sd">        FileNotFoundError</span>
+<span class="sd">            Raises error if .ini file is not found</span>
+
+<span class="sd">        Examples</span>
+<span class="sd">        --------</span>
+
+<span class="sd">        &gt;&gt;&gt; tso.execute(&quot;initialize&quot;, init_flle_name)</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="n">path</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">path</span> <span class="o">=</span> <span class="n">default_initialization_path</span>
@@ -223,7 +269,7 @@
 
 <span class="sd">        Examples</span>
 <span class="sd">        --------</span>
-<span class="sd">        To make instance of TSOSuite class</span>
+<span class="sd">        To load the observed data into the tso object:</span>
 
 <span class="sd">        &gt;&gt;&gt; tso.execute(&quot;load_data&quot;)</span>
 <span class="sd">        &quot;&quot;&quot;</span>
@@ -233,6 +279,23 @@
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Subtract median background determined from data or background model</span>
 <span class="sd">        from the science observations.</span>
+
+<span class="sd">        Attributes</span>
+<span class="sd">        ----------</span>
+<span class="sd">        isBackgroundSubtracted</span>
+<span class="sd">            True if background is subtracted</span>
+
+<span class="sd">        Raises</span>
+<span class="sd">        ------</span>
+<span class="sd">        AttributeError</span>
+<span class="sd">           In case no background data is defined</span>
+
+<span class="sd">        Examples</span>
+<span class="sd">        --------</span>
+<span class="sd">        To subtract the background from the spectral images:</span>
+
+<span class="sd">        &gt;&gt;&gt; tso.execute(&quot;subtract_background&quot;)</span>
+
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">try</span><span class="p">:</span>
             <span class="n">obs_has_backgr</span> <span class="o">=</span> <span class="n">ast</span><span class="o">.</span><span class="n">literal_eval</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cascade_parameters</span><span class="o">.</span>
@@ -259,7 +322,7 @@
                                  <span class="n">observations_uses_background_model</span><span class="p">)</span>
         <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
             <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s1">&#39;observations_uses_background_model parameter </span><span class="se">\</span>
-<span class="s1">                          not defined, assuming it to tbe False&#39;</span><span class="p">)</span>
+<span class="s1">                          not defined, assuming it to be False&#39;</span><span class="p">)</span>
             <span class="n">obs_uses_backgr_model</span> <span class="o">=</span> <span class="kc">False</span>
 
         <span class="k">if</span> <span class="n">obs_uses_backgr_model</span><span class="p">:</span>
@@ -293,19 +356,19 @@
 <div class="viewcode-block" id="TSOSuite.sigma_clip_data_cosmic"><a class="viewcode-back" href="../../../cascade.TSO.html#cascade.TSO.TSO.TSOSuite.sigma_clip_data_cosmic">[docs]</a>    <span class="nd">@staticmethod</span>
     <span class="k">def</span> <span class="nf">sigma_clip_data_cosmic</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">sigma</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Sigma Clip in time.</span>
+<span class="sd">        Sigma clip of time series data cube allong the time axis.</span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ---------</span>
-<span class="sd">        data</span>
-<span class="sd">            input data to be cliped</span>
-<span class="sd">        sigma</span>
-<span class="sd">            sigma value of sigmaclip</span>
+<span class="sd">        data : &#39;array_like&#39;</span>
+<span class="sd">            Input data to be cliped, last axis of data to be assumed the time</span>
+<span class="sd">        sigma : &#39;float&#39;</span>
+<span class="sd">            Sigma value of sigmaclip</span>
 
 <span class="sd">        Returns</span>
 <span class="sd">        -------</span>
-<span class="sd">        sigma_clip_mask</span>
-<span class="sd">            updated mask</span>
+<span class="sd">        sigma_clip_mask : &#39;array_like&#39;</span>
+<span class="sd">            Updated mask for input data wiith bad data points flagged (=1)</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="c1"># time axis always the last axis in data,</span>
         <span class="c1"># or the first in the transposed array</span>
@@ -316,6 +379,25 @@
 <div class="viewcode-block" id="TSOSuite.sigma_clip_data"><a class="viewcode-back" href="../../../cascade.TSO.html#cascade.TSO.TSO.TSOSuite.sigma_clip_data">[docs]</a>    <span class="k">def</span> <span class="nf">sigma_clip_data</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Perform sigma clip on science data to flag bad data.</span>
+
+<span class="sd">        Attibutes</span>
+<span class="sd">        ---------</span>
+<span class="sd">        isSigmaCliped : &#39;bool&#39;</span>
+<span class="sd">            Set to True if bad data has been masked using sigma clip</span>
+
+<span class="sd">        Raises</span>
+<span class="sd">        ------</span>
+<span class="sd">        AttributeError</span>
+<span class="sd">            Error is raised if sigma value, the filter length or</span>
+<span class="sd">            the convolution kernel are not defined.</span>
+
+<span class="sd">        Examples</span>
+<span class="sd">        --------</span>
+<span class="sd">        To sigma clip the observation data stored in an instance of a TSO</span>
+<span class="sd">        object, run the following example:</span>
+
+<span class="sd">        &gt;&gt;&gt; tso.execute(&quot;sigma_clip_data&quot;)</span>
+
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">try</span><span class="p">:</span>
             <span class="n">data_in</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">observation</span><span class="o">.</span><span class="n">dataset</span>
@@ -538,15 +620,15 @@
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
-<span class="sd">        spectral_trace:</span>
+<span class="sd">        spectral_trace :</span>
 <span class="sd">            The trace of the dispersed light on the detector normalized</span>
 <span class="sd">            to its median position. In case the data are extracted spectra,</span>
 <span class="sd">            the trace is zero.</span>
-<span class="sd">        position:</span>
+<span class="sd">        position :</span>
 <span class="sd">            Postion of the source on the detector in the cross dispersion</span>
 <span class="sd">            directon as a function of time, normalized to the</span>
 <span class="sd">            median position.</span>
-<span class="sd">        median_position:</span>
+<span class="sd">        median_position :</span>
 <span class="sd">            median source position.</span>
 
 <span class="sd">        Returns</span>
@@ -793,7 +875,7 @@
 
         <span class="bp">self</span><span class="o">.</span><span class="n">cpm</span><span class="o">.</span><span class="n">extraction_mask</span> <span class="o">=</span> <span class="n">ExtractionMask</span></div>
 
-    <span class="k">def</span> <span class="nf">_create_edge_mask</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">kernel</span><span class="p">,</span> <span class="n">roi_mask_cube</span><span class="p">):</span>
+<div class="viewcode-block" id="TSOSuite._create_edge_mask"><a class="viewcode-back" href="../../../cascade.TSO.html#cascade.TSO.TSO.TSOSuite._create_edge_mask">[docs]</a>    <span class="k">def</span> <span class="nf">_create_edge_mask</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">kernel</span><span class="p">,</span> <span class="n">roi_mask_cube</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Create an edge mask to mask all pixels for which the convolution kernel</span>
 <span class="sd">        extends beyond the ROI</span>
@@ -810,9 +892,9 @@
 
         <span class="n">edge_mask</span> <span class="o">=</span> <span class="p">(</span><span class="n">binary_dilation</span><span class="p">(</span><span class="n">roi_mask_cube</span><span class="p">,</span>  <span class="n">structure</span><span class="o">=</span><span class="n">dilation_mask</span><span class="p">,</span>
                                      <span class="n">border_value</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span> <span class="o">^</span> <span class="n">roi_mask_cube</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">edge_mask</span>
+        <span class="k">return</span> <span class="n">edge_mask</span></div>
 
-    <span class="k">def</span> <span class="nf">_create_extraction_profile</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cleaned_data_with_roi_mask</span><span class="p">,</span>
+<div class="viewcode-block" id="TSOSuite._create_extraction_profile"><a class="viewcode-back" href="../../../cascade.TSO.html#cascade.TSO.TSO.TSOSuite._create_extraction_profile">[docs]</a>    <span class="k">def</span> <span class="nf">_create_extraction_profile</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cleaned_data_with_roi_mask</span><span class="p">,</span>
                                    <span class="n">extracted_spectra</span><span class="p">,</span> <span class="n">kernel</span><span class="p">,</span>
                                    <span class="n">mask_for_extraction</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
@@ -857,9 +939,9 @@
         <span class="n">extraction_profile</span> <span class="o">=</span> <span class="n">extraction_profile</span> <span class="o">/</span> \
             <span class="n">np</span><span class="o">.</span><span class="n">ma</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">extraction_profile</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">keepdims</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 
-        <span class="k">return</span> <span class="n">extraction_profile</span>
+        <span class="k">return</span> <span class="n">extraction_profile</span></div>
 
-    <span class="k">def</span> <span class="nf">_create_3dKernel</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sigma_time</span><span class="p">):</span>
+<div class="viewcode-block" id="TSOSuite._create_3dKernel"><a class="viewcode-back" href="../../../cascade.TSO.html#cascade.TSO.TSO.TSOSuite._create_3dKernel">[docs]</a>    <span class="k">def</span> <span class="nf">_create_3dKernel</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sigma_time</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Create a 3d Kernel from 2d Instrument specific Kernel</span>
 <span class="sd">        to include time dimention</span>
@@ -888,7 +970,7 @@
         <span class="n">kernel3d</span><span class="o">.</span><span class="n">_separable</span> <span class="o">=</span> <span class="kc">True</span>
         <span class="n">kernel3d</span><span class="o">.</span><span class="n">normalize</span><span class="p">()</span>
 
-        <span class="k">return</span> <span class="n">kernel3d</span>
+        <span class="k">return</span> <span class="n">kernel3d</span></div>
 
 <div class="viewcode-block" id="TSOSuite.optimal_extraction"><a class="viewcode-back" href="../../../cascade.TSO.html#cascade.TSO.TSO.TSOSuite.optimal_extraction">[docs]</a>    <span class="k">def</span> <span class="nf">optimal_extraction</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
@@ -2621,15 +2703,26 @@
 </pre></div>
 
           </div>
+              <div class="related bottom">
+                &nbsp;
+  <nav id="rellinks">
+    <ul>
+    </ul>
+  </nav>
+              </div>
           
         </div>
       </div>
       <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
         <div class="sphinxsidebarwrapper">
-            <p class="logo"><a href="../../../index.html">
-              <img class="logo" src="../../../_static/Exoplanets-A_Ecusson_Blanc_Alpha.png" alt="Logo"/>
-            </a></p>
-<h1 class="logo"><a href="../../../index.html">CASCADe</a></h1>
+<p class="logo">
+  <a href="../../../index.html">
+    <img class="logo" src="../../../_static/Exoplanets-A_Ecusson_Noir_Alpha.png" alt="Logo"/>
+    
+    <h1 class="logo logo-name">CASCADe</h1>
+    
+  </a>
+</p>
 
 
 
@@ -2639,10 +2732,10 @@
 
 
 <h3>Navigation</h3>
-<p class="caption"><span class="caption-text">Contents:</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="../../../cascade.html">Modules of the CASCADe package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../install.html">Howto Install CASCADe</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../howto.html">Using Cascade</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../cascade.html">Modules of the CASCADe package</a></li>
 </ul>
 
 <div class="relations">

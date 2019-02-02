@@ -27,18 +27,43 @@
     <div class="document">
       <div class="documentwrapper">
         <div class="bodywrapper">
+              <div class="related top">
+                &nbsp;
+  <nav id="rellinks">
+    <ul>
+    </ul>
+  </nav>
+              </div>
           
 
           <div class="body" role="main">
             
   <h1>Source code for cascade.cpm_model.cpm_model</h1><div class="highlight"><pre>
-<span></span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">Routines used in causal pixel model</span>
-
-<span class="sd">Version 1.0</span>
-
-<span class="sd">@author: Jeroen Bouwman</span>
-<span class="sd">         MPIA Heidelberg</span>
+<span></span><span class="ch">#!/usr/bin/env python3</span>
+<span class="c1"># -*- coding: utf-8 -*-</span>
+<span class="c1"># This file is part of CASCADe package</span>
+<span class="c1">#</span>
+<span class="c1"># Developed within the ExoplANETS-A H2020 program.</span>
+<span class="c1">#</span>
+<span class="c1"># See the COPYRIGHT file at the top-level directory of this distribution</span>
+<span class="c1"># for details of code ownership.</span>
+<span class="c1">#</span>
+<span class="c1"># This program is free software: you can redistribute it and/or modify</span>
+<span class="c1"># it under the terms of the GNU General Public License as published by</span>
+<span class="c1"># the Free Software Foundation, either version 3 of the License, or</span>
+<span class="c1"># (at your option) any later version.</span>
+<span class="c1">#</span>
+<span class="c1"># This program is distributed in the hope that it will be useful,</span>
+<span class="c1"># but WITHOUT ANY WARRANTY; without even the implied warranty of</span>
+<span class="c1"># MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the</span>
+<span class="c1"># GNU General Public License for more details.</span>
+<span class="c1">#</span>
+<span class="c1"># You should have received a copy of the GNU General Public License</span>
+<span class="c1"># along with this program.  If not, see &lt;http://www.gnu.org/licenses/&gt;.</span>
+<span class="c1">#</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">The cpm_model module defines the solver and other functionality for the</span>
+<span class="sd">regression model used in causal pixel model.</span>
 <span class="sd">&quot;&quot;&quot;</span>
 <span class="kn">from</span> <span class="nn">__future__</span> <span class="k">import</span> <span class="n">print_function</span>
 <span class="kn">from</span> <span class="nn">__future__</span> <span class="k">import</span> <span class="n">division</span>
@@ -58,15 +83,43 @@
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Solve linear system using SVD with TIKHONOV regularization</span>
 
-<span class="sd">   For details see:</span>
-<span class="sd">       PHD thesis by Diana Maria SIMA, &quot;Regularization techniques in</span>
-<span class="sd">            Model Fitting and Parameter estimation&quot;, KU Leuven 2006</span>
-<span class="sd">       Hogg et al 2010, &quot;Data analysis recipies: Fitting a model to data&quot;</span>
-<span class="sd">       Rust &amp; O&#39;Leaary, &quot;Residual periodograms for choosing regularization</span>
-<span class="sd">             parameters for ill-posed porblems&quot;</span>
-<span class="sd">       Krakauer et al &quot;Using generalized cross-validationto select parameters</span>
-<span class="sd">               in inversions for regional carbon fluxes&quot;</span>
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    design_matrx : &#39;ndarray, ndim=2&#39;</span>
+<span class="sd">        Design matrix</span>
+<span class="sd">    data : &#39;ndarray&#39;</span>
+<span class="sd">        Data</span>
+<span class="sd">    weights : &#39;ndarray&#39;</span>
+<span class="sd">        Weights used in the linear least square minimization</span>
+<span class="sd">    cv_method : {&#39;gvc&#39;|&#39;b95&#39;|&#39;B100&#39;}</span>
+<span class="sd">        Method used to find optimal regularization parameter which can be:</span>
+<span class="sd">            &quot;gvc&quot; :  Generizalize Cross Validation [RECOMMENDED!!!]</span>
+<span class="sd">            &quot;b95&quot; :  normalized cumulatative periodogram using 95% limit</span>
+<span class="sd">            &quot;B100&quot;:  normalized cumulatative periodogram</span>
+<span class="sd">    reg_par : &#39;dict&#39;</span>
+<span class="sd">        Parameter describing search grid to find optimal regularization</span>
+<span class="sd">        parameter lambda:</span>
+<span class="sd">            {lam0 : minimum lambda</span>
+<span class="sd">            lam1 : maximum lambda</span>
+<span class="sd">            nlam : number of grid points}</span>
+<span class="sd">    feature_scaling : {&#39;norm&#39;|None}</span>
+<span class="sd">        if the value is set to &#39;norm&#39; all features are normalized using L2</span>
+<span class="sd">        norm else no featue scaling is applied.</span>
+<span class="sd">    degrees_of_freedom : &#39;int&#39;</span>
+<span class="sd">        Effective  degrees_of_freedom, if set to None the value is calculated</span>
+<span class="sd">        from the dimensions of the imput arrays.</span>
 
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    fit_results : &#39;tuple&#39;</span>
+<span class="sd">        In case the feature_scaling is set to None, the tuble contains the</span>
+<span class="sd">        following parameters: (fit_parameters, err_fit_parameters, lam_reg)</span>
+<span class="sd">        else the following results are returned: (fit_parameters_scaled,</span>
+<span class="sd">        err_fit_parameters_scaled, lam_reg, pc_matrix, fit_parameters,</span>
+<span class="sd">        err_fit_parameters)</span>
+
+<span class="sd">    Notes</span>
+<span class="sd">    -----</span>
 <span class="sd">    This routine solves the linear equation</span>
 
 <span class="sd">    A x = y</span>
@@ -75,33 +128,29 @@
 
 <span class="sd">    ||y-A*x_hat||^2 + lambda * ||x_hat||^2</span>
 
+<span class="sd">    For details on the implementation see [1]_, [2]_, [3]_, [4]_</span>
+<span class="sd">    References</span>
+<span class="sd">    -----------</span>
+<span class="sd">    .. [1] PHD thesis by Diana Maria SIMA, &quot;Regularization techniques in</span>
+<span class="sd">           Model Fitting and Parameter estimation&quot;, KU Leuven 2006</span>
+<span class="sd">    .. [2] Hogg et al 2010, &quot;Data analysis recipies: Fitting a model to data&quot;</span>
+<span class="sd">    .. [3] Rust &amp; O&#39;Leaary, &quot;Residual periodograms for choosing regularization</span>
+<span class="sd">           parameters for ill-posed porblems&quot;</span>
+<span class="sd">    .. [4] Krakauer et al &quot;Using generalized cross-validationto select</span>
+<span class="sd">           parameters in inversions for regional carbon fluxes&quot;</span>
 
-<span class="sd">    Input parameters:</span>
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
 
-<span class="sd">        design_matrx:</span>
-<span class="sd">            Design matrix</span>
+<span class="sd">    &gt;&gt;&gt; import numpy as np</span>
+<span class="sd">    &gt;&gt;&gt; from cascade.cpm_model import solve_linear_equation</span>
+<span class="sd">    &gt;&gt;&gt; A = np.array([[1, 0, -1], [0, 1, 0], [1, 0, 1], [1, 1, 0], [-1, 1, 0]])</span>
+<span class="sd">    &gt;&gt;&gt; coef = np.array([4, 2, 7])</span>
+<span class="sd">    &gt;&gt;&gt; b = np.dot(A, coef)</span>
+<span class="sd">    &gt;&gt;&gt; b = b + np.random.normal(0.0, 0.01, size=b.size)</span>
+<span class="sd">    &gt;&gt;&gt; results = solve_linear_equation(A, b)</span>
+<span class="sd">    &gt;&gt;&gt; print(results)</span>
 
-<span class="sd">        data:</span>
-<span class="sd">            Data</span>
-
-<span class="sd">        weights:</span>
-<span class="sd">            Weights used in the linear least square minimization</span>
-
-<span class="sd">        cv_method:</span>
-<span class="sd">            Method used to find optimal regularization parameter which can be:</span>
-<span class="sd">                &quot;gvc&quot; :  Generizalize Cross Validation [RECOMMENDED!!!]</span>
-<span class="sd">                &quot;b95&quot; :  normalized cumulatative periodogram using 95% limit</span>
-<span class="sd">                &quot;B100&quot;:  normalized cumulatative periodogram</span>
-
-<span class="sd">        reg_par:</span>
-<span class="sd">            Parameter describing search grid to find optimal regularization</span>
-<span class="sd">            parameter lambda:</span>
-<span class="sd">                lam0 : minimum lambda</span>
-<span class="sd">                lam1 : maximum lambda</span>
-<span class="sd">                nlam : number of grid points</span>
-<span class="sd">        feature_scaling:</span>
-<span class="sd">            norm : normalise features using L2 norm</span>
-<span class="sd">            None : no featue scaling</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="n">feature_scaling</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
         <span class="c1"># precondition regressors</span>
@@ -298,15 +347,26 @@
 </pre></div>
 
           </div>
+              <div class="related bottom">
+                &nbsp;
+  <nav id="rellinks">
+    <ul>
+    </ul>
+  </nav>
+              </div>
           
         </div>
       </div>
       <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
         <div class="sphinxsidebarwrapper">
-            <p class="logo"><a href="../../../index.html">
-              <img class="logo" src="../../../_static/Exoplanets-A_Ecusson_Blanc_Alpha.png" alt="Logo"/>
-            </a></p>
-<h1 class="logo"><a href="../../../index.html">CASCADe</a></h1>
+<p class="logo">
+  <a href="../../../index.html">
+    <img class="logo" src="../../../_static/Exoplanets-A_Ecusson_Noir_Alpha.png" alt="Logo"/>
+    
+    <h1 class="logo logo-name">CASCADe</h1>
+    
+  </a>
+</p>
 
 
 
@@ -316,10 +376,10 @@
 
 
 <h3>Navigation</h3>
-<p class="caption"><span class="caption-text">Contents:</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="../../../cascade.html">Modules of the CASCADe package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../install.html">Howto Install CASCADe</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../howto.html">Using Cascade</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../cascade.html">Modules of the CASCADe package</a></li>
 </ul>
 
 <div class="relations">

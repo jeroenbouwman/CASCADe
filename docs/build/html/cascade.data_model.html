@@ -29,6 +29,21 @@
     <div class="document">
       <div class="documentwrapper">
         <div class="bodywrapper">
+              <div class="related top">
+                &nbsp;
+  <nav id="rellinks">
+    <ul>
+        <li>
+          &larr;
+          <a href="cascade.cpm_model.html" title="Previous document">The cascade.cpm_model module</a>
+        </li>
+        <li>
+          <a href="cascade.exoplanet_tools.html" title="Next document">The cascade.exoplanet_tools module</a>
+          &rarr;
+        </li>
+    </ul>
+  </nav>
+              </div>
           
 
           <div class="body" role="main">
@@ -59,31 +74,37 @@ wavelength</p>
 <dt>mask</dt>
 <dd>mask defining masked data</dd>
 </dl>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Attributes:</th><td class="field-body"><dl class="first last docutils">
-<dt><strong>data</strong></dt>
-<dd></dd>
-<dt><strong>data_unit</strong></dt>
-<dd></dd>
-<dt><strong>mask</strong></dt>
-<dd></dd>
-<dt><strong>uncertainty</strong></dt>
-<dd></dd>
-<dt><strong>wavelength</strong></dt>
-<dd></dd>
-<dt><strong>wavelength_unit</strong></dt>
-<dd></dd>
+<dl class="docutils">
+<dt><a href="#id1"><span class="problematic" id="id2">**</span></a>kwargs</dt>
+<dd>any auxilary data relevant to the spectral data
+(like position, detector temperature etc.)
+If unit is not explicitly given a unit atribute is added.
+Input argument can be instance of astropy quantity.
+Auxilary atributes are added to instance of the SpectralData class
+and not to the class itself. Only the required input stated above
+is always defined for all instances.</dd>
 </dl>
-</td>
-</tr>
-</tbody>
-</table>
+<p>Instance of SpectralData class.
+All data are stored internally as numppy arrays. Outputted data are
+astropy Quantities unless no units (=None) are specified.</p>
+<dl class="attribute">
+<dt id="cascade.data_model.data_model.SpectralData.wavelength">
+<code class="descname">wavelength</code><a class="headerlink" href="#cascade.data_model.data_model.SpectralData.wavelength" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="cascade.data_model.data_model.SpectralData.wavelength_unit">
+<code class="descname">wavelength_unit</code><a class="headerlink" href="#cascade.data_model.data_model.SpectralData.wavelength_unit" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
 <dl class="attribute">
 <dt id="cascade.data_model.data_model.SpectralData.data">
 <code class="descname">data</code><a class="headerlink" href="#cascade.data_model.data_model.SpectralData.data" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="cascade.data_model.data_model.SpectralData.uncertainty">
+<code class="descname">uncertainty</code><a class="headerlink" href="#cascade.data_model.data_model.SpectralData.uncertainty" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="attribute">
@@ -94,21 +115,6 @@ wavelength</p>
 <dl class="attribute">
 <dt id="cascade.data_model.data_model.SpectralData.mask">
 <code class="descname">mask</code><a class="headerlink" href="#cascade.data_model.data_model.SpectralData.mask" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="attribute">
-<dt id="cascade.data_model.data_model.SpectralData.uncertainty">
-<code class="descname">uncertainty</code><a class="headerlink" href="#cascade.data_model.data_model.SpectralData.uncertainty" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="attribute">
-<dt id="cascade.data_model.data_model.SpectralData.wavelength">
-<code class="descname">wavelength</code><a class="headerlink" href="#cascade.data_model.data_model.SpectralData.wavelength" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="attribute">
-<dt id="cascade.data_model.data_model.SpectralData.wavelength_unit">
-<code class="descname">wavelength_unit</code><a class="headerlink" href="#cascade.data_model.data_model.SpectralData.wavelength_unit" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 </dd></dl>
@@ -128,32 +134,6 @@ time</p>
 <dt>time_unit</dt>
 <dd>physical unit of time data</dd>
 </dl>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Attributes:</th><td class="field-body"><dl class="first last docutils">
-<dt><strong>data</strong></dt>
-<dd></dd>
-<dt><strong>data_unit</strong></dt>
-<dd></dd>
-<dt><strong>mask</strong></dt>
-<dd></dd>
-<dt><strong>time</strong></dt>
-<dd></dd>
-<dt><strong>time_unit</strong></dt>
-<dd></dd>
-<dt><strong>uncertainty</strong></dt>
-<dd></dd>
-<dt><strong>wavelength</strong></dt>
-<dd></dd>
-<dt><strong>wavelength_unit</strong></dt>
-<dd></dd>
-</dl>
-</td>
-</tr>
-</tbody>
-</table>
 <dl class="attribute">
 <dt id="cascade.data_model.data_model.SpectralDataTimeSeries.time">
 <code class="descname">time</code><a class="headerlink" href="#cascade.data_model.data_model.SpectralDataTimeSeries.time" title="Permalink to this definition">¶</a></dt>
@@ -170,15 +150,34 @@ time</p>
 
 
           </div>
+              <div class="related bottom">
+                &nbsp;
+  <nav id="rellinks">
+    <ul>
+        <li>
+          &larr;
+          <a href="cascade.cpm_model.html" title="Previous document">The cascade.cpm_model module</a>
+        </li>
+        <li>
+          <a href="cascade.exoplanet_tools.html" title="Next document">The cascade.exoplanet_tools module</a>
+          &rarr;
+        </li>
+    </ul>
+  </nav>
+              </div>
           
         </div>
       </div>
       <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
         <div class="sphinxsidebarwrapper">
-            <p class="logo"><a href="index.html">
-              <img class="logo" src="_static/Exoplanets-A_Ecusson_Blanc_Alpha.png" alt="Logo"/>
-            </a></p>
-<h1 class="logo"><a href="index.html">CASCADe</a></h1>
+<p class="logo">
+  <a href="index.html">
+    <img class="logo" src="_static/Exoplanets-A_Ecusson_Noir_Alpha.png" alt="Logo"/>
+    
+    <h1 class="logo logo-name">CASCADe</h1>
+    
+  </a>
+</p>
 
 
 
@@ -188,19 +187,10 @@ time</p>
 
 
 <h3>Navigation</h3>
-<p class="caption"><span class="caption-text">Contents:</span></p>
 <ul class="current">
-<li class="toctree-l1 current"><a class="reference internal" href="cascade.html">Modules of the CASCADe package</a><ul class="current">
-<li class="toctree-l2"><a class="reference internal" href="cascade.TSO.html">The cascade.TSO module</a></li>
-<li class="toctree-l2"><a class="reference internal" href="cascade.cpm_model.html">The cascade.cpm_model module</a></li>
-<li class="toctree-l2 current"><a class="current reference internal" href="#">The cascade.data_model module</a></li>
-<li class="toctree-l2"><a class="reference internal" href="cascade.exoplanet_tools.html">The cascade.exoplanet_tools module</a></li>
-<li class="toctree-l2"><a class="reference internal" href="cascade.initialize.html">The cascade.initialize module</a></li>
-<li class="toctree-l2"><a class="reference internal" href="cascade.instruments.html">The cascade.instruments module</a></li>
-<li class="toctree-l2"><a class="reference internal" href="cascade.utilities.html">The cascade.utilities module</a></li>
-</ul>
-</li>
+<li class="toctree-l1"><a class="reference internal" href="install.html">Howto Install CASCADe</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto.html">Using Cascade</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="cascade.html">Modules of the CASCADe package</a></li>
 </ul>
 
 <div class="relations">

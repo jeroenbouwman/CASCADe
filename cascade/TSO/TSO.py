@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-#
 # This file is part of CASCADe package
 #
 # Developed within the ExoplANETS-A H2020 program.
@@ -130,6 +129,27 @@ class TSOSuite:
     def execute(self, command, *init_files, path=None):
         """
         Check if command is valid and excecute if True
+
+        Parameters
+        ----------
+        command:
+            Command to be excecuted. If valid the method corresponding
+            to the command will be excecuted
+        *init_files
+            Single or multiple file names of the .ini files containing the
+            parameters defining the observation and calibration settings.
+        path
+            (optional) Filepath to the .ini files, standard value in None
+
+        Raises
+        ------
+        ValueError
+            error is raised if command is not valid
+
+        Examples
+        --------
+
+        >>> tso.execute('reset')
         """
         if command not in self.__valid_commands:
             raise ValueError("Command not recognized, \
@@ -144,12 +164,31 @@ class TSOSuite:
 
     def initialize_TSO(self, *init_files, path=None):
         """
-        Initialize TSO object
+        Initializes the TSO object by reading in a single or
+        multiple .ini files
+
+        Parameters
+        ----------
+        *init_files
+            Single or multiple file names of the .ini files containing the
+            parameters defining the observation and calibration settings.
+        path
+            (optional) Filepath to the .ini files, standard value in None
 
         Attributes
         ----------
         cascade_parameters
             cascade.initialize.initialize.configurator
+
+        Raises
+        ------
+        FileNotFoundError
+            Raises error if .ini file is not found
+
+        Examples
+        --------
+
+        >>> tso.execute("initialize", init_flle_name)
         """
         if path is None:
             path = default_initialization_path
@@ -189,7 +228,7 @@ class TSOSuite:
 
         Examples
         --------
-        To make instance of TSOSuite class
+        To load the observed data into the tso object:
 
         >>> tso.execute("load_data")
         """
@@ -199,6 +238,23 @@ class TSOSuite:
         """
         Subtract median background determined from data or background model
         from the science observations.
+
+        Attributes
+        ----------
+        isBackgroundSubtracted
+            True if background is subtracted
+
+        Raises
+        ------
+        AttributeError
+           In case no background data is defined
+
+        Examples
+        --------
+        To subtract the background from the spectral images:
+
+        >>> tso.execute("subtract_background")
+
         """
         try:
             obs_has_backgr = ast.literal_eval(self.cascade_parameters.
@@ -225,7 +281,7 @@ class TSOSuite:
                                  observations_uses_background_model)
         except AttributeError:
             warnings.warn('observations_uses_background_model parameter \
-                          not defined, assuming it to tbe False')
+                          not defined, assuming it to be False')
             obs_uses_backgr_model = False
 
         if obs_uses_backgr_model:
@@ -259,19 +315,19 @@ class TSOSuite:
     @staticmethod
     def sigma_clip_data_cosmic(data, sigma):
         """
-        Sigma Clip in time.
+        Sigma clip of time series data cube allong the time axis.
 
         Parameters
         ---------
-        data
-            input data to be cliped
-        sigma
-            sigma value of sigmaclip
+        data : 'array_like'
+            Input data to be cliped, last axis of data to be assumed the time
+        sigma : 'float'
+            Sigma value of sigmaclip
 
         Returns
         -------
-        sigma_clip_mask
-            updated mask
+        sigma_clip_mask : 'array_like'
+            Updated mask for input data wiith bad data points flagged (=1)
         """
         # time axis always the last axis in data,
         # or the first in the transposed array
@@ -282,6 +338,25 @@ class TSOSuite:
     def sigma_clip_data(self):
         """
         Perform sigma clip on science data to flag bad data.
+
+        Attibutes
+        ---------
+        isSigmaCliped : 'bool'
+            Set to True if bad data has been masked using sigma clip
+
+        Raises
+        ------
+        AttributeError
+            Error is raised if sigma value, the filter length or
+            the convolution kernel are not defined.
+
+        Examples
+        --------
+        To sigma clip the observation data stored in an instance of a TSO
+        object, run the following example:
+
+        >>> tso.execute("sigma_clip_data")
+
         """
         try:
             data_in = self.observation.dataset
@@ -504,15 +579,15 @@ class TSOSuite:
 
         Parameters
         ----------
-        spectral_trace:
+        spectral_trace :
             The trace of the dispersed light on the detector normalized
             to its median position. In case the data are extracted spectra,
             the trace is zero.
-        position:
+        position :
             Postion of the source on the detector in the cross dispersion
             directon as a function of time, normalized to the
             median position.
-        median_position:
+        median_position :
             median source position.
 
         Returns

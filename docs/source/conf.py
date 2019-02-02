@@ -47,7 +47,7 @@ extensions = [
     'sphinx.ext.ifconfig',
     'sphinx.ext.viewcode',
     'sphinx.ext.githubpages',
-    'numpydoc'
+    'sphinx.ext.napoleon'
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -75,9 +75,26 @@ language = None
 exclude_patterns = []
 
 # The name of the Pygments (syntax highlighting) style to use.
-pygments_style = None
+pygments_style = 'sphinx'
 
 add_module_names = False
+
+autodoc_member_order = 'bysource'
+
+# Napoleon settings
+napoleon_google_docstring = False
+napoleon_numpy_docstring = True
+napoleon_include_init_with_doc = False
+napoleon_include_private_with_doc = True
+napoleon_include_special_with_doc = True
+napoleon_use_admonition_for_examples = True
+napoleon_use_admonition_for_notes =True
+napoleon_use_admonition_for_references =True
+napoleon_use_ivar = True
+napoleon_use_param = True
+napoleon_use_keyword = False
+napoleon_use_rtype = False
+
 
 # -- Options for HTML output -------------------------------------------------
 
@@ -85,6 +102,14 @@ add_module_names = False
 # a list of builtin themes.
 #
 html_theme = 'alabaster'
+
+html_theme_options = {
+    'logo': 'Exoplanets-A_Ecusson_Noir_Alpha.png',
+     'logo_name': 'True',
+    'show_related': 'True',
+    'sidebar_collapse': 'True',
+    'show_relbars': 'True'
+}
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
@@ -106,14 +131,16 @@ html_static_path = ['_static']
 # 'searchbox.html']``.
 #
 # html_sidebars = {}
+#html_sidebars = { '**': ['globaltoc.html', 'relations.html', 'sourcelink.html', 'searchbox.html'] }
 
 #logo
-html_logo = './_static/Exoplanets-A_Ecusson_Blanc_Alpha.png'
+#html_logo = './_static/Exoplanets-A_Ecusson_Blanc_Alpha.png'
 
 # -- Options for HTMLHelp output ---------------------------------------------
 
 # Output file base name for HTML help builder.
 htmlhelp_basename = 'CASCADedoc'
+
 
 
 # -- Options for LaTeX output ------------------------------------------------

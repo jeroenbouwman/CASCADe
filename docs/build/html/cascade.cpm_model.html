@@ -16,6 +16,7 @@
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="The cascade.data_model module" href="cascade.data_model.html" />
+    <link rel="prev" title="The cascade.TSO module" href="cascade.TSO.html" />
    
   <link rel="stylesheet" href="_static/custom.css" type="text/css" />
   
@@ -28,75 +29,122 @@
     <div class="document">
       <div class="documentwrapper">
         <div class="bodywrapper">
+              <div class="related top">
+                &nbsp;
+  <nav id="rellinks">
+    <ul>
+        <li>
+          &larr;
+          <a href="cascade.TSO.html" title="Previous document">The cascade.TSO module</a>
+        </li>
+        <li>
+          <a href="cascade.data_model.html" title="Next document">The cascade.data_model module</a>
+          &rarr;
+        </li>
+    </ul>
+  </nav>
+              </div>
           
 
           <div class="body" role="main">
             
   <div class="section" id="module-cascade.cpm_model.cpm_model">
 <span id="the-cascade-cpm-model-module"></span><h1>The cascade.cpm_model module<a class="headerlink" href="#module-cascade.cpm_model.cpm_model" title="Permalink to this headline">¶</a></h1>
-<p>Routines used in causal pixel model</p>
-<p>Version 1.0</p>
-<dl class="docutils">
-<dt>&#64;author: Jeroen Bouwman</dt>
-<dd>MPIA Heidelberg</dd>
-</dl>
+<p>The cpm_model module defines the solver and other functionality for the
+regression model used in causal pixel model.</p>
 <dl class="function">
 <dt id="cascade.cpm_model.cpm_model.solve_linear_equation">
 <code class="descname">solve_linear_equation</code><span class="sig-paren">(</span><em>design_matrix</em>, <em>data</em>, <em>weights=None</em>, <em>cv_method='gcv'</em>, <em>reg_par={'lam0': 1e-06</em>, <em>'lam1': 100.0</em>, <em>'nlam': 60}</em>, <em>feature_scaling='norm'</em>, <em>degrees_of_freedom=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cascade/cpm_model/cpm_model.html#solve_linear_equation"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cascade.cpm_model.cpm_model.solve_linear_equation" title="Permalink to this definition">¶</a></dt>
-<dd><blockquote>
-<div>Solve linear system using SVD with TIKHONOV regularization</div></blockquote>
-<dl class="docutils">
-<dt>For details see:</dt>
-<dd><blockquote class="first">
-<div><dl class="docutils">
-<dt>PHD thesis by Diana Maria SIMA, “Regularization techniques in</dt>
-<dd>Model Fitting and Parameter estimation”, KU Leuven 2006</dd>
+<dd><p>Solve linear system using SVD with TIKHONOV regularization</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>design_matrx</strong> (<em>'ndarray</em><em>, </em><em>ndim=2'</em>) – Design matrix</li>
+<li><strong>data</strong> (<em>'ndarray'</em>) – Data</li>
+<li><strong>weights</strong> (<em>'ndarray'</em>) – Weights used in the linear least square minimization</li>
+<li><strong>cv_method</strong> (<em>{'gvc'|'b95'|'B100'}</em>) – <dl class="docutils">
+<dt>Method used to find optimal regularization parameter which can be:</dt>
+<dd>”gvc” :  Generizalize Cross Validation [RECOMMENDED!!!]
+“b95” :  normalized cumulatative periodogram using 95% limit
+“B100”:  normalized cumulatative periodogram</dd>
 </dl>
-<p>Hogg et al 2010, “Data analysis recipies: Fitting a model to data”
-Rust &amp; O’Leaary, “Residual periodograms for choosing regularization</p>
+</li>
+<li><strong>reg_par</strong> (<em>'dict'</em>) – <p>Parameter describing search grid to find optimal regularization
+parameter lambda:</p>
 <blockquote>
-<div>parameters for ill-posed porblems”</div></blockquote>
-<dl class="docutils">
-<dt>Krakauer et al “Using generalized cross-validationto select parameters</dt>
-<dd>in inversions for regional carbon fluxes”</dd>
-</dl>
-</div></blockquote>
+<div>{lam0 : minimum lambda
+lam1 : maximum lambda
+nlam : number of grid points}</div></blockquote>
+</li>
+<li><strong>feature_scaling</strong> ({‘norm’<a href="#id1"><span class="problematic" id="id2">|</span></a>None}) – if the value is set to ‘norm’ all features are normalized using L2
+norm else no featue scaling is applied.</li>
+<li><strong>degrees_of_freedom</strong> (<em>'int'</em>) – Effective  degrees_of_freedom, if set to None the value is calculated
+from the dimensions of the imput arrays.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last"><strong>fit_results</strong> (<em>‘tuple’</em>) – In case the feature_scaling is set to None, the tuble contains the
+following parameters: (fit_parameters, err_fit_parameters, lam_reg)
+else the following results are returned: (fit_parameters_scaled,
+err_fit_parameters_scaled, lam_reg, pc_matrix, fit_parameters,
+err_fit_parameters)</p>
+</td>
+</tr>
+</tbody>
+</table>
+<div class="admonition-notes admonition">
+<p class="first admonition-title">Notes</p>
 <p>This routine solves the linear equation</p>
 <p>A x = y</p>
 <p>by finding optimal solution x_hat by minimizing</p>
 <p>||y-A*x_hat||^2 + lambda * ||x_hat||^2</p>
-<p>Input parameters:</p>
-<blockquote class="last">
-<div><dl class="docutils">
-<dt>design_matrx:</dt>
-<dd>Design matrix</dd>
-<dt>data:</dt>
-<dd>Data</dd>
-<dt>weights:</dt>
-<dd>Weights used in the linear least square minimization</dd>
-<dt>cv_method:</dt>
-<dd><dl class="first last docutils">
-<dt>Method used to find optimal regularization parameter which can be:</dt>
-<dd>“gvc” :  Generizalize Cross Validation [RECOMMENDED!!!]
-“b95” :  normalized cumulatative periodogram using 95% limit
-“B100”:  normalized cumulatative periodogram</dd>
-</dl>
-</dd>
-<dt>reg_par:</dt>
-<dd><p class="first">Parameter describing search grid to find optimal regularization
-parameter lambda:</p>
-<blockquote class="last">
-<div>lam0 : minimum lambda
-lam1 : maximum lambda
-nlam : number of grid points</div></blockquote>
-</dd>
-<dt>feature_scaling:</dt>
-<dd>norm : normalise features using L2 norm
-None : no featue scaling</dd>
-</dl>
-</div></blockquote>
-</dd>
-</dl>
+<p class="last">For details on the implementation see <a class="footnote-reference" href="#id7" id="id3">[1]</a>, <a class="footnote-reference" href="#id8" id="id4">[2]</a>, <a class="footnote-reference" href="#id9" id="id5">[3]</a>, <a class="footnote-reference" href="#id10" id="id6">[4]</a></p>
+</div>
+<div class="admonition-references admonition">
+<p class="first admonition-title">References</p>
+<table class="docutils footnote" frame="void" id="id7" rules="none">
+<colgroup><col class="label" /><col /></colgroup>
+<tbody valign="top">
+<tr><td class="label"><a class="fn-backref" href="#id3">[1]</a></td><td>PHD thesis by Diana Maria SIMA, “Regularization techniques in
+Model Fitting and Parameter estimation”, KU Leuven 2006</td></tr>
+</tbody>
+</table>
+<table class="docutils footnote" frame="void" id="id8" rules="none">
+<colgroup><col class="label" /><col /></colgroup>
+<tbody valign="top">
+<tr><td class="label"><a class="fn-backref" href="#id4">[2]</a></td><td>Hogg et al 2010, “Data analysis recipies: Fitting a model to data”</td></tr>
+</tbody>
+</table>
+<table class="docutils footnote" frame="void" id="id9" rules="none">
+<colgroup><col class="label" /><col /></colgroup>
+<tbody valign="top">
+<tr><td class="label"><a class="fn-backref" href="#id5">[3]</a></td><td>Rust &amp; O’Leaary, “Residual periodograms for choosing regularization
+parameters for ill-posed porblems”</td></tr>
+</tbody>
+</table>
+<table class="last docutils footnote" frame="void" id="id10" rules="none">
+<colgroup><col class="label" /><col /></colgroup>
+<tbody valign="top">
+<tr><td class="label"><a class="fn-backref" href="#id6">[4]</a></td><td>Krakauer et al “Using generalized cross-validationto select
+parameters in inversions for regional carbon fluxes”</td></tr>
+</tbody>
+</table>
+</div>
+<div class="admonition-examples admonition">
+<p class="first admonition-title">Examples</p>
+<div class="last highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">cascade.cpm_model</span> <span class="k">import</span> <span class="n">solve_linear_equation</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">A</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">]])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">coef</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">4</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">7</span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">b</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">A</span><span class="p">,</span> <span class="n">coef</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">b</span> <span class="o">=</span> <span class="n">b</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.01</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">b</span><span class="o">.</span><span class="n">size</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">results</span> <span class="o">=</span> <span class="n">solve_linear_equation</span><span class="p">(</span><span class="n">A</span><span class="p">,</span> <span class="n">b</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">results</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
 </dd></dl>
 
 <dl class="function">
@@ -113,15 +161,34 @@ the median squared amplitudes of the eigenlightcurves.</p>
 
 
           </div>
+              <div class="related bottom">
+                &nbsp;
+  <nav id="rellinks">
+    <ul>
+        <li>
+          &larr;
+          <a href="cascade.TSO.html" title="Previous document">The cascade.TSO module</a>
+        </li>
+        <li>
+          <a href="cascade.data_model.html" title="Next document">The cascade.data_model module</a>
+          &rarr;
+        </li>
+    </ul>
+  </nav>
+              </div>
           
         </div>
       </div>
       <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
         <div class="sphinxsidebarwrapper">
-            <p class="logo"><a href="index.html">
-              <img class="logo" src="_static/Exoplanets-A_Ecusson_Blanc_Alpha.png" alt="Logo"/>
-            </a></p>
-<h1 class="logo"><a href="index.html">CASCADe</a></h1>
+<p class="logo">
+  <a href="index.html">
+    <img class="logo" src="_static/Exoplanets-A_Ecusson_Noir_Alpha.png" alt="Logo"/>
+    
+    <h1 class="logo logo-name">CASCADe</h1>
+    
+  </a>
+</p>
 
 
 
@@ -131,19 +198,10 @@ the median squared amplitudes of the eigenlightcurves.</p>
 
 
 <h3>Navigation</h3>
-<p class="caption"><span class="caption-text">Contents:</span></p>
 <ul class="current">
-<li class="toctree-l1 current"><a class="reference internal" href="cascade.html">Modules of the CASCADe package</a><ul class="current">
-<li class="toctree-l2"><a class="reference internal" href="cascade.TSO.html">The cascade.TSO module</a></li>
-<li class="toctree-l2 current"><a class="current reference internal" href="#">The cascade.cpm_model module</a></li>
-<li class="toctree-l2"><a class="reference internal" href="cascade.data_model.html">The cascade.data_model module</a></li>
-<li class="toctree-l2"><a class="reference internal" href="cascade.exoplanet_tools.html">The cascade.exoplanet_tools module</a></li>
-<li class="toctree-l2"><a class="reference internal" href="cascade.initialize.html">The cascade.initialize module</a></li>
-<li class="toctree-l2"><a class="reference internal" href="cascade.instruments.html">The cascade.instruments module</a></li>
-<li class="toctree-l2"><a class="reference internal" href="cascade.utilities.html">The cascade.utilities module</a></li>
-</ul>
-</li>
+<li class="toctree-l1"><a class="reference internal" href="install.html">Howto Install CASCADe</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto.html">Using Cascade</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="cascade.html">Modules of the CASCADe package</a></li>
 </ul>
 
 <div class="relations">
@@ -151,6 +209,7 @@ the median squared amplitudes of the eigenlightcurves.</p>
 <ul>
   <li><a href="index.html">Documentation overview</a><ul>
   <li><a href="cascade.html">Modules of the CASCADe package</a><ul>
+      <li>Previous: <a href="cascade.TSO.html" title="previous chapter">The cascade.TSO module</a></li>
       <li>Next: <a href="cascade.data_model.html" title="next chapter">The cascade.data_model module</a></li>
   </ul></li>
   </ul></li>

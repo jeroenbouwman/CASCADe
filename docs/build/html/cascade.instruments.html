@@ -15,6 +15,7 @@
     <script type="text/javascript" src="_static/doctools.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="The cascade.utilities module" href="cascade.utilities.html" />
     <link rel="prev" title="The cascade.initialize module" href="cascade.initialize.html" />
    
   <link rel="stylesheet" href="_static/custom.css" type="text/css" />
@@ -28,6 +29,21 @@
     <div class="document">
       <div class="documentwrapper">
         <div class="bodywrapper">
+              <div class="related top">
+                &nbsp;
+  <nav id="rellinks">
+    <ul>
+        <li>
+          &larr;
+          <a href="cascade.initialize.html" title="Previous document">The cascade.initialize module</a>
+        </li>
+        <li>
+          <a href="cascade.utilities.html" title="Next document">The cascade.utilities module</a>
+          &rarr;
+        </li>
+    </ul>
+  </nav>
+              </div>
           
 
           <div class="body" role="main">
@@ -40,9 +56,208 @@
 <dl class="class">
 <dt id="cascade.instruments.instruments.Observation">
 <em class="property">class </em><code class="descname">Observation</code><a class="reference internal" href="_modules/cascade/instruments/instruments.html#Observation"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cascade.instruments.instruments.Observation" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.7)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
 <p>This class handles the selection of the correct observatory and
 instrument classes and loads the time series data to be analyzed</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="cascade.instruments.instruments.HST">
+<em class="property">class </em><code class="descname">HST</code><a class="reference internal" href="_modules/cascade/instruments/instruments.html#HST"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cascade.instruments.instruments.HST" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">cascade.instruments.instruments.ObservatoryBase</span></code></p>
+<p>This observatory class defines the instuments and data handling for the
+spectropgraphs of the Spitzer Space telescope</p>
+<dl class="attribute">
+<dt id="cascade.instruments.instruments.HST.name">
+<code class="descname">name</code><a class="headerlink" href="#cascade.instruments.instruments.HST.name" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="cascade.instruments.instruments.HST.location">
+<code class="descname">location</code><a class="headerlink" href="#cascade.instruments.instruments.HST.location" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="cascade.instruments.instruments.HST.NAIF_ID">
+<code class="descname">NAIF_ID</code><a class="headerlink" href="#cascade.instruments.instruments.HST.NAIF_ID" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="cascade.instruments.instruments.HST.observatory_instruments">
+<code class="descname">observatory_instruments</code><a class="headerlink" href="#cascade.instruments.instruments.HST.observatory_instruments" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="cascade.instruments.instruments.HSTWFC3">
+<em class="property">class </em><code class="descname">HSTWFC3</code><a class="reference internal" href="_modules/cascade/instruments/instruments.html#HSTWFC3"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cascade.instruments.instruments.HSTWFC3" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">cascade.instruments.instruments.InstrumentBase</span></code></p>
+<p>This instrument class defines the properties of the WFC3 instrument of
+the Hubble Space Telescope</p>
+<dl class="attribute">
+<dt id="cascade.instruments.instruments.HSTWFC3.name">
+<code class="descname">name</code><a class="headerlink" href="#cascade.instruments.instruments.HSTWFC3.name" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="cascade.instruments.instruments.HSTWFC3.load_data">
+<code class="descname">load_data</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/cascade/instruments/instruments.html#HSTWFC3.load_data"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cascade.instruments.instruments.HSTWFC3.load_data" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="cascade.instruments.instruments.HSTWFC3.get_instrument_setup">
+<code class="descname">get_instrument_setup</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/cascade/instruments/instruments.html#HSTWFC3.get_instrument_setup"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cascade.instruments.instruments.HSTWFC3.get_instrument_setup" title="Permalink to this definition">¶</a></dt>
+<dd><p>Retrieve all relevant parameters defining the instrument and data setup</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="cascade.instruments.instruments.HSTWFC3.get_spectra">
+<code class="descname">get_spectra</code><span class="sig-paren">(</span><em>is_background=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cascade/instruments/instruments.html#HSTWFC3.get_spectra"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cascade.instruments.instruments.HSTWFC3.get_spectra" title="Permalink to this definition">¶</a></dt>
+<dd><p>read (uncalibrated) spectral timeseries, phase and wavelength</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="cascade.instruments.instruments.HSTWFC3.get_spectral_images">
+<code class="descname">get_spectral_images</code><span class="sig-paren">(</span><em>is_background=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cascade/instruments/instruments.html#HSTWFC3.get_spectral_images"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cascade.instruments.instruments.HSTWFC3.get_spectral_images" title="Permalink to this definition">¶</a></dt>
+<dd><p>read uncalibrated spectral images (flt data product)</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="cascade.instruments.instruments.HSTWFC3._define_convolution_kernel">
+<code class="descname">_define_convolution_kernel</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/cascade/instruments/instruments.html#HSTWFC3._define_convolution_kernel"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cascade.instruments.instruments.HSTWFC3._define_convolution_kernel" title="Permalink to this definition">¶</a></dt>
+<dd><p>Define the instrument specific convolution kernel which will be used
+in the correction procedure of bad pixels</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="cascade.instruments.instruments.HSTWFC3._define_region_of_interest">
+<code class="descname">_define_region_of_interest</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/cascade/instruments/instruments.html#HSTWFC3._define_region_of_interest"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cascade.instruments.instruments.HSTWFC3._define_region_of_interest" title="Permalink to this definition">¶</a></dt>
+<dd><p>Defines region on detector which containes the intended target star.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="cascade.instruments.instruments.HSTWFC3._get_background_cal_data">
+<code class="descname">_get_background_cal_data</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/cascade/instruments/instruments.html#HSTWFC3._get_background_cal_data"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cascade.instruments.instruments.HSTWFC3._get_background_cal_data" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the calibration data from which the background in the science
+images can be determined.  For further details see:
+<a class="reference external" href="http://www.stsci.edu/hst/wfc3/documents/ISRs/WFC3-2015-17.pdf">http://www.stsci.edu/hst/wfc3/documents/ISRs/WFC3-2015-17.pdf</a></p>
+</dd></dl>
+
+<dl class="method">
+<dt id="cascade.instruments.instruments.HSTWFC3._fit_background">
+<code class="descname">_fit_background</code><span class="sig-paren">(</span><em>science_data_in</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cascade/instruments/instruments.html#HSTWFC3._fit_background"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cascade.instruments.instruments.HSTWFC3._fit_background" title="Permalink to this definition">¶</a></dt>
+<dd><p>Fits the background in the HST Grism data using the method described
+in: <a class="reference external" href="http://www.stsci.edu/hst/wfc3/documents/ISRs/WFC3-2015-17.pdf">http://www.stsci.edu/hst/wfc3/documents/ISRs/WFC3-2015-17.pdf</a></p>
+</dd></dl>
+
+<dl class="method">
+<dt id="cascade.instruments.instruments.HSTWFC3._determine_relative_source_position">
+<code class="descname">_determine_relative_source_position</code><span class="sig-paren">(</span><em>spectral_image_cube</em>, <em>mask</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cascade/instruments/instruments.html#HSTWFC3._determine_relative_source_position"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cascade.instruments.instruments.HSTWFC3._determine_relative_source_position" title="Permalink to this definition">¶</a></dt>
+<dd><p>Determine the shift of the spectra (source) relative to the first
+integration. Note that it is important for this to work properly
+to have identified bad pixels and to correct the values using an edge
+preserving correction, i.e. an correction which takes into account
+the dispersion direction and psf size (relative to pixel size)
+Input:
+——</p>
+<blockquote>
+<div><p>spectral_image_cube</p>
+<p>mask</p>
+</div></blockquote>
+<blockquote>
+<div>relative x and y position as a function of time.</div></blockquote>
+</dd></dl>
+
+<dl class="method">
+<dt id="cascade.instruments.instruments.HSTWFC3._determine_source_position_from_cal_image">
+<code class="descname">_determine_source_position_from_cal_image</code><span class="sig-paren">(</span><em>calibration_image_cube</em>, <em>calibration_data_files</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cascade/instruments/instruments.html#HSTWFC3._determine_source_position_from_cal_image"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cascade.instruments.instruments.HSTWFC3._determine_source_position_from_cal_image" title="Permalink to this definition">¶</a></dt>
+<dd><p>Determines the source position on the detector of the target source in
+the calibration image takes prior to the spectroscopic observations.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="cascade.instruments.instruments.HSTWFC3._read_grism_configuration_files">
+<code class="descname">_read_grism_configuration_files</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/cascade/instruments/instruments.html#HSTWFC3._read_grism_configuration_files"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cascade.instruments.instruments.HSTWFC3._read_grism_configuration_files" title="Permalink to this definition">¶</a></dt>
+<dd><p>Gets the relevant data from WFC3 configuration files</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="cascade.instruments.instruments.HSTWFC3._read_reference_pixel_file">
+<code class="descname">_read_reference_pixel_file</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/cascade/instruments/instruments.html#HSTWFC3._read_reference_pixel_file"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cascade.instruments.instruments.HSTWFC3._read_reference_pixel_file" title="Permalink to this definition">¶</a></dt>
+<dd><p>Read the calibration file containig the definition
+of the reference pixel appropriate for a given sub array and or filer</p>
+</dd></dl>
+
+<dl class="staticmethod">
+<dt id="cascade.instruments.instruments.HSTWFC3._search_ref_pixel_cal_file">
+<em class="property">static </em><code class="descname">_search_ref_pixel_cal_file</code><span class="sig-paren">(</span><em>ptable</em>, <em>inst_aperture</em>, <em>inst_filter</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cascade/instruments/instruments.html#HSTWFC3._search_ref_pixel_cal_file"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cascade.instruments.instruments.HSTWFC3._search_ref_pixel_cal_file" title="Permalink to this definition">¶</a></dt>
+<dd><p>Search the reference pixel calibration file for the reference pixel
+given the instrument aperture and filter.
+See also <a class="reference external" href="http://www.stsci.edu/hst/observatory/apertures/wfc3.html">http://www.stsci.edu/hst/observatory/apertures/wfc3.html</a></p>
+</dd></dl>
+
+<dl class="method">
+<dt id="cascade.instruments.instruments.HSTWFC3._get_subarray_size">
+<code class="descname">_get_subarray_size</code><span class="sig-paren">(</span><em>calibration_data</em>, <em>spectral_data</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cascade/instruments/instruments.html#HSTWFC3._get_subarray_size"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cascade.instruments.instruments.HSTWFC3._get_subarray_size" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="cascade.instruments.instruments.HSTWFC3._get_wavelength_calibration">
+<code class="descname">_get_wavelength_calibration</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/cascade/instruments/instruments.html#HSTWFC3._get_wavelength_calibration"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cascade.instruments.instruments.HSTWFC3._get_wavelength_calibration" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the wavelength calibration</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="cascade.instruments.instruments.HSTWFC3.get_spectral_trace">
+<code class="descname">get_spectral_trace</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/cascade/instruments/instruments.html#HSTWFC3.get_spectral_trace"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cascade.instruments.instruments.HSTWFC3.get_spectral_trace" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get spectral trace</p>
+</dd></dl>
+
+<dl class="staticmethod">
+<dt id="cascade.instruments.instruments.HSTWFC3._WFC3Trace">
+<em class="property">static </em><code class="descname">_WFC3Trace</code><span class="sig-paren">(</span><em>xc</em>, <em>yc</em>, <em>DYDX</em>, <em>xref=522</em>, <em>yref=522</em>, <em>xref_grism=522</em>, <em>yref_grism=522</em>, <em>subarray=256</em>, <em>subarray_grism=256</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cascade/instruments/instruments.html#HSTWFC3._WFC3Trace"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cascade.instruments.instruments.HSTWFC3._WFC3Trace" title="Permalink to this definition">¶</a></dt>
+<dd><p>This function defines the spectral trace for the wfc3 grism modes.
+Details can be found in:</p>
+<blockquote>
+<div><a class="reference external" href="http://www.stsci.edu/hst/wfc3/documents/ISRs/WFC3-2016-15.pdf">http://www.stsci.edu/hst/wfc3/documents/ISRs/WFC3-2016-15.pdf</a></div></blockquote>
+<dl class="docutils">
+<dt>and</dt>
+<dd><a class="reference external" href="http://www.stsci.edu/hst/observatory/apertures/wfc3.html">http://www.stsci.edu/hst/observatory/apertures/wfc3.html</a></dd>
+</dl>
+</dd></dl>
+
+<dl class="staticmethod">
+<dt id="cascade.instruments.instruments.HSTWFC3._WFC3Dispersion">
+<em class="property">static </em><code class="descname">_WFC3Dispersion</code><span class="sig-paren">(</span><em>xc</em>, <em>yc</em>, <em>DYDX</em>, <em>DLDP</em>, <em>xref=522</em>, <em>yref=522</em>, <em>xref_grism=522</em>, <em>yref_grism=522</em>, <em>subarray=256</em>, <em>subarray_grism=256</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cascade/instruments/instruments.html#HSTWFC3._WFC3Dispersion"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cascade.instruments.instruments.HSTWFC3._WFC3Dispersion" title="Permalink to this definition">¶</a></dt>
+<dd><p>Convert pixel coordinate to wavelength. Method and coefficient
+adopted from Kuntschner et al. (2009), Wilkins et al. (2014). See also
+<a class="reference external" href="http://www.stsci.edu/hst/wfc3/documents/ISRs/WFC3-2016-15.pdf">http://www.stsci.edu/hst/wfc3/documents/ISRs/WFC3-2016-15.pdf</a></p>
+<p>In case the direct image and spectral image are not taken with the
+same aperture, the centroid measurement is adjusted according to the
+table in: <a class="reference external" href="http://www.stsci.edu/hst/observatory/apertures/wfc3.html">http://www.stsci.edu/hst/observatory/apertures/wfc3.html</a></p>
+<blockquote>
+<div><dl class="docutils">
+<dt>xc:</dt>
+<dd>X coordinate of direct image centroid</dd>
+<dt>yc:</dt>
+<dd>Y coordinate of direct image centroid</dd>
+</dl>
+</div></blockquote>
+<p>xref
+yref
+xref_grism
+yref_grism
+subarray
+subarray_grism</p>
+<blockquote>
+<div><dl class="docutils">
+<dt>wavelength:</dt>
+<dd>return wavelength mapping of x coordinate in micron</dd>
+</dl>
+</div></blockquote>
+</dd></dl>
+
 </dd></dl>
 
 <dl class="class">
@@ -51,27 +266,9 @@ instrument classes and loads the time series data to be analyzed</p>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">cascade.instruments.instruments.ObservatoryBase</span></code></p>
 <p>This observatory class defines the instuments and data handling for the
 spectropgraphs of the Spitzer Space telescope</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Attributes:</th><td class="field-body"><dl class="first last docutils">
-<dt><strong>NAIF_ID</strong></dt>
-<dd></dd>
-<dt><strong>location</strong></dt>
-<dd></dd>
-<dt><strong>name</strong></dt>
-<dd></dd>
-<dt><strong>observatory_instruments</strong></dt>
-<dd></dd>
-</dl>
-</td>
-</tr>
-</tbody>
-</table>
 <dl class="attribute">
-<dt id="cascade.instruments.instruments.Spitzer.NAIF_ID">
-<code class="descname">NAIF_ID</code><a class="headerlink" href="#cascade.instruments.instruments.Spitzer.NAIF_ID" title="Permalink to this definition">¶</a></dt>
+<dt id="cascade.instruments.instruments.Spitzer.name">
+<code class="descname">name</code><a class="headerlink" href="#cascade.instruments.instruments.Spitzer.name" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="attribute">
@@ -80,8 +277,8 @@ spectropgraphs of the Spitzer Space telescope</p>
 <dd></dd></dl>
 
 <dl class="attribute">
-<dt id="cascade.instruments.instruments.Spitzer.name">
-<code class="descname">name</code><a class="headerlink" href="#cascade.instruments.instruments.Spitzer.name" title="Permalink to this definition">¶</a></dt>
+<dt id="cascade.instruments.instruments.Spitzer.NAIF_ID">
+<code class="descname">NAIF_ID</code><a class="headerlink" href="#cascade.instruments.instruments.Spitzer.NAIF_ID" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="attribute">
@@ -97,53 +294,72 @@ spectropgraphs of the Spitzer Space telescope</p>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">cascade.instruments.instruments.InstrumentBase</span></code></p>
 <p>This instrument class defines the properties of the IRS instrument of
 the Spitzer Space Telescope</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Attributes:</th><td class="field-body"><dl class="first last docutils">
-<dt><strong>name</strong></dt>
-<dd></dd>
-</dl>
-</td>
-</tr>
-</tbody>
-</table>
-<p class="rubric">Methods</p>
-<table border="1" class="longtable docutils">
-<colgroup>
-<col width="10%" />
-<col width="90%" />
-</colgroup>
-<tbody valign="top">
-<tr class="row-odd"><td><a class="reference internal" href="#cascade.instruments.instruments.SpitzerIRS.get_detector_cubes" title="cascade.instruments.instruments.SpitzerIRS.get_detector_cubes"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_detector_cubes</span></code></a>([is_background])</td>
-<td>Get detector cube data</td>
-</tr>
-<tr class="row-even"><td><a class="reference internal" href="#cascade.instruments.instruments.SpitzerIRS.get_instrument_setup" title="cascade.instruments.instruments.SpitzerIRS.get_instrument_setup"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_instrument_setup</span></code></a>()</td>
-<td>Retrieve all relevant parameters defining the instrument and data setup</td>
-</tr>
-<tr class="row-odd"><td><a class="reference internal" href="#cascade.instruments.instruments.SpitzerIRS.get_spectra" title="cascade.instruments.instruments.SpitzerIRS.get_spectra"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_spectra</span></code></a>([is_background])</td>
-<td>read uncalibrated spectral timeseries, phase and wavelength</td>
-</tr>
-<tr class="row-even"><td><a class="reference internal" href="#cascade.instruments.instruments.SpitzerIRS.get_spectral_images" title="cascade.instruments.instruments.SpitzerIRS.get_spectral_images"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_spectral_images</span></code></a>([is_background])</td>
-<td>read uncalibrated spectral images</td>
-</tr>
-<tr class="row-odd"><td><a class="reference internal" href="#cascade.instruments.instruments.SpitzerIRS.get_spectral_trace" title="cascade.instruments.instruments.SpitzerIRS.get_spectral_trace"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_spectral_trace</span></code></a>()</td>
-<td>Get spectral trace</td>
-</tr>
-</tbody>
-</table>
-<table border="1" class="docutils">
-<colgroup>
-<col width="57%" />
-<col width="43%" />
-</colgroup>
-<tbody valign="top">
-<tr class="row-odd"><td><strong>load_data</strong></td>
-<td>&#160;</td>
-</tr>
-</tbody>
-</table>
+<dl class="attribute">
+<dt id="cascade.instruments.instruments.SpitzerIRS.name">
+<code class="descname">name</code><a class="headerlink" href="#cascade.instruments.instruments.SpitzerIRS.name" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="cascade.instruments.instruments.SpitzerIRS.load_data">
+<code class="descname">load_data</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/cascade/instruments/instruments.html#SpitzerIRS.load_data"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cascade.instruments.instruments.SpitzerIRS.load_data" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="cascade.instruments.instruments.SpitzerIRS.get_instrument_setup">
+<code class="descname">get_instrument_setup</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/cascade/instruments/instruments.html#SpitzerIRS.get_instrument_setup"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cascade.instruments.instruments.SpitzerIRS.get_instrument_setup" title="Permalink to this definition">¶</a></dt>
+<dd><p>Retrieve all relevant parameters defining the instrument and data setup</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="cascade.instruments.instruments.SpitzerIRS.get_spectra">
+<code class="descname">get_spectra</code><span class="sig-paren">(</span><em>is_background=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cascade/instruments/instruments.html#SpitzerIRS.get_spectra"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cascade.instruments.instruments.SpitzerIRS.get_spectra" title="Permalink to this definition">¶</a></dt>
+<dd><p>read uncalibrated spectral timeseries, phase and wavelength</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="cascade.instruments.instruments.SpitzerIRS.get_spectral_images">
+<code class="descname">get_spectral_images</code><span class="sig-paren">(</span><em>is_background=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cascade/instruments/instruments.html#SpitzerIRS.get_spectral_images"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cascade.instruments.instruments.SpitzerIRS.get_spectral_images" title="Permalink to this definition">¶</a></dt>
+<dd><p>read uncalibrated spectral images</p>
+<p>Notes on FOV:</p>
+<p># in the fits header the following relevant info is used:
+# FOVID     26     IRS_Short-Lo_1st_Order_1st_Position
+# FOVID     27     IRS_Short-Lo_1st_Order_2nd_Position
+# FOVID     28     IRS_Short-Lo_1st_Order_Center_Position
+# FOVID     29     IRS_Short-Lo_Module_Center
+# FOVID     32     IRS_Short-Lo_2nd_Order_1st_Position
+# FOVID     33     IRS_Short-Lo_2nd_Order_2nd_Position
+# FOVID     34     IRS_Short-Lo_2nd_Order_Center_Position
+# FOVID     40     IRS_Long-Lo_1st_Order_Center_Position
+# FOVID     46     IRS_Long-Lo_2nd_Order_Center_Position</p>
+<p>Notes on timing:</p>
+<p># FRAMTIME the total effective exposure time (ramp length) in seconds</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="cascade.instruments.instruments.SpitzerIRS._define_convolution_kernel">
+<code class="descname">_define_convolution_kernel</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/cascade/instruments/instruments.html#SpitzerIRS._define_convolution_kernel"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cascade.instruments.instruments.SpitzerIRS._define_convolution_kernel" title="Permalink to this definition">¶</a></dt>
+<dd><p>Define the instrument specific convolution kernel which will be used
+in the correction procedure of bad pixels</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="cascade.instruments.instruments.SpitzerIRS._define_region_of_interest">
+<code class="descname">_define_region_of_interest</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/cascade/instruments/instruments.html#SpitzerIRS._define_region_of_interest"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cascade.instruments.instruments.SpitzerIRS._define_region_of_interest" title="Permalink to this definition">¶</a></dt>
+<dd><p>Defines region on detector which containes the intended target star.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="cascade.instruments.instruments.SpitzerIRS._get_order_mask">
+<code class="descname">_get_order_mask</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/cascade/instruments/instruments.html#SpitzerIRS._get_order_mask"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cascade.instruments.instruments.SpitzerIRS._get_order_mask" title="Permalink to this definition">¶</a></dt>
+<dd><p>Gets the mask which defines the pixels used with a given spectral order</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="cascade.instruments.instruments.SpitzerIRS._get_wavelength_calibration">
+<code class="descname">_get_wavelength_calibration</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/cascade/instruments/instruments.html#SpitzerIRS._get_wavelength_calibration"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cascade.instruments.instruments.SpitzerIRS._get_wavelength_calibration" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get wavelength calibration file</p>
+</dd></dl>
+
 <dl class="method">
 <dt id="cascade.instruments.instruments.SpitzerIRS.get_detector_cubes">
 <code class="descname">get_detector_cubes</code><span class="sig-paren">(</span><em>is_background=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cascade/instruments/instruments.html#SpitzerIRS.get_detector_cubes"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cascade.instruments.instruments.SpitzerIRS.get_detector_cubes" title="Permalink to this definition">¶</a></dt>
@@ -179,183 +395,10 @@ time interval between the 2nd sample and the preceeding reset.</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="cascade.instruments.instruments.SpitzerIRS.get_instrument_setup">
-<code class="descname">get_instrument_setup</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/cascade/instruments/instruments.html#SpitzerIRS.get_instrument_setup"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cascade.instruments.instruments.SpitzerIRS.get_instrument_setup" title="Permalink to this definition">¶</a></dt>
-<dd><p>Retrieve all relevant parameters defining the instrument and data setup</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="cascade.instruments.instruments.SpitzerIRS.get_spectra">
-<code class="descname">get_spectra</code><span class="sig-paren">(</span><em>is_background=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cascade/instruments/instruments.html#SpitzerIRS.get_spectra"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cascade.instruments.instruments.SpitzerIRS.get_spectra" title="Permalink to this definition">¶</a></dt>
-<dd><p>read uncalibrated spectral timeseries, phase and wavelength</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="cascade.instruments.instruments.SpitzerIRS.get_spectral_images">
-<code class="descname">get_spectral_images</code><span class="sig-paren">(</span><em>is_background=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cascade/instruments/instruments.html#SpitzerIRS.get_spectral_images"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cascade.instruments.instruments.SpitzerIRS.get_spectral_images" title="Permalink to this definition">¶</a></dt>
-<dd><p>read uncalibrated spectral images</p>
-<p>Notes on FOV:</p>
-<p># in the fits header the following relevant info is used:
-# FOVID     26     IRS_Short-Lo_1st_Order_1st_Position
-# FOVID     27     IRS_Short-Lo_1st_Order_2nd_Position
-# FOVID     28     IRS_Short-Lo_1st_Order_Center_Position
-# FOVID     29     IRS_Short-Lo_Module_Center
-# FOVID     32     IRS_Short-Lo_2nd_Order_1st_Position
-# FOVID     33     IRS_Short-Lo_2nd_Order_2nd_Position
-# FOVID     34     IRS_Short-Lo_2nd_Order_Center_Position
-# FOVID     40     IRS_Long-Lo_1st_Order_Center_Position
-# FOVID     46     IRS_Long-Lo_2nd_Order_Center_Position</p>
-<p>Notes on timing:</p>
-<p># FRAMTIME the total effective exposure time (ramp length) in seconds</p>
-</dd></dl>
-
-<dl class="method">
 <dt id="cascade.instruments.instruments.SpitzerIRS.get_spectral_trace">
 <code class="descname">get_spectral_trace</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/cascade/instruments/instruments.html#SpitzerIRS.get_spectral_trace"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cascade.instruments.instruments.SpitzerIRS.get_spectral_trace" title="Permalink to this definition">¶</a></dt>
 <dd><p>Get spectral trace</p>
 </dd></dl>
-
-<dl class="method">
-<dt id="cascade.instruments.instruments.SpitzerIRS.load_data">
-<code class="descname">load_data</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/cascade/instruments/instruments.html#SpitzerIRS.load_data"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cascade.instruments.instruments.SpitzerIRS.load_data" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="attribute">
-<dt id="cascade.instruments.instruments.SpitzerIRS.name">
-<code class="descname">name</code><a class="headerlink" href="#cascade.instruments.instruments.SpitzerIRS.name" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-</dd></dl>
-
-<dl class="class">
-<dt id="cascade.instruments.instruments.HST">
-<em class="property">class </em><code class="descname">HST</code><a class="reference internal" href="_modules/cascade/instruments/instruments.html#HST"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cascade.instruments.instruments.HST" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">cascade.instruments.instruments.ObservatoryBase</span></code></p>
-<p>This observatory class defines the instuments and data handling for the
-spectropgraphs of the Spitzer Space telescope</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Attributes:</th><td class="field-body"><dl class="first last docutils">
-<dt><strong>NAIF_ID</strong></dt>
-<dd></dd>
-<dt><strong>location</strong></dt>
-<dd></dd>
-<dt><strong>name</strong></dt>
-<dd></dd>
-<dt><strong>observatory_instruments</strong></dt>
-<dd></dd>
-</dl>
-</td>
-</tr>
-</tbody>
-</table>
-<dl class="attribute">
-<dt id="cascade.instruments.instruments.HST.NAIF_ID">
-<code class="descname">NAIF_ID</code><a class="headerlink" href="#cascade.instruments.instruments.HST.NAIF_ID" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="attribute">
-<dt id="cascade.instruments.instruments.HST.location">
-<code class="descname">location</code><a class="headerlink" href="#cascade.instruments.instruments.HST.location" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="attribute">
-<dt id="cascade.instruments.instruments.HST.name">
-<code class="descname">name</code><a class="headerlink" href="#cascade.instruments.instruments.HST.name" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="attribute">
-<dt id="cascade.instruments.instruments.HST.observatory_instruments">
-<code class="descname">observatory_instruments</code><a class="headerlink" href="#cascade.instruments.instruments.HST.observatory_instruments" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-</dd></dl>
-
-<dl class="class">
-<dt id="cascade.instruments.instruments.HSTWFC3">
-<em class="property">class </em><code class="descname">HSTWFC3</code><a class="reference internal" href="_modules/cascade/instruments/instruments.html#HSTWFC3"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cascade.instruments.instruments.HSTWFC3" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">cascade.instruments.instruments.InstrumentBase</span></code></p>
-<p>This instrument class defines the properties of the WFC3 instrument of
-the Hubble Space Telescope</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Attributes:</th><td class="field-body"><dl class="first last docutils">
-<dt><strong>name</strong></dt>
-<dd></dd>
-</dl>
-</td>
-</tr>
-</tbody>
-</table>
-<p class="rubric">Methods</p>
-<table border="1" class="longtable docutils">
-<colgroup>
-<col width="10%" />
-<col width="90%" />
-</colgroup>
-<tbody valign="top">
-<tr class="row-odd"><td><a class="reference internal" href="#cascade.instruments.instruments.HSTWFC3.get_instrument_setup" title="cascade.instruments.instruments.HSTWFC3.get_instrument_setup"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_instrument_setup</span></code></a>()</td>
-<td>Retrieve all relevant parameters defining the instrument and data setup</td>
-</tr>
-<tr class="row-even"><td><a class="reference internal" href="#cascade.instruments.instruments.HSTWFC3.get_spectra" title="cascade.instruments.instruments.HSTWFC3.get_spectra"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_spectra</span></code></a>([is_background])</td>
-<td>read (uncalibrated) spectral timeseries, phase and wavelength</td>
-</tr>
-<tr class="row-odd"><td><a class="reference internal" href="#cascade.instruments.instruments.HSTWFC3.get_spectral_images" title="cascade.instruments.instruments.HSTWFC3.get_spectral_images"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_spectral_images</span></code></a>([is_background])</td>
-<td>read uncalibrated spectral images (flt data product)</td>
-</tr>
-<tr class="row-even"><td><a class="reference internal" href="#cascade.instruments.instruments.HSTWFC3.get_spectral_trace" title="cascade.instruments.instruments.HSTWFC3.get_spectral_trace"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_spectral_trace</span></code></a>()</td>
-<td>Get spectral trace</td>
-</tr>
-</tbody>
-</table>
-<table border="1" class="docutils">
-<colgroup>
-<col width="57%" />
-<col width="43%" />
-</colgroup>
-<tbody valign="top">
-<tr class="row-odd"><td><strong>load_data</strong></td>
-<td>&#160;</td>
-</tr>
-</tbody>
-</table>
-<dl class="method">
-<dt id="cascade.instruments.instruments.HSTWFC3.get_instrument_setup">
-<code class="descname">get_instrument_setup</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/cascade/instruments/instruments.html#HSTWFC3.get_instrument_setup"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cascade.instruments.instruments.HSTWFC3.get_instrument_setup" title="Permalink to this definition">¶</a></dt>
-<dd><p>Retrieve all relevant parameters defining the instrument and data setup</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="cascade.instruments.instruments.HSTWFC3.get_spectra">
-<code class="descname">get_spectra</code><span class="sig-paren">(</span><em>is_background=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cascade/instruments/instruments.html#HSTWFC3.get_spectra"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cascade.instruments.instruments.HSTWFC3.get_spectra" title="Permalink to this definition">¶</a></dt>
-<dd><p>read (uncalibrated) spectral timeseries, phase and wavelength</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="cascade.instruments.instruments.HSTWFC3.get_spectral_images">
-<code class="descname">get_spectral_images</code><span class="sig-paren">(</span><em>is_background=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cascade/instruments/instruments.html#HSTWFC3.get_spectral_images"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cascade.instruments.instruments.HSTWFC3.get_spectral_images" title="Permalink to this definition">¶</a></dt>
-<dd><p>read uncalibrated spectral images (flt data product)</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="cascade.instruments.instruments.HSTWFC3.get_spectral_trace">
-<code class="descname">get_spectral_trace</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/cascade/instruments/instruments.html#HSTWFC3.get_spectral_trace"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cascade.instruments.instruments.HSTWFC3.get_spectral_trace" title="Permalink to this definition">¶</a></dt>
-<dd><p>Get spectral trace</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="cascade.instruments.instruments.HSTWFC3.load_data">
-<code class="descname">load_data</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/cascade/instruments/instruments.html#HSTWFC3.load_data"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cascade.instruments.instruments.HSTWFC3.load_data" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="attribute">
-<dt id="cascade.instruments.instruments.HSTWFC3.name">
-<code class="descname">name</code><a class="headerlink" href="#cascade.instruments.instruments.HSTWFC3.name" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
 
 </dd></dl>
 
@@ -363,15 +406,34 @@ the Hubble Space Telescope</p>
 
 
           </div>
+              <div class="related bottom">
+                &nbsp;
+  <nav id="rellinks">
+    <ul>
+        <li>
+          &larr;
+          <a href="cascade.initialize.html" title="Previous document">The cascade.initialize module</a>
+        </li>
+        <li>
+          <a href="cascade.utilities.html" title="Next document">The cascade.utilities module</a>
+          &rarr;
+        </li>
+    </ul>
+  </nav>
+              </div>
           
         </div>
       </div>
       <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
         <div class="sphinxsidebarwrapper">
-            <p class="logo"><a href="index.html">
-              <img class="logo" src="_static/Exoplanets-A_Ecusson_Blanc_Alpha.png" alt="Logo"/>
-            </a></p>
-<h1 class="logo"><a href="index.html">CASCADe</a></h1>
+<p class="logo">
+  <a href="index.html">
+    <img class="logo" src="_static/Exoplanets-A_Ecusson_Noir_Alpha.png" alt="Logo"/>
+    
+    <h1 class="logo logo-name">CASCADe</h1>
+    
+  </a>
+</p>
 
 
 
@@ -381,19 +443,10 @@ the Hubble Space Telescope</p>
 
 
 <h3>Navigation</h3>
-<p class="caption"><span class="caption-text">Contents:</span></p>
 <ul class="current">
-<li class="toctree-l1 current"><a class="reference internal" href="cascade.html">Modules of the CASCADe package</a><ul class="current">
-<li class="toctree-l2"><a class="reference internal" href="cascade.TSO.html">The cascade.TSO module</a></li>
-<li class="toctree-l2"><a class="reference internal" href="cascade.cpm_model.html">The cascade.cpm_model module</a></li>
-<li class="toctree-l2"><a class="reference internal" href="cascade.data_model.html">The cascade.data_model module</a></li>
-<li class="toctree-l2"><a class="reference internal" href="cascade.exoplanet_tools.html">The cascade.exoplanet_tools module</a></li>
-<li class="toctree-l2"><a class="reference internal" href="cascade.initialize.html">The cascade.initialize module</a></li>
-<li class="toctree-l2 current"><a class="current reference internal" href="#">The cascade.instruments module</a></li>
-<li class="toctree-l2"><a class="reference internal" href="cascade.utilities.html">The cascade.utilities module</a></li>
-</ul>
-</li>
+<li class="toctree-l1"><a class="reference internal" href="install.html">Howto Install CASCADe</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto.html">Using Cascade</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="cascade.html">Modules of the CASCADe package</a></li>
 </ul>
 
 <div class="relations">
@@ -402,6 +455,7 @@ the Hubble Space Telescope</p>
   <li><a href="index.html">Documentation overview</a><ul>
   <li><a href="cascade.html">Modules of the CASCADe package</a><ul>
       <li>Previous: <a href="cascade.initialize.html" title="previous chapter">The cascade.initialize module</a></li>
+      <li>Next: <a href="cascade.utilities.html" title="next chapter">The cascade.utilities module</a></li>
   </ul></li>
   </ul></li>
 </ul>

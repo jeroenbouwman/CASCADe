@@ -2,7 +2,8 @@ The cascade.TSO module
 ======================
 
 .. automodule:: cascade.TSO.TSO
-    :members:
-    :undoc-members:
-    :show-inheritance:
+   :members:
+   :member-order: bysource
+   :undoc-members:
+   :show-inheritance:
 

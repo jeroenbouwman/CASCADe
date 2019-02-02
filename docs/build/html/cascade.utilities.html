@@ -15,7 +15,7 @@
     <script type="text/javascript" src="_static/doctools.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="Using Cascade" href="howto.html" />
+    <link rel="prev" title="The cascade.instruments module" href="cascade.instruments.html" />
    
   <link rel="stylesheet" href="_static/custom.css" type="text/css" />
   
@@ -28,6 +28,17 @@
     <div class="document">
       <div class="documentwrapper">
         <div class="bodywrapper">
+              <div class="related top">
+                &nbsp;
+  <nav id="rellinks">
+    <ul>
+        <li>
+          &larr;
+          <a href="cascade.instruments.html" title="Previous document">The cascade.instruments module</a>
+        </li>
+    </ul>
+  </nav>
+              </div>
           
 
           <div class="body" role="main">
@@ -59,38 +70,27 @@ onto a new wavelength basis.</p>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><dl class="first docutils">
-<dt><strong>new_spec_wavs</strong> <span class="classifier-delimiter">:</span> <span class="classifier">numpy.ndarray</span></dt>
-<dd><p class="first last">Array containing the new wavelength sampling desired for the spectrum
-or spectra.</p>
-</dd>
-<dt><strong>old_spec_wavs</strong> <span class="classifier-delimiter">:</span> <span class="classifier">numpy.ndarray</span></dt>
-<dd><p class="first last">1D array containing the current wavelength sampling of the spectrum or
-spectra.</p>
-</dd>
-<dt><strong>spec_fluxes</strong> <span class="classifier-delimiter">:</span> <span class="classifier">numpy.ndarray</span></dt>
-<dd><p class="first last">Array containing spectral fluxes at the wavelengths specified in
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>new_spec_wavs</strong> (<em>numpy.ndarray</em>) – Array containing the new wavelength sampling desired for the spectrum
+or spectra.</li>
+<li><strong>old_spec_wavs</strong> (<em>numpy.ndarray</em>) – 1D array containing the current wavelength sampling of the spectrum or
+spectra.</li>
+<li><strong>spec_fluxes</strong> (<em>numpy.ndarray</em>) – Array containing spectral fluxes at the wavelengths specified in
 old_spec_wavs, last dimension must correspond to the shape of
 old_spec_wavs.
-Extra dimensions before this may be used to include multiple spectra.</p>
-</dd>
-<dt><strong>spec_errs</strong> <span class="classifier-delimiter">:</span> <span class="classifier">numpy.ndarray (optional)</span></dt>
-<dd><p class="first last">Array of the same shape as spec_fluxes containing uncertainties
-associated with each spectral flux value.</p>
-</dd>
-</dl>
+Extra dimensions before this may be used to include multiple spectra.</li>
+<li><strong>spec_errs</strong> (<em>numpy.ndarray</em><em> (</em><em>optional</em><em>)</em>) – Array of the same shape as spec_fluxes containing uncertainties
+associated with each spectral flux value.</li>
+</ul>
 </td>
 </tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><dl class="first last docutils">
-<dt><strong>resampled_fluxes</strong> <span class="classifier-delimiter">:</span> <span class="classifier">numpy.ndarray</span></dt>
-<dd><p class="first last">Array of resampled flux values, first dimension is the same length
-as new_spec_wavs, other dimensions are the same as spec_fluxes</p>
-</dd>
-<dt><strong>resampled_errs</strong> <span class="classifier-delimiter">:</span> <span class="classifier">numpy.ndarray</span></dt>
-<dd><p class="first last">Array of uncertainties associated with fluxes in resampled_fluxes.
-Only returned if spec_errs was specified.</p>
-</dd>
-</dl>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last"><ul class="simple">
+<li><strong>resampled_fluxes</strong> (<em>numpy.ndarray</em>) – Array of resampled flux values, first dimension is the same length
+as new_spec_wavs, other dimensions are the same as spec_fluxes</li>
+<li><strong>resampled_errs</strong> (<em>numpy.ndarray</em>) – Array of uncertainties associated with fluxes in resampled_fluxes.
+Only returned if spec_errs was specified.</li>
+</ul>
+</p>
 </td>
 </tr>
 </tbody>
@@ -101,15 +101,30 @@ Only returned if spec_errs was specified.</p>
 
 
           </div>
+              <div class="related bottom">
+                &nbsp;
+  <nav id="rellinks">
+    <ul>
+        <li>
+          &larr;
+          <a href="cascade.instruments.html" title="Previous document">The cascade.instruments module</a>
+        </li>
+    </ul>
+  </nav>
+              </div>
           
         </div>
       </div>
       <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
         <div class="sphinxsidebarwrapper">
-            <p class="logo"><a href="index.html">
-              <img class="logo" src="_static/Exoplanets-A_Ecusson_Blanc_Alpha.png" alt="Logo"/>
-            </a></p>
-<h1 class="logo"><a href="index.html">CASCADe</a></h1>
+<p class="logo">
+  <a href="index.html">
+    <img class="logo" src="_static/Exoplanets-A_Ecusson_Noir_Alpha.png" alt="Logo"/>
+    
+    <h1 class="logo logo-name">CASCADe</h1>
+    
+  </a>
+</p>
 
 
 
@@ -119,19 +134,10 @@ Only returned if spec_errs was specified.</p>
 
 
 <h3>Navigation</h3>
-<p class="caption"><span class="caption-text">Contents:</span></p>
 <ul class="current">
-<li class="toctree-l1 current"><a class="reference internal" href="cascade.html">Modules of the CASCADe package</a><ul class="current">
-<li class="toctree-l2"><a class="reference internal" href="cascade.TSO.html">The cascade.TSO module</a></li>
-<li class="toctree-l2"><a class="reference internal" href="cascade.cpm_model.html">The cascade.cpm_model module</a></li>
-<li class="toctree-l2"><a class="reference internal" href="cascade.data_model.html">The cascade.data_model module</a></li>
-<li class="toctree-l2"><a class="reference internal" href="cascade.exoplanet_tools.html">The cascade.exoplanet_tools module</a></li>
-<li class="toctree-l2"><a class="reference internal" href="cascade.initialize.html">The cascade.initialize module</a></li>
-<li class="toctree-l2"><a class="reference internal" href="cascade.instruments.html">The cascade.instruments module</a></li>
-<li class="toctree-l2 current"><a class="current reference internal" href="#">The cascade.utilities module</a></li>
-</ul>
-</li>
+<li class="toctree-l1"><a class="reference internal" href="install.html">Howto Install CASCADe</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto.html">Using Cascade</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="cascade.html">Modules of the CASCADe package</a></li>
 </ul>
 
 <div class="relations">
@@ -139,7 +145,7 @@ Only returned if spec_errs was specified.</p>
 <ul>
   <li><a href="index.html">Documentation overview</a><ul>
   <li><a href="cascade.html">Modules of the CASCADe package</a><ul>
-      <li>Next: <a href="howto.html" title="next chapter">Using Cascade</a></li>
+      <li>Previous: <a href="cascade.instruments.html" title="previous chapter">The cascade.instruments module</a></li>
   </ul></li>
   </ul></li>
 </ul>
