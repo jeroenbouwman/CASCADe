@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # This file is part of CASCADe package
 #
@@ -19,6 +20,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
+# Copyright (C) 2018  Jeroen Bouwman
 
 """
 The TSO module is the main module of the CASCADe package.
@@ -72,7 +74,7 @@ class TSOSuite:
     """
     Transit Spectroscopy Object Suite class.
 
-    This is the main class containing the ligth curve data of and transiting
+    This is the main class containing the light curve data of and transiting
     exoplanet and all functionality to calibrate and analyse the light curves
     and to extractthe spectrum of the transiting exoplanet.
 
@@ -241,7 +243,7 @@ class TSOSuite:
 
         Attributes
         ----------
-        isBackgroundSubtracted
+        isBackgroundSubtracted : 'bool'
             True if background is subtracted
 
         Raises
@@ -339,7 +341,7 @@ class TSOSuite:
         """
         Perform sigma clip on science data to flag bad data.
 
-        Attibutes
+        Attributes
         ---------
         isSigmaCliped : 'bool'
             Set to True if bad data has been masked using sigma clip
@@ -413,6 +415,27 @@ class TSOSuite:
     def create_cleaned_dataset(self):
         """
         Create a cleaned dataset to be used in regresion analysis.
+
+        Attributes
+        ----------
+        cleaned_data : 'masked quantity'
+            A cleaned version of the spctral timeseries data of the transiting
+            exoplanet system
+
+        Raises
+        ------
+        AttributeError, AssertionError
+            An error is raised if the data set to be cleaned has not been
+            background subtracted or no sigma clip has been run first to
+            identify those pixels to be cleaned.
+
+        Examples
+        --------
+        To create a cleaned version of the spectral data stored in an instance
+        of a TSO object run:
+
+        >>> tso.execute("create_cleaned_dataset")
+
         """
         try:
             dataset = self.observation.dataset
@@ -496,6 +519,38 @@ class TSOSuite:
         This function defines the light curve model used to analize the
         transit or eclipse. We define both the actual trasit/eclipse signal
         as wel as an calibration signal.
+
+        Attributes
+        ----------
+        light_curve : 'array_like'
+            The lightcurve model
+        transit_timing : 'list'
+            list with start time and end time of transit
+        light_curve_interpolated : 'list' of 'ndarray'
+            to the time grid of the observations interpolated lightcurve model
+        calibration_signal : 'list' of 'ndarray'
+            lightcurve model of the calibration signal
+        transittype : 'str'
+            Currently either 'eclipse' or 'transit'
+
+        Raises
+        ------
+        AttributeError
+            Raises error if observations not properly defined.
+
+        Notes
+        -----
+        The only lightcurve models presently incorporated in the CASCADe code
+        are the ones provide by batman package.
+
+        Examples
+        --------
+        To define the lightcurve model appropriate for the observations
+        loaded into the instance of a TSO obkect, excecute the
+        following command:
+
+        >>> tso.execute("define_eclipse_model")
+
         """
         try:
             isNodded = self.observation.dataset.isNodded
@@ -508,7 +563,7 @@ class TSOSuite:
         except AttributeError:
             raise AttributeError("Calibration signal parameters not set. \
                                  Aborting definition of eclipse model.")
-        # define ligthcurve model
+        # define lightcurve model
         lc_model = lightcuve()
         times_during_transit = lc_model.lc[0][~np.isclose(lc_model.lc[1], 0.0)]
         Tstart = times_during_transit[0]
@@ -577,25 +632,33 @@ class TSOSuite:
         from the data by deriving the "center of light" of the dispersed
         light.
 
-        Parameters
+        Attributes
         ----------
-        spectral_trace :
+        spectral_trace : 'ndarray'
             The trace of the dispersed light on the detector normalized
             to its median position. In case the data are extracted spectra,
             the trace is zero.
-        position :
+        position : 'ndarray'
             Postion of the source on the detector in the cross dispersion
             directon as a function of time, normalized to the
             median position.
-        median_position :
+        median_position : 'float'
             median source position.
 
-        Returns
-        -------
-        position
-            position of source in time
-        med_position
-            median (in time) position of source
+        Raises
+        ------
+        AttributeError, AssertionError
+            Raises error if input observational data or type of data is
+            not properly difined. Also raises arror if data is not sigma cliped
+
+        Examples
+        --------
+        To determine the position of the source in the cross dispersion
+        direction from the in the tso object loaded data set, excecute the
+        following command:
+
+        >>> tso.execute("determine_source_position")
+
         """
         try:
             data_in = self.observation.dataset
@@ -763,11 +826,30 @@ class TSOSuite:
         a transit signal will be determined. The mask is set along the
         spectral trace with a pixel width of nExtractionWidth
 
-        Returns
-        -------
-        mask
+        Attributes
+        ----------
+        nExtractionWidth : 'int'
+            The width of the extraction aperture , cetered on the
+            spectral trace of the source. In case of 1d spectral data, a
+            width of 1 will be assumed.
+        extraction_mask : 'ndarray'
             In case data are Spectra : 1D mask
             In case data are Spectral images or cubes: 2D mask
+
+        Raises
+        ------
+        AttributeError
+            Raises error if the width of the mask or the source position
+            and spectral trace are not defined.
+
+        Examples
+        --------
+        To set the extraction mask, which will define the sub set of the data
+        from which the planetary spectrum will be determined, sexcecute the
+        following command:
+
+        >>> tso.execute("set_extraction_mask")
+
         """
         try:
             nExtractionWidth = int(self.cascade_parameters.cpm_nextraction)
@@ -836,16 +918,24 @@ class TSOSuite:
 
     def _create_edge_mask(self, kernel, roi_mask_cube):
         """
-        Create an edge mask to mask all pixels for which the convolution kernel
-        extends beyond the ROI
+        Helper function for the optimal extraction task. This function
+        creates an edge mask to mask all pixels for which the convolution
+        kernel extends beyond the region of interest.
+
         Parameters
         ----------
-        kernel
-        roi_mask
+        kernel : 'array_like'
+            Convolution kernel specific for a given instrument and observing
+            mode, used in tasks such as replacing bad pixels and
+            spectral extraction.
+        roi_mask : 'array_like'
+            Mask defining the region of interest from which the speectra will
+            be extracted.
 
         Returns
         -------
-        edge_mask
+        edge_mask : 'array_like'
+            The edge mask based on the input kernel and roi_mask
         """
         dilation_mask = np.ones(kernel.shape)
 
@@ -857,24 +947,33 @@ class TSOSuite:
                                    extracted_spectra, kernel,
                                    mask_for_extraction):
         """
-        Create the normilzed source profile used for optimal extraction.
-        The cleaned data is convolved with an appropriate kernel to smooth the
-        profile and to increase the SNR. On the edges, where the kernel extends
-        over the boundary, non convolved data is used to prevent edge effects
+        Helper function for the optimal extraction task.
+        This function creates the normilzed source profile used for optimal
+        extraction. The cleaned data is convolved with an appropriate kernel
+        to smooth the profile and to increase the SNR. On the edges, where the
+        kernel extends over the boundary, non convolved data is used to
+        prevent edge effects.
 
         Parameters
         ----------
-        cleaned_data_with_roi_mask
-
-        extracted_spectra
-
-        kernel
-
-        mask_for_extraction
+        cleaned_data_with_roi_mask : 'numpy.ma.core.MaskedArray'
+            The cleaned input data from which the extraction profile is
+            derived. The mask attached to this data defines the region of
+            interest around the target source.
+        extracted_spectra : 'numpy.ma.core.MaskedArray'
+            Best guess for the spectrum of the source from which the extraction
+            profile is determined.
+        kernel : 'ndarray'
+            Convolution kernel used to create smoothed spectral images
+        mask_for_extraction : 'ndarray'
+            Mask containing all pixels which are flagged as bad in the not
+            cleaned data, i.e. all pixels which value have been replaced
+            after cleaning.
 
         Returns
         -------
-        extraction_profile
+        extraction_profile : 'ndarray'
+            The extraction profile used for optimal spectral extraction.
         """
         npix, mpix, ntime = cleaned_data_with_roi_mask.shape
         roi_mask = cleaned_data_with_roi_mask.mask.copy()
@@ -902,16 +1001,23 @@ class TSOSuite:
 
     def _create_3dKernel(self, sigma_time):
         """
-        Create a 3d Kernel from 2d Instrument specific Kernel
-        to include time dimention
+        Helper function for the optimal extraction taks. This function
+        creates a 3d kernel from a 2d instrument specific kernel
+        to include the time dimention thus enabling convolution in both the
+        spatial and wavelength direction as well as along the time axis.
 
         Parameters
         ----------
-        sigma_time
+        sigma_time : 'float'
 
         Returns
         -------
-        3dKernel
+        3dKernel : 'ndarray'
+
+        Raises
+        ------
+        AttributeError
+            An error is raised if no instrument specific kernel is defined.
         """
         try:
             kernel = self.observation.instrument_calibration.convolution_kernel
@@ -933,12 +1039,41 @@ class TSOSuite:
 
     def optimal_extraction(self):
         """
-        Optimally extract spectrum using procedure of
-        Horne 1986, PASP 98, 609
+        Optimally extract spectrum using procedure of Horne 1986
+        [1]_ The extraction consists of two iterations: The first one to
+        determine the extraction profile, the second itereation to
+        extract the spectrum of the target source.
 
-        Returns
-        -------
-        Optimally extracted 1d Spectra
+        Notes
+        -----
+        We use a convolution with a kernel elongated along the spectral trace
+        rather than a polynomial fit along the trace as in the original paper
+        by Horne 1986.
+
+        Attributes
+        ----------
+        dataset_optimal_extracted : cascade.data_model.SpectralDataTimeSeries'
+            Time series if optimally extracted 1d spectra.
+
+        Raises
+        ------
+        AttributeError, AssertionError
+            An error is raised if the data and cleaned data sets are not
+            defined, the source position is not determined or of the
+            parameters for the optimal extraction task are not set in the
+            initialization files.
+
+        References
+        ----------
+        .. [1] Horne 1986, PASP 98, 609
+
+        Examples
+        --------
+        To optimally extract a spectrum of the target star which data is stored
+        in an TSO instance, excecute the following command:
+
+        >>> tso.execute("optimal_extraction")
+
         """
         try:
             obs_data = self.cascade_parameters.observations_data
@@ -1198,14 +1333,23 @@ class TSOSuite:
         """
         Select pixels which will be used as regressors.
 
-        Output:
-        -------
-        List of regressors, using the following list index:
+        Attributes
+        ----------
+        regressor_list
+            List of regressors, using the following list index:
             first index: [# nod]
             second index: [# valid pixel in extraction mask]
             third index: [0=pixel coord; 1=list of regressors]
             forth index: [0=coordinate wave direction;
-                          1=coordinate spatial direction]
+            1=coordinate spatial direction]
+
+        Examples
+        --------
+        To setup the list of regressors for each data point on which the
+        exoplanet spectum will be based, execute the following command:
+
+        >>> tso.execute("select_regressors")
+
         """
         try:
             spectral_trace = self.cpm.spectral_trace
@@ -1308,21 +1452,23 @@ class TSOSuite:
         """
         Return the design matrix based on the data set itself
 
-        Input:
-        ------
-            cleaned_data_in
-                time series data with bad pixels corrected
-            original_mask_in
-                data mask before cleaning
-            regressor_selection
-            nrebin
-            clip
-            clip_pctl_time
-            clip_pctl_regressors
+        Parameters
+        ----------
+        cleaned_data_in : 'masked quantity'
+            time series data with bad pixels corrected
+        original_mask_in : 'ndarray'
+            data mask before cleaning
+        regressor_selection : 'list' of 'int'
+        nrebin : 'int'
+        clip : 'float'
+        clip_pctl_time : 'float'
+        clip_pctl_regressors : 'float'
 
-        Output:
-        ------
-            Design Matirx
+        Returns
+        -------
+        design_matrix
+            The design matrix used in the causal pixel regression model
+
         """
         dim = cleaned_data_in.data.shape
         data_unit = cleaned_data_in.data.unit
@@ -1362,6 +1508,14 @@ class TSOSuite:
     def reshape_data(self, data_in):
         """
         Reshape the time series data to a uniform dimentional shape
+
+        Parameters
+        ----------
+        data_in : 'ndarray'
+
+        Returns
+        -------
+        data_out : 'ndarray'
         """
         if isinstance(data_in, list):
             data_list = []
@@ -1396,12 +1550,26 @@ class TSOSuite:
         Setup the regression matrix based on the sub set of the data slected
         to be used as calibrators.
 
-        Output:
-        -------
-        list with design matrici with the following index convention:
+        Parameters
+        ----------
+        clip : 'bool'
+            default False
+        clip_pctl_time : 'float'
+            Default 0.00
+        clip_pctl_regressors : 'float'
+            Default 0.00
+
+        Attributes
+        ----------
+        design_matrix
+            list with design matrici with the following index convention:
                first index: [# nods]
                second index : [# of valid pixels within extraction mask]
                third index : [0]
+
+        Raises
+        ------
+        AttributeError
         """
         try:
             data_in = self.observation.dataset
@@ -1440,7 +1608,30 @@ class TSOSuite:
 
     def calibrate_timeseries(self):
         """
-        Calibrate the ligth curve data
+        This is the main function which runs the regression model to
+        calibrate the input spectral light curve data and to extract the
+        planetary signal as function of wavelength.
+
+        Attributes
+        ----------
+        calibration_results : 'SimpleNamespace'
+            The calibration_results attribute contains all calibrated data
+            and auxilary data.
+
+        Raises
+        ------
+        AttributeError
+            an Error is raised if the nessecary steps to be able to run this
+            task have not been executed properly or if the parameters for
+            the regression model have not been set in the initialization files.
+
+        Examples
+        --------
+        To create a calibrated spectral time series and derive the
+        planetary signal execute the following command:
+
+        >>> tso.execute("calibrate_timeseries")
+
         """
         try:
             data_in = self.observation.dataset
@@ -1686,7 +1877,7 @@ class TSOSuite:
                         y = y + np.ma.median(temp_ma)*zcal
 
                     # select aditional regressors (x: orbital phase,
-                    # z: ligthcurve model, r: source position)
+                    # z: lightcurve model, r: source position)
                     x = time_use[il, ir, :].data.value.copy()
                     z = lightcurve_model_use[inod][il, ir, :].copy()
                     r = position_use[il, ir, :].copy()
@@ -1912,7 +2103,23 @@ class TSOSuite:
 
     def extract_spectrum(self):
         """
-        Extract the planetary spectrum from the calibrated ligth curve data
+        Extract the planetary spectrum from the calibrated light curve data
+
+        Attributes
+        ----------
+        exoplanet_spectrum
+
+        Raises
+        ------
+        AttributeError
+
+        Examples
+        --------
+        To extract the exoplanet spectum from the calibrated signal,
+        execute the following command:
+
+        >>> tso.execute("extract_spectrum")
+
         """
         try:
             add_calibration_signal = \
@@ -2217,6 +2424,18 @@ class TSOSuite:
         """
         Make correction for non-uniform subtraction of transit signal due to
         differences in the relative weighting of the regressors
+
+        Raises
+        ------
+        AttributeError
+
+        Examples
+        --------
+        To correct the extracted planetary signal for non-uniform
+        subtraction of an averige transit depth, execute the following command:
+
+        >>> tso.execute("correct_extracted_spectrum")
+
         """
         try:
             median_eclipse_depth = \
@@ -2261,7 +2480,7 @@ class TSOSuite:
         weighted_signal = self.exoplanet_spectrum.weighted_signal.copy()
         weighted_signal.set_fill_value(0.0)
 
-        from sklearn.linear_model import RidgeCV
+#        from sklearn.linear_model import RidgeCV
 
 #        clf = RidgeCV(alphas=[1e-9, 1e-7, 1e-6, 1e-4, 1e-3, 1e-2, 1e-1, 1, 10],
 #                      gcv_mode='svd',
@@ -2302,6 +2521,17 @@ class TSOSuite:
     def save_results(self):
         """
         Save results
+
+        Raises
+        ------
+        AttributeError
+
+        Examples
+        --------
+        To save the calibrated spectrum, execute the following command:
+
+        >>> tso.execute("save_results")
+
         """
         try:
             transittype = self.model.transittype
@@ -2384,6 +2614,18 @@ class TSOSuite:
         """
         Plot the extracted planetary spectrum and scaled signal on the
         detector.
+
+        Raises
+        ------
+        AttributeError
+
+        Examples
+        --------
+        To plot the planetary signal and other diadnostic plots, execute
+        the following command:
+
+        >>> tso.execute("plot_results")
+
         """
         np.warnings.filterwarnings('ignore')
         try:

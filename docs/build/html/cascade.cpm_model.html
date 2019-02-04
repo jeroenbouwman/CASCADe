@@ -13,6 +13,7 @@
     <script type="text/javascript" src="_static/jquery.js"></script>
     <script type="text/javascript" src="_static/underscore.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
+    <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="The cascade.data_model module" href="cascade.data_model.html" />
@@ -64,20 +65,13 @@ regression model used in causal pixel model.</p>
 <li><strong>design_matrx</strong> (<em>'ndarray</em><em>, </em><em>ndim=2'</em>) – Design matrix</li>
 <li><strong>data</strong> (<em>'ndarray'</em>) – Data</li>
 <li><strong>weights</strong> (<em>'ndarray'</em>) – Weights used in the linear least square minimization</li>
-<li><strong>cv_method</strong> (<em>{'gvc'|'b95'|'B100'}</em>) – <dl class="docutils">
-<dt>Method used to find optimal regularization parameter which can be:</dt>
-<dd>”gvc” :  Generizalize Cross Validation [RECOMMENDED!!!]
-“b95” :  normalized cumulatative periodogram using 95% limit
-“B100”:  normalized cumulatative periodogram</dd>
-</dl>
-</li>
-<li><strong>reg_par</strong> (<em>'dict'</em>) – <p>Parameter describing search grid to find optimal regularization
-parameter lambda:</p>
-<blockquote>
-<div>{lam0 : minimum lambda
-lam1 : maximum lambda
-nlam : number of grid points}</div></blockquote>
-</li>
+<li><strong>cv_method</strong> (<em>{'gvc'|'b95'|'B100'}</em>) – Method used to find optimal regularization parameter which can be:
+“gvc” :  Generizalize Cross Validation [RECOMMENDED!!!],
+“b95” :  normalized cumulatative periodogram using 95% limit,
+“B100”:  normalized cumulatative periodogram</li>
+<li><strong>reg_par</strong> (<em>'dict'</em>) – Parameter describing search grid to find optimal regularization
+parameter lambda: {lam0 : minimum lambda, lam1 : maximum lambda,
+nlam : number of grid points}</li>
 <li><strong>feature_scaling</strong> ({‘norm’<a href="#id1"><span class="problematic" id="id2">|</span></a>None}) – if the value is set to ‘norm’ all features are normalized using L2
 norm else no featue scaling is applied.</li>
 <li><strong>degrees_of_freedom</strong> (<em>'int'</em>) – Effective  degrees_of_freedom, if set to None the value is calculated
@@ -97,9 +91,11 @@ err_fit_parameters)</p>
 <div class="admonition-notes admonition">
 <p class="first admonition-title">Notes</p>
 <p>This routine solves the linear equation</p>
-<p>A x = y</p>
-<p>by finding optimal solution x_hat by minimizing</p>
-<p>||y-A*x_hat||^2 + lambda * ||x_hat||^2</p>
+<div class="math notranslate nohighlight">
+\[A x = y\]</div>
+<p>by finding optimal solution ^x by minimizing</p>
+<div class="math notranslate nohighlight">
+\[||y-A*\hat{x}||^2 + \lambda * ||\hat{x}||^2\]</div>
 <p class="last">For details on the implementation see <a class="footnote-reference" href="#id7" id="id3">[1]</a>, <a class="footnote-reference" href="#id8" id="id4">[2]</a>, <a class="footnote-reference" href="#id9" id="id5">[3]</a>, <a class="footnote-reference" href="#id10" id="id6">[4]</a></p>
 </div>
 <div class="admonition-references admonition">

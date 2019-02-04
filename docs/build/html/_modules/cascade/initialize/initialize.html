@@ -13,6 +13,7 @@
     <script type="text/javascript" src="../../../_static/jquery.js"></script>
     <script type="text/javascript" src="../../../_static/underscore.js"></script>
     <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
     <link rel="index" title="Index" href="../../../genindex.html" />
     <link rel="search" title="Search" href="../../../search.html" />
    
@@ -41,13 +42,52 @@
   <h1>Source code for cascade.initialize.initialize</h1><div class="highlight"><pre>
 <span></span><span class="ch">#!/usr/bin/env python3</span>
 <span class="c1"># -*- coding: utf-8 -*-</span>
+<span class="c1"># This file is part of CASCADe package</span>
+<span class="c1">#</span>
+<span class="c1"># Developed within the ExoplANETS-A H2020 program.</span>
+<span class="c1">#</span>
+<span class="c1"># See the COPYRIGHT file at the top-level directory of this distribution</span>
+<span class="c1"># for details of code ownership.</span>
+<span class="c1">#</span>
+<span class="c1"># This program is free software: you can redistribute it and/or modify</span>
+<span class="c1"># it under the terms of the GNU General Public License as published by</span>
+<span class="c1"># the Free Software Foundation, either version 3 of the License, or</span>
+<span class="c1"># (at your option) any later version.</span>
+<span class="c1">#</span>
+<span class="c1"># This program is distributed in the hope that it will be useful,</span>
+<span class="c1"># but WITHOUT ANY WARRANTY; without even the implied warranty of</span>
+<span class="c1"># MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the</span>
+<span class="c1"># GNU General Public License for more details.</span>
+<span class="c1">#</span>
+<span class="c1"># You should have received a copy of the GNU General Public License</span>
+<span class="c1"># along with this program.  If not, see &lt;http://www.gnu.org/licenses/&gt;.</span>
+<span class="c1">#</span>
+<span class="c1"># Copyright (C) 2018  Jeroen Bouwman</span>
 <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">This Module defines the functionality to generate and read .ini files which</span>
 <span class="sd">are used to initialize CASCADe.</span>
 
-<span class="sd">Created on Thu Mar 16 21:02:31 2017</span>
+<span class="sd">Examples</span>
+<span class="sd">--------</span>
+<span class="sd">An example how the initilize module is used:</span>
 
-<span class="sd">@author: bouwman</span>
+<span class="sd">    &gt;&gt;&gt; import cascade</span>
+<span class="sd">    &gt;&gt;&gt; default_path = cascade.initialize.default_initialization_path</span>
+<span class="sd">    &gt;&gt;&gt; success = cascade.initialize.generate_default_initialization()</span>
+
+<span class="sd">    &gt;&gt;&gt; tso = cascade.TSO.TSOSuite()</span>
+<span class="sd">    &gt;&gt;&gt; print(cascade.initialize.cascade_configuration.isInitialized)</span>
+<span class="sd">    &gt;&gt;&gt; print(tso.cascade_parameters.isInitialized)</span>
+<span class="sd">    &gt;&gt;&gt; assert tso.cascade_parameters == cascade.initialize.cascade_configuration</span>
+
+<span class="sd">    &gt;&gt;&gt; tso.execute(&#39;initialize&#39;, &#39;cascade_default.ini&#39;, path=default_path)</span>
+<span class="sd">    &gt;&gt;&gt; print(cascade.initialize.cascade_configuration.isInitialized)</span>
+<span class="sd">    &gt;&gt;&gt; print(tso.cascade_parameters.isInitialized)</span>
+
+<span class="sd">    &gt;&gt;&gt; tso.execute(&quot;reset&quot;)</span>
+<span class="sd">    &gt;&gt;&gt; print(cascade.initialize.cascade_configuration.isInitialized)</span>
+<span class="sd">    &gt;&gt;&gt; print(tso.cascade_parameters.isInitialized)</span>
+
 <span class="sd">&quot;&quot;&quot;</span>
 <span class="kn">import</span> <span class="nn">configparser</span>
 <span class="kn">import</span> <span class="nn">os</span>
@@ -57,13 +97,21 @@
            <span class="s1">&#39;configurator&#39;</span><span class="p">,</span>
            <span class="s1">&#39;cascade_configuration&#39;</span><span class="p">]</span>
 
-<span class="n">default_initialization_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s1">&#39;HOME&#39;</span><span class="p">]</span> <span class="o">+</span> <span class="s2">&quot;/CASCADeInit/&quot;</span>
+<span class="k">try</span><span class="p">:</span>
+    <span class="n">default_cascade_dir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s1">&#39;CASCADE_HOME&#39;</span><span class="p">]</span>
+<span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+    <span class="n">default_cascade_dir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s1">&#39;HOME&#39;</span><span class="p">]</span>
+<span class="n">default_initialization_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">default_cascade_dir</span><span class="p">,</span> <span class="s2">&quot;CASCADeInit/&quot;</span><span class="p">)</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Default directory for CASCADe initialization files</span>
+<span class="sd">&quot;&quot;&quot;</span>
 
 
-<span class="c1"># &lt;codecell&gt;</span>
 <div class="viewcode-block" id="generate_default_initialization"><a class="viewcode-back" href="../../../cascade.initialize.html#cascade.initialize.initialize.generate_default_initialization">[docs]</a><span class="k">def</span> <span class="nf">generate_default_initialization</span><span class="p">():</span>
     <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Convenience function to generate example .ini file for CASCADe</span>
+<span class="sd">    Convenience function to generate an example .ini file for CASCADe</span>
+<span class="sd">    initialization. The file will be saved in the default directory defined by</span>
+<span class="sd">    default_initialization_path. Returns True if successfully runned.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">path</span> <span class="o">=</span> <span class="n">default_initialization_path</span>
     <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
@@ -134,8 +182,21 @@
     <span class="k">return</span> <span class="kc">True</span></div>
 
 
-<span class="c1"># &lt;codecell&gt;</span>
 <span class="k">def</span> <span class="nf">read_ini_files</span><span class="p">(</span><span class="o">*</span><span class="n">files</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    This function reads *.ini files using the configparser package</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    *files : &#39;list&#39; of &#39;str&#39;</span>
+<span class="sd">        List of file names of initialization files to be read to initialize</span>
+<span class="sd">        an instance of a TSO object.</span>
+
+<span class="sd">    Raises</span>
+<span class="sd">    ------</span>
+<span class="sd">    ValueError</span>
+<span class="sd">        An error is raised if the configuration file can not be found.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">parser</span> <span class="o">=</span> <span class="n">configparser</span><span class="o">.</span><span class="n">ConfigParser</span><span class="p">()</span>
     <span class="n">parser</span><span class="o">.</span><span class="n">optionxform</span> <span class="o">=</span> <span class="nb">str</span>  <span class="c1"># make option names case sensitive</span>
     <span class="n">found</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="n">files</span><span class="p">)</span>
@@ -144,8 +205,10 @@
     <span class="k">return</span> <span class="n">parser</span>
 
 
-<span class="c1"># &lt;codecell&gt;</span>
 <span class="k">class</span> <span class="nc">_Singleton</span><span class="p">(</span><span class="nb">type</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    This class defines a Singleton</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">_instances</span> <span class="o">=</span> <span class="p">{}</span>
 
     <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
@@ -159,7 +222,10 @@
 
 
 <div class="viewcode-block" id="configurator"><a class="viewcode-back" href="../../../cascade.initialize.html#cascade.initialize.initialize.configurator">[docs]</a><span class="k">class</span> <span class="nc">configurator</span><span class="p">(</span><span class="nb">object</span><span class="p">,</span> <span class="n">metaclass</span><span class="o">=</span><span class="n">_Singleton</span><span class="p">):</span>
-
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    This class defined the configuration singleton which will provide</span>
+<span class="sd">    all parameters needed to run the CASCADe to all modules of the code.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">file_names</span><span class="p">):</span>
         <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">file_names</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
             <span class="n">parser</span> <span class="o">=</span> <span class="n">read_ini_files</span><span class="p">(</span><span class="o">*</span><span class="n">file_names</span><span class="p">)</span>
@@ -167,15 +233,26 @@
             <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">section_names</span><span class="p">:</span>
                 <span class="bp">self</span><span class="o">.</span><span class="vm">__dict__</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">parser</span><span class="o">.</span><span class="n">items</span><span class="p">(</span><span class="n">name</span><span class="p">))</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">isInitialized</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">            Will be set to True if initialized</span>
+<span class="sd">            &quot;&quot;&quot;</span>
 
 <div class="viewcode-block" id="configurator.reset"><a class="viewcode-back" href="../../../cascade.initialize.html#cascade.initialize.initialize.configurator.reset">[docs]</a>    <span class="k">def</span> <span class="nf">reset</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        If called, this function will remove all initialized parameters.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">_dict_keys</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="vm">__dict__</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
         <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">_dict_keys</span><span class="p">:</span>
             <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__dict__</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">isInitialized</span> <span class="o">=</span> <span class="kc">False</span></div></div>
 
-<span class="c1"># &lt;codecell&gt;</span>
+
 <span class="n">cascade_configuration</span> <span class="o">=</span> <span class="n">configurator</span><span class="p">()</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Singleton containing the entite configuration settings for the</span>
+<span class="sd">CASCADe code to work. This includes object and observation definitions and</span>
+<span class="sd">causal noise model settings.</span>
+<span class="sd">&quot;&quot;&quot;</span>
 </pre></div>
 
           </div>

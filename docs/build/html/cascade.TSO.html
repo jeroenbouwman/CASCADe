@@ -13,6 +13,7 @@
     <script type="text/javascript" src="_static/jquery.js"></script>
     <script type="text/javascript" src="_static/underscore.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
+    <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="The cascade.cpm_model module" href="cascade.cpm_model.html" />
@@ -57,9 +58,9 @@ transiting exoplanet.</p>
 <dl class="class">
 <dt id="cascade.TSO.TSO.TSOSuite">
 <em class="property">class </em><code class="descname">TSOSuite</code><span class="sig-paren">(</span><em>*init_files</em>, <em>path=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cascade/TSO/TSO.html#TSOSuite"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cascade.TSO.TSO.TSOSuite" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.7)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
 <p>Transit Spectroscopy Object Suite class.</p>
-<p>This is the main class containing the ligth curve data of and transiting
+<p>This is the main class containing the light curve data of and transiting
 exoplanet and all functionality to calibrate and analyse the light curves
 and to extractthe spectrum of the transiting exoplanet.</p>
 <table class="docutils field-list" frame="void" rules="none">
@@ -69,7 +70,7 @@ and to extractthe spectrum of the transiting exoplanet.</p>
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>init_files</strong> (<em>'list' of 'str'</em>) – List containing all the initialization files needed to run the
 CASCADe code.</td>
 </tr>
-<tr class="field-even field"><th class="field-name">Raises:</th><td class="field-body"><code class="xref py py-exc docutils literal notranslate"><span class="pre">ValueError</span></code> – Raised when commands not recognized as valid</td>
+<tr class="field-even field"><th class="field-name">Raises:</th><td class="field-body"><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.7)"><code class="xref py py-exc docutils literal notranslate"><span class="pre">ValueError</span></code></a> – Raised when commands not recognized as valid</td>
 </tr>
 </tbody>
 </table>
@@ -97,7 +98,7 @@ parameters defining the observation and calibration settings.</li>
 </ul>
 </td>
 </tr>
-<tr class="field-even field"><th class="field-name">Raises:</th><td class="field-body"><p class="first last"><code class="xref py py-exc docutils literal notranslate"><span class="pre">ValueError</span></code> – error is raised if command is not valid</p>
+<tr class="field-even field"><th class="field-name">Raises:</th><td class="field-body"><p class="first last"><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.7)"><code class="xref py py-exc docutils literal notranslate"><span class="pre">ValueError</span></code></a> – error is raised if command is not valid</p>
 </td>
 </tr>
 </tbody>
@@ -129,7 +130,7 @@ parameters defining the observation and calibration settings.</li>
 <tr class="field-even field"><th class="field-name">Variables:</th><td class="field-body"><p class="first"><strong>cascade_parameters</strong> – cascade.initialize.initialize.configurator</p>
 </td>
 </tr>
-<tr class="field-odd field"><th class="field-name">Raises:</th><td class="field-body"><p class="first last"><code class="xref py py-exc docutils literal notranslate"><span class="pre">FileNotFoundError</span></code> – Raises error if .ini file is not found</p>
+<tr class="field-odd field"><th class="field-name">Raises:</th><td class="field-body"><p class="first last"><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#FileNotFoundError" title="(in Python v3.7)"><code class="xref py py-exc docutils literal notranslate"><span class="pre">FileNotFoundError</span></code></a> – Raises error if .ini file is not found</p>
 </td>
 </tr>
 </tbody>
@@ -186,9 +187,9 @@ from the science observations.</p>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Variables:</th><td class="field-body"><strong>isBackgroundSubtracted</strong> – True if background is subtracted</td>
+<tr class="field-odd field"><th class="field-name">Variables:</th><td class="field-body"><strong>isBackgroundSubtracted</strong> (<em>'bool'</em>) – True if background is subtracted</td>
 </tr>
-<tr class="field-even field"><th class="field-name">Raises:</th><td class="field-body"><code class="xref py py-exc docutils literal notranslate"><span class="pre">AttributeError</span></code> – In case no background data is defined</td>
+<tr class="field-even field"><th class="field-name">Raises:</th><td class="field-body"><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#AttributeError" title="(in Python v3.7)"><code class="xref py py-exc docutils literal notranslate"><span class="pre">AttributeError</span></code></a> – In case no background data is defined</td>
 </tr>
 </tbody>
 </table>
@@ -226,15 +227,13 @@ from the science observations.</p>
 <dt id="cascade.TSO.TSO.TSOSuite.sigma_clip_data">
 <code class="descname">sigma_clip_data</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/cascade/TSO/TSO.html#TSOSuite.sigma_clip_data"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cascade.TSO.TSO.TSOSuite.sigma_clip_data" title="Permalink to this definition">¶</a></dt>
 <dd><p>Perform sigma clip on science data to flag bad data.</p>
-<dl class="docutils">
-<dt>isSigmaCliped <span class="classifier-delimiter">:</span> <span class="classifier">‘bool’</span></dt>
-<dd>Set to True if bad data has been masked using sigma clip</dd>
-</dl>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Raises:</th><td class="field-body"><code class="xref py py-exc docutils literal notranslate"><span class="pre">AttributeError</span></code> – Error is raised if sigma value, the filter length or
+<tr class="field-odd field"><th class="field-name">Variables:</th><td class="field-body"><strong>isSigmaCliped</strong> (<em>'bool'</em>) – Set to True if bad data has been masked using sigma clip</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Raises:</th><td class="field-body"><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#AttributeError" title="(in Python v3.7)"><code class="xref py py-exc docutils literal notranslate"><span class="pre">AttributeError</span></code></a> – Error is raised if sigma value, the filter length or
 the convolution kernel are not defined.</td>
 </tr>
 </tbody>
@@ -253,6 +252,27 @@ object, run the following example:</p>
 <dt id="cascade.TSO.TSO.TSOSuite.create_cleaned_dataset">
 <code class="descname">create_cleaned_dataset</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/cascade/TSO/TSO.html#TSOSuite.create_cleaned_dataset"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cascade.TSO.TSO.TSOSuite.create_cleaned_dataset" title="Permalink to this definition">¶</a></dt>
 <dd><p>Create a cleaned dataset to be used in regresion analysis.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Variables:</th><td class="field-body"><strong>cleaned_data</strong> (<em>'masked quantity'</em>) – A cleaned version of the spctral timeseries data of the transiting
+exoplanet system</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Raises:</th><td class="field-body"><em>AttributeError, AssertionError</em> – An error is raised if the data set to be cleaned has not been
+background subtracted or no sigma clip has been run first to
+identify those pixels to be cleaned.</td>
+</tr>
+</tbody>
+</table>
+<div class="admonition-examples admonition">
+<p class="first admonition-title">Examples</p>
+<p>To create a cleaned version of the spectral data stored in an instance
+of a TSO object run:</p>
+<div class="last highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">tso</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;create_cleaned_dataset&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
 </dd></dl>
 
 <dl class="method">
@@ -261,6 +281,38 @@ object, run the following example:</p>
 <dd><p>This function defines the light curve model used to analize the
 transit or eclipse. We define both the actual trasit/eclipse signal
 as wel as an calibration signal.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Variables:</th><td class="field-body"><ul class="first simple">
+<li><strong>light_curve</strong> (<em>'array_like'</em>) – The lightcurve model</li>
+<li><strong>transit_timing</strong> (<em>'list'</em>) – list with start time and end time of transit</li>
+<li><strong>light_curve_interpolated</strong> (<em>'list' of 'ndarray'</em>) – to the time grid of the observations interpolated lightcurve model</li>
+<li><strong>calibration_signal</strong> (<em>'list' of 'ndarray'</em>) – lightcurve model of the calibration signal</li>
+<li><strong>transittype</strong> (<em>'str'</em>) – Currently either ‘eclipse’ or ‘transit’</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Raises:</th><td class="field-body"><p class="first last"><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#AttributeError" title="(in Python v3.7)"><code class="xref py py-exc docutils literal notranslate"><span class="pre">AttributeError</span></code></a> – Raises error if observations not properly defined.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<div class="admonition-notes admonition">
+<p class="first admonition-title">Notes</p>
+<p class="last">The only lightcurve models presently incorporated in the CASCADe code
+are the ones provide by batman package.</p>
+</div>
+<div class="admonition-examples admonition">
+<p class="first admonition-title">Examples</p>
+<p>To define the lightcurve model appropriate for the observations
+loaded into the instance of a TSO obkect, excecute the
+following command:</p>
+<div class="last highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">tso</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;define_eclipse_model&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
 </dd></dl>
 
 <dl class="method">
@@ -275,26 +327,32 @@ light.</p>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>spectral_trace</strong> – The trace of the dispersed light on the detector normalized
+<tr class="field-odd field"><th class="field-name">Variables:</th><td class="field-body"><ul class="first simple">
+<li><strong>spectral_trace</strong> (<em>'ndarray'</em>) – The trace of the dispersed light on the detector normalized
 to its median position. In case the data are extracted spectra,
 the trace is zero.</li>
-<li><strong>position</strong> – Postion of the source on the detector in the cross dispersion
+<li><strong>position</strong> (<em>'ndarray'</em>) – Postion of the source on the detector in the cross dispersion
 directon as a function of time, normalized to the
 median position.</li>
-<li><strong>median_position</strong> – median source position.</li>
+<li><strong>median_position</strong> (<em>'float'</em>) – median source position.</li>
 </ul>
 </td>
 </tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last"><ul class="simple">
-<li><em>position</em> – position of source in time</li>
-<li><em>med_position</em> – median (in time) position of source</li>
-</ul>
-</p>
+<tr class="field-even field"><th class="field-name">Raises:</th><td class="field-body"><p class="first last"><em>AttributeError, AssertionError</em> – Raises error if input observational data or type of data is
+not properly difined. Also raises arror if data is not sigma cliped</p>
 </td>
 </tr>
 </tbody>
 </table>
+<div class="admonition-examples admonition">
+<p class="first admonition-title">Examples</p>
+<p>To determine the position of the source in the cross dispersion
+direction from the in the tso object loaded data set, excecute the
+following command:</p>
+<div class="last highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">tso</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;determine_source_position&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
 </dd></dl>
 
 <dl class="method">
@@ -307,25 +365,53 @@ spectral trace with a pixel width of nExtractionWidth</p>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"><em>mask</em> – In case data are Spectra : 1D mask
-In case data are Spectral images or cubes: 2D mask</td>
+<tr class="field-odd field"><th class="field-name">Variables:</th><td class="field-body"><ul class="first simple">
+<li><strong>nExtractionWidth</strong> (<em>'int'</em>) – The width of the extraction aperture , cetered on the
+spectral trace of the source. In case of 1d spectral data, a
+width of 1 will be assumed.</li>
+<li><strong>extraction_mask</strong> (<em>'ndarray'</em>) – In case data are Spectra : 1D mask
+In case data are Spectral images or cubes: 2D mask</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Raises:</th><td class="field-body"><p class="first last"><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#AttributeError" title="(in Python v3.7)"><code class="xref py py-exc docutils literal notranslate"><span class="pre">AttributeError</span></code></a> – Raises error if the width of the mask or the source position
+and spectral trace are not defined.</p>
+</td>
 </tr>
 </tbody>
 </table>
+<div class="admonition-examples admonition">
+<p class="first admonition-title">Examples</p>
+<p>To set the extraction mask, which will define the sub set of the data
+from which the planetary spectrum will be determined, sexcecute the
+following command:</p>
+<div class="last highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">tso</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;set_extraction_mask&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
 </dd></dl>
 
 <dl class="method">
 <dt id="cascade.TSO.TSO.TSOSuite._create_edge_mask">
 <code class="descname">_create_edge_mask</code><span class="sig-paren">(</span><em>kernel</em>, <em>roi_mask_cube</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cascade/TSO/TSO.html#TSOSuite._create_edge_mask"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cascade.TSO.TSO.TSOSuite._create_edge_mask" title="Permalink to this definition">¶</a></dt>
-<dd><p>Create an edge mask to mask all pixels for which the convolution kernel
-extends beyond the ROI
-:param kernel:
-:param roi_mask:</p>
+<dd><p>Helper function for the optimal extraction task. This function
+creates an edge mask to mask all pixels for which the convolution
+kernel extends beyond the region of interest.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"><em>edge_mask</em></td>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>kernel</strong> (<em>'array_like'</em>) – Convolution kernel specific for a given instrument and observing
+mode, used in tasks such as replacing bad pixels and
+spectral extraction.</li>
+<li><strong>roi_mask</strong> (<em>'array_like'</em>) – Mask defining the region of interest from which the speectra will
+be extracted.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last"><strong>edge_mask</strong> (<em>‘array_like’</em>) – The edge mask based on the input kernel and roi_mask</p>
+</td>
 </tr>
 </tbody>
 </table>
@@ -334,23 +420,30 @@ extends beyond the ROI
 <dl class="method">
 <dt id="cascade.TSO.TSO.TSOSuite._create_extraction_profile">
 <code class="descname">_create_extraction_profile</code><span class="sig-paren">(</span><em>cleaned_data_with_roi_mask</em>, <em>extracted_spectra</em>, <em>kernel</em>, <em>mask_for_extraction</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cascade/TSO/TSO.html#TSOSuite._create_extraction_profile"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cascade.TSO.TSO.TSOSuite._create_extraction_profile" title="Permalink to this definition">¶</a></dt>
-<dd><p>Create the normilzed source profile used for optimal extraction.
-The cleaned data is convolved with an appropriate kernel to smooth the
-profile and to increase the SNR. On the edges, where the kernel extends
-over the boundary, non convolved data is used to prevent edge effects</p>
+<dd><p>Helper function for the optimal extraction task.
+This function creates the normilzed source profile used for optimal
+extraction. The cleaned data is convolved with an appropriate kernel
+to smooth the profile and to increase the SNR. On the edges, where the
+kernel extends over the boundary, non convolved data is used to
+prevent edge effects.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>cleaned_data_with_roi_mask</strong> – </li>
-<li><strong>extracted_spectra</strong> – </li>
-<li><strong>kernel</strong> – </li>
-<li><strong>mask_for_extraction</strong> – </li>
+<li><strong>cleaned_data_with_roi_mask</strong> (<em>'numpy.ma.core.MaskedArray'</em>) – The cleaned input data from which the extraction profile is
+derived. The mask attached to this data defines the region of
+interest around the target source.</li>
+<li><strong>extracted_spectra</strong> (<em>'numpy.ma.core.MaskedArray'</em>) – Best guess for the spectrum of the source from which the extraction
+profile is determined.</li>
+<li><strong>kernel</strong> (<em>'ndarray'</em>) – Convolution kernel used to create smoothed spectral images</li>
+<li><strong>mask_for_extraction</strong> (<em>'ndarray'</em>) – Mask containing all pixels which are flagged as bad in the not
+cleaned data, i.e. all pixels which value have been replaced
+after cleaning.</li>
 </ul>
 </td>
 </tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last"><em>extraction_profile</em></p>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last"><strong>extraction_profile</strong> (<em>‘ndarray’</em>) – The extraction profile used for optimal spectral extraction.</p>
 </td>
 </tr>
 </tbody>
@@ -360,15 +453,19 @@ over the boundary, non convolved data is used to prevent edge effects</p>
 <dl class="method">
 <dt id="cascade.TSO.TSO.TSOSuite._create_3dKernel">
 <code class="descname">_create_3dKernel</code><span class="sig-paren">(</span><em>sigma_time</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cascade/TSO/TSO.html#TSOSuite._create_3dKernel"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cascade.TSO.TSO.TSOSuite._create_3dKernel" title="Permalink to this definition">¶</a></dt>
-<dd><p>Create a 3d Kernel from 2d Instrument specific Kernel
-to include time dimention</p>
+<dd><p>Helper function for the optimal extraction taks. This function
+creates a 3d kernel from a 2d instrument specific kernel
+to include the time dimention thus enabling convolution in both the
+spatial and wavelength direction as well as along the time axis.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>sigma_time</strong> – </td>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>sigma_time</strong> (<em>'float'</em>) – </td>
 </tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><em>3dKernel</em></td>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><strong>3dKernel</strong> (<em>‘ndarray’</em>)</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Raises:</th><td class="field-body"><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#AttributeError" title="(in Python v3.7)"><code class="xref py py-exc docutils literal notranslate"><span class="pre">AttributeError</span></code></a> – An error is raised if no instrument specific kernel is defined.</td>
 </tr>
 </tbody>
 </table>
@@ -377,59 +474,115 @@ to include time dimention</p>
 <dl class="method">
 <dt id="cascade.TSO.TSO.TSOSuite.optimal_extraction">
 <code class="descname">optimal_extraction</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/cascade/TSO/TSO.html#TSOSuite.optimal_extraction"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cascade.TSO.TSO.TSOSuite.optimal_extraction" title="Permalink to this definition">¶</a></dt>
-<dd><p>Optimally extract spectrum using procedure of
-Horne 1986, PASP 98, 609</p>
+<dd><p>Optimally extract spectrum using procedure of Horne 1986
+<a class="footnote-reference" href="#id2" id="id1">[1]</a> The extraction consists of two iterations: The first one to
+determine the extraction profile, the second itereation to
+extract the spectrum of the target source.</p>
+<div class="admonition-notes admonition">
+<p class="first admonition-title">Notes</p>
+<p class="last">We use a convolution with a kernel elongated along the spectral trace
+rather than a polynomial fit along the trace as in the original paper
+by Horne 1986.</p>
+</div>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"><em>Optimally extracted 1d Spectra</em></td>
+<tr class="field-odd field"><th class="field-name">Variables:</th><td class="field-body"><strong>dataset_optimal_extracted</strong> (<em>cascade.data_model.SpectralDataTimeSeries'</em>) – Time series if optimally extracted 1d spectra.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Raises:</th><td class="field-body"><em>AttributeError, AssertionError</em> – An error is raised if the data and cleaned data sets are not
+defined, the source position is not determined or of the
+parameters for the optimal extraction task are not set in the
+initialization files.</td>
 </tr>
 </tbody>
 </table>
+<div class="admonition-references admonition">
+<p class="first admonition-title">References</p>
+<table class="last docutils footnote" frame="void" id="id2" rules="none">
+<colgroup><col class="label" /><col /></colgroup>
+<tbody valign="top">
+<tr><td class="label"><a class="fn-backref" href="#id1">[1]</a></td><td>Horne 1986, PASP 98, 609</td></tr>
+</tbody>
+</table>
+</div>
+<div class="admonition-examples admonition">
+<p class="first admonition-title">Examples</p>
+<p>To optimally extract a spectrum of the target star which data is stored
+in an TSO instance, excecute the following command:</p>
+<div class="last highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">tso</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;optimal_extraction&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
 </dd></dl>
 
 <dl class="method">
 <dt id="cascade.TSO.TSO.TSOSuite.select_regressors">
 <code class="descname">select_regressors</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/cascade/TSO/TSO.html#TSOSuite.select_regressors"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cascade.TSO.TSO.TSOSuite.select_regressors" title="Permalink to this definition">¶</a></dt>
 <dd><p>Select pixels which will be used as regressors.</p>
-<dl class="docutils">
-<dt>List of regressors, using the following list index:</dt>
-<dd><p class="first">first index: [# nod]
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Variables:</th><td class="field-body"><strong>regressor_list</strong> – List of regressors, using the following list index:
+first index: [# nod]
 second index: [# valid pixel in extraction mask]
 third index: [0=pixel coord; 1=list of regressors]
-forth index: [0=coordinate wave direction;</p>
-<blockquote class="last">
-<div>1=coordinate spatial direction]</div></blockquote>
-</dd>
-</dl>
+forth index: [0=coordinate wave direction;
+1=coordinate spatial direction]</td>
+</tr>
+</tbody>
+</table>
+<div class="admonition-examples admonition">
+<p class="first admonition-title">Examples</p>
+<p>To setup the list of regressors for each data point on which the
+exoplanet spectum will be based, execute the following command:</p>
+<div class="last highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">tso</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;select_regressors&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
 </dd></dl>
 
 <dl class="staticmethod">
 <dt id="cascade.TSO.TSO.TSOSuite.get_design_matrix">
 <em class="property">static </em><code class="descname">get_design_matrix</code><span class="sig-paren">(</span><em>cleaned_data_in</em>, <em>original_mask_in</em>, <em>regressor_selection</em>, <em>nrebin</em>, <em>clip=False</em>, <em>clip_pctl_time=0.0</em>, <em>clip_pctl_regressors=0.0</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cascade/TSO/TSO.html#TSOSuite.get_design_matrix"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cascade.TSO.TSO.TSOSuite.get_design_matrix" title="Permalink to this definition">¶</a></dt>
 <dd><p>Return the design matrix based on the data set itself</p>
-<blockquote>
-<div><dl class="docutils">
-<dt>cleaned_data_in</dt>
-<dd>time series data with bad pixels corrected</dd>
-<dt>original_mask_in</dt>
-<dd>data mask before cleaning</dd>
-</dl>
-<p>regressor_selection
-nrebin
-clip
-clip_pctl_time
-clip_pctl_regressors</p>
-</div></blockquote>
-<blockquote>
-<div>Design Matirx</div></blockquote>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>cleaned_data_in</strong> (<em>'masked quantity'</em>) – time series data with bad pixels corrected</li>
+<li><strong>original_mask_in</strong> (<em>'ndarray'</em>) – data mask before cleaning</li>
+<li><strong>regressor_selection</strong> (<em>'list' of 'int'</em>) – </li>
+<li><strong>nrebin</strong> (<em>'int'</em>) – </li>
+<li><strong>clip</strong> (<em>'float'</em>) – </li>
+<li><strong>clip_pctl_time</strong> (<em>'float'</em>) – </li>
+<li><strong>clip_pctl_regressors</strong> (<em>'float'</em>) – </li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last"><em>design_matrix</em> – The design matrix used in the causal pixel regression model</p>
+</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 <dl class="method">
 <dt id="cascade.TSO.TSO.TSOSuite.reshape_data">
 <code class="descname">reshape_data</code><span class="sig-paren">(</span><em>data_in</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cascade/TSO/TSO.html#TSOSuite.reshape_data"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cascade.TSO.TSO.TSOSuite.reshape_data" title="Permalink to this definition">¶</a></dt>
 <dd><p>Reshape the time series data to a uniform dimentional shape</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>data_in</strong> (<em>'ndarray'</em>) – </td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><strong>data_out</strong> (<em>‘ndarray’</em>)</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 <dl class="method">
@@ -437,24 +590,81 @@ clip_pctl_regressors</p>
 <code class="descname">return_all_design_matrices</code><span class="sig-paren">(</span><em>clip=False</em>, <em>clip_pctl_time=0.0</em>, <em>clip_pctl_regressors=0.0</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cascade/TSO/TSO.html#TSOSuite.return_all_design_matrices"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cascade.TSO.TSO.TSOSuite.return_all_design_matrices" title="Permalink to this definition">¶</a></dt>
 <dd><p>Setup the regression matrix based on the sub set of the data slected
 to be used as calibrators.</p>
-<dl class="docutils">
-<dt>list with design matrici with the following index convention:</dt>
-<dd>first index: [# nods]
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>clip</strong> (<em>'bool'</em>) – default False</li>
+<li><strong>clip_pctl_time</strong> (<em>'float'</em>) – Default 0.00</li>
+<li><strong>clip_pctl_regressors</strong> (<em>'float'</em>) – Default 0.00</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Variables:</th><td class="field-body"><p class="first"><strong>design_matrix</strong> – list with design matrici with the following index convention:
+first index: [# nods]
 second index : [# of valid pixels within extraction mask]
-third index : [0]</dd>
-</dl>
+third index : [0]</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Raises:</th><td class="field-body"><p class="first last"><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#AttributeError" title="(in Python v3.7)"><code class="xref py py-exc docutils literal notranslate"><span class="pre">AttributeError</span></code></a></p>
+</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 <dl class="method">
 <dt id="cascade.TSO.TSO.TSOSuite.calibrate_timeseries">
 <code class="descname">calibrate_timeseries</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/cascade/TSO/TSO.html#TSOSuite.calibrate_timeseries"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cascade.TSO.TSO.TSOSuite.calibrate_timeseries" title="Permalink to this definition">¶</a></dt>
-<dd><p>Calibrate the ligth curve data</p>
+<dd><p>This is the main function which runs the regression model to
+calibrate the input spectral light curve data and to extract the
+planetary signal as function of wavelength.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Variables:</th><td class="field-body"><strong>calibration_results</strong> (<em>'SimpleNamespace'</em>) – The calibration_results attribute contains all calibrated data
+and auxilary data.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Raises:</th><td class="field-body"><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#AttributeError" title="(in Python v3.7)"><code class="xref py py-exc docutils literal notranslate"><span class="pre">AttributeError</span></code></a> – an Error is raised if the nessecary steps to be able to run this
+task have not been executed properly or if the parameters for
+the regression model have not been set in the initialization files.</td>
+</tr>
+</tbody>
+</table>
+<div class="admonition-examples admonition">
+<p class="first admonition-title">Examples</p>
+<p>To create a calibrated spectral time series and derive the
+planetary signal execute the following command:</p>
+<div class="last highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">tso</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;calibrate_timeseries&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
 </dd></dl>
 
 <dl class="method">
 <dt id="cascade.TSO.TSO.TSOSuite.extract_spectrum">
 <code class="descname">extract_spectrum</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/cascade/TSO/TSO.html#TSOSuite.extract_spectrum"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cascade.TSO.TSO.TSOSuite.extract_spectrum" title="Permalink to this definition">¶</a></dt>
-<dd><p>Extract the planetary spectrum from the calibrated ligth curve data</p>
+<dd><p>Extract the planetary spectrum from the calibrated light curve data</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Variables:</th><td class="field-body"><strong>exoplanet_spectrum</strong> – </td>
+</tr>
+<tr class="field-even field"><th class="field-name">Raises:</th><td class="field-body"><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#AttributeError" title="(in Python v3.7)"><code class="xref py py-exc docutils literal notranslate"><span class="pre">AttributeError</span></code></a></td>
+</tr>
+</tbody>
+</table>
+<div class="admonition-examples admonition">
+<p class="first admonition-title">Examples</p>
+<p>To extract the exoplanet spectum from the calibrated signal,
+execute the following command:</p>
+<div class="last highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">tso</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;extract_spectrum&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
 </dd></dl>
 
 <dl class="method">
@@ -462,12 +672,43 @@ third index : [0]</dd>
 <code class="descname">correct_extracted_spectrum</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/cascade/TSO/TSO.html#TSOSuite.correct_extracted_spectrum"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cascade.TSO.TSO.TSOSuite.correct_extracted_spectrum" title="Permalink to this definition">¶</a></dt>
 <dd><p>Make correction for non-uniform subtraction of transit signal due to
 differences in the relative weighting of the regressors</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Raises:</th><td class="field-body"><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#AttributeError" title="(in Python v3.7)"><code class="xref py py-exc docutils literal notranslate"><span class="pre">AttributeError</span></code></a></td>
+</tr>
+</tbody>
+</table>
+<div class="admonition-examples admonition">
+<p class="first admonition-title">Examples</p>
+<p>To correct the extracted planetary signal for non-uniform
+subtraction of an averige transit depth, execute the following command:</p>
+<div class="last highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">tso</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;correct_extracted_spectrum&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
 </dd></dl>
 
 <dl class="method">
 <dt id="cascade.TSO.TSO.TSOSuite.save_results">
 <code class="descname">save_results</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/cascade/TSO/TSO.html#TSOSuite.save_results"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cascade.TSO.TSO.TSOSuite.save_results" title="Permalink to this definition">¶</a></dt>
 <dd><p>Save results</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Raises:</th><td class="field-body"><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#AttributeError" title="(in Python v3.7)"><code class="xref py py-exc docutils literal notranslate"><span class="pre">AttributeError</span></code></a></td>
+</tr>
+</tbody>
+</table>
+<div class="admonition-examples admonition">
+<p class="first admonition-title">Examples</p>
+<p>To save the calibrated spectrum, execute the following command:</p>
+<div class="last highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">tso</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;save_results&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
 </dd></dl>
 
 <dl class="method">
@@ -475,6 +716,22 @@ differences in the relative weighting of the regressors</p>
 <code class="descname">plot_results</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/cascade/TSO/TSO.html#TSOSuite.plot_results"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cascade.TSO.TSO.TSOSuite.plot_results" title="Permalink to this definition">¶</a></dt>
 <dd><p>Plot the extracted planetary spectrum and scaled signal on the
 detector.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Raises:</th><td class="field-body"><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#AttributeError" title="(in Python v3.7)"><code class="xref py py-exc docutils literal notranslate"><span class="pre">AttributeError</span></code></a></td>
+</tr>
+</tbody>
+</table>
+<div class="admonition-examples admonition">
+<p class="first admonition-title">Examples</p>
+<p>To plot the planetary signal and other diadnostic plots, execute
+the following command:</p>
+<div class="last highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">tso</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;plot_results&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
 </dd></dl>
 
 </dd></dl>

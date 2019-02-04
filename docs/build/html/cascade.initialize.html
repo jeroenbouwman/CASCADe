@@ -13,6 +13,7 @@
     <script type="text/javascript" src="_static/jquery.js"></script>
     <script type="text/javascript" src="_static/underscore.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
+    <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="The cascade.instruments module" href="cascade.instruments.html" />
@@ -52,28 +53,71 @@
 <span id="the-cascade-initialize-module"></span><h1>The cascade.initialize module<a class="headerlink" href="#module-cascade.initialize.initialize" title="Permalink to this headline">¶</a></h1>
 <p>This Module defines the functionality to generate and read .ini files which
 are used to initialize CASCADe.</p>
-<p>Created on Thu Mar 16 21:02:31 2017</p>
-<p>&#64;author: bouwman</p>
+<div class="admonition-examples admonition">
+<p class="first admonition-title">Examples</p>
+<p>An example how the initilize module is used:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">cascade</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">default_path</span> <span class="o">=</span> <span class="n">cascade</span><span class="o">.</span><span class="n">initialize</span><span class="o">.</span><span class="n">default_initialization_path</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">success</span> <span class="o">=</span> <span class="n">cascade</span><span class="o">.</span><span class="n">initialize</span><span class="o">.</span><span class="n">generate_default_initialization</span><span class="p">()</span>
+</pre></div>
+</div>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">tso</span> <span class="o">=</span> <span class="n">cascade</span><span class="o">.</span><span class="n">TSO</span><span class="o">.</span><span class="n">TSOSuite</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">cascade</span><span class="o">.</span><span class="n">initialize</span><span class="o">.</span><span class="n">cascade_configuration</span><span class="o">.</span><span class="n">isInitialized</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">tso</span><span class="o">.</span><span class="n">cascade_parameters</span><span class="o">.</span><span class="n">isInitialized</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">assert</span> <span class="n">tso</span><span class="o">.</span><span class="n">cascade_parameters</span> <span class="o">==</span> <span class="n">cascade</span><span class="o">.</span><span class="n">initialize</span><span class="o">.</span><span class="n">cascade_configuration</span>
+</pre></div>
+</div>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">tso</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s1">&#39;initialize&#39;</span><span class="p">,</span> <span class="s1">&#39;cascade_default.ini&#39;</span><span class="p">,</span> <span class="n">path</span><span class="o">=</span><span class="n">default_path</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">cascade</span><span class="o">.</span><span class="n">initialize</span><span class="o">.</span><span class="n">cascade_configuration</span><span class="o">.</span><span class="n">isInitialized</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">tso</span><span class="o">.</span><span class="n">cascade_parameters</span><span class="o">.</span><span class="n">isInitialized</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="last highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">tso</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;reset&quot;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">cascade</span><span class="o">.</span><span class="n">initialize</span><span class="o">.</span><span class="n">cascade_configuration</span><span class="o">.</span><span class="n">isInitialized</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">tso</span><span class="o">.</span><span class="n">cascade_parameters</span><span class="o">.</span><span class="n">isInitialized</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<dl class="data">
+<dt id="cascade.initialize.initialize.default_initialization_path">
+<code class="descname">default_initialization_path</code><em class="property"> = '/home/bouwman/CASCADeInit/'</em><a class="headerlink" href="#cascade.initialize.initialize.default_initialization_path" title="Permalink to this definition">¶</a></dt>
+<dd><p>Default directory for CASCADe initialization files</p>
+</dd></dl>
+
 <dl class="function">
 <dt id="cascade.initialize.initialize.generate_default_initialization">
 <code class="descname">generate_default_initialization</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/cascade/initialize/initialize.html#generate_default_initialization"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cascade.initialize.initialize.generate_default_initialization" title="Permalink to this definition">¶</a></dt>
-<dd><p>Convenience function to generate example .ini file for CASCADe</p>
+<dd><p>Convenience function to generate an example .ini file for CASCADe
+initialization. The file will be saved in the default directory defined by
+default_initialization_path. Returns True if successfully runned.</p>
 </dd></dl>
 
 <dl class="class">
 <dt id="cascade.initialize.initialize.configurator">
 <em class="property">class </em><code class="descname">configurator</code><span class="sig-paren">(</span><em>*file_names</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cascade/initialize/initialize.html#configurator"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cascade.initialize.initialize.configurator" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.7)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>This class defined the configuration singleton which will provide
+all parameters needed to run the CASCADe to all modules of the code.</p>
 <dl class="attribute">
 <dt id="cascade.initialize.initialize.configurator.isInitialized">
 <code class="descname">isInitialized</code><em class="property"> = False</em><a class="headerlink" href="#cascade.initialize.initialize.configurator.isInitialized" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Will be set to True if initialized</p>
+</dd></dl>
 
 <dl class="method">
 <dt id="cascade.initialize.initialize.configurator.reset">
 <code class="descname">reset</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/cascade/initialize/initialize.html#configurator.reset"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cascade.initialize.initialize.configurator.reset" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>If called, this function will remove all initialized parameters.</p>
+</dd></dl>
 
+</dd></dl>
+
+<dl class="data">
+<dt id="cascade.initialize.initialize.cascade_configuration">
+<code class="descname">cascade_configuration</code><em class="property"> = &lt;cascade.initialize.initialize.configurator object&gt;</em><a class="headerlink" href="#cascade.initialize.initialize.cascade_configuration" title="Permalink to this definition">¶</a></dt>
+<dd><p>Singleton containing the entite configuration settings for the
+CASCADe code to work. This includes object and observation definitions and
+causal noise model settings.</p>
 </dd></dl>
 
 </div>

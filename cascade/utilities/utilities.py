@@ -1,9 +1,28 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+# This file is part of CASCADe package
+#
+# Developed within the ExoplANETS-A H2020 program.
+#
+# See the COPYRIGHT file at the top-level directory of this distribution
+# for details of code ownership.
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+# Copyright (C) 2018  Jeroen Bouwman
 """
 This Module defines some utility functions used in cascade
-
-@author: bouwman
 """
 
 import numpy as np
@@ -17,6 +36,15 @@ __all__ = ['write_timeseries_to_fits', 'find', 'spectres']
 def write_timeseries_to_fits(data, path):
     """
     Write spectral timeseries data object to fits files
+
+    Parameters
+    ----------
+    data : 'ndarry' or 'cascade.data_model.SpectralDataTimeSeries'
+        The data cube which will be save to fits file. For each time step
+        a fits file will be generated.
+    path : 'str'
+        Path to the directory where the fits files will be saved.
+
     """
     ndim = data.data.ndim
     ntime = data.data.shape[-1]
@@ -79,6 +107,18 @@ def write_timeseries_to_fits(data, path):
 def find(pattern, path):
     """
     Return  a list of all data files
+
+    Parameters
+    ----------
+    pattern : 'str'
+        Pattern used to search for files.
+    path " 'str'
+        Path to directory to be searched.
+
+    Returns
+    -------
+    result : 'list' of 'str'
+        Sorted list of filenames matching the 'pattern' search
     """
     result = []
     for root, dirs, files in os.walk(path):
@@ -98,7 +138,6 @@ def spectres(new_spec_wavs, old_spec_wavs, spec_fluxes, spec_errs=None):
 
     Parameters
     ----------
-
     new_spec_wavs : numpy.ndarray
         Array containing the new wavelength sampling desired for the spectrum
         or spectra.
@@ -119,7 +158,6 @@ def spectres(new_spec_wavs, old_spec_wavs, spec_fluxes, spec_errs=None):
 
     Returns
     -------
-
     resampled_fluxes : numpy.ndarray
         Array of resampled flux values, first dimension is the same length
         as new_spec_wavs, other dimensions are the same as spec_fluxes

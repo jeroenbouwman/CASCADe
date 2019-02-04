@@ -13,6 +13,7 @@
     <script type="text/javascript" src="../../../_static/jquery.js"></script>
     <script type="text/javascript" src="../../../_static/underscore.js"></script>
     <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
     <link rel="index" title="Index" href="../../../genindex.html" />
     <link rel="search" title="Search" href="../../../search.html" />
    
@@ -61,6 +62,7 @@
 <span class="c1"># You should have received a copy of the GNU General Public License</span>
 <span class="c1"># along with this program.  If not, see &lt;http://www.gnu.org/licenses/&gt;.</span>
 <span class="c1">#</span>
+<span class="c1"># Copyright (C) 2018  Jeroen Bouwman</span>
 <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">This Module defines the functionality to get catalog data on the targeted</span>
 <span class="sd">exoplanet and define the model ligth curve for the system.</span>
@@ -501,6 +503,24 @@
 <span class="sd">    -------</span>
 <span class="sd">    blackbody : &#39;astropy.units.Quantity&#39;</span>
 <span class="sd">        B_nu in cgs units [ erg/s/cm2/Hz/sr]</span>
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+
+<span class="sd">    &gt;&gt;&gt; import cascade</span>
+<span class="sd">    &gt;&gt;&gt; import matplotlib.pyplot as plt</span>
+<span class="sd">    &gt;&gt;&gt; import numpy as np</span>
+<span class="sd">    &gt;&gt;&gt; from astropy.visualization import quantity_support</span>
+<span class="sd">    &gt;&gt;&gt; import astropy.units as u</span>
+
+<span class="sd">    &gt;&gt;&gt; wave = np.arange(4, 15, 0.05) * u.micron</span>
+<span class="sd">    &gt;&gt;&gt; temp = 300 * u.K</span>
+<span class="sd">    &gt;&gt;&gt; flux = cascade.exoplanet_tools.Planck(wave, temp)</span>
+
+<span class="sd">    &gt;&gt;&gt; with quantity_support():</span>
+<span class="sd">    ...     plt.plot(wave, flux)</span>
+<span class="sd">    ...     plt.show()</span>
+
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">blackbody_nu</span><span class="p">(</span><span class="n">wavelength</span><span class="p">,</span> <span class="n">temperature</span><span class="p">)</span></div>
 
@@ -984,6 +1004,19 @@
 <span class="sd">    table_list : &#39;list&#39;</span>
 <span class="sd">        List containing data record of the specified planet</span>
 
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+<span class="sd">    Download the Exoplanet Orbit Database:</span>
+
+<span class="sd">    &gt;&gt;&gt; import cascade</span>
+<span class="sd">    &gt;&gt;&gt; ct = cascade.exoplanet_tools.parse_database(&#39;EXOPLANETS.ORG&#39;,</span>
+<span class="sd">                                                    update=True)</span>
+
+<span class="sd">    Extract data record for single system:</span>
+
+<span class="sd">    &gt;&gt;&gt; dr = cascade.exoplanet_tools.extract_exoplanet_data(ct, &#39;HD 189733 b&#39;)</span>
+<span class="sd">    &gt;&gt;&gt; print(dr[0])</span>
+
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">target_name_or_position</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
         <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;Input name of coordinate not a string&quot;</span><span class="p">)</span>
@@ -1165,6 +1198,34 @@
 <span class="sd">    ------</span>
 <span class="sd">    ValueError</span>
 <span class="sd">        Error is raised if no valid lightcurve model is defined</span>
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+<span class="sd">    To test  the generation of a ligthcurve model</span>
+<span class="sd">    first generate standard .ini file and initialize cascade</span>
+
+<span class="sd">    &gt;&gt;&gt; import cascade</span>
+<span class="sd">    &gt;&gt;&gt; cascade.initialize.generate_default_initialization()</span>
+<span class="sd">    &gt;&gt;&gt; path = cascade.initialize.default_initialization_path</span>
+<span class="sd">    &gt;&gt;&gt; cascade_param = cascade.initialize.configurator(path+&quot;cascade_default.ini&quot;)</span>
+
+<span class="sd">    Define  the ligthcurve model specified in the .ini file</span>
+
+<span class="sd">    &gt;&gt;&gt; lc_model = cascade.exoplanet_tools.lightcuve()</span>
+<span class="sd">    &gt;&gt;&gt; print(lc_model.valid_models)</span>
+<span class="sd">    &gt;&gt;&gt; print(lc_model.par)</span>
+
+<span class="sd">    Plot the normized lightcurve</span>
+
+<span class="sd">    &gt;&gt;&gt; fig, axs = plt.subplots(1, 1, figsize=(12, 10))</span>
+<span class="sd">    &gt;&gt;&gt; axs.plot(lc_model.lc[0], lc_model.lc[1])</span>
+<span class="sd">    &gt;&gt;&gt; axs.set_ylabel(r&#39;Normalized Signal&#39;)</span>
+<span class="sd">    &gt;&gt;&gt; axs.set_xlabel(r&#39;Phase&#39;)</span>
+<span class="sd">    &gt;&gt;&gt; axes = plt.gca()</span>
+<span class="sd">    &gt;&gt;&gt; axes.set_xlim([0, 1])</span>
+<span class="sd">    &gt;&gt;&gt; axes.set_ylim([-1.1, 0.1])</span>
+<span class="sd">    &gt;&gt;&gt; plt.show()</span>
+
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">valid_models</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;batman&#39;</span><span class="p">}</span>
 

@@ -13,6 +13,7 @@
     <script type="text/javascript" src="../../../_static/jquery.js"></script>
     <script type="text/javascript" src="../../../_static/underscore.js"></script>
     <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
     <link rel="index" title="Index" href="../../../genindex.html" />
     <link rel="search" title="Search" href="../../../search.html" />
    
@@ -39,11 +40,31 @@
           <div class="body" role="main">
             
   <h1>Source code for cascade.data_model.data_model</h1><div class="highlight"><pre>
-<span></span><span class="c1"># -*- coding: utf-8 -*-</span>
+<span></span><span class="ch">#!/usr/bin/env python3</span>
+<span class="c1"># -*- coding: utf-8 -*-</span>
+<span class="c1"># This file is part of CASCADe package</span>
+<span class="c1">#</span>
+<span class="c1"># Developed within the ExoplANETS-A H2020 program.</span>
+<span class="c1">#</span>
+<span class="c1"># See the COPYRIGHT file at the top-level directory of this distribution</span>
+<span class="c1"># for details of code ownership.</span>
+<span class="c1">#</span>
+<span class="c1"># This program is free software: you can redistribute it and/or modify</span>
+<span class="c1"># it under the terms of the GNU General Public License as published by</span>
+<span class="c1"># the Free Software Foundation, either version 3 of the License, or</span>
+<span class="c1"># (at your option) any later version.</span>
+<span class="c1">#</span>
+<span class="c1"># This program is distributed in the hope that it will be useful,</span>
+<span class="c1"># but WITHOUT ANY WARRANTY; without even the implied warranty of</span>
+<span class="c1"># MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the</span>
+<span class="c1"># GNU General Public License for more details.</span>
+<span class="c1">#</span>
+<span class="c1"># You should have received a copy of the GNU General Public License</span>
+<span class="c1"># along with this program.  If not, see &lt;http://www.gnu.org/licenses/&gt;.</span>
+<span class="c1">#</span>
+<span class="c1"># Copyright (C) 2018  Jeroen Bouwman</span>
 <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">Created on Sun Jul 10 16:14:19 2016</span>
-
-<span class="sd">@author: bouwman</span>
+<span class="sd">This module defines the data models for the CASCADe transit spectroscopy code</span>
 <span class="sd">&quot;&quot;&quot;</span>
 <span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
 <span class="kn">import</span> <span class="nn">astropy.units</span> <span class="k">as</span> <span class="nn">u</span>
@@ -52,7 +73,7 @@
 <span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;SpectralData&#39;</span><span class="p">,</span> <span class="s1">&#39;SpectralDataTimeSeries&#39;</span><span class="p">]</span>
 
 
-<span class="k">class</span> <span class="nc">InstanceDescriptorMixin</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+<div class="viewcode-block" id="InstanceDescriptorMixin"><a class="viewcode-back" href="../../../cascade.data_model.html#cascade.data_model.data_model.InstanceDescriptorMixin">[docs]</a><span class="k">class</span> <span class="nc">InstanceDescriptorMixin</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Mixin to be able to add descriptor to the instance of the class</span>
 <span class="sd">    and not the class itself</span>
@@ -71,10 +92,10 @@
         <span class="k">else</span><span class="p">:</span>
             <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="s1">&#39;__set__&#39;</span><span class="p">):</span>
                 <span class="k">return</span> <span class="n">obj</span><span class="o">.</span><span class="fm">__set__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
-        <span class="k">return</span> <span class="nb">object</span><span class="o">.</span><span class="fm">__setattr__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
+        <span class="k">return</span> <span class="nb">object</span><span class="o">.</span><span class="fm">__setattr__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span></div>
 
 
-<span class="k">class</span> <span class="nc">UnitDesc</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+<div class="viewcode-block" id="UnitDesc"><a class="viewcode-back" href="../../../cascade.data_model.html#cascade.data_model.data_model.UnitDesc">[docs]</a><span class="k">class</span> <span class="nc">UnitDesc</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    A descriptor for adding auxilary measurements,</span>
 <span class="sd">    setting the property for the unit atribute</span>
@@ -102,10 +123,10 @@
 
     <span class="k">def</span> <span class="nf">__delete__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">instance</span><span class="p">):</span>
         <span class="nb">delattr</span><span class="p">(</span><span class="n">instance</span><span class="p">,</span> <span class="s2">&quot;_&quot;</span><span class="o">+</span><span class="bp">self</span><span class="o">.</span><span class="n">keyname</span><span class="p">)</span>
-        <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">values</span><span class="p">[</span><span class="n">instance</span><span class="p">]</span>
+        <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">values</span><span class="p">[</span><span class="n">instance</span><span class="p">]</span></div>
 
 
-<span class="k">class</span> <span class="nc">FlagDesc</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+<div class="viewcode-block" id="FlagDesc"><a class="viewcode-back" href="../../../cascade.data_model.html#cascade.data_model.data_model.FlagDesc">[docs]</a><span class="k">class</span> <span class="nc">FlagDesc</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    A descriptor for adding logical flags</span>
 <span class="sd">    &quot;&quot;&quot;</span>
@@ -122,10 +143,10 @@
 
     <span class="k">def</span> <span class="nf">__delete__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">instance</span><span class="p">):</span>
         <span class="nb">delattr</span><span class="p">(</span><span class="n">instance</span><span class="p">,</span> <span class="s2">&quot;_&quot;</span><span class="o">+</span><span class="bp">self</span><span class="o">.</span><span class="n">keyname</span><span class="p">)</span>
-        <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">values</span><span class="p">[</span><span class="n">instance</span><span class="p">]</span>
+        <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">values</span><span class="p">[</span><span class="n">instance</span><span class="p">]</span></div>
 
 
-<span class="k">class</span> <span class="nc">AuxilaryInfoDesc</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+<div class="viewcode-block" id="AuxilaryInfoDesc"><a class="viewcode-back" href="../../../cascade.data_model.html#cascade.data_model.data_model.AuxilaryInfoDesc">[docs]</a><span class="k">class</span> <span class="nc">AuxilaryInfoDesc</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    A descriptor for adding Auxilary information to the dataset</span>
 <span class="sd">    &quot;&quot;&quot;</span>
@@ -142,10 +163,10 @@
 
     <span class="k">def</span> <span class="nf">__delete__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">instance</span><span class="p">):</span>
         <span class="nb">delattr</span><span class="p">(</span><span class="n">instance</span><span class="p">,</span> <span class="s2">&quot;_&quot;</span><span class="o">+</span><span class="bp">self</span><span class="o">.</span><span class="n">keyname</span><span class="p">)</span>
-        <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">values</span><span class="p">[</span><span class="n">instance</span><span class="p">]</span>
+        <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">values</span><span class="p">[</span><span class="n">instance</span><span class="p">]</span></div>
 
 
-<span class="k">class</span> <span class="nc">MeasurementDesc</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+<div class="viewcode-block" id="MeasurementDesc"><a class="viewcode-back" href="../../../cascade.data_model.html#cascade.data_model.data_model.MeasurementDesc">[docs]</a><span class="k">class</span> <span class="nc">MeasurementDesc</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    A descriptor for adding auxilary measurements,</span>
 <span class="sd">    setting the properties for the the measurement and unit</span>
@@ -190,14 +211,18 @@
 
     <span class="k">def</span> <span class="nf">__delete__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">instance</span><span class="p">):</span>
         <span class="nb">delattr</span><span class="p">(</span><span class="n">instance</span><span class="p">,</span> <span class="s2">&quot;_&quot;</span><span class="o">+</span><span class="bp">self</span><span class="o">.</span><span class="n">keyname</span><span class="p">)</span>
-        <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">values</span><span class="p">[</span><span class="n">instance</span><span class="p">]</span>
+        <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">values</span><span class="p">[</span><span class="n">instance</span><span class="p">]</span></div>
 
 
 <div class="viewcode-block" id="SpectralData"><a class="viewcode-back" href="../../../cascade.data_model.html#cascade.data_model.data_model.SpectralData">[docs]</a><span class="k">class</span> <span class="nc">SpectralData</span><span class="p">(</span><span class="n">InstanceDescriptorMixin</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Class defining basic properties of spectral data</span>
-<span class="sd">    INPUT, required:</span>
-<span class="sd">    -----------------</span>
+<span class="sd">    In the instance if the SpectralData class</span>
+<span class="sd">    all data are stored internally as numppy arrays. Outputted data are</span>
+<span class="sd">    astropy Quantities unless no units (=None) are specified.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
 <span class="sd">    wavelength</span>
 <span class="sd">        wavelength of data (can be frequencies)</span>
 <span class="sd">    wavelenth_unit</span>
@@ -210,9 +235,6 @@
 <span class="sd">        uncertainty on spectral data</span>
 <span class="sd">    mask</span>
 <span class="sd">        mask defining masked data</span>
-
-<span class="sd">    INPUT, optional:</span>
-<span class="sd">    -----------------</span>
 <span class="sd">    **kwargs</span>
 <span class="sd">        any auxilary data relevant to the spectral data</span>
 <span class="sd">        (like position, detector temperature etc.)</span>
@@ -222,11 +244,27 @@
 <span class="sd">        and not to the class itself. Only the required input stated above</span>
 <span class="sd">        is always defined for all instances.</span>
 
-<span class="sd">    OUTPUT</span>
-<span class="sd">    ------</span>
-<span class="sd">    Instance of SpectralData class.</span>
-<span class="sd">    All data are stored internally as numppy arrays. Outputted data are</span>
-<span class="sd">    astropy Quantities unless no units (=None) are specified.</span>
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+<span class="sd">    To create an instance of a SpectralData object with an</span>
+<span class="sd">    initialization with data using units, run the following code:</span>
+
+<span class="sd">    &gt;&gt;&gt; import numpy as np</span>
+<span class="sd">    &gt;&gt;&gt; import astropu.units as u</span>
+<span class="sd">    &gt;&gt;&gt; from cascade.data_model import SpectralData</span>
+
+<span class="sd">    &gt;&gt;&gt; wave = np.array([1.0, 2.0, 3.0, 4.0, 5.0, 6.0])*u.micron</span>
+<span class="sd">    &gt;&gt;&gt; flux = np.array([8.0, 8.0, 8.0, 8.0, 8.0, 8.0])*u.Jy</span>
+<span class="sd">    &gt;&gt;&gt; sd = SpectralData(wavelength=wave, data=flux)</span>
+
+<span class="sd">    &gt;&gt;&gt; print(sd.data, sd.wavelength)</span>
+
+<span class="sd">    To change to convert the units to a different but equivalent unit:</span>
+
+<span class="sd">    &gt;&gt;&gt; sd.data_unit = u.erg/u.s/u.cm**2/u.Hz</span>
+<span class="sd">    &gt;&gt;&gt; sd.wavelength_unit = u.cm</span>
+<span class="sd">    &gt;&gt;&gt; print(sd.data, sd.wavelength)</span>
+
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">wavelength</span><span class="o">=</span><span class="nb">float</span><span class="p">(</span><span class="s2">&quot;NaN&quot;</span><span class="p">),</span> <span class="n">wavelength_unit</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
                  <span class="n">data</span><span class="o">=</span><span class="nb">float</span><span class="p">(</span><span class="s2">&quot;NaN&quot;</span><span class="p">),</span> <span class="n">data_unit</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">uncertainty</span><span class="o">=</span><span class="nb">float</span><span class="p">(</span><span class="s2">&quot;NaN&quot;</span><span class="p">),</span>
@@ -266,6 +304,13 @@
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">wavelength</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        The wavelength atttribute of the SpectralData is defined</span>
+<span class="sd">        through a getter and setter method. This ensures that the</span>
+<span class="sd">        returned wavelength has always a unit associated with it (if the</span>
+<span class="sd">        wavelength_unit is set) and that the returned  wavelength has the same</span>
+<span class="sd">        dimension and mask as the data attribute.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_wavelength_unit</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">unit_out</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_wavelength_unit</span>
         <span class="k">else</span><span class="p">:</span>
@@ -308,6 +353,11 @@
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">wavelength_unit</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        The wavelength_unit attribute of the SpectralData is defined</span>
+<span class="sd">        through a getter and setter method. This ensures that units can be</span>
+<span class="sd">        updated and the wavelength value will be adjusted accordingly.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_wavelength_unit</span>
 
     <span class="nd">@wavelength_unit</span><span class="o">.</span><span class="n">setter</span>
@@ -328,6 +378,12 @@
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">data</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        The data atttribute of the SpectralData is defined through a</span>
+<span class="sd">        getter and setter method. In case data is initialized with a</span>
+<span class="sd">        masked quantity, the data_unit and mask attributes will be set</span>
+<span class="sd">        automatically.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_data_unit</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">unit_out</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_data_unit</span>
         <span class="k">else</span><span class="p">:</span>
@@ -360,6 +416,12 @@
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">uncertainty</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        The uncertainty atttribute of the SpectralData is defined</span>
+<span class="sd">        through a getter and setter method. This ensures that the</span>
+<span class="sd">        returned uncertainty has the same unit associated with it</span>
+<span class="sd">        (if the data_unit is set) and the same mask as the data attribute.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_data_unit</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">unit_out</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_data_unit</span>
         <span class="k">else</span><span class="p">:</span>
@@ -397,6 +459,11 @@
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">data_unit</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        The data_unit attribute of the SpectralData is defined</span>
+<span class="sd">        through a getter and setter method. This ensures that units can be</span>
+<span class="sd">        updated and the data value will be adjusted accordingly.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_data_unit</span>
 
     <span class="nd">@data_unit</span><span class="o">.</span><span class="n">setter</span>
@@ -418,6 +485,12 @@
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">mask</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        The mask atttribute of the SpectralData is defined</span>
+<span class="sd">        through a getter and setter method. This ensures that the</span>
+<span class="sd">        returned mask has the same dimension as the data attribute and</span>
+<span class="sd">        will be set automatically if the input data is a masked array.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_mask</span><span class="o">.</span><span class="n">shape</span> <span class="o">==</span> <span class="p">():</span>
             <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="bp">self</span><span class="o">.</span><span class="n">_mask</span><span class="p">])</span>
         <span class="k">else</span><span class="p">:</span>
@@ -434,13 +507,52 @@
 <div class="viewcode-block" id="SpectralDataTimeSeries"><a class="viewcode-back" href="../../../cascade.data_model.html#cascade.data_model.data_model.SpectralDataTimeSeries">[docs]</a><span class="k">class</span> <span class="nc">SpectralDataTimeSeries</span><span class="p">(</span><span class="n">SpectralData</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Class defining timeseries of spectral data. This class inherits from</span>
-<span class="sd">    SpectralData. The data now has one additional dimension: time</span>
-<span class="sd">    Input:</span>
-<span class="sd">    -----</span>
-<span class="sd">    time</span>
-<span class="sd">        time of observation</span>
-<span class="sd">    time_unit</span>
+<span class="sd">    SpectralData. The data stored within this class has one additional</span>
+<span class="sd">    time dimension</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    wavelength : &#39;array_like&#39;</span>
+<span class="sd">        wavelength assigned to each data point (can be also be frequencies)</span>
+<span class="sd">    wavelenth_unit : &#39;astropy.units.core.Unit&#39;</span>
+<span class="sd">        The physical unit of the wavelength .</span>
+<span class="sd">    data : &#39;array_like&#39;</span>
+<span class="sd">        The spectral data to be analysed. This can be either spectra (1D),</span>
+<span class="sd">        spectral images (2D) or spectral data cubes (3D).</span>
+<span class="sd">    data_unit : astropy.units.core.Unit</span>
+<span class="sd">        The physical unit of the data.</span>
+<span class="sd">    uncertainty</span>
+<span class="sd">        The uncertainty associated with the spectral data.</span>
+<span class="sd">    mask : &#39;array_like&#39;</span>
+<span class="sd">        The bad pixel mask flagging all data not to be used.</span>
+<span class="sd">    **kwargs</span>
+<span class="sd">        any auxilary data relevant to the spectral data</span>
+<span class="sd">        (like position, detector temperature etc.)</span>
+<span class="sd">        If unit is not explicitly given a unit atribute is added.</span>
+<span class="sd">        Input argument can be instance of astropy quantity.</span>
+<span class="sd">        Auxilary atributes are added to instance of the SpectralData class</span>
+<span class="sd">        and not to the class itself. Only the required input stated above</span>
+<span class="sd">        is always defined for all instances.</span>
+<span class="sd">    time : &#39;array_like&#39;</span>
+<span class="sd">        The time of observation assiciated with each data point.</span>
+<span class="sd">    time_unit : &#39;astropy.units.core.Unit&#39;</span>
 <span class="sd">        physical unit of time data</span>
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+<span class="sd">    To create an instance of a SpectralDataaTimeSeries object with an</span>
+<span class="sd">    initialization with data using units, run the following code:</span>
+
+<span class="sd">    &gt;&gt;&gt; import numpy as np</span>
+<span class="sd">    &gt;&gt;&gt; from cascade.data_model import SpectralDataTimeSeries</span>
+
+<span class="sd">    &gt;&gt;&gt; wave = np.array([1.0, 2.0, 3.0, 4.0, 5.0, 6.0])*u.micron</span>
+<span class="sd">    &gt;&gt;&gt; flux = np.array([8.0, 8.0, 8.0, 8.0, 8.0, 8.0])*u.Jy</span>
+<span class="sd">    &gt;&gt;&gt; time = np.array([240000.0, 2400001.0, 2400002.0])*u.day</span>
+<span class="sd">    &gt;&gt;&gt; flux_time_series = np.repeat(flux[:, np.newaxis], time.shape[0], 1)</span>
+<span class="sd">    &gt;&gt;&gt; sdt = SpectralDataTimeSeries(wavelength=wave, data=flux_time_series,</span>
+<span class="sd">                                     time=time)</span>
+
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">wavelength</span><span class="o">=</span><span class="nb">float</span><span class="p">(</span><span class="s2">&quot;NaN&quot;</span><span class="p">),</span> <span class="n">wavelength_unit</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
                  <span class="n">data</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([[</span><span class="nb">float</span><span class="p">(</span><span class="s2">&quot;NaN&quot;</span><span class="p">)]]),</span> <span class="n">data_unit</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
@@ -456,6 +568,13 @@
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">time</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        The time atttribute of the SpectralDataTimeSeries is defined</span>
+<span class="sd">        through a getter and setter method. This ensures that the</span>
+<span class="sd">        returned time has always a unit associated with it if the time_unit is</span>
+<span class="sd">        set and that the returned time has the same dimension and mask as</span>
+<span class="sd">        the data attribute.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_time_unit</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">unit_out</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_time_unit</span>
         <span class="k">else</span><span class="p">:</span>
@@ -489,6 +608,11 @@
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">time_unit</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        The time_unit attribute of the SpectralDataTimeSeries is defined</span>
+<span class="sd">        through a getter and setter method. This ensures that units can be</span>
+<span class="sd">        updated and the time value will be adjusted accordingly.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_time_unit</span>
 
     <span class="nd">@time_unit</span><span class="o">.</span><span class="n">setter</span>

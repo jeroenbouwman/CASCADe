@@ -13,6 +13,7 @@
     <script type="text/javascript" src="_static/jquery.js"></script>
     <script type="text/javascript" src="_static/underscore.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
+    <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="The cascade.initialize module" href="cascade.initialize.html" />
@@ -101,7 +102,7 @@ function returns.</p>
 <tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><strong>flux</strong> (<em>‘astropy.units.Quantity’, u.Jy</em>) – Flux in Jy, converted from input Kband magnitude</p>
 </td>
 </tr>
-<tr class="field-odd field"><th class="field-name">Raises:</th><td class="field-body"><p class="first last"><code class="xref py py-exc docutils literal notranslate"><span class="pre">AssertionError</span></code> – raises error if Photometric system not recognized</p>
+<tr class="field-odd field"><th class="field-name">Raises:</th><td class="field-body"><p class="first last"><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#AssertionError" title="(in Python v3.7)"><code class="xref py py-exc docutils literal notranslate"><span class="pre">AssertionError</span></code></a> – raises error if Photometric system not recognized</p>
 </td>
 </tr>
 </tbody>
@@ -125,7 +126,7 @@ function returns.</p>
 <tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><strong>magnitude</strong> (<em>‘astropy.units.Quantity’, Kmag</em>) – Magnitude  converted from input fkux value</p>
 </td>
 </tr>
-<tr class="field-odd field"><th class="field-name">Raises:</th><td class="field-body"><p class="first last"><code class="xref py py-exc docutils literal notranslate"><span class="pre">AssertionError</span></code> – raises error if Photometric system not recognized</p>
+<tr class="field-odd field"><th class="field-name">Raises:</th><td class="field-body"><p class="first last"><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#AssertionError" title="(in Python v3.7)"><code class="xref py py-exc docutils literal notranslate"><span class="pre">AssertionError</span></code></a> – raises error if Photometric system not recognized</p>
 </td>
 </tr>
 </tbody>
@@ -151,6 +152,26 @@ function returns.</p>
 </tr>
 </tbody>
 </table>
+<div class="admonition-examples admonition">
+<p class="first admonition-title">Examples</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">cascade</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">astropy.visualization</span> <span class="k">import</span> <span class="n">quantity_support</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">astropy.units</span> <span class="k">as</span> <span class="nn">u</span>
+</pre></div>
+</div>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">wave</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="mi">15</span><span class="p">,</span> <span class="mf">0.05</span><span class="p">)</span> <span class="o">*</span> <span class="n">u</span><span class="o">.</span><span class="n">micron</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">temp</span> <span class="o">=</span> <span class="mi">300</span> <span class="o">*</span> <span class="n">u</span><span class="o">.</span><span class="n">K</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">flux</span> <span class="o">=</span> <span class="n">cascade</span><span class="o">.</span><span class="n">exoplanet_tools</span><span class="o">.</span><span class="n">Planck</span><span class="p">(</span><span class="n">wave</span><span class="p">,</span> <span class="n">temp</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="last highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="k">with</span> <span class="n">quantity_support</span><span class="p">():</span>
+<span class="gp">... </span>    <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">wave</span><span class="p">,</span> <span class="n">flux</span><span class="p">)</span>
+<span class="gp">... </span>    <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
 </dd></dl>
 
 <dl class="function">
@@ -380,7 +401,7 @@ The Exoplanet Orbit Database</dd>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Raises:</th><td class="field-body"><code class="xref py py-exc docutils literal notranslate"><span class="pre">ValueError</span></code> – Raises error if the input catalog is nor recognized</td>
+<tr class="field-odd field"><th class="field-name">Raises:</th><td class="field-body"><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.7)"><code class="xref py py-exc docutils literal notranslate"><span class="pre">ValueError</span></code></a> – Raises error if the input catalog is nor recognized</td>
 </tr>
 </tbody>
 </table>
@@ -408,12 +429,26 @@ which the record is extracted</li>
 </tr>
 </tbody>
 </table>
+<div class="admonition-examples admonition">
+<p class="first admonition-title">Examples</p>
+<p>Download the Exoplanet Orbit Database:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">cascade</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">ct</span> <span class="o">=</span> <span class="n">cascade</span><span class="o">.</span><span class="n">exoplanet_tools</span><span class="o">.</span><span class="n">parse_database</span><span class="p">(</span><span class="s1">&#39;EXOPLANETS.ORG&#39;</span><span class="p">,</span>
+<span class="go">                                                update=True)</span>
+</pre></div>
+</div>
+<p>Extract data record for single system:</p>
+<div class="last highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">dr</span> <span class="o">=</span> <span class="n">cascade</span><span class="o">.</span><span class="n">exoplanet_tools</span><span class="o">.</span><span class="n">extract_exoplanet_data</span><span class="p">(</span><span class="n">ct</span><span class="p">,</span> <span class="s1">&#39;HD 189733 b&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">dr</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+</pre></div>
+</div>
+</div>
 </dd></dl>
 
 <dl class="class">
 <dt id="cascade.exoplanet_tools.exoplanet_tools.lightcuve">
 <em class="property">class </em><code class="descname">lightcuve</code><a class="reference internal" href="_modules/cascade/exoplanet_tools/exoplanet_tools.html#lightcuve"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cascade.exoplanet_tools.exoplanet_tools.lightcuve" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.7)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
 <p>Class defining lightcurve model used to model the observed
 transit/eclipse observations.
 Current valid lightcurve models: batman</p>
@@ -438,10 +473,38 @@ the lightcurve model.</p>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Raises:</th><td class="field-body"><code class="xref py py-exc docutils literal notranslate"><span class="pre">ValueError</span></code> – Error is raised if no valid lightcurve model is defined</td>
+<tr class="field-odd field"><th class="field-name">Raises:</th><td class="field-body"><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.7)"><code class="xref py py-exc docutils literal notranslate"><span class="pre">ValueError</span></code></a> – Error is raised if no valid lightcurve model is defined</td>
 </tr>
 </tbody>
 </table>
+<div class="admonition-examples admonition">
+<p class="first admonition-title">Examples</p>
+<p>To test  the generation of a ligthcurve model
+first generate standard .ini file and initialize cascade</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">cascade</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">cascade</span><span class="o">.</span><span class="n">initialize</span><span class="o">.</span><span class="n">generate_default_initialization</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">path</span> <span class="o">=</span> <span class="n">cascade</span><span class="o">.</span><span class="n">initialize</span><span class="o">.</span><span class="n">default_initialization_path</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">cascade_param</span> <span class="o">=</span> <span class="n">cascade</span><span class="o">.</span><span class="n">initialize</span><span class="o">.</span><span class="n">configurator</span><span class="p">(</span><span class="n">path</span><span class="o">+</span><span class="s2">&quot;cascade_default.ini&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Define  the ligthcurve model specified in the .ini file</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">lc_model</span> <span class="o">=</span> <span class="n">cascade</span><span class="o">.</span><span class="n">exoplanet_tools</span><span class="o">.</span><span class="n">lightcuve</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">lc_model</span><span class="o">.</span><span class="n">valid_models</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">lc_model</span><span class="o">.</span><span class="n">par</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Plot the normized lightcurve</p>
+<div class="last highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">fig</span><span class="p">,</span> <span class="n">axs</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">12</span><span class="p">,</span> <span class="mi">10</span><span class="p">))</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">axs</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">lc_model</span><span class="o">.</span><span class="n">lc</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">lc_model</span><span class="o">.</span><span class="n">lc</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">axs</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;Normalized Signal&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">axs</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;Phase&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">axes</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">gca</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">axes</span><span class="o">.</span><span class="n">set_xlim</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">axes</span><span class="o">.</span><span class="n">set_ylim</span><span class="p">([</span><span class="o">-</span><span class="mf">1.1</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
 <dl class="attribute">
 <dt id="cascade.exoplanet_tools.exoplanet_tools.lightcuve.valid_models">
 <code class="descname">valid_models</code><em class="property"> = {'batman'}</em><a class="headerlink" href="#cascade.exoplanet_tools.exoplanet_tools.lightcuve.valid_models" title="Permalink to this definition">¶</a></dt>
@@ -452,7 +515,7 @@ the lightcurve model.</p>
 <dl class="class">
 <dt id="cascade.exoplanet_tools.exoplanet_tools.batman_model">
 <em class="property">class </em><code class="descname">batman_model</code><a class="reference internal" href="_modules/cascade/exoplanet_tools/exoplanet_tools.html#batman_model"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cascade.exoplanet_tools.exoplanet_tools.batman_model" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.7)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
 <p>This class defines the lightcurve model used to analyse the observed
 transit/eclipse using the batman package by Laura Kreidberg <a class="footnote-reference" href="#id2" id="id1">[1]</a>.</p>
 <table class="docutils field-list" frame="void" rules="none">
@@ -525,7 +588,7 @@ specified in CASCADe initialization file</p>
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"><strong>par</strong> (<em>‘ordered_dict’</em>) – input model parameters for batman lightcurve model</td>
 </tr>
-<tr class="field-even field"><th class="field-name">Raises:</th><td class="field-body"><code class="xref py py-exc docutils literal notranslate"><span class="pre">ValueError</span></code> – Raises error in case the observation type is not recognized.</td>
+<tr class="field-even field"><th class="field-name">Raises:</th><td class="field-body"><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.7)"><code class="xref py py-exc docutils literal notranslate"><span class="pre">ValueError</span></code></a> – Raises error in case the observation type is not recognized.</td>
 </tr>
 </tbody>
 </table>

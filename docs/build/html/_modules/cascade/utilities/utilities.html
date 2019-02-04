@@ -13,6 +13,7 @@
     <script type="text/javascript" src="../../../_static/jquery.js"></script>
     <script type="text/javascript" src="../../../_static/underscore.js"></script>
     <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
     <link rel="index" title="Index" href="../../../genindex.html" />
     <link rel="search" title="Search" href="../../../search.html" />
    
@@ -41,10 +42,29 @@
   <h1>Source code for cascade.utilities.utilities</h1><div class="highlight"><pre>
 <span></span><span class="ch">#!/usr/bin/env python3</span>
 <span class="c1"># -*- coding: utf-8 -*-</span>
+<span class="c1"># This file is part of CASCADe package</span>
+<span class="c1">#</span>
+<span class="c1"># Developed within the ExoplANETS-A H2020 program.</span>
+<span class="c1">#</span>
+<span class="c1"># See the COPYRIGHT file at the top-level directory of this distribution</span>
+<span class="c1"># for details of code ownership.</span>
+<span class="c1">#</span>
+<span class="c1"># This program is free software: you can redistribute it and/or modify</span>
+<span class="c1"># it under the terms of the GNU General Public License as published by</span>
+<span class="c1"># the Free Software Foundation, either version 3 of the License, or</span>
+<span class="c1"># (at your option) any later version.</span>
+<span class="c1">#</span>
+<span class="c1"># This program is distributed in the hope that it will be useful,</span>
+<span class="c1"># but WITHOUT ANY WARRANTY; without even the implied warranty of</span>
+<span class="c1"># MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the</span>
+<span class="c1"># GNU General Public License for more details.</span>
+<span class="c1">#</span>
+<span class="c1"># You should have received a copy of the GNU General Public License</span>
+<span class="c1"># along with this program.  If not, see &lt;http://www.gnu.org/licenses/&gt;.</span>
+<span class="c1">#</span>
+<span class="c1"># Copyright (C) 2018  Jeroen Bouwman</span>
 <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">This Module defines some utility functions used in cascade</span>
-
-<span class="sd">@author: bouwman</span>
 <span class="sd">&quot;&quot;&quot;</span>
 
 <span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
@@ -58,6 +78,15 @@
 <div class="viewcode-block" id="write_timeseries_to_fits"><a class="viewcode-back" href="../../../cascade.utilities.html#cascade.utilities.utilities.write_timeseries_to_fits">[docs]</a><span class="k">def</span> <span class="nf">write_timeseries_to_fits</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">path</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Write spectral timeseries data object to fits files</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    data : &#39;ndarry&#39; or &#39;cascade.data_model.SpectralDataTimeSeries&#39;</span>
+<span class="sd">        The data cube which will be save to fits file. For each time step</span>
+<span class="sd">        a fits file will be generated.</span>
+<span class="sd">    path : &#39;str&#39;</span>
+<span class="sd">        Path to the directory where the fits files will be saved.</span>
+
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">ndim</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">ndim</span>
     <span class="n">ntime</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
@@ -120,6 +149,18 @@
 <div class="viewcode-block" id="find"><a class="viewcode-back" href="../../../cascade.utilities.html#cascade.utilities.utilities.find">[docs]</a><span class="k">def</span> <span class="nf">find</span><span class="p">(</span><span class="n">pattern</span><span class="p">,</span> <span class="n">path</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Return  a list of all data files</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    pattern : &#39;str&#39;</span>
+<span class="sd">        Pattern used to search for files.</span>
+<span class="sd">    path &quot; &#39;str&#39;</span>
+<span class="sd">        Path to directory to be searched.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    result : &#39;list&#39; of &#39;str&#39;</span>
+<span class="sd">        Sorted list of filenames matching the &#39;pattern&#39; search</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">result</span> <span class="o">=</span> <span class="p">[]</span>
     <span class="k">for</span> <span class="n">root</span><span class="p">,</span> <span class="n">dirs</span><span class="p">,</span> <span class="n">files</span> <span class="ow">in</span> <span class="n">os</span><span class="o">.</span><span class="n">walk</span><span class="p">(</span><span class="n">path</span><span class="p">):</span>
@@ -139,7 +180,6 @@
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
-
 <span class="sd">    new_spec_wavs : numpy.ndarray</span>
 <span class="sd">        Array containing the new wavelength sampling desired for the spectrum</span>
 <span class="sd">        or spectra.</span>
@@ -160,7 +200,6 @@
 
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
-
 <span class="sd">    resampled_fluxes : numpy.ndarray</span>
 <span class="sd">        Array of resampled flux values, first dimension is the same length</span>
 <span class="sd">        as new_spec_wavs, other dimensions are the same as spec_fluxes</span>

@@ -20,6 +20,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
+# Copyright (C) 2018  Jeroen Bouwman
 """
 This Module defines the functionality to get catalog data on the targeted
 exoplanet and define the model ligth curve for the system.
@@ -460,6 +461,24 @@ def Planck(wavelength: u.micron, temperature: u.K):
     -------
     blackbody : 'astropy.units.Quantity'
         B_nu in cgs units [ erg/s/cm2/Hz/sr]
+
+    Examples
+    --------
+
+    >>> import cascade
+    >>> import matplotlib.pyplot as plt
+    >>> import numpy as np
+    >>> from astropy.visualization import quantity_support
+    >>> import astropy.units as u
+
+    >>> wave = np.arange(4, 15, 0.05) * u.micron
+    >>> temp = 300 * u.K
+    >>> flux = cascade.exoplanet_tools.Planck(wave, temp)
+
+    >>> with quantity_support():
+    ...     plt.plot(wave, flux)
+    ...     plt.show()
+
     """
     return blackbody_nu(wavelength, temperature)
 
@@ -943,6 +962,19 @@ def extract_exoplanet_data(data_list, target_name_or_position, coord_unit=None,
     table_list : 'list'
         List containing data record of the specified planet
 
+    Examples
+    --------
+    Download the Exoplanet Orbit Database:
+
+    >>> import cascade
+    >>> ct = cascade.exoplanet_tools.parse_database('EXOPLANETS.ORG',
+                                                    update=True)
+
+    Extract data record for single system:
+
+    >>> dr = cascade.exoplanet_tools.extract_exoplanet_data(ct, 'HD 189733 b')
+    >>> print(dr[0])
+
     """
     if not isinstance(target_name_or_position, str):
         raise TypeError("Input name of coordinate not a string")
@@ -1124,6 +1156,34 @@ class lightcuve:
     ------
     ValueError
         Error is raised if no valid lightcurve model is defined
+
+    Examples
+    --------
+    To test  the generation of a ligthcurve model
+    first generate standard .ini file and initialize cascade
+
+    >>> import cascade
+    >>> cascade.initialize.generate_default_initialization()
+    >>> path = cascade.initialize.default_initialization_path
+    >>> cascade_param = cascade.initialize.configurator(path+"cascade_default.ini")
+
+    Define  the ligthcurve model specified in the .ini file
+
+    >>> lc_model = cascade.exoplanet_tools.lightcuve()
+    >>> print(lc_model.valid_models)
+    >>> print(lc_model.par)
+
+    Plot the normized lightcurve
+
+    >>> fig, axs = plt.subplots(1, 1, figsize=(12, 10))
+    >>> axs.plot(lc_model.lc[0], lc_model.lc[1])
+    >>> axs.set_ylabel(r'Normalized Signal')
+    >>> axs.set_xlabel(r'Phase')
+    >>> axes = plt.gca()
+    >>> axes.set_xlim([0, 1])
+    >>> axes.set_ylim([-1.1, 0.1])
+    >>> plt.show()
+
     """
     valid_models = {'batman'}
 

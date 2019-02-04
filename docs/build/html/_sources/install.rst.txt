@@ -21,8 +21,8 @@ and paste in your command line.
 
 As an example, consider a repository path:
 
-- HTTPS: `https://gitlab.com/gitlab-org/gitlab-ce.git`
-- SSH: `` git@gitlab.com:gitlab-org/gitlab-ce.git ``
+- HTTPS: `https://gitlab.com/jbouwman/CASCADe`
+- SSH: `` git@gitlab.com:jbouwman/CASCADe ``
 
 To get started, open a terminal window in the directory
 you wish to clone the repository files into, and run one
@@ -31,13 +31,13 @@ of the following commands.
 Clone via HTTPS:
 
 ```bash
-git clone https://gitlab.com/gitlab-org/gitlab-ce.git
+git clone https://gitlab.com/jbouwman/CASCADe
 ```
 
 Clone via SSH:
 
 ```bash
-git clone git@gitlab.com:gitlab-org/gitlab-ce.git
+git clone git@gitlab.com:jbouwman/CASCADe 
 ```
 
 Both commands will download a copy of the files in a

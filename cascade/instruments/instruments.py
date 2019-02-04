@@ -1,11 +1,30 @@
-# -*- coding: utf-8 -*
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+# This file is part of CASCADe package
+#
+# Developed within the ExoplANETS-A H2020 program.
+#
+# See the COPYRIGHT file at the top-level directory of this distribution
+# for details of code ownership.
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+# Copyright (C) 2018  Jeroen Bouwman
 """
-CASCADe
-
-Observatory and Instruments specific Module
-
-@author: bouwman
+Observatory and Instruments specific module of the CASCADe package
 """
+
 import os
 import collections
 import ast
@@ -876,15 +895,17 @@ class HSTWFC3(InstrumentBase):
         to have identified bad pixels and to correct the values using an edge
         preserving correction, i.e. an correction which takes into account
         the dispersion direction and psf size (relative to pixel size)
-        Input:
-        ------
-            spectral_image_cube
 
-            mask
+        Parameters
+        ----------
+        spectral_image_cube
+        mask
 
-        Output:
-        ------
+        Attributes
+        ----------
+        relative_source_shift
             relative x and y position as a function of time.
+
         """
         nintegrations, mpix, npix = spectral_image_cube.shape
 
@@ -1203,6 +1224,9 @@ class HSTWFC3(InstrumentBase):
                    yref_grism=522, subarray=256, subarray_grism=256):
         """
         This function defines the spectral trace for the wfc3 grism modes.
+
+        Notes
+        -----
         Details can be found in:
            http://www.stsci.edu/hst/wfc3/documents/ISRs/WFC3-2016-15.pdf
         and
@@ -1249,12 +1273,12 @@ class HSTWFC3(InstrumentBase):
         same aperture, the centroid measurement is adjusted according to the
         table in: http://www.stsci.edu/hst/observatory/apertures/wfc3.html
 
-        Input:
-        ------
-            xc:
-                X coordinate of direct image centroid
-            yc:
-                Y coordinate of direct image centroid
+        Parameters
+        ----------
+        xc :
+            X coordinate of direct image centroid
+        yc :
+            Y coordinate of direct image centroid
         xref
         yref
         xref_grism
@@ -1262,10 +1286,10 @@ class HSTWFC3(InstrumentBase):
         subarray
         subarray_grism
 
-        Output:
+        Returns
         -------
-            wavelength:
-                return wavelength mapping of x coordinate in micron
+        wavelength : 'astropy.units.core.Quantity'
+            return wavelength mapping of x coordinate in micron
         """
 
         # adjust position in case different subarrays are used.
@@ -1584,6 +1608,8 @@ class SpitzerIRS(InstrumentBase):
         """
         read uncalibrated spectral images
 
+        Notes
+        -----
         Notes on FOV:
 
         # in the fits header the following relevant info is used:
@@ -1827,6 +1853,8 @@ class SpitzerIRS(InstrumentBase):
         """
         Get detector cube data
 
+        Notes
+        -----
         Notes on timing in header:
 
         There are several integration-time-related keywords.

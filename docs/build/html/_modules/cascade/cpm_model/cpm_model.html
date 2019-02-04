@@ -13,6 +13,7 @@
     <script type="text/javascript" src="../../../_static/jquery.js"></script>
     <script type="text/javascript" src="../../../_static/underscore.js"></script>
     <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
     <link rel="index" title="Index" href="../../../genindex.html" />
     <link rel="search" title="Search" href="../../../search.html" />
    
@@ -61,6 +62,7 @@
 <span class="c1"># You should have received a copy of the GNU General Public License</span>
 <span class="c1"># along with this program.  If not, see &lt;http://www.gnu.org/licenses/&gt;.</span>
 <span class="c1">#</span>
+<span class="c1"># Copyright (C) 2018  Jeroen Bouwman</span>
 <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">The cpm_model module defines the solver and other functionality for the</span>
 <span class="sd">regression model used in causal pixel model.</span>
@@ -93,15 +95,13 @@
 <span class="sd">        Weights used in the linear least square minimization</span>
 <span class="sd">    cv_method : {&#39;gvc&#39;|&#39;b95&#39;|&#39;B100&#39;}</span>
 <span class="sd">        Method used to find optimal regularization parameter which can be:</span>
-<span class="sd">            &quot;gvc&quot; :  Generizalize Cross Validation [RECOMMENDED!!!]</span>
-<span class="sd">            &quot;b95&quot; :  normalized cumulatative periodogram using 95% limit</span>
-<span class="sd">            &quot;B100&quot;:  normalized cumulatative periodogram</span>
+<span class="sd">        &quot;gvc&quot; :  Generizalize Cross Validation [RECOMMENDED!!!],</span>
+<span class="sd">        &quot;b95&quot; :  normalized cumulatative periodogram using 95% limit,</span>
+<span class="sd">        &quot;B100&quot;:  normalized cumulatative periodogram</span>
 <span class="sd">    reg_par : &#39;dict&#39;</span>
 <span class="sd">        Parameter describing search grid to find optimal regularization</span>
-<span class="sd">        parameter lambda:</span>
-<span class="sd">            {lam0 : minimum lambda</span>
-<span class="sd">            lam1 : maximum lambda</span>
-<span class="sd">            nlam : number of grid points}</span>
+<span class="sd">        parameter lambda: {lam0 : minimum lambda, lam1 : maximum lambda,</span>
+<span class="sd">        nlam : number of grid points}</span>
 <span class="sd">    feature_scaling : {&#39;norm&#39;|None}</span>
 <span class="sd">        if the value is set to &#39;norm&#39; all features are normalized using L2</span>
 <span class="sd">        norm else no featue scaling is applied.</span>
@@ -122,11 +122,12 @@
 <span class="sd">    -----</span>
 <span class="sd">    This routine solves the linear equation</span>
 
-<span class="sd">    A x = y</span>
+<span class="sd">    .. math:: A x = y</span>
 
-<span class="sd">    by finding optimal solution x_hat by minimizing</span>
+<span class="sd">    by finding optimal solution \\^x by minimizing</span>
 
-<span class="sd">    ||y-A*x_hat||^2 + lambda * ||x_hat||^2</span>
+<span class="sd">    .. math::</span>
+<span class="sd">        ||y-A*\hat{x}||^2 + \lambda * ||\hat{x}||^2</span>
 
 <span class="sd">    For details on the implementation see [1]_, [2]_, [3]_, [4]_</span>
 <span class="sd">    References</span>

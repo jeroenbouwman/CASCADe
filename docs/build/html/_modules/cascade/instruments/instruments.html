@@ -13,6 +13,7 @@
     <script type="text/javascript" src="../../../_static/jquery.js"></script>
     <script type="text/javascript" src="../../../_static/underscore.js"></script>
     <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
     <link rel="index" title="Index" href="../../../genindex.html" />
     <link rel="search" title="Search" href="../../../search.html" />
    
@@ -39,14 +40,33 @@
           <div class="body" role="main">
             
   <h1>Source code for cascade.instruments.instruments</h1><div class="highlight"><pre>
-<span></span><span class="c1"># -*- coding: utf-8 -*</span>
+<span></span><span class="ch">#!/usr/bin/env python3</span>
+<span class="c1"># -*- coding: utf-8 -*-</span>
+<span class="c1"># This file is part of CASCADe package</span>
+<span class="c1">#</span>
+<span class="c1"># Developed within the ExoplANETS-A H2020 program.</span>
+<span class="c1">#</span>
+<span class="c1"># See the COPYRIGHT file at the top-level directory of this distribution</span>
+<span class="c1"># for details of code ownership.</span>
+<span class="c1">#</span>
+<span class="c1"># This program is free software: you can redistribute it and/or modify</span>
+<span class="c1"># it under the terms of the GNU General Public License as published by</span>
+<span class="c1"># the Free Software Foundation, either version 3 of the License, or</span>
+<span class="c1"># (at your option) any later version.</span>
+<span class="c1">#</span>
+<span class="c1"># This program is distributed in the hope that it will be useful,</span>
+<span class="c1"># but WITHOUT ANY WARRANTY; without even the implied warranty of</span>
+<span class="c1"># MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the</span>
+<span class="c1"># GNU General Public License for more details.</span>
+<span class="c1">#</span>
+<span class="c1"># You should have received a copy of the GNU General Public License</span>
+<span class="c1"># along with this program.  If not, see &lt;http://www.gnu.org/licenses/&gt;.</span>
+<span class="c1">#</span>
+<span class="c1"># Copyright (C) 2018  Jeroen Bouwman</span>
 <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">CASCADe</span>
-
-<span class="sd">Observatory and Instruments specific Module</span>
-
-<span class="sd">@author: bouwman</span>
+<span class="sd">Observatory and Instruments specific module of the CASCADe package</span>
 <span class="sd">&quot;&quot;&quot;</span>
+
 <span class="kn">import</span> <span class="nn">os</span>
 <span class="kn">import</span> <span class="nn">collections</span>
 <span class="kn">import</span> <span class="nn">ast</span>
@@ -917,15 +937,17 @@
 <span class="sd">        to have identified bad pixels and to correct the values using an edge</span>
 <span class="sd">        preserving correction, i.e. an correction which takes into account</span>
 <span class="sd">        the dispersion direction and psf size (relative to pixel size)</span>
-<span class="sd">        Input:</span>
-<span class="sd">        ------</span>
-<span class="sd">            spectral_image_cube</span>
 
-<span class="sd">            mask</span>
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        spectral_image_cube</span>
+<span class="sd">        mask</span>
 
-<span class="sd">        Output:</span>
-<span class="sd">        ------</span>
+<span class="sd">        Attributes</span>
+<span class="sd">        ----------</span>
+<span class="sd">        relative_source_shift</span>
 <span class="sd">            relative x and y position as a function of time.</span>
+
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">nintegrations</span><span class="p">,</span> <span class="n">mpix</span><span class="p">,</span> <span class="n">npix</span> <span class="o">=</span> <span class="n">spectral_image_cube</span><span class="o">.</span><span class="n">shape</span>
 
@@ -1244,6 +1266,9 @@
                    <span class="n">yref_grism</span><span class="o">=</span><span class="mi">522</span><span class="p">,</span> <span class="n">subarray</span><span class="o">=</span><span class="mi">256</span><span class="p">,</span> <span class="n">subarray_grism</span><span class="o">=</span><span class="mi">256</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        This function defines the spectral trace for the wfc3 grism modes.</span>
+
+<span class="sd">        Notes</span>
+<span class="sd">        -----</span>
 <span class="sd">        Details can be found in:</span>
 <span class="sd">           http://www.stsci.edu/hst/wfc3/documents/ISRs/WFC3-2016-15.pdf</span>
 <span class="sd">        and</span>
@@ -1290,12 +1315,12 @@
 <span class="sd">        same aperture, the centroid measurement is adjusted according to the</span>
 <span class="sd">        table in: http://www.stsci.edu/hst/observatory/apertures/wfc3.html</span>
 
-<span class="sd">        Input:</span>
-<span class="sd">        ------</span>
-<span class="sd">            xc:</span>
-<span class="sd">                X coordinate of direct image centroid</span>
-<span class="sd">            yc:</span>
-<span class="sd">                Y coordinate of direct image centroid</span>
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        xc :</span>
+<span class="sd">            X coordinate of direct image centroid</span>
+<span class="sd">        yc :</span>
+<span class="sd">            Y coordinate of direct image centroid</span>
 <span class="sd">        xref</span>
 <span class="sd">        yref</span>
 <span class="sd">        xref_grism</span>
@@ -1303,10 +1328,10 @@
 <span class="sd">        subarray</span>
 <span class="sd">        subarray_grism</span>
 
-<span class="sd">        Output:</span>
+<span class="sd">        Returns</span>
 <span class="sd">        -------</span>
-<span class="sd">            wavelength:</span>
-<span class="sd">                return wavelength mapping of x coordinate in micron</span>
+<span class="sd">        wavelength : &#39;astropy.units.core.Quantity&#39;</span>
+<span class="sd">            return wavelength mapping of x coordinate in micron</span>
 <span class="sd">        &quot;&quot;&quot;</span>
 
         <span class="c1"># adjust position in case different subarrays are used.</span>
@@ -1625,6 +1650,8 @@
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        read uncalibrated spectral images</span>
 
+<span class="sd">        Notes</span>
+<span class="sd">        -----</span>
 <span class="sd">        Notes on FOV:</span>
 
 <span class="sd">        # in the fits header the following relevant info is used:</span>
@@ -1868,6 +1895,8 @@
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Get detector cube data</span>
 
+<span class="sd">        Notes</span>
+<span class="sd">        -----</span>
 <span class="sd">        Notes on timing in header:</span>
 
 <span class="sd">        There are several integration-time-related keywords.</span>

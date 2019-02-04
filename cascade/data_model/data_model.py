@@ -1,8 +1,28 @@
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+# This file is part of CASCADe package
+#
+# Developed within the ExoplANETS-A H2020 program.
+#
+# See the COPYRIGHT file at the top-level directory of this distribution
+# for details of code ownership.
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+# Copyright (C) 2018  Jeroen Bouwman
 """
-Created on Sun Jul 10 16:14:19 2016
-
-@author: bouwman
+This module defines the data models for the CASCADe transit spectroscopy code
 """
 import numpy as np
 import astropy.units as u
@@ -155,8 +175,12 @@ class MeasurementDesc(object):
 class SpectralData(InstanceDescriptorMixin):
     """
     Class defining basic properties of spectral data
-    INPUT, required:
-    -----------------
+    In the instance if the SpectralData class
+    all data are stored internally as numppy arrays. Outputted data are
+    astropy Quantities unless no units (=None) are specified.
+
+    Parameters
+    ----------
     wavelength
         wavelength of data (can be frequencies)
     wavelenth_unit
@@ -169,9 +193,6 @@ class SpectralData(InstanceDescriptorMixin):
         uncertainty on spectral data
     mask
         mask defining masked data
-
-    INPUT, optional:
-    -----------------
     **kwargs
         any auxilary data relevant to the spectral data
         (like position, detector temperature etc.)
@@ -181,11 +202,27 @@ class SpectralData(InstanceDescriptorMixin):
         and not to the class itself. Only the required input stated above
         is always defined for all instances.
 
-    OUTPUT
-    ------
-    Instance of SpectralData class.
-    All data are stored internally as numppy arrays. Outputted data are
-    astropy Quantities unless no units (=None) are specified.
+    Examples
+    --------
+    To create an instance of a SpectralData object with an
+    initialization with data using units, run the following code:
+
+    >>> import numpy as np
+    >>> import astropu.units as u
+    >>> from cascade.data_model import SpectralData
+
+    >>> wave = np.array([1.0, 2.0, 3.0, 4.0, 5.0, 6.0])*u.micron
+    >>> flux = np.array([8.0, 8.0, 8.0, 8.0, 8.0, 8.0])*u.Jy
+    >>> sd = SpectralData(wavelength=wave, data=flux)
+
+    >>> print(sd.data, sd.wavelength)
+
+    To change to convert the units to a different but equivalent unit:
+
+    >>> sd.data_unit = u.erg/u.s/u.cm**2/u.Hz
+    >>> sd.wavelength_unit = u.cm
+    >>> print(sd.data, sd.wavelength)
+
     """
     def __init__(self, wavelength=float("NaN"), wavelength_unit=None,
                  data=float("NaN"), data_unit=None, uncertainty=float("NaN"),
@@ -225,6 +262,13 @@ class SpectralData(InstanceDescriptorMixin):
 
     @property
     def wavelength(self):
+        """
+        The wavelength atttribute of the SpectralData is defined
+        through a getter and setter method. This ensures that the
+        returned wavelength has always a unit associated with it (if the
+        wavelength_unit is set) and that the returned  wavelength has the same
+        dimension and mask as the data attribute.
+        """
         if self._wavelength_unit is not None:
             unit_out = self._wavelength_unit
         else:
@@ -267,6 +311,11 @@ class SpectralData(InstanceDescriptorMixin):
 
     @property
     def wavelength_unit(self):
+        """
+        The wavelength_unit attribute of the SpectralData is defined
+        through a getter and setter method. This ensures that units can be
+        updated and the wavelength value will be adjusted accordingly.
+        """
         return self._wavelength_unit
 
     @wavelength_unit.setter
@@ -287,6 +336,12 @@ class SpectralData(InstanceDescriptorMixin):
 
     @property
     def data(self):
+        """
+        The data atttribute of the SpectralData is defined through a
+        getter and setter method. In case data is initialized with a
+        masked quantity, the data_unit and mask attributes will be set
+        automatically.
+        """
         if self._data_unit is not None:
             unit_out = self._data_unit
         else:
@@ -319,6 +374,12 @@ class SpectralData(InstanceDescriptorMixin):
 
     @property
     def uncertainty(self):
+        """
+        The uncertainty atttribute of the SpectralData is defined
+        through a getter and setter method. This ensures that the
+        returned uncertainty has the same unit associated with it
+        (if the data_unit is set) and the same mask as the data attribute.
+        """
         if self._data_unit is not None:
             unit_out = self._data_unit
         else:
@@ -356,6 +417,11 @@ class SpectralData(InstanceDescriptorMixin):
 
     @property
     def data_unit(self):
+        """
+        The data_unit attribute of the SpectralData is defined
+        through a getter and setter method. This ensures that units can be
+        updated and the data value will be adjusted accordingly.
+        """
         return self._data_unit
 
     @data_unit.setter
@@ -377,6 +443,12 @@ class SpectralData(InstanceDescriptorMixin):
 
     @property
     def mask(self):
+        """
+        The mask atttribute of the SpectralData is defined
+        through a getter and setter method. This ensures that the
+        returned mask has the same dimension as the data attribute and
+        will be set automatically if the input data is a masked array.
+        """
         if self._mask.shape == ():
             return np.array([self._mask])
         else:
@@ -393,13 +465,52 @@ class SpectralData(InstanceDescriptorMixin):
 class SpectralDataTimeSeries(SpectralData):
     """
     Class defining timeseries of spectral data. This class inherits from
-    SpectralData. The data now has one additional dimension: time
-    Input:
-    -----
-    time
-        time of observation
-    time_unit
+    SpectralData. The data stored within this class has one additional
+    time dimension
+
+    Parameters
+    ----------
+    wavelength : 'array_like'
+        wavelength assigned to each data point (can be also be frequencies)
+    wavelenth_unit : 'astropy.units.core.Unit'
+        The physical unit of the wavelength .
+    data : 'array_like'
+        The spectral data to be analysed. This can be either spectra (1D),
+        spectral images (2D) or spectral data cubes (3D).
+    data_unit : astropy.units.core.Unit
+        The physical unit of the data.
+    uncertainty
+        The uncertainty associated with the spectral data.
+    mask : 'array_like'
+        The bad pixel mask flagging all data not to be used.
+    **kwargs
+        any auxilary data relevant to the spectral data
+        (like position, detector temperature etc.)
+        If unit is not explicitly given a unit atribute is added.
+        Input argument can be instance of astropy quantity.
+        Auxilary atributes are added to instance of the SpectralData class
+        and not to the class itself. Only the required input stated above
+        is always defined for all instances.
+    time : 'array_like'
+        The time of observation assiciated with each data point.
+    time_unit : 'astropy.units.core.Unit'
         physical unit of time data
+
+    Examples
+    --------
+    To create an instance of a SpectralDataaTimeSeries object with an
+    initialization with data using units, run the following code:
+
+    >>> import numpy as np
+    >>> from cascade.data_model import SpectralDataTimeSeries
+
+    >>> wave = np.array([1.0, 2.0, 3.0, 4.0, 5.0, 6.0])*u.micron
+    >>> flux = np.array([8.0, 8.0, 8.0, 8.0, 8.0, 8.0])*u.Jy
+    >>> time = np.array([240000.0, 2400001.0, 2400002.0])*u.day
+    >>> flux_time_series = np.repeat(flux[:, np.newaxis], time.shape[0], 1)
+    >>> sdt = SpectralDataTimeSeries(wavelength=wave, data=flux_time_series,
+                                     time=time)
+
     """
     def __init__(self, wavelength=float("NaN"), wavelength_unit=None,
                  data=np.array([[float("NaN")]]), data_unit=None,
@@ -415,6 +526,13 @@ class SpectralDataTimeSeries(SpectralData):
 
     @property
     def time(self):
+        """
+        The time atttribute of the SpectralDataTimeSeries is defined
+        through a getter and setter method. This ensures that the
+        returned time has always a unit associated with it if the time_unit is
+        set and that the returned time has the same dimension and mask as
+        the data attribute.
+        """
         if self._time_unit is not None:
             unit_out = self._time_unit
         else:
@@ -448,6 +566,11 @@ class SpectralDataTimeSeries(SpectralData):
 
     @property
     def time_unit(self):
+        """
+        The time_unit attribute of the SpectralDataTimeSeries is defined
+        through a getter and setter method. This ensures that units can be
+        updated and the time value will be adjusted accordingly.
+        """
         return self._time_unit
 
     @time_unit.setter

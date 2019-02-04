@@ -10,7 +10,9 @@ config = {
     'download_url': 'https://gitlab.com/jbouwman/CASCADe',
     'author_email': 'bouwman@mpia.de',
     'version': '1.0',
-    'install_requires': ['nose','batman','astropy','scipy','numpy','configparser'],
+    'install_requires': ['nose','batman','astropy','scipy','numpy','configparser',
+			 'os', 'weakref', 'sklearn', 'matplotlib', 'tqdm', 'seaborn',
+			 'skimage', 'warnings', 'abc'],
     'packages': ['cascade'],
     'scripts': [],
     'name': 'CASCADe'

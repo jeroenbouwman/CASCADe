@@ -13,6 +13,7 @@
     <script type="text/javascript" src="_static/jquery.js"></script>
     <script type="text/javascript" src="_static/underscore.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
+    <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="The cascade.exoplanet_tools module" href="cascade.exoplanet_tools.html" />
@@ -50,72 +51,152 @@
             
   <div class="section" id="module-cascade.data_model.data_model">
 <span id="the-cascade-data-model-module"></span><h1>The cascade.data_model module<a class="headerlink" href="#module-cascade.data_model.data_model" title="Permalink to this headline">¶</a></h1>
-<p>Created on Sun Jul 10 16:14:19 2016</p>
-<p>&#64;author: bouwman</p>
+<p>This module defines the data models for the CASCADe transit spectroscopy code</p>
+<dl class="class">
+<dt id="cascade.data_model.data_model.InstanceDescriptorMixin">
+<em class="property">class </em><code class="descname">InstanceDescriptorMixin</code><a class="reference internal" href="_modules/cascade/data_model/data_model.html#InstanceDescriptorMixin"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cascade.data_model.data_model.InstanceDescriptorMixin" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.7)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>Mixin to be able to add descriptor to the instance of the class
+and not the class itself</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="cascade.data_model.data_model.UnitDesc">
+<em class="property">class </em><code class="descname">UnitDesc</code><span class="sig-paren">(</span><em>keyname</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cascade/data_model/data_model.html#UnitDesc"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cascade.data_model.data_model.UnitDesc" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.7)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>A descriptor for adding auxilary measurements,
+setting the property for the unit atribute</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="cascade.data_model.data_model.FlagDesc">
+<em class="property">class </em><code class="descname">FlagDesc</code><span class="sig-paren">(</span><em>keyname</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cascade/data_model/data_model.html#FlagDesc"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cascade.data_model.data_model.FlagDesc" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.7)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>A descriptor for adding logical flags</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="cascade.data_model.data_model.AuxilaryInfoDesc">
+<em class="property">class </em><code class="descname">AuxilaryInfoDesc</code><span class="sig-paren">(</span><em>keyname</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cascade/data_model/data_model.html#AuxilaryInfoDesc"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cascade.data_model.data_model.AuxilaryInfoDesc" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.7)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>A descriptor for adding Auxilary information to the dataset</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="cascade.data_model.data_model.MeasurementDesc">
+<em class="property">class </em><code class="descname">MeasurementDesc</code><span class="sig-paren">(</span><em>keyname</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cascade/data_model/data_model.html#MeasurementDesc"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cascade.data_model.data_model.MeasurementDesc" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.7)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>A descriptor for adding auxilary measurements,
+setting the properties for the the measurement and unit</p>
+</dd></dl>
+
 <dl class="class">
 <dt id="cascade.data_model.data_model.SpectralData">
 <em class="property">class </em><code class="descname">SpectralData</code><span class="sig-paren">(</span><em>wavelength=nan</em>, <em>wavelength_unit=None</em>, <em>data=nan</em>, <em>data_unit=None</em>, <em>uncertainty=nan</em>, <em>mask=False</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cascade/data_model/data_model.html#SpectralData"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cascade.data_model.data_model.SpectralData" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">cascade.data_model.data_model.InstanceDescriptorMixin</span></code></p>
+<dd><p>Bases: <a class="reference internal" href="#cascade.data_model.data_model.InstanceDescriptorMixin" title="cascade.data_model.data_model.InstanceDescriptorMixin"><code class="xref py py-class docutils literal notranslate"><span class="pre">cascade.data_model.data_model.InstanceDescriptorMixin</span></code></a></p>
 <p>Class defining basic properties of spectral data
-INPUT, required:
-—————–
-wavelength</p>
-<blockquote>
-<div>wavelength of data (can be frequencies)</div></blockquote>
-<dl class="docutils">
-<dt>wavelenth_unit</dt>
-<dd>The physical unit of the wavelength (uses astropy.units)</dd>
-<dt>data</dt>
-<dd>spectral data</dd>
-<dt>data_unit</dt>
-<dd>the physical unit of the data (uses astropy.units)</dd>
-<dt>uncertainty</dt>
-<dd>uncertainty on spectral data</dd>
-<dt>mask</dt>
-<dd>mask defining masked data</dd>
-</dl>
-<dl class="docutils">
-<dt><a href="#id1"><span class="problematic" id="id2">**</span></a>kwargs</dt>
-<dd>any auxilary data relevant to the spectral data
+In the instance if the SpectralData class
+all data are stored internally as numppy arrays. Outputted data are
+astropy Quantities unless no units (=None) are specified.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>wavelength</strong> – wavelength of data (can be frequencies)</li>
+<li><strong>wavelenth_unit</strong> – The physical unit of the wavelength (uses astropy.units)</li>
+<li><strong>data</strong> – spectral data</li>
+<li><strong>data_unit</strong> – the physical unit of the data (uses astropy.units)</li>
+<li><strong>uncertainty</strong> – uncertainty on spectral data</li>
+<li><strong>mask</strong> – mask defining masked data</li>
+<li><strong>**kwargs</strong> – any auxilary data relevant to the spectral data
 (like position, detector temperature etc.)
 If unit is not explicitly given a unit atribute is added.
 Input argument can be instance of astropy quantity.
 Auxilary atributes are added to instance of the SpectralData class
 and not to the class itself. Only the required input stated above
-is always defined for all instances.</dd>
-</dl>
-<p>Instance of SpectralData class.
-All data are stored internally as numppy arrays. Outputted data are
-astropy Quantities unless no units (=None) are specified.</p>
+is always defined for all instances.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<div class="admonition-examples admonition">
+<p class="first admonition-title">Examples</p>
+<p>To create an instance of a SpectralData object with an
+initialization with data using units, run the following code:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">astropu.units</span> <span class="k">as</span> <span class="nn">u</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">cascade.data_model</span> <span class="k">import</span> <span class="n">SpectralData</span>
+</pre></div>
+</div>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">wave</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">,</span> <span class="mf">3.0</span><span class="p">,</span> <span class="mf">4.0</span><span class="p">,</span> <span class="mf">5.0</span><span class="p">,</span> <span class="mf">6.0</span><span class="p">])</span><span class="o">*</span><span class="n">u</span><span class="o">.</span><span class="n">micron</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">flux</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">8.0</span><span class="p">,</span> <span class="mf">8.0</span><span class="p">,</span> <span class="mf">8.0</span><span class="p">,</span> <span class="mf">8.0</span><span class="p">,</span> <span class="mf">8.0</span><span class="p">,</span> <span class="mf">8.0</span><span class="p">])</span><span class="o">*</span><span class="n">u</span><span class="o">.</span><span class="n">Jy</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">sd</span> <span class="o">=</span> <span class="n">SpectralData</span><span class="p">(</span><span class="n">wavelength</span><span class="o">=</span><span class="n">wave</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">flux</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">sd</span><span class="o">.</span><span class="n">data</span><span class="p">,</span> <span class="n">sd</span><span class="o">.</span><span class="n">wavelength</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>To change to convert the units to a different but equivalent unit:</p>
+<div class="last highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">sd</span><span class="o">.</span><span class="n">data_unit</span> <span class="o">=</span> <span class="n">u</span><span class="o">.</span><span class="n">erg</span><span class="o">/</span><span class="n">u</span><span class="o">.</span><span class="n">s</span><span class="o">/</span><span class="n">u</span><span class="o">.</span><span class="n">cm</span><span class="o">**</span><span class="mi">2</span><span class="o">/</span><span class="n">u</span><span class="o">.</span><span class="n">Hz</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">sd</span><span class="o">.</span><span class="n">wavelength_unit</span> <span class="o">=</span> <span class="n">u</span><span class="o">.</span><span class="n">cm</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">sd</span><span class="o">.</span><span class="n">data</span><span class="p">,</span> <span class="n">sd</span><span class="o">.</span><span class="n">wavelength</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
 <dl class="attribute">
 <dt id="cascade.data_model.data_model.SpectralData.wavelength">
 <code class="descname">wavelength</code><a class="headerlink" href="#cascade.data_model.data_model.SpectralData.wavelength" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>The wavelength atttribute of the SpectralData is defined
+through a getter and setter method. This ensures that the
+returned wavelength has always a unit associated with it (if the
+wavelength_unit is set) and that the returned  wavelength has the same
+dimension and mask as the data attribute.</p>
+</dd></dl>
 
 <dl class="attribute">
 <dt id="cascade.data_model.data_model.SpectralData.wavelength_unit">
 <code class="descname">wavelength_unit</code><a class="headerlink" href="#cascade.data_model.data_model.SpectralData.wavelength_unit" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>The wavelength_unit attribute of the SpectralData is defined
+through a getter and setter method. This ensures that units can be
+updated and the wavelength value will be adjusted accordingly.</p>
+</dd></dl>
 
 <dl class="attribute">
 <dt id="cascade.data_model.data_model.SpectralData.data">
 <code class="descname">data</code><a class="headerlink" href="#cascade.data_model.data_model.SpectralData.data" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>The data atttribute of the SpectralData is defined through a
+getter and setter method. In case data is initialized with a
+masked quantity, the data_unit and mask attributes will be set
+automatically.</p>
+</dd></dl>
 
 <dl class="attribute">
 <dt id="cascade.data_model.data_model.SpectralData.uncertainty">
 <code class="descname">uncertainty</code><a class="headerlink" href="#cascade.data_model.data_model.SpectralData.uncertainty" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>The uncertainty atttribute of the SpectralData is defined
+through a getter and setter method. This ensures that the
+returned uncertainty has the same unit associated with it
+(if the data_unit is set) and the same mask as the data attribute.</p>
+</dd></dl>
 
 <dl class="attribute">
 <dt id="cascade.data_model.data_model.SpectralData.data_unit">
 <code class="descname">data_unit</code><a class="headerlink" href="#cascade.data_model.data_model.SpectralData.data_unit" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>The data_unit attribute of the SpectralData is defined
+through a getter and setter method. This ensures that units can be
+updated and the data value will be adjusted accordingly.</p>
+</dd></dl>
 
 <dl class="attribute">
 <dt id="cascade.data_model.data_model.SpectralData.mask">
 <code class="descname">mask</code><a class="headerlink" href="#cascade.data_model.data_model.SpectralData.mask" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>The mask atttribute of the SpectralData is defined
+through a getter and setter method. This ensures that the
+returned mask has the same dimension as the data attribute and
+will be set automatically if the input data is a masked array.</p>
+</dd></dl>
 
 </dd></dl>
 
@@ -124,25 +205,68 @@ astropy Quantities unless no units (=None) are specified.</p>
 <em class="property">class </em><code class="descname">SpectralDataTimeSeries</code><span class="sig-paren">(</span><em>wavelength=nan</em>, <em>wavelength_unit=None</em>, <em>data=array([[nan]])</em>, <em>data_unit=None</em>, <em>uncertainty=array([[nan]])</em>, <em>mask=False</em>, <em>time=nan</em>, <em>time_unit=None</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cascade/data_model/data_model.html#SpectralDataTimeSeries"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cascade.data_model.data_model.SpectralDataTimeSeries" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <a class="reference internal" href="#cascade.data_model.data_model.SpectralData" title="cascade.data_model.data_model.SpectralData"><code class="xref py py-class docutils literal notranslate"><span class="pre">cascade.data_model.data_model.SpectralData</span></code></a></p>
 <p>Class defining timeseries of spectral data. This class inherits from
-SpectralData. The data now has one additional dimension: time
-Input:
-—–
-time</p>
-<blockquote>
-<div>time of observation</div></blockquote>
-<dl class="docutils">
-<dt>time_unit</dt>
-<dd>physical unit of time data</dd>
-</dl>
+SpectralData. The data stored within this class has one additional
+time dimension</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>wavelength</strong> (<em>'array_like'</em>) – wavelength assigned to each data point (can be also be frequencies)</li>
+<li><strong>wavelenth_unit</strong> (<em>'astropy.units.core.Unit'</em>) – The physical unit of the wavelength .</li>
+<li><strong>data</strong> (<em>'array_like'</em>) – The spectral data to be analysed. This can be either spectra (1D),
+spectral images (2D) or spectral data cubes (3D).</li>
+<li><strong>data_unit</strong> (<em>astropy.units.core.Unit</em>) – The physical unit of the data.</li>
+<li><strong>uncertainty</strong> – The uncertainty associated with the spectral data.</li>
+<li><strong>mask</strong> (<em>'array_like'</em>) – The bad pixel mask flagging all data not to be used.</li>
+<li><strong>**kwargs</strong> – any auxilary data relevant to the spectral data
+(like position, detector temperature etc.)
+If unit is not explicitly given a unit atribute is added.
+Input argument can be instance of astropy quantity.
+Auxilary atributes are added to instance of the SpectralData class
+and not to the class itself. Only the required input stated above
+is always defined for all instances.</li>
+<li><strong>time</strong> (<em>'array_like'</em>) – The time of observation assiciated with each data point.</li>
+<li><strong>time_unit</strong> (<em>'astropy.units.core.Unit'</em>) – physical unit of time data</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<div class="admonition-examples admonition">
+<p class="first admonition-title">Examples</p>
+<p>To create an instance of a SpectralDataaTimeSeries object with an
+initialization with data using units, run the following code:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">cascade.data_model</span> <span class="k">import</span> <span class="n">SpectralDataTimeSeries</span>
+</pre></div>
+</div>
+<div class="last highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">wave</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">,</span> <span class="mf">3.0</span><span class="p">,</span> <span class="mf">4.0</span><span class="p">,</span> <span class="mf">5.0</span><span class="p">,</span> <span class="mf">6.0</span><span class="p">])</span><span class="o">*</span><span class="n">u</span><span class="o">.</span><span class="n">micron</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">flux</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">8.0</span><span class="p">,</span> <span class="mf">8.0</span><span class="p">,</span> <span class="mf">8.0</span><span class="p">,</span> <span class="mf">8.0</span><span class="p">,</span> <span class="mf">8.0</span><span class="p">,</span> <span class="mf">8.0</span><span class="p">])</span><span class="o">*</span><span class="n">u</span><span class="o">.</span><span class="n">Jy</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">time</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">240000.0</span><span class="p">,</span> <span class="mf">2400001.0</span><span class="p">,</span> <span class="mf">2400002.0</span><span class="p">])</span><span class="o">*</span><span class="n">u</span><span class="o">.</span><span class="n">day</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">flux_time_series</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">repeat</span><span class="p">(</span><span class="n">flux</span><span class="p">[:,</span> <span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">],</span> <span class="n">time</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="mi">1</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">sdt</span> <span class="o">=</span> <span class="n">SpectralDataTimeSeries</span><span class="p">(</span><span class="n">wavelength</span><span class="o">=</span><span class="n">wave</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">flux_time_series</span><span class="p">,</span>
+<span class="go">                                 time=time)</span>
+</pre></div>
+</div>
+</div>
 <dl class="attribute">
 <dt id="cascade.data_model.data_model.SpectralDataTimeSeries.time">
 <code class="descname">time</code><a class="headerlink" href="#cascade.data_model.data_model.SpectralDataTimeSeries.time" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>The time atttribute of the SpectralDataTimeSeries is defined
+through a getter and setter method. This ensures that the
+returned time has always a unit associated with it if the time_unit is
+set and that the returned time has the same dimension and mask as
+the data attribute.</p>
+</dd></dl>
 
 <dl class="attribute">
 <dt id="cascade.data_model.data_model.SpectralDataTimeSeries.time_unit">
 <code class="descname">time_unit</code><a class="headerlink" href="#cascade.data_model.data_model.SpectralDataTimeSeries.time_unit" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>The time_unit attribute of the SpectralDataTimeSeries is defined
+through a getter and setter method. This ensures that units can be
+updated and the time value will be adjusted accordingly.</p>
+</dd></dl>
 
 </dd></dl>
 

@@ -13,6 +13,7 @@
     <script type="text/javascript" src="_static/jquery.js"></script>
     <script type="text/javascript" src="_static/underscore.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
+    <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="The cascade.utilities module" href="cascade.utilities.html" />
@@ -50,13 +51,11 @@
             
   <div class="section" id="module-cascade.instruments.instruments">
 <span id="the-cascade-instruments-module"></span><h1>The cascade.instruments module<a class="headerlink" href="#module-cascade.instruments.instruments" title="Permalink to this headline">¶</a></h1>
-<p>CASCADe</p>
-<p>Observatory and Instruments specific Module</p>
-<p>&#64;author: bouwman</p>
+<p>Observatory and Instruments specific module of the CASCADe package</p>
 <dl class="class">
 <dt id="cascade.instruments.instruments.Observation">
 <em class="property">class </em><code class="descname">Observation</code><a class="reference internal" href="_modules/cascade/instruments/instruments.html#Observation"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cascade.instruments.instruments.Observation" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.7)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
 <p>This class handles the selection of the correct observatory and
 instrument classes and loads the time series data to be analyzed</p>
 </dd></dl>
@@ -158,15 +157,22 @@ in: <a class="reference external" href="http://www.stsci.edu/hst/wfc3/documents/
 integration. Note that it is important for this to work properly
 to have identified bad pixels and to correct the values using an edge
 preserving correction, i.e. an correction which takes into account
-the dispersion direction and psf size (relative to pixel size)
-Input:
-——</p>
-<blockquote>
-<div><p>spectral_image_cube</p>
-<p>mask</p>
-</div></blockquote>
-<blockquote>
-<div>relative x and y position as a function of time.</div></blockquote>
+the dispersion direction and psf size (relative to pixel size)</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>spectral_image_cube</strong> – </li>
+<li><strong>mask</strong> – </li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Variables:</th><td class="field-body"><p class="first last"><strong>relative_source_shift</strong> – relative x and y position as a function of time.</p>
+</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 <dl class="method">
@@ -217,14 +223,16 @@ See also <a class="reference external" href="http://www.stsci.edu/hst/observator
 <dl class="staticmethod">
 <dt id="cascade.instruments.instruments.HSTWFC3._WFC3Trace">
 <em class="property">static </em><code class="descname">_WFC3Trace</code><span class="sig-paren">(</span><em>xc</em>, <em>yc</em>, <em>DYDX</em>, <em>xref=522</em>, <em>yref=522</em>, <em>xref_grism=522</em>, <em>yref_grism=522</em>, <em>subarray=256</em>, <em>subarray_grism=256</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cascade/instruments/instruments.html#HSTWFC3._WFC3Trace"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cascade.instruments.instruments.HSTWFC3._WFC3Trace" title="Permalink to this definition">¶</a></dt>
-<dd><p>This function defines the spectral trace for the wfc3 grism modes.
-Details can be found in:</p>
-<blockquote>
-<div><a class="reference external" href="http://www.stsci.edu/hst/wfc3/documents/ISRs/WFC3-2016-15.pdf">http://www.stsci.edu/hst/wfc3/documents/ISRs/WFC3-2016-15.pdf</a></div></blockquote>
-<dl class="docutils">
+<dd><p>This function defines the spectral trace for the wfc3 grism modes.</p>
+<div class="admonition-notes admonition">
+<p class="first admonition-title">Notes</p>
+<dl class="last docutils">
+<dt>Details can be found in:</dt>
+<dd><a class="reference external" href="http://www.stsci.edu/hst/wfc3/documents/ISRs/WFC3-2016-15.pdf">http://www.stsci.edu/hst/wfc3/documents/ISRs/WFC3-2016-15.pdf</a></dd>
 <dt>and</dt>
 <dd><a class="reference external" href="http://www.stsci.edu/hst/observatory/apertures/wfc3.html">http://www.stsci.edu/hst/observatory/apertures/wfc3.html</a></dd>
 </dl>
+</div>
 </dd></dl>
 
 <dl class="staticmethod">
@@ -236,26 +244,27 @@ adopted from Kuntschner et al. (2009), Wilkins et al. (2014). See also
 <p>In case the direct image and spectral image are not taken with the
 same aperture, the centroid measurement is adjusted according to the
 table in: <a class="reference external" href="http://www.stsci.edu/hst/observatory/apertures/wfc3.html">http://www.stsci.edu/hst/observatory/apertures/wfc3.html</a></p>
-<blockquote>
-<div><dl class="docutils">
-<dt>xc:</dt>
-<dd>X coordinate of direct image centroid</dd>
-<dt>yc:</dt>
-<dd>Y coordinate of direct image centroid</dd>
-</dl>
-</div></blockquote>
-<p>xref
-yref
-xref_grism
-yref_grism
-subarray
-subarray_grism</p>
-<blockquote>
-<div><dl class="docutils">
-<dt>wavelength:</dt>
-<dd>return wavelength mapping of x coordinate in micron</dd>
-</dl>
-</div></blockquote>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>xc</strong> – X coordinate of direct image centroid</li>
+<li><strong>yc</strong> – Y coordinate of direct image centroid</li>
+<li><strong>xref</strong> – </li>
+<li><strong>yref</strong> – </li>
+<li><strong>xref_grism</strong> – </li>
+<li><strong>yref_grism</strong> – </li>
+<li><strong>subarray</strong> – </li>
+<li><strong>subarray_grism</strong> – </li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last"><strong>wavelength</strong> (<em>‘astropy.units.core.Quantity’</em>) – return wavelength mapping of x coordinate in micron</p>
+</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 </dd></dl>
@@ -320,6 +329,8 @@ the Spitzer Space Telescope</p>
 <dt id="cascade.instruments.instruments.SpitzerIRS.get_spectral_images">
 <code class="descname">get_spectral_images</code><span class="sig-paren">(</span><em>is_background=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cascade/instruments/instruments.html#SpitzerIRS.get_spectral_images"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cascade.instruments.instruments.SpitzerIRS.get_spectral_images" title="Permalink to this definition">¶</a></dt>
 <dd><p>read uncalibrated spectral images</p>
+<div class="admonition-notes admonition">
+<p class="first admonition-title">Notes</p>
 <p>Notes on FOV:</p>
 <p># in the fits header the following relevant info is used:
 # FOVID     26     IRS_Short-Lo_1st_Order_1st_Position
@@ -332,7 +343,8 @@ the Spitzer Space Telescope</p>
 # FOVID     40     IRS_Long-Lo_1st_Order_Center_Position
 # FOVID     46     IRS_Long-Lo_2nd_Order_Center_Position</p>
 <p>Notes on timing:</p>
-<p># FRAMTIME the total effective exposure time (ramp length) in seconds</p>
+<p class="last"># FRAMTIME the total effective exposure time (ramp length) in seconds</p>
+</div>
 </dd></dl>
 
 <dl class="method">
@@ -364,6 +376,8 @@ in the correction procedure of bad pixels</p>
 <dt id="cascade.instruments.instruments.SpitzerIRS.get_detector_cubes">
 <code class="descname">get_detector_cubes</code><span class="sig-paren">(</span><em>is_background=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cascade/instruments/instruments.html#SpitzerIRS.get_detector_cubes"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cascade.instruments.instruments.SpitzerIRS.get_detector_cubes" title="Permalink to this definition">¶</a></dt>
 <dd><p>Get detector cube data</p>
+<div class="admonition-notes admonition">
+<p class="first admonition-title">Notes</p>
 <p>Notes on timing in header:</p>
 <p>There are several integration-time-related keywords.
 Of greatest interest to the observer is the
@@ -389,9 +403,10 @@ So, for an N-read ramp:</p>
 <dt>and</dt>
 <dd>DCE duration = DEADTIME + GRPTIME + RAMPTIME</dd>
 </dl>
-<p>Note that peak-up data is not obtained in SUR mode. It is obtained in
+<p class="last">Note that peak-up data is not obtained in SUR mode. It is obtained in
 Double Correlated Sampling (DCS) mode. In that case, RAMPTIME gives the
 time interval between the 2nd sample and the preceeding reset.</p>
+</div>
 </dd></dl>
 
 <dl class="method">

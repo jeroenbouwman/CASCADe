@@ -20,6 +20,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
+# Copyright (C) 2018  Jeroen Bouwman
 """
 The cpm_model module defines the solver and other functionality for the
 regression model used in causal pixel model.
@@ -52,15 +53,13 @@ def solve_linear_equation(design_matrix, data, weights=None, cv_method='gcv',
         Weights used in the linear least square minimization
     cv_method : {'gvc'|'b95'|'B100'}
         Method used to find optimal regularization parameter which can be:
-            "gvc" :  Generizalize Cross Validation [RECOMMENDED!!!]
-            "b95" :  normalized cumulatative periodogram using 95% limit
-            "B100":  normalized cumulatative periodogram
+        "gvc" :  Generizalize Cross Validation [RECOMMENDED!!!],
+        "b95" :  normalized cumulatative periodogram using 95% limit,
+        "B100":  normalized cumulatative periodogram
     reg_par : 'dict'
         Parameter describing search grid to find optimal regularization
-        parameter lambda:
-            {lam0 : minimum lambda
-            lam1 : maximum lambda
-            nlam : number of grid points}
+        parameter lambda: {lam0 : minimum lambda, lam1 : maximum lambda,
+        nlam : number of grid points}
     feature_scaling : {'norm'|None}
         if the value is set to 'norm' all features are normalized using L2
         norm else no featue scaling is applied.
@@ -81,11 +80,12 @@ def solve_linear_equation(design_matrix, data, weights=None, cv_method='gcv',
     -----
     This routine solves the linear equation
 
-    A x = y
+    .. math:: A x = y
 
-    by finding optimal solution x_hat by minimizing
+    by finding optimal solution \\^x by minimizing
 
-    ||y-A*x_hat||^2 + lambda * ||x_hat||^2
+    .. math::
+        ||y-A*\hat{x}||^2 + \lambda * ||\hat{x}||^2
 
     For details on the implementation see [1]_, [2]_, [3]_, [4]_
     References
