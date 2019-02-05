@@ -105,6 +105,17 @@
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    This class handles the selection of the correct observatory and</span>
 <span class="sd">    instrument classes and loads the time series data to be analyzed</span>
+<span class="sd">    The observations specific parameters set during the initialization</span>
+<span class="sd">    of the TSO object are used to select the observatory and instrument</span>
+<span class="sd">    through a factory method and to load the specified observations</span>
+<span class="sd">    into the instance of the TSO object.</span>
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+<span class="sd">    The Observation calss is  called during the following command:</span>
+
+<span class="sd">    &gt;&gt;&gt; tso.execute(&quot;load_data&quot;)</span>
+
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
@@ -122,16 +133,34 @@
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">__valid_observatories</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Dictionary listing the current implemented observatories,</span>
+<span class="sd">        used in factory method to select a observatory specific class</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;SPITZER&quot;</span><span class="p">:</span> <span class="n">Spitzer</span><span class="p">,</span> <span class="s2">&quot;HST&quot;</span><span class="p">:</span> <span class="n">HST</span><span class="p">}</span>
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">__valid_observation_type</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Set listing the current implemented observation types</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;TRANSIT&quot;</span><span class="p">,</span> <span class="s2">&quot;ECLIPSE&quot;</span><span class="p">}</span>
 
     <span class="k">def</span> <span class="nf">__do_observations</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">observatory</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Factory method to load the needed observatory class and methods</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__valid_observatories</span><span class="p">[</span><span class="n">observatory</span><span class="p">]()</span>
 
     <span class="k">def</span> <span class="nf">__get_observatory_name</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Function to load the in the .ini files specified observatory name</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        ValueError</span>
+<span class="sd">            Returns error if the observatory is not specified or recognized</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="n">cascade_configuration</span><span class="o">.</span><span class="n">isInitialized</span><span class="p">:</span>
             <span class="n">observatory</span> <span class="o">=</span> <span class="n">cascade_configuration</span><span class="o">.</span><span class="n">instrument_observatory</span>
             <span class="k">if</span> <span class="n">observatory</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">__valid_observatories</span><span class="p">:</span>
@@ -146,6 +175,16 @@
         <span class="k">return</span> <span class="n">observatory</span>
 
     <span class="k">def</span> <span class="nf">__check_observation_type</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Function to check of the in the .ini specified observation type</span>
+<span class="sd">        valid.</span>
+
+<span class="sd">        Raises</span>
+<span class="sd">        ------</span>
+<span class="sd">        ValueError</span>
+<span class="sd">            Raises error if the specified observation type is not valid or if</span>
+<span class="sd">            the tso instance is not initialized.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="n">cascade_configuration</span><span class="o">.</span><span class="n">isInitialized</span><span class="p">:</span>
             <span class="n">observation_type</span> <span class="o">=</span> <span class="n">cascade_configuration</span><span class="o">.</span><span class="n">observations_type</span>
             <span class="k">if</span> <span class="n">observation_type</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">__valid_observation_type</span><span class="p">:</span>
@@ -159,36 +198,67 @@
 <span class="s2">                                 aborting loading Observations&quot;</span><span class="p">)</span></div>
 
 
-<span class="k">class</span> <span class="nc">ObservatoryBase</span><span class="p">(</span><span class="n">metaclass</span><span class="o">=</span><span class="n">ABCMeta</span><span class="p">):</span>
+<div class="viewcode-block" id="ObservatoryBase"><a class="viewcode-back" href="../../../cascade.instruments.html#cascade.instruments.instruments.ObservatoryBase">[docs]</a><span class="k">class</span> <span class="nc">ObservatoryBase</span><span class="p">(</span><span class="n">metaclass</span><span class="o">=</span><span class="n">ABCMeta</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Observatory base class used to define the basic properties an observatory</span>
+<span class="sd">    class should have</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="nd">@abstractproperty</span>
     <span class="k">def</span> <span class="nf">name</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Name of the observatory.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">pass</span>
 
     <span class="nd">@abstractproperty</span>
     <span class="k">def</span> <span class="nf">location</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Location of the observatory</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">pass</span>
 
     <span class="nd">@abstractproperty</span>
     <span class="k">def</span> <span class="nf">NAIF_ID</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        NAIF ID of the observatory. With this the location relative to the</span>
+<span class="sd">        sun and the observed target as a function of time can be determined.</span>
+<span class="sd">        Needed to calculate BJD time.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">pass</span>
 
     <span class="nd">@abstractproperty</span>
     <span class="k">def</span> <span class="nf">observatory_instruments</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="k">pass</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        The names of the instruments part of the observatory.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">pass</span></div>
 
 
-<span class="k">class</span> <span class="nc">InstrumentBase</span><span class="p">(</span><span class="n">metaclass</span><span class="o">=</span><span class="n">ABCMeta</span><span class="p">):</span>
-    <span class="nd">@abstractmethod</span>
+<div class="viewcode-block" id="InstrumentBase"><a class="viewcode-back" href="../../../cascade.instruments.html#cascade.instruments.instruments.InstrumentBase">[docs]</a><span class="k">class</span> <span class="nc">InstrumentBase</span><span class="p">(</span><span class="n">metaclass</span><span class="o">=</span><span class="n">ABCMeta</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Instrument base class used to define the basic properties an instrument</span>
+<span class="sd">    class should have</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+<div class="viewcode-block" id="InstrumentBase.load_data"><a class="viewcode-back" href="../../../cascade.instruments.html#cascade.instruments.instruments.InstrumentBase.load_data">[docs]</a>    <span class="nd">@abstractmethod</span>
     <span class="k">def</span> <span class="nf">load_data</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="k">pass</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Method which allows to load data.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">pass</span></div>
 
-    <span class="nd">@abstractmethod</span>
+<div class="viewcode-block" id="InstrumentBase.get_instrument_setup"><a class="viewcode-back" href="../../../cascade.instruments.html#cascade.instruments.instruments.InstrumentBase.get_instrument_setup">[docs]</a>    <span class="nd">@abstractmethod</span>
     <span class="k">def</span> <span class="nf">get_instrument_setup</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="k">pass</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Method which gets the specific setup of the used instrument.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">pass</span></div>
 
     <span class="nd">@abstractproperty</span>
     <span class="k">def</span> <span class="nf">name</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="k">pass</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Name of the instrument.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">pass</span></div>
 
 
 <div class="viewcode-block" id="HST"><a class="viewcode-back" href="../../../cascade.instruments.html#cascade.instruments.instruments.HST">[docs]</a><span class="k">class</span> <span class="nc">HST</span><span class="p">(</span><span class="n">ObservatoryBase</span><span class="p">):</span>
@@ -224,18 +294,22 @@
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">name</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Set to &#39;HST&#39;&quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="s2">&quot;HST&quot;</span>
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">location</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Set to &#39;SPACE&#39;&quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="s2">&quot;SPACE&quot;</span>
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">NAIF_ID</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Set to -48&quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="o">-</span><span class="mi">48</span>
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">observatory_instruments</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Returns {&#39;WFC3&#39;}&quot;&quot;&quot;</span>
         <span class="k">return</span><span class="p">{</span><span class="s2">&quot;WFC3&quot;</span><span class="p">}</span></div>
 
 
@@ -243,6 +317,17 @@
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    This instrument class defines the properties of the WFC3 instrument of</span>
 <span class="sd">    the Hubble Space Telescope</span>
+
+<span class="sd">    For the instrument and observations the following valid options are</span>
+<span class="sd">    available:</span>
+
+<span class="sd">       - detector subarrays : {&#39;IRSUB128&#39;, &#39;IRSUB256&#39;, &#39;IRSUB512&#39;, &#39;GRISM128&#39;,</span>
+<span class="sd">         &#39;GRISM256&#39;, &#39;GRISM512&#39;}</span>
+<span class="sd">       - spectroscopic filters : {&#39;G141&#39;}</span>
+<span class="sd">       - imaging filters :  {&#39;F139M&#39;, &#39;F132N&#39;, &#39;F167N&#39;}</span>
+<span class="sd">       - data type : {&#39;SPECTRUM&#39;, &#39;SPECTRAL_IMAGE&#39;}</span>
+<span class="sd">       - observing strategy : {&#39;STARING&#39;}</span>
+<span class="sd">       - data products : {&#39;SPC&#39;, &#39;flt&#39;, &#39;COE&#39;}</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="n">__valid_sub_array</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;IRSUB128&#39;</span><span class="p">,</span> <span class="s1">&#39;IRSUB256&#39;</span><span class="p">,</span> <span class="s1">&#39;IRSUB512&#39;</span><span class="p">,</span> <span class="s1">&#39;GRISM128&#39;</span><span class="p">,</span>
@@ -255,7 +340,6 @@
     <span class="n">__valid_data_products</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;SPC&#39;</span><span class="p">,</span> <span class="s1">&#39;flt&#39;</span><span class="p">,</span> <span class="s1">&#39;COE&#39;</span><span class="p">}</span>
 
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-
         <span class="bp">self</span><span class="o">.</span><span class="n">par</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_instrument_setup</span><span class="p">()</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">par</span><span class="p">[</span><span class="s1">&#39;obs_has_backgr&#39;</span><span class="p">]:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">data_background</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">load_data</span><span class="p">()</span>
@@ -270,9 +354,16 @@
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">name</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Name of the HST instrument: &#39;WFC3&#39;</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="s2">&quot;WFC3&quot;</span>
 
 <div class="viewcode-block" id="HSTWFC3.load_data"><a class="viewcode-back" href="../../../cascade.instruments.html#cascade.instruments.instruments.HSTWFC3.load_data">[docs]</a>    <span class="k">def</span> <span class="nf">load_data</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        This function loads the WFC3 data form disk based on the</span>
+<span class="sd">        parameters defined during the initialization of the TSO object.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">par</span><span class="p">[</span><span class="s2">&quot;obs_data&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;SPECTRUM&#39;</span><span class="p">:</span>
             <span class="n">data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_spectra</span><span class="p">()</span>
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">par</span><span class="p">[</span><span class="s1">&#39;obs_has_backgr&#39;</span><span class="p">]:</span>
@@ -293,6 +384,17 @@
 <div class="viewcode-block" id="HSTWFC3.get_instrument_setup"><a class="viewcode-back" href="../../../cascade.instruments.html#cascade.instruments.instruments.HSTWFC3.get_instrument_setup">[docs]</a>    <span class="k">def</span> <span class="nf">get_instrument_setup</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Retrieve all relevant parameters defining the instrument and data setup</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        par : `collections.OrderedDict`</span>
+<span class="sd">            Dictionary containg all relevant parameters</span>
+
+<span class="sd">        Raises</span>
+<span class="sd">        ------</span>
+<span class="sd">        ValueError</span>
+<span class="sd">            If obseervationla parameters are not or incorrect defined an</span>
+<span class="sd">            error will be raised</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="c1"># instrument parameters</span>
         <span class="n">inst_inst_name</span> <span class="o">=</span> <span class="n">cascade_configuration</span><span class="o">.</span><span class="n">instrument</span>
@@ -395,7 +497,27 @@
 
 <div class="viewcode-block" id="HSTWFC3.get_spectra"><a class="viewcode-back" href="../../../cascade.instruments.html#cascade.instruments.instruments.HSTWFC3.get_spectra">[docs]</a>    <span class="k">def</span> <span class="nf">get_spectra</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">is_background</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        read (uncalibrated) spectral timeseries, phase and wavelength</span>
+<span class="sd">        This function combines all functionallity to read fits files</span>
+<span class="sd">        containing the (uncalibrated) spectral timeseries, including</span>
+<span class="sd">        orbital phase and wavelength information</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        is_background : `bool`</span>
+<span class="sd">            if `True` the data represents an observaton of the IR background</span>
+<span class="sd">            to be subtracted of the data of the transit spectroscopy target.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        SpectralTimeSeries : `cascade.data_model.SpectralDataTimeSeries`</span>
+<span class="sd">            Instance of `SpectralDataTimeSeries` containing all spectroscopic</span>
+<span class="sd">            data including uncertainties, time, wavelength and bad pixel mask.</span>
+
+<span class="sd">        Raises</span>
+<span class="sd">        ------</span>
+<span class="sd">        AssertionError, KeyError</span>
+<span class="sd">            Raises an error if no data is found or if certain expected</span>
+<span class="sd">            fits keywords are not present in the data files.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
 
         <span class="c1"># get data files</span>
@@ -525,7 +647,27 @@
 
 <div class="viewcode-block" id="HSTWFC3.get_spectral_images"><a class="viewcode-back" href="../../../cascade.instruments.html#cascade.instruments.instruments.HSTWFC3.get_spectral_images">[docs]</a>    <span class="k">def</span> <span class="nf">get_spectral_images</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">is_background</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        read uncalibrated spectral images (flt data product)</span>
+<span class="sd">        This function combines all functionallity to read fits files</span>
+<span class="sd">        containing the (uncalibrated) spectral image timeseries, including</span>
+<span class="sd">        orbital phase and wavelength information</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        is_background : `bool`</span>
+<span class="sd">            if `True` the data represents an observaton of the IR background</span>
+<span class="sd">            to be subtracted of the data of the transit spectroscopy target.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        SpectralTimeSeries : `cascade.data_model.SpectralDataTimeSeries`</span>
+<span class="sd">            Instance of `SpectralDataTimeSeries` containing all spectroscopic</span>
+<span class="sd">            data including uncertainties, time, wavelength and bad pixel mask.</span>
+
+<span class="sd">        Raises</span>
+<span class="sd">        ------</span>
+<span class="sd">        AssertionError, KeyError</span>
+<span class="sd">            Raises an error if no data is found or if certain expected</span>
+<span class="sd">            fits keywords are not present in the data files.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="c1"># get data files</span>
         <span class="k">if</span> <span class="n">is_background</span> <span class="ow">and</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">par</span><span class="p">[</span><span class="s1">&#39;obs_uses_backgr_model&#39;</span><span class="p">]:</span>
@@ -751,8 +893,20 @@
 <div class="viewcode-block" id="HSTWFC3._get_background_cal_data"><a class="viewcode-back" href="../../../cascade.instruments.html#cascade.instruments.instruments.HSTWFC3._get_background_cal_data">[docs]</a>    <span class="k">def</span> <span class="nf">_get_background_cal_data</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Get the calibration data from which the background in the science</span>
-<span class="sd">        images can be determined.  For further details see:</span>
-<span class="sd">        http://www.stsci.edu/hst/wfc3/documents/ISRs/WFC3-2015-17.pdf</span>
+<span class="sd">        images can be determined.</span>
+
+<span class="sd">        Raises</span>
+<span class="sd">        ------</span>
+<span class="sd">        FileNotFoundError, AttributeError</span>
+<span class="sd">            An error is raised if the calibration images are not found or the</span>
+<span class="sd">            background data is not properly defined.</span>
+
+<span class="sd">        Notes</span>
+<span class="sd">        -----</span>
+<span class="sd">        For further details see:</span>
+
+<span class="sd">            http://www.stsci.edu/hst/wfc3/documents/ISRs/WFC3-2015-17.pdf</span>
+
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">_applied_flatfields</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;G141&quot;</span><span class="p">:</span> <span class="s2">&quot;uc72113oi_pfl.fits&quot;</span><span class="p">,</span>
                                <span class="s2">&quot;G102&quot;</span><span class="p">:</span> <span class="s2">&quot;uc721143i_pfl.fits&quot;</span><span class="p">}</span>
@@ -835,8 +989,25 @@
 
 <div class="viewcode-block" id="HSTWFC3._fit_background"><a class="viewcode-back" href="../../../cascade.instruments.html#cascade.instruments.instruments.HSTWFC3._fit_background">[docs]</a>    <span class="k">def</span> <span class="nf">_fit_background</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">science_data_in</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Fits the background in the HST Grism data using the method described</span>
-<span class="sd">        in: http://www.stsci.edu/hst/wfc3/documents/ISRs/WFC3-2015-17.pdf</span>
+<span class="sd">        Determes the background in the HST Grism data using a model for the</span>
+<span class="sd">        background to the spectral timeseries data</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        science_data_in : `masked quantity`</span>
+<span class="sd">            Input data for which the background will be determined</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        SpectralTimeSeries : `SpectralDataTimeSeries`</span>
+<span class="sd">            The fitted IR bacgound as a function of time</span>
+
+<span class="sd">        Notes</span>
+<span class="sd">        -----</span>
+<span class="sd">        All details of the implemented model is described in:</span>
+
+<span class="sd">        http://www.stsci.edu/hst/wfc3/documents/ISRs/WFC3-2015-17.pdf</span>
+
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">try</span><span class="p">:</span>
             <span class="n">background_cal_data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">wfc3_cal</span><span class="o">.</span><span class="n">background_cal_data</span>
@@ -940,8 +1111,11 @@
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
-<span class="sd">        spectral_image_cube</span>
-<span class="sd">        mask</span>
+<span class="sd">        spectral_image_cube : `ndarray`</span>
+<span class="sd">            Input spectral image data cube.</span>
+<span class="sd">        mask : `ndarray` of `int`</span>
+<span class="sd">            Bad pixel and region of interest mask. Values of 1 indicate</span>
+<span class="sd">            flagged data.</span>
 
 <span class="sd">        Attributes</span>
 <span class="sd">        ----------</span>
@@ -986,6 +1160,19 @@
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Determines the source position on the detector of the target source in</span>
 <span class="sd">        the calibration image takes prior to the spectroscopic observations.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        calibration_image_cube : `ndarray`</span>
+<span class="sd">            Cube containing all acquisition images of the target.</span>
+<span class="sd">        calibration_data_files : `list` of `str`</span>
+<span class="sd">            List containing the file names associated with the calibraton data.</span>
+
+<span class="sd">        Attributes</span>
+<span class="sd">        ----------</span>
+<span class="sd">        calibration_source_position : `list&#39; of `tuple`</span>
+<span class="sd">            The position of the source in the acquisition images associated</span>
+<span class="sd">            with the HST spectral timeseries observations.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">calibration_source_position</span> <span class="o">=</span> <span class="p">[]</span>
         <span class="k">for</span> <span class="n">im</span><span class="p">,</span> <span class="n">image_file</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">calibration_data_files</span><span class="p">):</span>
@@ -1031,6 +1218,20 @@
 <div class="viewcode-block" id="HSTWFC3._read_grism_configuration_files"><a class="viewcode-back" href="../../../cascade.instruments.html#cascade.instruments.instruments.HSTWFC3._read_grism_configuration_files">[docs]</a>    <span class="k">def</span> <span class="nf">_read_grism_configuration_files</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Gets the relevant data from WFC3 configuration files</span>
+
+<span class="sd">        Attributes</span>
+<span class="sd">        ----------</span>
+<span class="sd">        DYDX : `list`</span>
+<span class="sd">            The parameters for the spectral trace</span>
+<span class="sd">        DLDP : &#39;list`</span>
+<span class="sd">            The parameters for the wavelength calibration</span>
+
+<span class="sd">        Raises</span>
+<span class="sd">        ------</span>
+<span class="sd">        ValueError</span>
+<span class="sd">            An error is raised if the parameters associated</span>
+<span class="sd">            with the specified instrument mode can not be found in the</span>
+<span class="sd">            calibration file.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">calibration_file_name</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">par</span><span class="p">[</span><span class="s1">&#39;obs_cal_path&#39;</span><span class="p">],</span>
                                              <span class="bp">self</span><span class="o">.</span><span class="n">par</span><span class="p">[</span><span class="s1">&#39;inst_inst_name&#39;</span><span class="p">],</span>
@@ -1099,6 +1300,12 @@
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Read the calibration file containig the definition</span>
 <span class="sd">        of the reference pixel appropriate for a given sub array and or filer</span>
+
+<span class="sd">        Attributes</span>
+<span class="sd">        ----------</span>
+<span class="sd">        reference_pixels : `collections.OrderedDict`</span>
+<span class="sd">            Ordered dict containing the reference pixels to be used in the</span>
+<span class="sd">            wavelength calibration.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">calibration_file_name</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">par</span><span class="p">[</span><span class="s1">&#39;obs_cal_path&#39;</span><span class="p">],</span>
                                              <span class="bp">self</span><span class="o">.</span><span class="n">par</span><span class="p">[</span><span class="s1">&#39;inst_inst_name&#39;</span><span class="p">],</span>
@@ -1139,7 +1346,34 @@
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Search the reference pixel calibration file for the reference pixel</span>
 <span class="sd">        given the instrument aperture and filter.</span>
-<span class="sd">        See also http://www.stsci.edu/hst/observatory/apertures/wfc3.html</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        ptable : `dict`</span>
+<span class="sd">            Calibratrion table with reference positions</span>
+<span class="sd">        inst_aperture : `str`</span>
+<span class="sd">            The instrument aperture</span>
+<span class="sd">        inst_filter : `str`</span>
+<span class="sd">            The instrument filter</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        XREF : `float`</span>
+<span class="sd">            X reference position for the acquisition image</span>
+<span class="sd">        YREF : `float`</span>
+<span class="sd">            Y reference position for the acquisition image</span>
+
+<span class="sd">        Raises</span>
+<span class="sd">        ------</span>
+<span class="sd">        ValueError</span>
+<span class="sd">            An error is raises if the instrument aperture if filter is not</span>
+<span class="sd">            fount in the calibration table</span>
+
+<span class="sd">        Notes</span>
+<span class="sd">        -----</span>
+<span class="sd">        See also:</span>
+<span class="sd">            http://www.stsci.edu/hst/observatory/apertures/wfc3.html</span>
+
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">ptable_aperture</span> <span class="o">=</span> \
             <span class="n">ptable</span><span class="p">[(</span><span class="n">ptable</span><span class="o">.</span><span class="n">APERTURE</span> <span class="o">==</span> <span class="n">inst_aperture</span><span class="p">)]</span>
@@ -1165,6 +1399,20 @@
 
 <div class="viewcode-block" id="HSTWFC3._get_subarray_size"><a class="viewcode-back" href="../../../cascade.instruments.html#cascade.instruments.instruments.HSTWFC3._get_subarray_size">[docs]</a>    <span class="k">def</span> <span class="nf">_get_subarray_size</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">calibration_data</span><span class="p">,</span> <span class="n">spectral_data</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        This function determines the size of the used subarray.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        calibration_data</span>
+<span class="sd">        spectral_data</span>
+
+<span class="sd">        Attributes</span>
+<span class="sd">        ----------</span>
+<span class="sd">        subarray_sizes</span>
+
+<span class="sd">        Raises</span>
+<span class="sd">        ------</span>
+<span class="sd">        AttributeError</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">nintegrations</span><span class="p">,</span> <span class="n">nspatial</span><span class="p">,</span> <span class="n">nwavelength</span> <span class="o">=</span> <span class="n">spectral_data</span><span class="o">.</span><span class="n">shape</span>
         <span class="n">nintegrations_cal</span><span class="p">,</span> <span class="n">npix_y_cal</span><span class="p">,</span> <span class="n">npix_x_cal</span> <span class="o">=</span> <span class="n">calibration_data</span><span class="o">.</span><span class="n">shape</span>
@@ -1182,7 +1430,18 @@
 
 <div class="viewcode-block" id="HSTWFC3._get_wavelength_calibration"><a class="viewcode-back" href="../../../cascade.instruments.html#cascade.instruments.instruments.HSTWFC3._get_wavelength_calibration">[docs]</a>    <span class="k">def</span> <span class="nf">_get_wavelength_calibration</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Return the wavelength calibration</span>
+<span class="sd">        The functions returns the wavelength calibration</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        wave_cal : `ndarray`</span>
+<span class="sd">            Wavelength calibraiton of the observations.</span>
+
+<span class="sd">        Raises</span>
+<span class="sd">        ------</span>
+<span class="sd">        AttributeError</span>
+<span class="sd">            An error is raised if the necessary calibration data</span>
+<span class="sd">            is not yet defined.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">try</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">wfc3_cal</span>
@@ -1209,6 +1468,18 @@
 <div class="viewcode-block" id="HSTWFC3.get_spectral_trace"><a class="viewcode-back" href="../../../cascade.instruments.html#cascade.instruments.instruments.HSTWFC3.get_spectral_trace">[docs]</a>    <span class="k">def</span> <span class="nf">get_spectral_trace</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Get spectral trace</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        spectral_trace : `collections.OrderedDict`</span>
+<span class="sd">            The spectral trace of the dispersed light (both position and</span>
+<span class="sd">            wavelength)</span>
+
+<span class="sd">        Raises</span>
+<span class="sd">        ------</span>
+<span class="sd">        AttributeError</span>
+<span class="sd">            An error is raised in the necessary calibration data is</span>
+<span class="sd">            not yet defined.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">dim</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span>
 <span class="c1">#        wavelength_unit = self.data.wavelength_unit</span>
@@ -1267,12 +1538,32 @@
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        This function defines the spectral trace for the wfc3 grism modes.</span>
 
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        xc</span>
+<span class="sd">        yc</span>
+<span class="sd">        DYDX</span>
+<span class="sd">        xref=522</span>
+<span class="sd">        yref=522</span>
+<span class="sd">        xref_grism=522</span>
+<span class="sd">        yref_grism=522</span>
+<span class="sd">        subarray=256</span>
+<span class="sd">        subarray_grism=256</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        trace</span>
+
 <span class="sd">        Notes</span>
 <span class="sd">        -----</span>
 <span class="sd">        Details can be found in:</span>
+
 <span class="sd">           http://www.stsci.edu/hst/wfc3/documents/ISRs/WFC3-2016-15.pdf</span>
+
 <span class="sd">        and</span>
+
 <span class="sd">           http://www.stsci.edu/hst/observatory/apertures/wfc3.html</span>
+
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="c1"># adjust position in case different subarrays are used.</span>
         <span class="n">xc</span> <span class="o">=</span> <span class="n">xc</span> <span class="o">-</span> <span class="p">(</span><span class="n">xref</span> <span class="o">-</span> <span class="n">xref_grism</span><span class="p">)</span>
@@ -1307,13 +1598,7 @@
                         <span class="n">xref_grism</span><span class="o">=</span><span class="mi">522</span><span class="p">,</span> <span class="n">yref_grism</span><span class="o">=</span><span class="mi">522</span><span class="p">,</span> <span class="n">subarray</span><span class="o">=</span><span class="mi">256</span><span class="p">,</span>
                         <span class="n">subarray_grism</span><span class="o">=</span><span class="mi">256</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Convert pixel coordinate to wavelength. Method and coefficient</span>
-<span class="sd">        adopted from Kuntschner et al. (2009), Wilkins et al. (2014). See also</span>
-<span class="sd">        http://www.stsci.edu/hst/wfc3/documents/ISRs/WFC3-2016-15.pdf</span>
-
-<span class="sd">        In case the direct image and spectral image are not taken with the</span>
-<span class="sd">        same aperture, the centroid measurement is adjusted according to the</span>
-<span class="sd">        table in: http://www.stsci.edu/hst/observatory/apertures/wfc3.html</span>
+<span class="sd">        Convert pixel coordinate to wavelength.</span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
@@ -1332,6 +1617,24 @@
 <span class="sd">        -------</span>
 <span class="sd">        wavelength : &#39;astropy.units.core.Quantity&#39;</span>
 <span class="sd">            return wavelength mapping of x coordinate in micron</span>
+
+<span class="sd">        Notes</span>
+<span class="sd">        -----</span>
+<span class="sd">        For details of the method and coefficient adopted see [1]_ and [2]_.</span>
+<span class="sd">        See also:</span>
+
+<span class="sd">            http://www.stsci.edu/hst/wfc3/documents/ISRs/WFC3-2016-15.pdf</span>
+
+<span class="sd">        In case the direct image and spectral image are not taken with the</span>
+<span class="sd">        same aperture, the centroid measurement is adjusted according to the</span>
+<span class="sd">        table in:</span>
+
+<span class="sd">            http://www.stsci.edu/hst/observatory/apertures/wfc3.html</span>
+
+<span class="sd">        References</span>
+<span class="sd">        ----------</span>
+<span class="sd">        .. [1] Kuntschner et al. (2009)</span>
+<span class="sd">        .. [2] Wilkins et al. (2014)</span>
 <span class="sd">        &quot;&quot;&quot;</span>
 
         <span class="c1"># adjust position in case different subarrays are used.</span>
@@ -1416,7 +1719,16 @@
 <div class="viewcode-block" id="SpitzerIRS"><a class="viewcode-back" href="../../../cascade.instruments.html#cascade.instruments.instruments.SpitzerIRS">[docs]</a><span class="k">class</span> <span class="nc">SpitzerIRS</span><span class="p">(</span><span class="n">InstrumentBase</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    This instrument class defines the properties of the IRS instrument of</span>
-<span class="sd">    the Spitzer Space Telescope</span>
+<span class="sd">    the Spitzer Space Telescope.</span>
+<span class="sd">    For the instrument and observations the following valid options are</span>
+<span class="sd">    available:</span>
+
+<span class="sd">       - detectors :  {&#39;SL&#39;, &#39;LL&#39;}</span>
+<span class="sd">       - spectral orders : {&#39;1&#39;, &#39;2&#39;}</span>
+<span class="sd">       - data products : {&#39;droop&#39;, &#39;COE&#39;}</span>
+<span class="sd">       - observing mode : {&#39;STARING&#39;, &#39;NODDED&#39;}</span>
+<span class="sd">       - data type : {&#39;SPECTRUM&#39;, &#39;SPECTRAL_IMAGE&#39;, &#39;SPECTRAL_DETECTOR_CUBE&#39;}</span>
+
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">__valid_arrays</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;SL&#39;</span><span class="p">,</span> <span class="s1">&#39;LL&#39;</span><span class="p">}</span>
     <span class="n">__valid_orders</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;1&#39;</span><span class="p">,</span> <span class="s1">&#39;2&#39;</span><span class="p">}</span>
@@ -1534,7 +1846,27 @@
 
 <div class="viewcode-block" id="SpitzerIRS.get_spectra"><a class="viewcode-back" href="../../../cascade.instruments.html#cascade.instruments.instruments.SpitzerIRS.get_spectra">[docs]</a>    <span class="k">def</span> <span class="nf">get_spectra</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">is_background</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        read uncalibrated spectral timeseries, phase and wavelength</span>
+<span class="sd">        This function combines all functionallity to read fits files</span>
+<span class="sd">        containing the (uncalibrated) spectral timeseries, including</span>
+<span class="sd">        orbital phase and wavelength information</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        is_background : `bool`</span>
+<span class="sd">            if `True` the data represents an observaton of the IR background</span>
+<span class="sd">            to be subtracted of the data of the transit spectroscopy target.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        SpectralTimeSeries : `cascade.data_model.SpectralDataTimeSeries`</span>
+<span class="sd">            Instance of `SpectralDataTimeSeries` containing all spectroscopic</span>
+<span class="sd">            data including uncertainties, time, wavelength and bad pixel mask.</span>
+
+<span class="sd">        Raises</span>
+<span class="sd">        ------</span>
+<span class="sd">        AssertionError, KeyError</span>
+<span class="sd">            Raises an error if no data is found or if certain expected</span>
+<span class="sd">            fits keywords are not present in the data files.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="c1"># get data files</span>
         <span class="k">if</span> <span class="n">is_background</span><span class="p">:</span>
@@ -1648,26 +1980,49 @@
 
 <div class="viewcode-block" id="SpitzerIRS.get_spectral_images"><a class="viewcode-back" href="../../../cascade.instruments.html#cascade.instruments.instruments.SpitzerIRS.get_spectral_images">[docs]</a>    <span class="k">def</span> <span class="nf">get_spectral_images</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">is_background</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        read uncalibrated spectral images</span>
+<span class="sd">        This function combines all functionallity to read fits files</span>
+<span class="sd">        containing the (uncalibrated) spectral timeseries, including</span>
+<span class="sd">        orbital phase and wavelength information</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        is_background : `bool`</span>
+<span class="sd">            if `True` the data represents an observaton of the IR background</span>
+<span class="sd">            to be subtracted of the data of the transit spectroscopy target.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        SpectralTimeSeries : `cascade.data_model.SpectralDataTimeSeries`</span>
+<span class="sd">            Instance of `SpectralDataTimeSeries` containing all spectroscopic</span>
+<span class="sd">            data including uncertainties, time, wavelength and bad pixel mask.</span>
+
+<span class="sd">        Raises</span>
+<span class="sd">        ------</span>
+<span class="sd">        AssertionError, KeyError</span>
+<span class="sd">            Raises an error if no data is found or if certain expected</span>
+<span class="sd">            fits keywords are not present in the data files.</span>
 
 <span class="sd">        Notes</span>
 <span class="sd">        -----</span>
-<span class="sd">        Notes on FOV:</span>
 
-<span class="sd">        # in the fits header the following relevant info is used:</span>
-<span class="sd">        # FOVID     26     IRS_Short-Lo_1st_Order_1st_Position</span>
-<span class="sd">        # FOVID     27     IRS_Short-Lo_1st_Order_2nd_Position</span>
-<span class="sd">        # FOVID     28     IRS_Short-Lo_1st_Order_Center_Position</span>
-<span class="sd">        # FOVID     29     IRS_Short-Lo_Module_Center</span>
-<span class="sd">        # FOVID     32     IRS_Short-Lo_2nd_Order_1st_Position</span>
-<span class="sd">        # FOVID     33     IRS_Short-Lo_2nd_Order_2nd_Position</span>
-<span class="sd">        # FOVID     34     IRS_Short-Lo_2nd_Order_Center_Position</span>
-<span class="sd">        # FOVID     40     IRS_Long-Lo_1st_Order_Center_Position</span>
-<span class="sd">        # FOVID     46     IRS_Long-Lo_2nd_Order_Center_Position</span>
+<span class="sd">        Notes on FOV:</span>
+<span class="sd">            in the fits header the following relevant info is used:</span>
+
+<span class="sd">            - FOVID     26     IRS_Short-Lo_1st_Order_1st_Position</span>
+<span class="sd">            - FOVID     27     IRS_Short-Lo_1st_Order_2nd_Position</span>
+<span class="sd">            - FOVID     28     IRS_Short-Lo_1st_Order_Center_Position</span>
+<span class="sd">            - FOVID     29     IRS_Short-Lo_Module_Center</span>
+<span class="sd">            - FOVID     32     IRS_Short-Lo_2nd_Order_1st_Position</span>
+<span class="sd">            - FOVID     33     IRS_Short-Lo_2nd_Order_2nd_Position</span>
+<span class="sd">            - FOVID     34     IRS_Short-Lo_2nd_Order_Center_Position</span>
+<span class="sd">            - FOVID     40     IRS_Long-Lo_1st_Order_Center_Position</span>
+<span class="sd">            - FOVID     46     IRS_Long-Lo_2nd_Order_Center_Position</span>
 
 <span class="sd">        Notes on timing:</span>
 
-<span class="sd">        # FRAMTIME the total effective exposure time (ramp length) in seconds</span>
+<span class="sd">            - FRAMTIME the total effective exposure time (ramp length)</span>
+<span class="sd">              in seconds</span>
+
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="c1"># order mask</span>
         <span class="n">mask</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_order_mask</span><span class="p">()</span>
@@ -1893,7 +2248,28 @@
 
 <div class="viewcode-block" id="SpitzerIRS.get_detector_cubes"><a class="viewcode-back" href="../../../cascade.instruments.html#cascade.instruments.instruments.SpitzerIRS.get_detector_cubes">[docs]</a>    <span class="k">def</span> <span class="nf">get_detector_cubes</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">is_background</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Get detector cube data</span>
+<span class="sd">        This function combines all functionallity to read fits files</span>
+<span class="sd">        containing the (uncalibrated) detector cubes (detector data</span>
+<span class="sd">        on ramp level) timeseries, including</span>
+<span class="sd">        orbital phase and wavelength information</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        is_background : `bool`</span>
+<span class="sd">            if `True` the data represents an observaton of the IR background</span>
+<span class="sd">            to be subtracted of the data of the transit spectroscopy target.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        SpectralTimeSeries : `cascade.data_model.SpectralDataTimeSeries`</span>
+<span class="sd">            Instance of `SpectralDataTimeSeries` containing all spectroscopic</span>
+<span class="sd">            data including uncertainties, time, wavelength and bad pixel mask.</span>
+
+<span class="sd">        Raises</span>
+<span class="sd">        ------</span>
+<span class="sd">        AssertionError, KeyError</span>
+<span class="sd">            Raises an error if no data is found or if certain expected</span>
+<span class="sd">            fits keywords are not present in the data files.</span>
 
 <span class="sd">        Notes</span>
 <span class="sd">        -----</span>
@@ -1903,7 +2279,9 @@
 <span class="sd">        Of greatest interest to the observer is the</span>
 <span class="sd">        “effective integration time”, which is the time on-chip between</span>
 <span class="sd">        the first and last non-destructive reads for each pixel. It is called:</span>
+
 <span class="sd">            RAMPTIME = Total integration time for the current DCE.</span>
+
 <span class="sd">        The value of RAMPTIME gives the usable portion of the integration ramp,</span>
 <span class="sd">        occurring between the beginning of the first read and the end of the</span>
 <span class="sd">        last read. It excludes detector array pre-conditioning time.</span>
@@ -1916,12 +2294,17 @@
 <span class="sd">        through the array without reading or resetting. The time it takes to</span>
 <span class="sd">        clock through the array once is given by the SAMPTIME keyword.</span>
 <span class="sd">        So, for an N-read ramp:</span>
+
 <span class="sd">            RAMPTIME = 2x(N-1)xSAMPTIME</span>
+
 <span class="sd">        and</span>
+
 <span class="sd">           DCE duration = DEADTIME + GRPTIME + RAMPTIME</span>
+
 <span class="sd">        Note that peak-up data is not obtained in SUR mode. It is obtained in</span>
 <span class="sd">        Double Correlated Sampling (DCS) mode. In that case, RAMPTIME gives the</span>
 <span class="sd">        time interval between the 2nd sample and the preceeding reset.</span>
+
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="c1"># order mask</span>
         <span class="n">mask</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_order_mask</span><span class="p">()</span>
@@ -2135,9 +2518,9 @@
 
 <h3>Navigation</h3>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="../../../install.html">Howto Install CASCADe</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../install.html">Installing CASCADe</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../howto.html">Using Cascade</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../cascade.html">Modules of the CASCADe package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../cascade.html">CASCADe API</a></li>
 </ul>
 
 <div class="relations">

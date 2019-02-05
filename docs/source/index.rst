@@ -25,8 +25,8 @@ systems. The current code has been tested successfully to spectroscopic data
 obtained with the Spitzer and HST observatories.
 
 
-CASCADe API documentation
-=========================
+CASCADe documentation
+=====================
 
 .. toctree::
    :maxdepth: 1

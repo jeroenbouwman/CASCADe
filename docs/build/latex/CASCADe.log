@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.14159265-2.6-1.40.17 (TeX Live 2016/TeX Live for SUSE Linux) (preloaded format=pdflatex 2018.5.16)  4 FEB 2019 18:02
+This is pdfTeX, Version 3.14159265-2.6-1.40.17 (TeX Live 2016/TeX Live for SUSE Linux) (preloaded format=pdflatex 2018.5.16)  5 FEB 2019 19:18
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -1277,344 +1277,391 @@ Underfull \hbox (badness 10000) in paragraph at lines 829--829
 
 [8]
 Underfull \hbox (badness 10000) in paragraph at lines 906--908
-[]\T1/cmtt/m/n/10 dataset_optimal_extracted \T1/cmr/m/n/10 (\T1/cmtt/m/it/10 ca
-scade.data_model.
+[]\T1/cmtt/m/n/10 dataset_optimal_extracted \T1/cmr/m/n/10 (\T1/cmr/m/it/10 cas
+-cade.data_model.SpectralDataTimeSeries\T1/cmr/m/n/10 ) ^^U
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 965--965
+Underfull \hbox (badness 10000) in paragraph at lines 977--977
 []\T1/cmr/m/it/10 cleaned_data_in\T1/cmr/m/n/10 , \T1/cmr/m/it/10 orig-i-nal_ma
 sk_in\T1/cmr/m/n/10 , \T1/cmr/m/it/10 re-gres-sor_selection\T1/cmr/m/n/10 , \T1
 /cmr/m/it/10 nre-bin\T1/cmr/m/n/10 ,
  []
 
-[9] [10] [11] [12] [13]
-Underfull \hbox (badness 10000) in paragraph at lines 1503--1503
+[9] [10] [11]
+Underfull \hbox (badness 10000) in paragraph at lines 1284--1286
+[]\T1/cmr/m/n/10 (fit_parameters_scaled, err_fit_parameters_scaled, lam_reg, pc
+_matrix,
+ []
+
+[12] [13]
+Underfull \hbox (badness 10000) in paragraph at lines 1561--1561
 []\T1/cmr/m/it/10 wavelength=nan\T1/cmr/m/n/10 , \T1/cmr/m/it/10 wave-length_un
 it=None\T1/cmr/m/n/10 , \T1/cmr/m/it/10 data=array([[nan]])\T1/cmr/m/n/10 ,
  []
 
-[14] [15]
-Underfull \hbox (badness 5592) in paragraph at lines 1839--1839
+[14] [15] [16]
+Underfull \hbox (badness 5592) in paragraph at lines 1897--1897
 []\T1/cmr/m/it/10 wavelength: Unit("micron")\T1/cmr/m/n/10 , \T1/cmr/m/it/10 co
 n-trast: Unit("%")\T1/cmr/m/n/10 ,
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 1839--1839
+Underfull \hbox (badness 10000) in paragraph at lines 1897--1897
 \T1/cmr/m/it/10 Stel-larTem-per-a-ture: Unit("K")\T1/cmr/m/n/10 , \T1/cmr/m/it/
 10 Stel-lar-Ra-dius:
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 1839--1839
+Underfull \hbox (badness 10000) in paragraph at lines 1897--1897
 \T1/cmr/m/it/10 Unit("solRad")\T1/cmr/m/n/10 , \T1/cmr/m/it/10 Ra-dius-Planet: 
 Unit("jupiterRad")\T1/cmr/m/n/10 ,
  []
 
-[16]
-Underfull \hbox (badness 10000) in paragraph at lines 1996--1996
+[17]
+Underfull \hbox (badness 10000) in paragraph at lines 2054--2054
 []\T1/cmr/m/it/10 data_list\T1/cmr/m/n/10 , \T1/cmr/m/it/10 tar-get_name_or_pos
 ition\T1/cmr/m/n/10 , \T1/cmr/m/it/10 co-ord_unit=None\T1/cmr/m/n/10 , \T1/cmr/
 m/it/10 co-or-di-
  []
 
-[17] [18]
+[18]
 
 LaTeX Font Warning: Font shape `TS1/cmtt/bx/n' undefined
 (Font)              using `TS1/cmtt/m/n' instead
 (Font)              for symbol `textquotesingle' on input line 1.
 
-[19] [20] [21]
-Underfull \hbox (badness 10000) in paragraph at lines 2538--2538
+[19] [20] [21] [22] [23] [24]
+Underfull \hbox (badness 10000) in paragraph at lines 3006--3006
 []\T1/cmr/m/it/10 xc\T1/cmr/m/n/10 , \T1/cmr/m/it/10 yc\T1/cmr/m/n/10 , \T1/cmr
 /m/it/10 DYDX\T1/cmr/m/n/10 , \T1/cmr/m/it/10 DLDP\T1/cmr/m/n/10 , \T1/cmr/m/it
 /10 xref=522\T1/cmr/m/n/10 , \T1/cmr/m/it/10 yref=522\T1/cmr/m/n/10 , \T1/cmr/m
 /it/10 xref_grism=522\T1/cmr/m/n/10 ,
  []
 
-
-Underfull \hbox (badness 5274) in paragraph at lines 2665--2675
-[]\T1/cmr/m/n/10 # in the fits header the fol-low-ing rel-e-vant info is used: 
-# FOVID 26 IRS_Short-
- []
-
-
-Underfull \hbox (badness 10000) in paragraph at lines 2665--2675
-\T1/cmr/m/n/10 # FOVID 34 IRS_Short-Lo_2nd_Order_Center_Position # FOVID 40 IRS
-_Long-
- []
-
-[22] [23] [24]
+[25] [26] [27] [28]
 Chapter 2.
-[25
+[29
 
-] [26
+] [30
 
 ]
-LaTeX Font Info:    Try loading font information for T1+cmss on input line 2885
+LaTeX Font Info:    Try loading font information for T1+cmss on input line 3484
 .
  (/usr/share/texmf/tex/latex/base/t1cmss.fd
 File: t1cmss.fd 2014/09/29 v2.5h Standard LaTeX font definitions
-) [27
+) [31
 
 
 ] (./CASCADe.ind
-[28
+[32
 
 
 ]
-Underfull \hbox (badness 10000) in paragraph at lines 17--19
+Underfull \hbox (badness 10000) in paragraph at lines 8--10
+[]\T1/cmtt/m/n/10 _Observation__check_observation_type() \T1/cmr/m/n/10 (\T1/cm
+r/m/it/10 Ob-ser-
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 10--11
+[]\T1/cmtt/m/n/10 _Observation__do_observations() \T1/cmr/m/n/10 (\T1/cmr/m/it/
+10 Ob-ser-va-tion
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 11--13
+[]\T1/cmtt/m/n/10 _Observation__get_observatory_name() \T1/cmr/m/n/10 (\T1/cmr/
+m/it/10 Ob-ser-va-
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 13--15
+[]\T1/cmtt/m/n/10 _Observation__valid_observation_type \T1/cmr/m/n/10 (\T1/cmr/
+m/it/10 Ob-ser-va-
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 15--17
+[]\T1/cmtt/m/n/10 _Observation__valid_observatories \T1/cmr/m/n/10 (\T1/cmr/m/i
+t/10 Ob-ser-va-tion
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 26--28
 []\T1/cmtt/m/n/10 _determine_relative_source_position() \T1/cmr/m/n/10 (\T1/cmr
 /m/it/10 HST-
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 19--21
+Underfull \hbox (badness 10000) in paragraph at lines 28--30
 []\T1/cmtt/m/n/10 _determine_source_position_from_cal_image()
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 25--26
+Underfull \hbox (badness 10000) in paragraph at lines 34--35
 []\T1/cmtt/m/n/10 _get_wavelength_calibration() \T1/cmr/m/n/10 (\T1/cmr/m/it/10
  HST-WFC3
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 26--27
+Underfull \hbox (badness 10000) in paragraph at lines 35--36
 []\T1/cmtt/m/n/10 _get_wavelength_calibration() \T1/cmr/m/n/10 (\T1/cmr/m/it/10
  SpitzerIRS
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 27--28
+Underfull \hbox (badness 10000) in paragraph at lines 36--37
 []\T1/cmtt/m/n/10 _read_grism_configuration_files() \T1/cmr/m/n/10 (\T1/cmr/m/i
 t/10 HST-WFC3
  []
 
 
-Underfull \hbox (badness 6961) in paragraph at lines 29--31
+Underfull \hbox (badness 6961) in paragraph at lines 38--40
 []\T1/cmtt/m/n/10 _search_ref_pixel_cal_file() \T1/cmr/m/n/10 (\T1/cmr/m/it/10 
 HST-WFC3 static
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 34--36
+Underfull \hbox (badness 10000) in paragraph at lines 43--45
 []\T1/cmtt/m/n/10 AuxilaryInfoDesc \T1/cmr/m/n/10 (\T1/cmr/m/it/10 class in cas
 -
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 39--41
+Underfull \hbox (badness 10000) in paragraph at lines 48--50
 []\T1/cmtt/m/n/10 batman_model \T1/cmr/m/n/10 (\T1/cmr/m/it/10 class in cas-
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 47--48
+Underfull \hbox (badness 10000) in paragraph at lines 56--57
 []\T1/cmtt/m/n/10 cascade.exoplanet_tools.exoplanet_tools \T1/cmr/m/n/10 (\T1/c
 mr/m/it/10 mod-
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 52--54
+Underfull \hbox (badness 10000) in paragraph at lines 61--63
 []\T1/cmtt/m/n/10 cascade_configuration \T1/cmr/m/n/10 (\T1/cmr/m/it/10 in mod-
 ule cas-
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 54--56
+Underfull \hbox (badness 10000) in paragraph at lines 63--65
 []\T1/cmtt/m/n/10 combine_spectra() \T1/cmr/m/n/10 (\T1/cmr/m/it/10 in mod-ule 
 cas-
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 57--59
+Underfull \hbox (badness 10000) in paragraph at lines 66--68
 []\T1/cmtt/m/n/10 convert_spectrum_to_brighness_temperature()
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 57--59
+Underfull \hbox (badness 10000) in paragraph at lines 66--68
 \T1/cmr/m/n/10 (\T1/cmr/m/it/10 in mod-ule cas-
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 66--68
+Underfull \hbox (badness 10000) in paragraph at lines 75--77
 []\T1/cmtt/m/n/10 default_initialization_path \T1/cmr/m/n/10 (\T1/cmr/m/it/10 i
 n mod-ule cas-
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 68--69
+Underfull \hbox (badness 10000) in paragraph at lines 77--78
 []\T1/cmtt/m/n/10 define_batman_model() \T1/cmr/m/n/10 (\T1/cmr/m/it/10 bat-man
 _model static
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 74--76
+Underfull \hbox (badness 10000) in paragraph at lines 83--85
 []\T1/cmtt/m/n/10 eclipse_to_transit() \T1/cmr/m/n/10 (\T1/cmr/m/it/10 in mod-u
 le cas-
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 76--78
+Underfull \hbox (badness 10000) in paragraph at lines 85--87
 []\T1/cmtt/m/n/10 EquilibriumTemperature() \T1/cmr/m/n/10 (\T1/cmr/m/it/10 in m
 od-ule cas-
  []
 
+[33
 
-Underfull \hbox (badness 10000) in paragraph at lines 79--81
+]
+Underfull \hbox (badness 10000) in paragraph at lines 88--90
 []\T1/cmtt/m/n/10 extract_exoplanet_data() \T1/cmr/m/n/10 (\T1/cmr/m/it/10 in m
 od-ule cas-
  []
 
-[29
 
-]
-Underfull \hbox (badness 10000) in paragraph at lines 92--94
+Underfull \hbox (badness 10000) in paragraph at lines 101--103
 []\T1/cmtt/m/n/10 get_calalog() \T1/cmr/m/n/10 (\T1/cmr/m/it/10 in mod-ule cas-
 
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 113--115
+Underfull \hbox (badness 10000) in paragraph at lines 123--125
 []\T1/cmtt/m/n/10 InstanceDescriptorMixin \T1/cmr/m/n/10 (\T1/cmr/m/it/10 class
  in cas-
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 119--121
+Underfull \hbox (badness 10000) in paragraph at lines 125--127
+[]\T1/cmtt/m/n/10 InstrumentBase \T1/cmr/m/n/10 (\T1/cmr/m/it/10 class in cas-
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 131--133
 []\T1/cmtt/m/n/10 JytoKmag() \T1/cmr/m/n/10 (\T1/cmr/m/it/10 in mod-ule cas-
  []
 
 
-Overfull \hbox (9.9491pt too wide) in paragraph at lines 124--126
+Overfull \hbox (9.9491pt too wide) in paragraph at lines 136--138
 []\T1/cmtt/m/n/10 Kmag \T1/cmr/m/n/10 (\T1/cmr/m/it/10 in mod-ule cas-cade.exop
 lanet_tools.exoplanet_tools\T1/cmr/m/n/10 ),
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 126--128
+Underfull \hbox (badness 10000) in paragraph at lines 138--140
 []\T1/cmtt/m/n/10 KmagToJy() \T1/cmr/m/n/10 (\T1/cmr/m/it/10 in mod-ule cas-
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 131--133
+Underfull \hbox (badness 10000) in paragraph at lines 143--145
 []\T1/cmtt/m/n/10 lightcuve \T1/cmr/m/n/10 (\T1/cmr/m/it/10 class in cas-
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 142--144
+Underfull \hbox (badness 10000) in paragraph at lines 156--158
 []\T1/cmtt/m/n/10 masked_array_input() \T1/cmr/m/n/10 (\T1/cmr/m/it/10 in mod-u
 le cas-
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 144--146
+Underfull \hbox (badness 10000) in paragraph at lines 158--160
 []\T1/cmtt/m/n/10 MeasurementDesc \T1/cmr/m/n/10 (\T1/cmr/m/it/10 class in cas-
 
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 158--159
+Underfull \hbox (badness 10000) in paragraph at lines 175--176
 []\T1/cmtt/m/n/10 Observation \T1/cmr/m/n/10 (\T1/cmr/m/it/10 class in cas-
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 165--167
+Underfull \hbox (badness 10000) in paragraph at lines 177--178
+[]\T1/cmtt/m/n/10 observatory_instruments \T1/cmr/m/n/10 (\T1/cmr/m/it/10 Ob-se
+r-va-to-ry-Base at-
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 179--181
+[]\T1/cmtt/m/n/10 ObservatoryBase \T1/cmr/m/n/10 (\T1/cmr/m/it/10 class in cas-
+
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 185--187
 []\T1/cmtt/m/n/10 parse_database() \T1/cmr/m/n/10 (\T1/cmr/m/it/10 in mod-ule c
 as-
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 167--169
+Underfull \hbox (badness 10000) in paragraph at lines 187--189
 []\T1/cmtt/m/n/10 Planck() \T1/cmr/m/n/10 (\T1/cmr/m/it/10 in mod-ule cas-
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 177--178
+Underfull \hbox (badness 10000) in paragraph at lines 197--198
 []\T1/cmtt/m/n/10 return_PCR() \T1/cmr/m/n/10 (\T1/cmr/m/it/10 in mod-ule cas-
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 184--186
+Underfull \hbox (badness 10000) in paragraph at lines 204--206
 []\T1/cmtt/m/n/10 ScaleHeight() \T1/cmr/m/n/10 (\T1/cmr/m/it/10 in mod-ule cas-
 
  []
 
-
-Underfull \hbox (badness 10000) in paragraph at lines 190--192
+[34]
+Underfull \hbox (badness 10000) in paragraph at lines 210--212
 []\T1/cmtt/m/n/10 solve_linear_equation() \T1/cmr/m/n/10 (\T1/cmr/m/it/10 in mo
 d-ule cas-
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 192--193
+Underfull \hbox (badness 10000) in paragraph at lines 212--213
 []\T1/cmtt/m/n/10 SpectralData \T1/cmr/m/n/10 (\T1/cmr/m/it/10 class in cas-
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 193--195
+Underfull \hbox (badness 10000) in paragraph at lines 213--215
 []\T1/cmtt/m/n/10 SpectralDataTimeSeries \T1/cmr/m/n/10 (\T1/cmr/m/it/10 class 
 in cas-
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 199--201
+Underfull \hbox (badness 10000) in paragraph at lines 219--221
 []\T1/cmtt/m/n/10 SurfaceGravity() \T1/cmr/m/n/10 (\T1/cmr/m/it/10 in mod-ule c
 as-
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 206--208
+Underfull \hbox (badness 10000) in paragraph at lines 226--228
 []\T1/cmtt/m/n/10 transit_to_eclipse() \T1/cmr/m/n/10 (\T1/cmr/m/it/10 in mod-u
 le cas-
  []
 
-[30]
-Underfull \hbox (badness 10000) in paragraph at lines 208--210
+
+Underfull \hbox (badness 10000) in paragraph at lines 228--230
 []\T1/cmtt/m/n/10 TransitDepth() \T1/cmr/m/n/10 (\T1/cmr/m/it/10 in mod-ule cas
 -
  []
 
 
-Overfull \hbox (9.9491pt too wide) in paragraph at lines 220--222
+Overfull \hbox (9.9491pt too wide) in paragraph at lines 240--242
 []\T1/cmtt/m/n/10 Vmag \T1/cmr/m/n/10 (\T1/cmr/m/it/10 in mod-ule cas-cade.exop
 lanet_tools.exoplanet_tools\T1/cmr/m/n/10 ),
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 227--229
+Underfull \hbox (badness 10000) in paragraph at lines 247--249
 []\T1/cmtt/m/n/10 write_timeseries_to_fits() \T1/cmr/m/n/10 (\T1/cmr/m/it/10 in
  mod-ule cas-
  []
 
-[31
+[35
 
 ])
-Package atveryend Info: Empty hook `BeforeClearDocument' on input line 2897.
-Package atveryend Info: Empty hook `AfterLastShipout' on input line 2897.
+Package atveryend Info: Empty hook `BeforeClearDocument' on input line 3496.
+Package atveryend Info: Empty hook `AfterLastShipout' on input line 3496.
  (./CASCADe.aux)
-Package atveryend Info: Executing hook `AtVeryEndDocument' on input line 2897.
-Package atveryend Info: Executing hook `AtEndAfterFileList' on input line 2897.
+Package atveryend Info: Executing hook `AtVeryEndDocument' on input line 3496.
+Package atveryend Info: Executing hook `AtEndAfterFileList' on input line 3496.
 
 Package rerunfilecheck Info: File `CASCADe.out' has not changed.
-(rerunfilecheck)             Checksum: A4A4F33B9CD557237E438B54D476D0E8;3120.
+(rerunfilecheck)             Checksum: EF44128011A62860515BDEBF8E131F44;2975.
 
 
 LaTeX Font Warning: Some font shapes were not available, defaults substituted.
 
-Package atveryend Info: Empty hook `AtVeryVeryEnd' on input line 2897.
+Package atveryend Info: Empty hook `AtVeryVeryEnd' on input line 3496.
  ) 
 Here is how much of TeX's memory you used:
- 15762 strings out of 493014
- 223748 string characters out of 6141592
- 455359 words of memory out of 5000000
- 18760 multiletter control sequences out of 15000+600000
+ 15797 strings out of 493014
+ 225149 string characters out of 6141592
+ 450165 words of memory out of 5000000
+ 18775 multiletter control sequences out of 15000+600000
  19976 words of font info for 46 fonts, out of 8000000 for 9000
  1142 hyphenation exceptions out of 8191
- 37i,16n,45p,989b,740s stack positions out of 5000i,500n,10000p,200000b,80000s
-pdfTeX warning (dest): name{Hfootnote.6} has been referenced but does not exi
+ 37i,16n,45p,989b,751s stack positions out of 5000i,500n,10000p,200000b,80000s
+pdfTeX warning (dest): name{Hfootnote.8} has been referenced but does not exi
 st, replaced by a fixed one
+
+pdfTeX warning (dest): name{Hfootnote.7} has been referenced but does not exist
+, replaced by a fixed one
+
+pdfTeX warning (dest): name{Hfootnote.6} has been referenced but does not exist
+, replaced by a fixed one
 
 pdfTeX warning (dest): name{Hfootnote.5} has been referenced but does not exist
 , replaced by a fixed one
@@ -1647,10 +1694,10 @@ usr/share/texmf/fonts/type1/public/cm-super/sfss1440.pfb></usr/share/texmf/font
 s/type1/public/cm-super/sfti0900.pfb></usr/share/texmf/fonts/type1/public/cm-su
 per/sfti1000.pfb></usr/share/texmf/fonts/type1/public/cm-super/sftt0900.pfb></u
 sr/share/texmf/fonts/type1/public/cm-super/sftt1000.pfb>
-Output written on CASCADe.pdf (37 pages, 490354 bytes).
+Output written on CASCADe.pdf (41 pages, 501780 bytes).
 PDF statistics:
- 697 PDF objects out of 1000 (max. 8388607)
- 625 compressed objects within 7 object streams
- 179 named destinations out of 1000 (max. 500000)
+ 762 PDF objects out of 1000 (max. 8388607)
+ 686 compressed objects within 7 object streams
+ 199 named destinations out of 1000 (max. 500000)
  178 words of extra memory for PDF output out of 10000 (max. 10000000)
 

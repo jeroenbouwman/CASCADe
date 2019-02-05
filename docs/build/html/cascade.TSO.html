@@ -17,7 +17,7 @@
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="The cascade.cpm_model module" href="cascade.cpm_model.html" />
-    <link rel="prev" title="Modules of the CASCADe package" href="cascade.html" />
+    <link rel="prev" title="CASCADe API" href="cascade.html" />
    
   <link rel="stylesheet" href="_static/custom.css" type="text/css" />
   
@@ -36,7 +36,7 @@
     <ul>
         <li>
           &larr;
-          <a href="cascade.html" title="Previous document">Modules of the CASCADe package</a>
+          <a href="cascade.html" title="Previous document">CASCADe API</a>
         </li>
         <li>
           <a href="cascade.cpm_model.html" title="Next document">The cascade.cpm_model module</a>
@@ -67,7 +67,7 @@ and to extractthe spectrum of the transiting exoplanet.</p>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>init_files</strong> (<em>'list' of 'str'</em>) – List containing all the initialization files needed to run the
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>init_files</strong> (<cite>list</cite> of <cite>str</cite>) – List containing all the initialization files needed to run the
 CASCADe code.</td>
 </tr>
 <tr class="field-even field"><th class="field-name">Raises:</th><td class="field-body"><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.7)"><code class="xref py py-exc docutils literal notranslate"><span class="pre">ValueError</span></code></a> – Raised when commands not recognized as valid</td>
@@ -90,11 +90,11 @@ CASCADe code.</td>
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>command</strong> – Command to be excecuted. If valid the method corresponding
+<li><strong>command</strong> (<cite>str</cite>) – Command to be excecuted. If valid the method corresponding
 to the command will be excecuted</li>
-<li><strong>*init_files</strong> – Single or multiple file names of the .ini files containing the
+<li><strong>*init_files</strong> (<cite>tuple</cite> of <cite>str</cite>) – Single or multiple file names of the .ini files containing the
 parameters defining the observation and calibration settings.</li>
-<li><strong>path</strong> – (optional) Filepath to the .ini files, standard value in None</li>
+<li><strong>path</strong> (<cite>str</cite>) – (optional) Filepath to the .ini files, standard value in None</li>
 </ul>
 </td>
 </tr>
@@ -121,9 +121,9 @@ multiple .ini files</p>
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>*init_files</strong> – Single or multiple file names of the .ini files containing the
+<li><strong>*init_files</strong> (<cite>tuple</cite> of <cite>str</cite>) – Single or multiple file names of the .ini files containing the
 parameters defining the observation and calibration settings.</li>
-<li><strong>path</strong> – (optional) Filepath to the .ini files, standard value in None</li>
+<li><strong>path</strong> (<cite>str</cite>) – (optional) Filepath to the .ini files, standard value in None</li>
 </ul>
 </td>
 </tr>
@@ -165,7 +165,7 @@ loaded initialization files</p>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Variables:</th><td class="field-body"><strong>observation</strong> – cascade.instruments.instruments.Observation</td>
+<tr class="field-odd field"><th class="field-name">Variables:</th><td class="field-body"><strong>observation</strong> (<cite>cascade.instruments.instruments.Observation</cite>) – Instance of Observation class containing all observational data</td>
 </tr>
 </tbody>
 </table>
@@ -187,7 +187,7 @@ from the science observations.</p>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Variables:</th><td class="field-body"><strong>isBackgroundSubtracted</strong> (<em>'bool'</em>) – True if background is subtracted</td>
+<tr class="field-odd field"><th class="field-name">Variables:</th><td class="field-body"><strong>isBackgroundSubtracted</strong> (<cite>bool</cite>) – <cite>True</cite> if background is subtracted</td>
 </tr>
 <tr class="field-even field"><th class="field-name">Raises:</th><td class="field-body"><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#AttributeError" title="(in Python v3.7)"><code class="xref py py-exc docutils literal notranslate"><span class="pre">AttributeError</span></code></a> – In case no background data is defined</td>
 </tr>
@@ -211,12 +211,12 @@ from the science observations.</p>
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>data</strong> (<em>'array_like'</em>) – Input data to be cliped, last axis of data to be assumed the time</li>
-<li><strong>sigma</strong> (<em>'float'</em>) – Sigma value of sigmaclip</li>
+<li><strong>data</strong> (<cite>ndarray</cite>) – Input data to be cliped, last axis of data to be assumed the time</li>
+<li><strong>sigma</strong> (<cite>float</cite>) – Sigma value of sigmaclip</li>
 </ul>
 </td>
 </tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last"><strong>sigma_clip_mask</strong> (<em>‘array_like’</em>) – Updated mask for input data wiith bad data points flagged (=1)</p>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last"><strong>sigma_clip_mask</strong> (<cite>ndarray</cite>) – Updated mask for input data with bad data points flagged <cite>(=1)</cite></p>
 </td>
 </tr>
 </tbody>
@@ -231,7 +231,7 @@ from the science observations.</p>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Variables:</th><td class="field-body"><strong>isSigmaCliped</strong> (<em>'bool'</em>) – Set to True if bad data has been masked using sigma clip</td>
+<tr class="field-odd field"><th class="field-name">Variables:</th><td class="field-body"><strong>isSigmaCliped</strong> (<cite>bool</cite>) – Set to <cite>True</cite> if bad data has been masked using sigma clip</td>
 </tr>
 <tr class="field-even field"><th class="field-name">Raises:</th><td class="field-body"><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#AttributeError" title="(in Python v3.7)"><code class="xref py py-exc docutils literal notranslate"><span class="pre">AttributeError</span></code></a> – Error is raised if sigma value, the filter length or
 the convolution kernel are not defined.</td>
@@ -256,7 +256,7 @@ object, run the following example:</p>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Variables:</th><td class="field-body"><strong>cleaned_data</strong> (<em>'masked quantity'</em>) – A cleaned version of the spctral timeseries data of the transiting
+<tr class="field-odd field"><th class="field-name">Variables:</th><td class="field-body"><strong>cleaned_data</strong> (<cite>masked quantity</cite>) – A cleaned version of the spctral timeseries data of the transiting
 exoplanet system</td>
 </tr>
 <tr class="field-even field"><th class="field-name">Raises:</th><td class="field-body"><em>AttributeError, AssertionError</em> – An error is raised if the data set to be cleaned has not been
@@ -286,11 +286,11 @@ as wel as an calibration signal.</p>
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Variables:</th><td class="field-body"><ul class="first simple">
-<li><strong>light_curve</strong> (<em>'array_like'</em>) – The lightcurve model</li>
-<li><strong>transit_timing</strong> (<em>'list'</em>) – list with start time and end time of transit</li>
-<li><strong>light_curve_interpolated</strong> (<em>'list' of 'ndarray'</em>) – to the time grid of the observations interpolated lightcurve model</li>
-<li><strong>calibration_signal</strong> (<em>'list' of 'ndarray'</em>) – lightcurve model of the calibration signal</li>
-<li><strong>transittype</strong> (<em>'str'</em>) – Currently either ‘eclipse’ or ‘transit’</li>
+<li><strong>light_curve</strong> (<cite>ndarray</cite>) – The lightcurve model</li>
+<li><strong>transit_timing</strong> (<cite>list</cite>) – list with start time and end time of transit</li>
+<li><strong>light_curve_interpolated</strong> (<cite>list</cite> of <cite>ndarray</cite>) – to the time grid of the observations interpolated lightcurve model</li>
+<li><strong>calibration_signal</strong> (<cite>list</cite> of <cite>ndarray</cite>) – lightcurve model of the calibration signal</li>
+<li><strong>transittype</strong> (<cite>str</cite>) – Currently either ‘eclipse’ or ‘transit’</li>
 </ul>
 </td>
 </tr>
@@ -328,13 +328,13 @@ light.</p>
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Variables:</th><td class="field-body"><ul class="first simple">
-<li><strong>spectral_trace</strong> (<em>'ndarray'</em>) – The trace of the dispersed light on the detector normalized
+<li><strong>spectral_trace</strong> (<cite>ndarray</cite>) – The trace of the dispersed light on the detector normalized
 to its median position. In case the data are extracted spectra,
 the trace is zero.</li>
-<li><strong>position</strong> (<em>'ndarray'</em>) – Postion of the source on the detector in the cross dispersion
+<li><strong>position</strong> (<cite>ndarray</cite>) – Postion of the source on the detector in the cross dispersion
 directon as a function of time, normalized to the
 median position.</li>
-<li><strong>median_position</strong> (<em>'float'</em>) – median source position.</li>
+<li><strong>median_position</strong> (<cite>float</cite>) – median source position.</li>
 </ul>
 </td>
 </tr>
@@ -366,10 +366,10 @@ spectral trace with a pixel width of nExtractionWidth</p>
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Variables:</th><td class="field-body"><ul class="first simple">
-<li><strong>nExtractionWidth</strong> (<em>'int'</em>) – The width of the extraction aperture , cetered on the
+<li><strong>nExtractionWidth</strong> (<cite>int</cite>) – The width of the extraction aperture , cetered on the
 spectral trace of the source. In case of 1d spectral data, a
 width of 1 will be assumed.</li>
-<li><strong>extraction_mask</strong> (<em>'ndarray'</em>) – In case data are Spectra : 1D mask
+<li><strong>extraction_mask</strong> (<cite>ndarray</cite>) – In case data are Spectra : 1D mask
 In case data are Spectral images or cubes: 2D mask</li>
 </ul>
 </td>
@@ -402,10 +402,10 @@ kernel extends beyond the region of interest.</p>
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>kernel</strong> (<em>'array_like'</em>) – Convolution kernel specific for a given instrument and observing
+<li><strong>kernel</strong> (<cite>array_like</cite>) – Convolution kernel specific for a given instrument and observing
 mode, used in tasks such as replacing bad pixels and
 spectral extraction.</li>
-<li><strong>roi_mask</strong> (<em>'array_like'</em>) – Mask defining the region of interest from which the speectra will
+<li><strong>roi_mask</strong> (<cite>ndarray</cite>) – Mask defining the region of interest from which the speectra will
 be extracted.</li>
 </ul>
 </td>
@@ -431,13 +431,13 @@ prevent edge effects.</p>
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>cleaned_data_with_roi_mask</strong> (<em>'numpy.ma.core.MaskedArray'</em>) – The cleaned input data from which the extraction profile is
+<li><strong>cleaned_data_with_roi_mask</strong> (<cite>numpy.ma.core.MaskedArray</cite>) – The cleaned input data from which the extraction profile is
 derived. The mask attached to this data defines the region of
 interest around the target source.</li>
-<li><strong>extracted_spectra</strong> (<em>'numpy.ma.core.MaskedArray'</em>) – Best guess for the spectrum of the source from which the extraction
+<li><strong>extracted_spectra</strong> (<cite>numpy.ma.core.MaskedArray</cite>) – Best guess for the spectrum of the source from which the extraction
 profile is determined.</li>
-<li><strong>kernel</strong> (<em>'ndarray'</em>) – Convolution kernel used to create smoothed spectral images</li>
-<li><strong>mask_for_extraction</strong> (<em>'ndarray'</em>) – Mask containing all pixels which are flagged as bad in the not
+<li><strong>kernel</strong> (<cite>ndarray</cite>) – Convolution kernel used to create smoothed spectral images</li>
+<li><strong>mask_for_extraction</strong> (<cite>ndarray</cite>) – Mask containing all pixels which are flagged as bad in the not
 cleaned data, i.e. all pixels which value have been replaced
 after cleaning.</li>
 </ul>
@@ -461,9 +461,9 @@ spatial and wavelength direction as well as along the time axis.</p>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>sigma_time</strong> (<em>'float'</em>) – </td>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>sigma_time</strong> (<cite>float</cite>) – </td>
 </tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><strong>3dKernel</strong> (<em>‘ndarray’</em>)</td>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><strong>3dKernel</strong> (<cite>ndarray</cite>)</td>
 </tr>
 <tr class="field-odd field"><th class="field-name">Raises:</th><td class="field-body"><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#AttributeError" title="(in Python v3.7)"><code class="xref py py-exc docutils literal notranslate"><span class="pre">AttributeError</span></code></a> – An error is raised if no instrument specific kernel is defined.</td>
 </tr>
@@ -488,7 +488,7 @@ by Horne 1986.</p>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Variables:</th><td class="field-body"><strong>dataset_optimal_extracted</strong> (<em>cascade.data_model.SpectralDataTimeSeries'</em>) – Time series if optimally extracted 1d spectra.</td>
+<tr class="field-odd field"><th class="field-name">Variables:</th><td class="field-body"><strong>dataset_optimal_extracted</strong> (<cite>cascade.data_model.SpectralDataTimeSeries</cite>) – Time series if optimally extracted 1d spectra.</td>
 </tr>
 <tr class="field-even field"><th class="field-name">Raises:</th><td class="field-body"><em>AttributeError, AssertionError</em> – An error is raised if the data and cleaned data sets are not
 defined, the source position is not determined or of the
@@ -524,12 +524,15 @@ in an TSO instance, excecute the following command:</p>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Variables:</th><td class="field-body"><strong>regressor_list</strong> – List of regressors, using the following list index:
-first index: [# nod]
-second index: [# valid pixel in extraction mask]
-third index: [0=pixel coord; 1=list of regressors]
-forth index: [0=coordinate wave direction;
-1=coordinate spatial direction]</td>
+<tr class="field-odd field"><th class="field-name">Variables:</th><td class="field-body"><strong>regressor_list</strong> (<cite>list</cite> of <cite>int</cite>) – <p>List of regressors, using the following list index:</p>
+<ul class="simple">
+<li>first index: [# nod]</li>
+<li>second index: [# valid pixel in extraction mask]</li>
+<li>third index: [0=pixel coord; 1=list of regressors]</li>
+<li>forth index: [0=coordinate wave direction;
+1=coordinate spatial direction]</li>
+</ul>
+</td>
 </tr>
 </tbody>
 </table>
@@ -552,13 +555,15 @@ exoplanet spectum will be based, execute the following command:</p>
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>cleaned_data_in</strong> (<em>'masked quantity'</em>) – time series data with bad pixels corrected</li>
-<li><strong>original_mask_in</strong> (<em>'ndarray'</em>) – data mask before cleaning</li>
-<li><strong>regressor_selection</strong> (<em>'list' of 'int'</em>) – </li>
-<li><strong>nrebin</strong> (<em>'int'</em>) – </li>
-<li><strong>clip</strong> (<em>'float'</em>) – </li>
-<li><strong>clip_pctl_time</strong> (<em>'float'</em>) – </li>
-<li><strong>clip_pctl_regressors</strong> (<em>'float'</em>) – </li>
+<li><strong>cleaned_data_in</strong> (<cite>masked quantity</cite>) – time series data with bad pixels corrected</li>
+<li><strong>original_mask_in</strong> (<cite>ndarray</cite>) – data mask before cleaning</li>
+<li><strong>regressor_selection</strong> (<cite>list</cite> of <cite>int</cite>) – List of index values of the data used as regressors</li>
+<li><strong>nrebin</strong> (<cite>int</cite>) – Rebinning value for regressions [LEAVE at 1!!]</li>
+<li><strong>clip</strong> (<cite>bool</cite>) – If ‘True` bad regressors will be clipped out of selection</li>
+<li><strong>clip_pctl_time</strong> (<cite>float</cite>) – Percentile of ‘worst’ regressors to be cut out in the
+time direction.</li>
+<li><strong>clip_pctl_regressors</strong> (<cite>float</cite>) – Percentile of ‘worst’ regressors to be cut out in the
+wavelegth direction.</li>
 </ul>
 </td>
 </tr>
@@ -577,9 +582,9 @@ exoplanet spectum will be based, execute the following command:</p>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>data_in</strong> (<em>'ndarray'</em>) – </td>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>data_in</strong> (<cite>ndarray</cite>) – </td>
 </tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><strong>data_out</strong> (<em>‘ndarray’</em>)</td>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><strong>data_out</strong> (<cite>ndarray</cite>)</td>
 </tr>
 </tbody>
 </table>
@@ -595,16 +600,19 @@ to be used as calibrators.</p>
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>clip</strong> (<em>'bool'</em>) – default False</li>
-<li><strong>clip_pctl_time</strong> (<em>'float'</em>) – Default 0.00</li>
-<li><strong>clip_pctl_regressors</strong> (<em>'float'</em>) – Default 0.00</li>
+<li><strong>clip</strong> (<cite>bool</cite>) – default False</li>
+<li><strong>clip_pctl_time</strong> (<cite>float</cite>) – Default <cite>0.00</cite></li>
+<li><strong>clip_pctl_regressors</strong> (<cite>float</cite>) – Default <cite>0.00</cite></li>
 </ul>
 </td>
 </tr>
-<tr class="field-even field"><th class="field-name">Variables:</th><td class="field-body"><p class="first"><strong>design_matrix</strong> – list with design matrici with the following index convention:
-first index: [# nods]
-second index : [# of valid pixels within extraction mask]
-third index : [0]</p>
+<tr class="field-even field"><th class="field-name">Variables:</th><td class="field-body"><p class="first"><strong>design_matrix</strong> (<cite>list’ of `ndarray</cite>) – <p>list with design matrici with the following index convention:</p>
+<ul class="simple">
+<li>first index: [# nods]</li>
+<li>second index : [# of valid pixels within extraction mask]</li>
+<li>third index : [0]</li>
+</ul>
+</p>
 </td>
 </tr>
 <tr class="field-odd field"><th class="field-name">Raises:</th><td class="field-body"><p class="first last"><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#AttributeError" title="(in Python v3.7)"><code class="xref py py-exc docutils literal notranslate"><span class="pre">AttributeError</span></code></a></p>
@@ -624,7 +632,7 @@ planetary signal as function of wavelength.</p>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Variables:</th><td class="field-body"><strong>calibration_results</strong> (<em>'SimpleNamespace'</em>) – The calibration_results attribute contains all calibrated data
+<tr class="field-odd field"><th class="field-name">Variables:</th><td class="field-body"><strong>calibration_results</strong> (<cite>SimpleNamespace</cite>) – The calibration_results attribute contains all calibrated data
 and auxilary data.</td>
 </tr>
 <tr class="field-even field"><th class="field-name">Raises:</th><td class="field-body"><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#AttributeError" title="(in Python v3.7)"><code class="xref py py-exc docutils literal notranslate"><span class="pre">AttributeError</span></code></a> – an Error is raised if the nessecary steps to be able to run this
@@ -651,7 +659,7 @@ planetary signal execute the following command:</p>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Variables:</th><td class="field-body"><strong>exoplanet_spectrum</strong> – </td>
+<tr class="field-odd field"><th class="field-name">Variables:</th><td class="field-body"><strong>exoplanet_spectrum</strong> (<cite>SimpleNamespace</cite>) – </td>
 </tr>
 <tr class="field-even field"><th class="field-name">Raises:</th><td class="field-body"><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#AttributeError" title="(in Python v3.7)"><code class="xref py py-exc docutils literal notranslate"><span class="pre">AttributeError</span></code></a></td>
 </tr>
@@ -746,7 +754,7 @@ the following command:</p>
     <ul>
         <li>
           &larr;
-          <a href="cascade.html" title="Previous document">Modules of the CASCADe package</a>
+          <a href="cascade.html" title="Previous document">CASCADe API</a>
         </li>
         <li>
           <a href="cascade.cpm_model.html" title="Next document">The cascade.cpm_model module</a>
@@ -778,17 +786,17 @@ the following command:</p>
 
 <h3>Navigation</h3>
 <ul class="current">
-<li class="toctree-l1"><a class="reference internal" href="install.html">Howto Install CASCADe</a></li>
+<li class="toctree-l1"><a class="reference internal" href="install.html">Installing CASCADe</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto.html">Using Cascade</a></li>
-<li class="toctree-l1 current"><a class="reference internal" href="cascade.html">Modules of the CASCADe package</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="cascade.html">CASCADe API</a></li>
 </ul>
 
 <div class="relations">
 <h3>Related Topics</h3>
 <ul>
   <li><a href="index.html">Documentation overview</a><ul>
-  <li><a href="cascade.html">Modules of the CASCADe package</a><ul>
-      <li>Previous: <a href="cascade.html" title="previous chapter">Modules of the CASCADe package</a></li>
+  <li><a href="cascade.html">CASCADe API</a><ul>
+      <li>Previous: <a href="cascade.html" title="previous chapter">CASCADe API</a></li>
       <li>Next: <a href="cascade.cpm_model.html" title="next chapter">The cascade.cpm_model module</a></li>
   </ul></li>
   </ul></li>

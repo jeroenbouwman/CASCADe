@@ -1,5 +1,5 @@
-Howto Install CASCADe
-=====================
+Installing CASCADe
+==================
 
 ### Clone a repository
 

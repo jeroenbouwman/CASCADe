@@ -2,19 +2,19 @@
 \contentsline {chapter}{Table of contents}{i}{chapter*.1}
 \contentsline {chapter}{List of figures}{iii}{chapter*.2}
 \contentsline {chapter}{List of tables}{v}{chapter*.3}
-\contentsline {chapter}{\numberline {1}CASCADe API documentation}{3}{chapter.1}
-\contentsline {section}{\numberline {1.1}Howto Install CASCADe}{3}{section.1.1}
+\contentsline {chapter}{\numberline {1}CASCADe documentation}{3}{chapter.1}
+\contentsline {section}{\numberline {1.1}Installing CASCADe}{3}{section.1.1}
 \contentsline {section}{\numberline {1.2}Using Cascade}{4}{section.1.2}
-\contentsline {section}{\numberline {1.3}Modules of the CASCADe package}{5}{section.1.3}
+\contentsline {section}{\numberline {1.3}CASCADe API}{5}{section.1.3}
 \contentsline {subsection}{\numberline {1.3.1}The cascade.TSO module}{5}{subsection.1.3.1}
 \contentsline {subsection}{\numberline {1.3.2}The cascade.cpm\_model module}{11}{subsection.1.3.2}
 \contentsline {subsection}{\numberline {1.3.3}The cascade.data\_model module}{12}{subsection.1.3.3}
 \contentsline {subsection}{\numberline {1.3.4}The cascade.exoplanet\_tools module}{15}{subsection.1.3.4}
 \contentsline {subsection}{\numberline {1.3.5}The cascade.initialize module}{19}{subsection.1.3.5}
 \contentsline {subsection}{\numberline {1.3.6}The cascade.instruments module}{20}{subsection.1.3.6}
-\contentsline {subsection}{\numberline {1.3.7}The cascade.utilities module}{23}{subsection.1.3.7}
-\contentsline {chapter}{\numberline {2}Indices and tables}{25}{chapter.2}
-\contentsline {chapter}{Python Module Index}{27}{section*.122}
-\contentsline {chapter}{Python Module Index}{27}{section*.122}
-\contentsline {chapter}{Index}{29}{section*.123}
-\contentsline {chapter}{Index}{29}{section*.123}
+\contentsline {subsection}{\numberline {1.3.7}The cascade.utilities module}{27}{subsection.1.3.7}
+\contentsline {chapter}{\numberline {2}Indices and tables}{29}{chapter.2}
+\contentsline {chapter}{Python Module Index}{31}{section*.136}
+\contentsline {chapter}{Python Module Index}{31}{section*.136}
+\contentsline {chapter}{Index}{33}{section*.137}
+\contentsline {chapter}{Index}{33}{section*.137}

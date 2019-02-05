@@ -62,28 +62,50 @@ regression model used in causal pixel model.</p>
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>design_matrx</strong> (<em>'ndarray</em><em>, </em><em>ndim=2'</em>) – Design matrix</li>
-<li><strong>data</strong> (<em>'ndarray'</em>) – Data</li>
-<li><strong>weights</strong> (<em>'ndarray'</em>) – Weights used in the linear least square minimization</li>
-<li><strong>cv_method</strong> (<em>{'gvc'|'b95'|'B100'}</em>) – Method used to find optimal regularization parameter which can be:
-“gvc” :  Generizalize Cross Validation [RECOMMENDED!!!],
-“b95” :  normalized cumulatative periodogram using 95% limit,
-“B100”:  normalized cumulatative periodogram</li>
-<li><strong>reg_par</strong> (<em>'dict'</em>) – Parameter describing search grid to find optimal regularization
-parameter lambda: {lam0 : minimum lambda, lam1 : maximum lambda,
-nlam : number of grid points}</li>
-<li><strong>feature_scaling</strong> ({‘norm’<a href="#id1"><span class="problematic" id="id2">|</span></a>None}) – if the value is set to ‘norm’ all features are normalized using L2
+<li><strong>design_matrx</strong> (<cite>ndarray</cite> with ‘ndim=2’) – Design matrix</li>
+<li><strong>data</strong> (<cite>ndarray</cite>) – Data</li>
+<li><strong>weights</strong> (<cite>ndarray</cite>) – Weights used in the linear least square minimization</li>
+<li><strong>cv_method</strong> ((<cite>‘gvc’|’b95’|’B100’</cite>)) – <p>Method used to find optimal regularization parameter which can be:</p>
+<blockquote>
+<div><ul>
+<li>’gvc’ :  Generizalize Cross Validation [RECOMMENDED!!!],</li>
+<li>’b95’ :  normalized cumulatative periodogram using 95% limit,</li>
+<li>’B100’:  normalized cumulatative periodogram</li>
+</ul>
+</div></blockquote>
+</li>
+<li><strong>reg_par</strong> (<cite>dict</cite>) – <p>Parameter describing search grid to find optimal regularization
+parameter lambda:</p>
+<blockquote>
+<div><ul>
+<li>’lam0’ : minimum lambda</li>
+<li>’lam1’ : maximum lambda,</li>
+<li>’nlam’ : number of grid points</li>
+</ul>
+</div></blockquote>
+</li>
+<li><strong>feature_scaling</strong> ((<cite>‘norm’|None</cite>)) – if the value is set to ‘norm’ all features are normalized using L2
 norm else no featue scaling is applied.</li>
-<li><strong>degrees_of_freedom</strong> (<em>'int'</em>) – Effective  degrees_of_freedom, if set to None the value is calculated
+<li><strong>degrees_of_freedom</strong> (<cite>int</cite>) – Effective  degrees_of_freedom, if set to None the value is calculated
 from the dimensions of the imput arrays.</li>
 </ul>
 </td>
 </tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last"><strong>fit_results</strong> (<em>‘tuple’</em>) – In case the feature_scaling is set to None, the tuble contains the
-following parameters: (fit_parameters, err_fit_parameters, lam_reg)
-else the following results are returned: (fit_parameters_scaled,
-err_fit_parameters_scaled, lam_reg, pc_matrix, fit_parameters,
-err_fit_parameters)</p>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last"><p><strong>fit_results</strong> (<cite>tuple</cite>) – In case the feature_scaling is set to None, the tuble contains the
+following parameters:</p>
+<blockquote>
+<div><ul class="simple">
+<li>(fit_parameters, err_fit_parameters, lam_reg)</li>
+</ul>
+</div></blockquote>
+<p>else the following results are returned:</p>
+<blockquote>
+<div><ul class="simple">
+<li>(fit_parameters_scaled, err_fit_parameters_scaled, lam_reg,
+pc_matrix, fit_parameters, err_fit_parameters)</li>
+</ul>
+</div></blockquote>
+</p>
 </td>
 </tr>
 </tbody>
@@ -96,34 +118,34 @@ err_fit_parameters)</p>
 <p>by finding optimal solution ^x by minimizing</p>
 <div class="math notranslate nohighlight">
 \[||y-A*\hat{x}||^2 + \lambda * ||\hat{x}||^2\]</div>
-<p class="last">For details on the implementation see <a class="footnote-reference" href="#id7" id="id3">[1]</a>, <a class="footnote-reference" href="#id8" id="id4">[2]</a>, <a class="footnote-reference" href="#id9" id="id5">[3]</a>, <a class="footnote-reference" href="#id10" id="id6">[4]</a></p>
+<p class="last">For details on the implementation see <a class="footnote-reference" href="#id5" id="id1">[1]</a>, <a class="footnote-reference" href="#id6" id="id2">[2]</a>, <a class="footnote-reference" href="#id7" id="id3">[3]</a>, <a class="footnote-reference" href="#id8" id="id4">[4]</a></p>
 </div>
 <div class="admonition-references admonition">
 <p class="first admonition-title">References</p>
-<table class="docutils footnote" frame="void" id="id7" rules="none">
+<table class="docutils footnote" frame="void" id="id5" rules="none">
 <colgroup><col class="label" /><col /></colgroup>
 <tbody valign="top">
-<tr><td class="label"><a class="fn-backref" href="#id3">[1]</a></td><td>PHD thesis by Diana Maria SIMA, “Regularization techniques in
+<tr><td class="label"><a class="fn-backref" href="#id1">[1]</a></td><td>PHD thesis by Diana Maria SIMA, “Regularization techniques in
 Model Fitting and Parameter estimation”, KU Leuven 2006</td></tr>
 </tbody>
 </table>
-<table class="docutils footnote" frame="void" id="id8" rules="none">
+<table class="docutils footnote" frame="void" id="id6" rules="none">
 <colgroup><col class="label" /><col /></colgroup>
 <tbody valign="top">
-<tr><td class="label"><a class="fn-backref" href="#id4">[2]</a></td><td>Hogg et al 2010, “Data analysis recipies: Fitting a model to data”</td></tr>
+<tr><td class="label"><a class="fn-backref" href="#id2">[2]</a></td><td>Hogg et al 2010, “Data analysis recipies: Fitting a model to data”</td></tr>
 </tbody>
 </table>
-<table class="docutils footnote" frame="void" id="id9" rules="none">
+<table class="docutils footnote" frame="void" id="id7" rules="none">
 <colgroup><col class="label" /><col /></colgroup>
 <tbody valign="top">
-<tr><td class="label"><a class="fn-backref" href="#id5">[3]</a></td><td>Rust &amp; O’Leaary, “Residual periodograms for choosing regularization
+<tr><td class="label"><a class="fn-backref" href="#id3">[3]</a></td><td>Rust &amp; O’Leaary, “Residual periodograms for choosing regularization
 parameters for ill-posed porblems”</td></tr>
 </tbody>
 </table>
-<table class="last docutils footnote" frame="void" id="id10" rules="none">
+<table class="last docutils footnote" frame="void" id="id8" rules="none">
 <colgroup><col class="label" /><col /></colgroup>
 <tbody valign="top">
-<tr><td class="label"><a class="fn-backref" href="#id6">[4]</a></td><td>Krakauer et al “Using generalized cross-validationto select
+<tr><td class="label"><a class="fn-backref" href="#id4">[4]</a></td><td>Krakauer et al “Using generalized cross-validationto select
 parameters in inversions for regional carbon fluxes”</td></tr>
 </tbody>
 </table>
@@ -195,16 +217,16 @@ the median squared amplitudes of the eigenlightcurves.</p>
 
 <h3>Navigation</h3>
 <ul class="current">
-<li class="toctree-l1"><a class="reference internal" href="install.html">Howto Install CASCADe</a></li>
+<li class="toctree-l1"><a class="reference internal" href="install.html">Installing CASCADe</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto.html">Using Cascade</a></li>
-<li class="toctree-l1 current"><a class="reference internal" href="cascade.html">Modules of the CASCADe package</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="cascade.html">CASCADe API</a></li>
 </ul>
 
 <div class="relations">
 <h3>Related Topics</h3>
 <ul>
   <li><a href="index.html">Documentation overview</a><ul>
-  <li><a href="cascade.html">Modules of the CASCADe package</a><ul>
+  <li><a href="cascade.html">CASCADe API</a><ul>
       <li>Previous: <a href="cascade.TSO.html" title="previous chapter">The cascade.TSO module</a></li>
       <li>Next: <a href="cascade.data_model.html" title="next chapter">The cascade.data_model module</a></li>
   </ul></li>

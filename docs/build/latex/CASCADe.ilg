@@ -1,7 +1,7 @@
 This is makeindex, version 2.15 [TeX Live 2016] (kpathsea + Thai support).
 Scanning style file ./python.ist.......done (7 attributes redefined, 0 ignored).
-Scanning input file CASCADe.idx....done (124 entries accepted, 0 rejected).
-Sorting entries....done (870 comparisons).
-Generating output file CASCADe.ind....done (230 lines written, 0 warnings).
+Scanning input file CASCADe.idx....done (138 entries accepted, 0 rejected).
+Sorting entries....done (1027 comparisons).
+Generating output file CASCADe.ind....done (250 lines written, 0 warnings).
 Output written in CASCADe.ind.
 Transcript written in CASCADe.ilg.

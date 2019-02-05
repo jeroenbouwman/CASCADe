@@ -96,12 +96,12 @@
 </li>
       <li><a href="cascade.instruments.html#cascade.instruments.instruments.HSTWFC3._fit_background">_fit_background() (HSTWFC3 method)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="cascade.instruments.html#cascade.instruments.instruments.HSTWFC3._get_background_cal_data">_get_background_cal_data() (HSTWFC3 method)</a>
 </li>
       <li><a href="cascade.instruments.html#cascade.instruments.instruments.SpitzerIRS._get_order_mask">_get_order_mask() (SpitzerIRS method)</a>
 </li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="cascade.instruments.html#cascade.instruments.instruments.HSTWFC3._get_subarray_size">_get_subarray_size() (HSTWFC3 method)</a>
 </li>
       <li><a href="cascade.instruments.html#cascade.instruments.instruments.HSTWFC3._get_wavelength_calibration">_get_wavelength_calibration() (HSTWFC3 method)</a>
@@ -110,6 +110,16 @@
         <li><a href="cascade.instruments.html#cascade.instruments.instruments.SpitzerIRS._get_wavelength_calibration">(SpitzerIRS method)</a>
 </li>
       </ul></li>
+      <li><a href="cascade.instruments.html#cascade.instruments.instruments.Observation._Observation__check_observation_type">_Observation__check_observation_type() (Observation method)</a>
+</li>
+      <li><a href="cascade.instruments.html#cascade.instruments.instruments.Observation._Observation__do_observations">_Observation__do_observations() (Observation method)</a>
+</li>
+      <li><a href="cascade.instruments.html#cascade.instruments.instruments.Observation._Observation__get_observatory_name">_Observation__get_observatory_name() (Observation method)</a>
+</li>
+      <li><a href="cascade.instruments.html#cascade.instruments.instruments.Observation._Observation__valid_observation_type">_Observation__valid_observation_type (Observation attribute)</a>
+</li>
+      <li><a href="cascade.instruments.html#cascade.instruments.instruments.Observation._Observation__valid_observatories">_Observation__valid_observatories (Observation attribute)</a>
+</li>
       <li><a href="cascade.instruments.html#cascade.instruments.instruments.HSTWFC3._read_grism_configuration_files">_read_grism_configuration_files() (HSTWFC3 method)</a>
 </li>
       <li><a href="cascade.instruments.html#cascade.instruments.instruments.HSTWFC3._read_reference_pixel_file">_read_reference_pixel_file() (HSTWFC3 method)</a>
@@ -239,6 +249,8 @@
       <li><a href="cascade.instruments.html#cascade.instruments.instruments.HSTWFC3.get_instrument_setup">get_instrument_setup() (HSTWFC3 method)</a>
 
       <ul>
+        <li><a href="cascade.instruments.html#cascade.instruments.instruments.InstrumentBase.get_instrument_setup">(InstrumentBase method)</a>
+</li>
         <li><a href="cascade.instruments.html#cascade.instruments.instruments.SpitzerIRS.get_instrument_setup">(SpitzerIRS method)</a>
 </li>
       </ul></li>
@@ -282,9 +294,11 @@
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="cascade.TSO.html#cascade.TSO.TSO.TSOSuite.initialize_TSO">initialize_TSO() (TSOSuite method)</a>
 </li>
+      <li><a href="cascade.data_model.html#cascade.data_model.data_model.InstanceDescriptorMixin">InstanceDescriptorMixin (class in cascade.data_model.data_model)</a>
+</li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="cascade.data_model.html#cascade.data_model.data_model.InstanceDescriptorMixin">InstanceDescriptorMixin (class in cascade.data_model.data_model)</a>
+      <li><a href="cascade.instruments.html#cascade.instruments.instruments.InstrumentBase">InstrumentBase (class in cascade.instruments.instruments)</a>
 </li>
       <li><a href="cascade.initialize.html#cascade.initialize.initialize.configurator.isInitialized">isInitialized (configurator attribute)</a>
 </li>
@@ -319,6 +333,8 @@
       <li><a href="cascade.instruments.html#cascade.instruments.instruments.HSTWFC3.load_data">load_data() (HSTWFC3 method)</a>
 
       <ul>
+        <li><a href="cascade.instruments.html#cascade.instruments.instruments.InstrumentBase.load_data">(InstrumentBase method)</a>
+</li>
         <li><a href="cascade.instruments.html#cascade.instruments.instruments.SpitzerIRS.load_data">(SpitzerIRS method)</a>
 </li>
         <li><a href="cascade.TSO.html#cascade.TSO.TSO.TSOSuite.load_data">(TSOSuite method)</a>
@@ -329,6 +345,8 @@
       <li><a href="cascade.instruments.html#cascade.instruments.instruments.HST.location">location (HST attribute)</a>
 
       <ul>
+        <li><a href="cascade.instruments.html#cascade.instruments.instruments.ObservatoryBase.location">(ObservatoryBase attribute)</a>
+</li>
         <li><a href="cascade.instruments.html#cascade.instruments.instruments.Spitzer.location">(Spitzer attribute)</a>
 </li>
       </ul></li>
@@ -355,6 +373,8 @@
       <li><a href="cascade.instruments.html#cascade.instruments.instruments.HST.NAIF_ID">NAIF_ID (HST attribute)</a>
 
       <ul>
+        <li><a href="cascade.instruments.html#cascade.instruments.instruments.ObservatoryBase.NAIF_ID">(ObservatoryBase attribute)</a>
+</li>
         <li><a href="cascade.instruments.html#cascade.instruments.instruments.Spitzer.NAIF_ID">(Spitzer attribute)</a>
 </li>
       </ul></li>
@@ -362,6 +382,10 @@
 
       <ul>
         <li><a href="cascade.instruments.html#cascade.instruments.instruments.HSTWFC3.name">(HSTWFC3 attribute)</a>
+</li>
+        <li><a href="cascade.instruments.html#cascade.instruments.instruments.InstrumentBase.name">(InstrumentBase attribute)</a>
+</li>
+        <li><a href="cascade.instruments.html#cascade.instruments.instruments.ObservatoryBase.name">(ObservatoryBase attribute)</a>
 </li>
         <li><a href="cascade.instruments.html#cascade.instruments.instruments.Spitzer.name">(Spitzer attribute)</a>
 </li>
@@ -379,11 +403,15 @@
       <li><a href="cascade.instruments.html#cascade.instruments.instruments.HST.observatory_instruments">observatory_instruments (HST attribute)</a>
 
       <ul>
+        <li><a href="cascade.instruments.html#cascade.instruments.instruments.ObservatoryBase.observatory_instruments">(ObservatoryBase attribute)</a>
+</li>
         <li><a href="cascade.instruments.html#cascade.instruments.instruments.Spitzer.observatory_instruments">(Spitzer attribute)</a>
 </li>
       </ul></li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="cascade.instruments.html#cascade.instruments.instruments.ObservatoryBase">ObservatoryBase (class in cascade.instruments.instruments)</a>
+</li>
       <li><a href="cascade.TSO.html#cascade.TSO.TSO.TSOSuite.optimal_extraction">optimal_extraction() (TSOSuite method)</a>
 </li>
   </ul></td>
@@ -550,9 +578,9 @@
 
 <h3>Navigation</h3>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="install.html">Howto Install CASCADe</a></li>
+<li class="toctree-l1"><a class="reference internal" href="install.html">Installing CASCADe</a></li>
 <li class="toctree-l1"><a class="reference internal" href="howto.html">Using Cascade</a></li>
-<li class="toctree-l1"><a class="reference internal" href="cascade.html">Modules of the CASCADe package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="cascade.html">CASCADe API</a></li>
 </ul>
 
 <div class="relations">

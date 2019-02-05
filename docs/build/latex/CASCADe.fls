@@ -278,11 +278,11 @@ INPUT /usr/share/texmf/fonts/tfm/jknappen/ec/ectt0900.tfm
 INPUT /usr/share/texmf/fonts/tfm/jknappen/ec/ectt0800.tfm
 INPUT /usr/share/texmf/fonts/tfm/jknappen/ec/ecrm1200.tfm
 INPUT /usr/share/texmf/fonts/tfm/jknappen/ec/ecbx1200.tfm
-INPUT /usr/share/texmf/fonts/tfm/jknappen/ec/ecit1000.tfm
-INPUT /usr/share/texmf/fonts/tfm/jknappen/ec/tcit1000.tfm
 INPUT /usr/share/texmf/fonts/tfm/jknappen/ec/tctt0900.tfm
 INPUT /usr/share/texmf/fonts/tfm/jknappen/ec/ecrm0700.tfm
 INPUT /usr/share/texmf/fonts/tfm/jknappen/ec/ecrm0800.tfm
+INPUT /usr/share/texmf/fonts/tfm/jknappen/ec/ecit1000.tfm
+INPUT /usr/share/texmf/fonts/tfm/jknappen/ec/tcit1000.tfm
 INPUT /usr/share/texmf/tex/latex/base/t1cmss.fd
 INPUT /usr/share/texmf/tex/latex/base/t1cmss.fd
 INPUT /usr/share/texmf/fonts/tfm/jknappen/ec/ecss1440.tfm

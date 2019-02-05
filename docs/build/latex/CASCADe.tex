@@ -132,7 +132,7 @@
     
 
 \title{CASCADe Documentation}
-\date{Feb 04, 2019}
+\date{Feb 05, 2019}
 \release{0.9 beta}
 \author{Jeroen Bouwman}
 \newcommand{\sphinxlogo}{\sphinxincludegraphics{Exoplanets-A_Ecusson_Noir_Alpha.png}\par}
@@ -204,11 +204,11 @@ systems. The current code has been tested successfully to spectroscopic data
 obtained with the Spitzer and HST observatories.
 
 
-\chapter{CASCADe API documentation}
-\label{\detokenize{index:cascade-api-documentation}}
+\chapter{CASCADe documentation}
+\label{\detokenize{index:cascade-documentation}}
 
-\section{Howto Install CASCADe}
-\label{\detokenize{install:howto-install-cascade}}\label{\detokenize{install::doc}}
+\section{Installing CASCADe}
+\label{\detokenize{install:installing-cascade}}\label{\detokenize{install::doc}}
 \#\#\# Clone a repository
 
 To start working locally on an existing remote repository,
@@ -401,8 +401,8 @@ Plot results (planetary spectrum, residual etc.)
 \end{sphinxVerbatim}
 
 
-\section{Modules of the CASCADe package}
-\label{\detokenize{cascade:modules-of-the-cascade-package}}\label{\detokenize{cascade::doc}}
+\section{CASCADe API}
+\label{\detokenize{cascade:cascade-api}}\label{\detokenize{cascade::doc}}
 
 \subsection{The cascade.TSO module}
 \label{\detokenize{cascade.TSO:module-cascade.TSO.TSO}}\label{\detokenize{cascade.TSO:the-cascade-tso-module}}\label{\detokenize{cascade.TSO::doc}}\index{cascade.TSO.TSO (module)@\spxentry{cascade.TSO.TSO}\spxextra{module}}
@@ -423,7 +423,7 @@ exoplanet and all functionality to calibrate and analyse the light curves
 and to extractthe spectrum of the transiting exoplanet.
 \begin{quote}\begin{description}
 \item[{Parameters}] \leavevmode
-\sphinxstyleliteralstrong{\sphinxupquote{init\_files}} (\sphinxstyleliteralemphasis{\sphinxupquote{'list' of 'str'}}) \textendash{} List containing all the initialization files needed to run the
+\sphinxstyleliteralstrong{\sphinxupquote{init\_files}} (\sphinxtitleref{list} of \sphinxtitleref{str}) \textendash{} List containing all the initialization files needed to run the
 CASCADe code.
 
 \item[{Raises}] \leavevmode
@@ -448,15 +448,15 @@ Check if command is valid and excecute if True
 \begin{quote}\begin{description}
 \item[{Parameters}] \leavevmode\begin{itemize}
 \item {} 
-\sphinxstyleliteralstrong{\sphinxupquote{command}} \textendash{} Command to be excecuted. If valid the method corresponding
+\sphinxstyleliteralstrong{\sphinxupquote{command}} (\sphinxtitleref{str}) \textendash{} Command to be excecuted. If valid the method corresponding
 to the command will be excecuted
 
 \item {} 
-\sphinxstyleliteralstrong{\sphinxupquote{*init\_files}} \textendash{} Single or multiple file names of the .ini files containing the
+\sphinxstyleliteralstrong{\sphinxupquote{*init\_files}} (\sphinxtitleref{tuple} of \sphinxtitleref{str}) \textendash{} Single or multiple file names of the .ini files containing the
 parameters defining the observation and calibration settings.
 
 \item {} 
-\sphinxstyleliteralstrong{\sphinxupquote{path}} \textendash{} (optional) Filepath to the .ini files, standard value in None
+\sphinxstyleliteralstrong{\sphinxupquote{path}} (\sphinxtitleref{str}) \textendash{} (optional) Filepath to the .ini files, standard value in None
 
 \end{itemize}
 
@@ -484,11 +484,11 @@ multiple .ini files
 \begin{quote}\begin{description}
 \item[{Parameters}] \leavevmode\begin{itemize}
 \item {} 
-\sphinxstyleliteralstrong{\sphinxupquote{*init\_files}} \textendash{} Single or multiple file names of the .ini files containing the
+\sphinxstyleliteralstrong{\sphinxupquote{*init\_files}} (\sphinxtitleref{tuple} of \sphinxtitleref{str}) \textendash{} Single or multiple file names of the .ini files containing the
 parameters defining the observation and calibration settings.
 
 \item {} 
-\sphinxstyleliteralstrong{\sphinxupquote{path}} \textendash{} (optional) Filepath to the .ini files, standard value in None
+\sphinxstyleliteralstrong{\sphinxupquote{path}} (\sphinxtitleref{str}) \textendash{} (optional) Filepath to the .ini files, standard value in None
 
 \end{itemize}
 
@@ -535,7 +535,7 @@ object, observatory, instrument and file location specified in the
 loaded initialization files
 \begin{quote}\begin{description}
 \item[{Variables}] \leavevmode
-\sphinxstyleliteralstrong{\sphinxupquote{observation}} \textendash{} cascade.instruments.instruments.Observation
+\sphinxstyleliteralstrong{\sphinxupquote{observation}} (\sphinxtitleref{cascade.instruments.instruments.Observation}) \textendash{} Instance of Observation class containing all observational data
 
 \end{description}\end{quote}
 
@@ -559,7 +559,7 @@ Subtract median background determined from data or background model
 from the science observations.
 \begin{quote}\begin{description}
 \item[{Variables}] \leavevmode
-\sphinxstyleliteralstrong{\sphinxupquote{isBackgroundSubtracted}} (\sphinxstyleliteralemphasis{\sphinxupquote{'bool'}}) \textendash{} True if background is subtracted
+\sphinxstyleliteralstrong{\sphinxupquote{isBackgroundSubtracted}} (\sphinxtitleref{bool}) \textendash{} \sphinxtitleref{True} if background is subtracted
 
 \item[{Raises}] \leavevmode
 \sphinxhref{https://docs.python.org/3/library/exceptions.html\#AttributeError}{\sphinxcode{\sphinxupquote{AttributeError}}} \textendash{} In case no background data is defined
@@ -586,15 +586,15 @@ Sigma clip of time series data cube allong the time axis.
 \begin{quote}\begin{description}
 \item[{Parameters}] \leavevmode\begin{itemize}
 \item {} 
-\sphinxstyleliteralstrong{\sphinxupquote{data}} (\sphinxstyleliteralemphasis{\sphinxupquote{'array\_like'}}) \textendash{} Input data to be cliped, last axis of data to be assumed the time
+\sphinxstyleliteralstrong{\sphinxupquote{data}} (\sphinxtitleref{ndarray}) \textendash{} Input data to be cliped, last axis of data to be assumed the time
 
 \item {} 
-\sphinxstyleliteralstrong{\sphinxupquote{sigma}} (\sphinxstyleliteralemphasis{\sphinxupquote{'float'}}) \textendash{} Sigma value of sigmaclip
+\sphinxstyleliteralstrong{\sphinxupquote{sigma}} (\sphinxtitleref{float}) \textendash{} Sigma value of sigmaclip
 
 \end{itemize}
 
 \item[{Returns}] \leavevmode
-\sphinxstylestrong{sigma\_clip\_mask} (\sphinxstyleemphasis{‘array\_like’}) \textendash{} Updated mask for input data wiith bad data points flagged (=1)
+\sphinxstylestrong{sigma\_clip\_mask} (\sphinxtitleref{ndarray}) \textendash{} Updated mask for input data with bad data points flagged \sphinxtitleref{(=1)}
 
 \end{description}\end{quote}
 
@@ -607,7 +607,7 @@ Sigma clip of time series data cube allong the time axis.
 Perform sigma clip on science data to flag bad data.
 \begin{quote}\begin{description}
 \item[{Variables}] \leavevmode
-\sphinxstyleliteralstrong{\sphinxupquote{isSigmaCliped}} (\sphinxstyleliteralemphasis{\sphinxupquote{'bool'}}) \textendash{} Set to True if bad data has been masked using sigma clip
+\sphinxstyleliteralstrong{\sphinxupquote{isSigmaCliped}} (\sphinxtitleref{bool}) \textendash{} Set to \sphinxtitleref{True} if bad data has been masked using sigma clip
 
 \item[{Raises}] \leavevmode
 \sphinxhref{https://docs.python.org/3/library/exceptions.html\#AttributeError}{\sphinxcode{\sphinxupquote{AttributeError}}} \textendash{} Error is raised if sigma value, the filter length or
@@ -635,7 +635,7 @@ object, run the following example:
 Create a cleaned dataset to be used in regresion analysis.
 \begin{quote}\begin{description}
 \item[{Variables}] \leavevmode
-\sphinxstyleliteralstrong{\sphinxupquote{cleaned\_data}} (\sphinxstyleliteralemphasis{\sphinxupquote{'masked quantity'}}) \textendash{} A cleaned version of the spctral timeseries data of the transiting
+\sphinxstyleliteralstrong{\sphinxupquote{cleaned\_data}} (\sphinxtitleref{masked quantity}) \textendash{} A cleaned version of the spctral timeseries data of the transiting
 exoplanet system
 
 \item[{Raises}] \leavevmode
@@ -668,19 +668,19 @@ as wel as an calibration signal.
 \begin{quote}\begin{description}
 \item[{Variables}] \leavevmode\begin{itemize}
 \item {} 
-\sphinxstyleliteralstrong{\sphinxupquote{light\_curve}} (\sphinxstyleliteralemphasis{\sphinxupquote{'array\_like'}}) \textendash{} The lightcurve model
+\sphinxstyleliteralstrong{\sphinxupquote{light\_curve}} (\sphinxtitleref{ndarray}) \textendash{} The lightcurve model
 
 \item {} 
-\sphinxstyleliteralstrong{\sphinxupquote{transit\_timing}} (\sphinxstyleliteralemphasis{\sphinxupquote{'list'}}) \textendash{} list with start time and end time of transit
+\sphinxstyleliteralstrong{\sphinxupquote{transit\_timing}} (\sphinxtitleref{list}) \textendash{} list with start time and end time of transit
 
 \item {} 
-\sphinxstyleliteralstrong{\sphinxupquote{light\_curve\_interpolated}} (\sphinxstyleliteralemphasis{\sphinxupquote{'list' of 'ndarray'}}) \textendash{} to the time grid of the observations interpolated lightcurve model
+\sphinxstyleliteralstrong{\sphinxupquote{light\_curve\_interpolated}} (\sphinxtitleref{list} of \sphinxtitleref{ndarray}) \textendash{} to the time grid of the observations interpolated lightcurve model
 
 \item {} 
-\sphinxstyleliteralstrong{\sphinxupquote{calibration\_signal}} (\sphinxstyleliteralemphasis{\sphinxupquote{'list' of 'ndarray'}}) \textendash{} lightcurve model of the calibration signal
+\sphinxstyleliteralstrong{\sphinxupquote{calibration\_signal}} (\sphinxtitleref{list} of \sphinxtitleref{ndarray}) \textendash{} lightcurve model of the calibration signal
 
 \item {} 
-\sphinxstyleliteralstrong{\sphinxupquote{transittype}} (\sphinxstyleliteralemphasis{\sphinxupquote{'str'}}) \textendash{} Currently either ‘eclipse’ or ‘transit’
+\sphinxstyleliteralstrong{\sphinxupquote{transittype}} (\sphinxtitleref{str}) \textendash{} Currently either ‘eclipse’ or ‘transit’
 
 \end{itemize}
 
@@ -722,17 +722,17 @@ light.
 \begin{quote}\begin{description}
 \item[{Variables}] \leavevmode\begin{itemize}
 \item {} 
-\sphinxstyleliteralstrong{\sphinxupquote{spectral\_trace}} (\sphinxstyleliteralemphasis{\sphinxupquote{'ndarray'}}) \textendash{} The trace of the dispersed light on the detector normalized
+\sphinxstyleliteralstrong{\sphinxupquote{spectral\_trace}} (\sphinxtitleref{ndarray}) \textendash{} The trace of the dispersed light on the detector normalized
 to its median position. In case the data are extracted spectra,
 the trace is zero.
 
 \item {} 
-\sphinxstyleliteralstrong{\sphinxupquote{position}} (\sphinxstyleliteralemphasis{\sphinxupquote{'ndarray'}}) \textendash{} Postion of the source on the detector in the cross dispersion
+\sphinxstyleliteralstrong{\sphinxupquote{position}} (\sphinxtitleref{ndarray}) \textendash{} Postion of the source on the detector in the cross dispersion
 directon as a function of time, normalized to the
 median position.
 
 \item {} 
-\sphinxstyleliteralstrong{\sphinxupquote{median\_position}} (\sphinxstyleliteralemphasis{\sphinxupquote{'float'}}) \textendash{} median source position.
+\sphinxstyleliteralstrong{\sphinxupquote{median\_position}} (\sphinxtitleref{float}) \textendash{} median source position.
 
 \end{itemize}
 
@@ -766,12 +766,12 @@ spectral trace with a pixel width of nExtractionWidth
 \begin{quote}\begin{description}
 \item[{Variables}] \leavevmode\begin{itemize}
 \item {} 
-\sphinxstyleliteralstrong{\sphinxupquote{nExtractionWidth}} (\sphinxstyleliteralemphasis{\sphinxupquote{'int'}}) \textendash{} The width of the extraction aperture , cetered on the
+\sphinxstyleliteralstrong{\sphinxupquote{nExtractionWidth}} (\sphinxtitleref{int}) \textendash{} The width of the extraction aperture , cetered on the
 spectral trace of the source. In case of 1d spectral data, a
 width of 1 will be assumed.
 
 \item {} 
-\sphinxstyleliteralstrong{\sphinxupquote{extraction\_mask}} (\sphinxstyleliteralemphasis{\sphinxupquote{'ndarray'}}) \textendash{} In case data are Spectra : 1D mask
+\sphinxstyleliteralstrong{\sphinxupquote{extraction\_mask}} (\sphinxtitleref{ndarray}) \textendash{} In case data are Spectra : 1D mask
 In case data are Spectral images or cubes: 2D mask
 
 \end{itemize}
@@ -806,12 +806,12 @@ kernel extends beyond the region of interest.
 \begin{quote}\begin{description}
 \item[{Parameters}] \leavevmode\begin{itemize}
 \item {} 
-\sphinxstyleliteralstrong{\sphinxupquote{kernel}} (\sphinxstyleliteralemphasis{\sphinxupquote{'array\_like'}}) \textendash{} Convolution kernel specific for a given instrument and observing
+\sphinxstyleliteralstrong{\sphinxupquote{kernel}} (\sphinxtitleref{array\_like}) \textendash{} Convolution kernel specific for a given instrument and observing
 mode, used in tasks such as replacing bad pixels and
 spectral extraction.
 
 \item {} 
-\sphinxstyleliteralstrong{\sphinxupquote{roi\_mask}} (\sphinxstyleliteralemphasis{\sphinxupquote{'array\_like'}}) \textendash{} Mask defining the region of interest from which the speectra will
+\sphinxstyleliteralstrong{\sphinxupquote{roi\_mask}} (\sphinxtitleref{ndarray}) \textendash{} Mask defining the region of interest from which the speectra will
 be extracted.
 
 \end{itemize}
@@ -836,19 +836,19 @@ prevent edge effects.
 \begin{quote}\begin{description}
 \item[{Parameters}] \leavevmode\begin{itemize}
 \item {} 
-\sphinxstyleliteralstrong{\sphinxupquote{cleaned\_data\_with\_roi\_mask}} (\sphinxstyleliteralemphasis{\sphinxupquote{'numpy.ma.core.MaskedArray'}}) \textendash{} The cleaned input data from which the extraction profile is
+\sphinxstyleliteralstrong{\sphinxupquote{cleaned\_data\_with\_roi\_mask}} (\sphinxtitleref{numpy.ma.core.MaskedArray}) \textendash{} The cleaned input data from which the extraction profile is
 derived. The mask attached to this data defines the region of
 interest around the target source.
 
 \item {} 
-\sphinxstyleliteralstrong{\sphinxupquote{extracted\_spectra}} (\sphinxstyleliteralemphasis{\sphinxupquote{'numpy.ma.core.MaskedArray'}}) \textendash{} Best guess for the spectrum of the source from which the extraction
+\sphinxstyleliteralstrong{\sphinxupquote{extracted\_spectra}} (\sphinxtitleref{numpy.ma.core.MaskedArray}) \textendash{} Best guess for the spectrum of the source from which the extraction
 profile is determined.
 
 \item {} 
-\sphinxstyleliteralstrong{\sphinxupquote{kernel}} (\sphinxstyleliteralemphasis{\sphinxupquote{'ndarray'}}) \textendash{} Convolution kernel used to create smoothed spectral images
+\sphinxstyleliteralstrong{\sphinxupquote{kernel}} (\sphinxtitleref{ndarray}) \textendash{} Convolution kernel used to create smoothed spectral images
 
 \item {} 
-\sphinxstyleliteralstrong{\sphinxupquote{mask\_for\_extraction}} (\sphinxstyleliteralemphasis{\sphinxupquote{'ndarray'}}) \textendash{} Mask containing all pixels which are flagged as bad in the not
+\sphinxstyleliteralstrong{\sphinxupquote{mask\_for\_extraction}} (\sphinxtitleref{ndarray}) \textendash{} Mask containing all pixels which are flagged as bad in the not
 cleaned data, i.e. all pixels which value have been replaced
 after cleaning.
 
@@ -871,10 +871,10 @@ to include the time dimention thus enabling convolution in both the
 spatial and wavelength direction as well as along the time axis.
 \begin{quote}\begin{description}
 \item[{Parameters}] \leavevmode
-\sphinxstyleliteralstrong{\sphinxupquote{sigma\_time}} (\sphinxstyleliteralemphasis{\sphinxupquote{'float'}}) \textendash{} 
+\sphinxstyleliteralstrong{\sphinxupquote{sigma\_time}} (\sphinxtitleref{float}) \textendash{} 
 
 \item[{Returns}] \leavevmode
-\sphinxstylestrong{3dKernel} (\sphinxstyleemphasis{‘ndarray’})
+\sphinxstylestrong{3dKernel} (\sphinxtitleref{ndarray})
 
 \item[{Raises}] \leavevmode
 \sphinxhref{https://docs.python.org/3/library/exceptions.html\#AttributeError}{\sphinxcode{\sphinxupquote{AttributeError}}} \textendash{} An error is raised if no instrument specific kernel is defined.
@@ -904,7 +904,7 @@ by Horne 1986.
 \end{sphinxadmonition}
 \begin{quote}\begin{description}
 \item[{Variables}] \leavevmode
-\sphinxstyleliteralstrong{\sphinxupquote{dataset\_optimal\_extracted}} (\sphinxstyleliteralemphasis{\sphinxupquote{cascade.data\_model.SpectralDataTimeSeries'}}) \textendash{} Time series if optimally extracted 1d spectra.
+\sphinxstyleliteralstrong{\sphinxupquote{dataset\_optimal\_extracted}} (\sphinxtitleref{cascade.data\_model.SpectralDataTimeSeries}) \textendash{} Time series if optimally extracted 1d spectra.
 
 \item[{Raises}] \leavevmode
 \sphinxstyleemphasis{AttributeError, AssertionError} \textendash{} An error is raised if the data and cleaned data sets are not
@@ -937,12 +937,24 @@ in an TSO instance, excecute the following command:
 Select pixels which will be used as regressors.
 \begin{quote}\begin{description}
 \item[{Variables}] \leavevmode
-\sphinxstyleliteralstrong{\sphinxupquote{regressor\_list}} \textendash{} List of regressors, using the following list index:
+\sphinxstyleliteralstrong{\sphinxupquote{regressor\_list}} (\sphinxtitleref{list} of \sphinxtitleref{int}) \textendash{} 
+List of regressors, using the following list index:
+\begin{itemize}
+\item {} 
 first index: {[}\# nod{]}
+
+\item {} 
 second index: {[}\# valid pixel in extraction mask{]}
+
+\item {} 
 third index: {[}0=pixel coord; 1=list of regressors{]}
+
+\item {} 
 forth index: {[}0=coordinate wave direction;
 1=coordinate spatial direction{]}
+
+\end{itemize}
+
 
 \end{description}\end{quote}
 
@@ -967,25 +979,27 @@ Return the design matrix based on the data set itself
 \begin{quote}\begin{description}
 \item[{Parameters}] \leavevmode\begin{itemize}
 \item {} 
-\sphinxstyleliteralstrong{\sphinxupquote{cleaned\_data\_in}} (\sphinxstyleliteralemphasis{\sphinxupquote{'masked quantity'}}) \textendash{} time series data with bad pixels corrected
+\sphinxstyleliteralstrong{\sphinxupquote{cleaned\_data\_in}} (\sphinxtitleref{masked quantity}) \textendash{} time series data with bad pixels corrected
 
 \item {} 
-\sphinxstyleliteralstrong{\sphinxupquote{original\_mask\_in}} (\sphinxstyleliteralemphasis{\sphinxupquote{'ndarray'}}) \textendash{} data mask before cleaning
+\sphinxstyleliteralstrong{\sphinxupquote{original\_mask\_in}} (\sphinxtitleref{ndarray}) \textendash{} data mask before cleaning
 
 \item {} 
-\sphinxstyleliteralstrong{\sphinxupquote{regressor\_selection}} (\sphinxstyleliteralemphasis{\sphinxupquote{'list' of 'int'}}) \textendash{} 
+\sphinxstyleliteralstrong{\sphinxupquote{regressor\_selection}} (\sphinxtitleref{list} of \sphinxtitleref{int}) \textendash{} List of index values of the data used as regressors
 
 \item {} 
-\sphinxstyleliteralstrong{\sphinxupquote{nrebin}} (\sphinxstyleliteralemphasis{\sphinxupquote{'int'}}) \textendash{} 
+\sphinxstyleliteralstrong{\sphinxupquote{nrebin}} (\sphinxtitleref{int}) \textendash{} Rebinning value for regressions {[}LEAVE at 1!!{]}
 
 \item {} 
-\sphinxstyleliteralstrong{\sphinxupquote{clip}} (\sphinxstyleliteralemphasis{\sphinxupquote{'float'}}) \textendash{} 
+\sphinxstyleliteralstrong{\sphinxupquote{clip}} (\sphinxtitleref{bool}) \textendash{} If ‘True{}` bad regressors will be clipped out of selection
 
 \item {} 
-\sphinxstyleliteralstrong{\sphinxupquote{clip\_pctl\_time}} (\sphinxstyleliteralemphasis{\sphinxupquote{'float'}}) \textendash{} 
+\sphinxstyleliteralstrong{\sphinxupquote{clip\_pctl\_time}} (\sphinxtitleref{float}) \textendash{} Percentile of ‘worst’ regressors to be cut out in the
+time direction.
 
 \item {} 
-\sphinxstyleliteralstrong{\sphinxupquote{clip\_pctl\_regressors}} (\sphinxstyleliteralemphasis{\sphinxupquote{'float'}}) \textendash{} 
+\sphinxstyleliteralstrong{\sphinxupquote{clip\_pctl\_regressors}} (\sphinxtitleref{float}) \textendash{} Percentile of ‘worst’ regressors to be cut out in the
+wavelegth direction.
 
 \end{itemize}
 
@@ -1003,10 +1017,10 @@ Return the design matrix based on the data set itself
 Reshape the time series data to a uniform dimentional shape
 \begin{quote}\begin{description}
 \item[{Parameters}] \leavevmode
-\sphinxstyleliteralstrong{\sphinxupquote{data\_in}} (\sphinxstyleliteralemphasis{\sphinxupquote{'ndarray'}}) \textendash{} 
+\sphinxstyleliteralstrong{\sphinxupquote{data\_in}} (\sphinxtitleref{ndarray}) \textendash{} 
 
 \item[{Returns}] \leavevmode
-\sphinxstylestrong{data\_out} (\sphinxstyleemphasis{‘ndarray’})
+\sphinxstylestrong{data\_out} (\sphinxtitleref{ndarray})
 
 \end{description}\end{quote}
 
@@ -1021,21 +1035,31 @@ to be used as calibrators.
 \begin{quote}\begin{description}
 \item[{Parameters}] \leavevmode\begin{itemize}
 \item {} 
-\sphinxstyleliteralstrong{\sphinxupquote{clip}} (\sphinxstyleliteralemphasis{\sphinxupquote{'bool'}}) \textendash{} default False
+\sphinxstyleliteralstrong{\sphinxupquote{clip}} (\sphinxtitleref{bool}) \textendash{} default False
 
 \item {} 
-\sphinxstyleliteralstrong{\sphinxupquote{clip\_pctl\_time}} (\sphinxstyleliteralemphasis{\sphinxupquote{'float'}}) \textendash{} Default 0.00
+\sphinxstyleliteralstrong{\sphinxupquote{clip\_pctl\_time}} (\sphinxtitleref{float}) \textendash{} Default \sphinxtitleref{0.00}
 
 \item {} 
-\sphinxstyleliteralstrong{\sphinxupquote{clip\_pctl\_regressors}} (\sphinxstyleliteralemphasis{\sphinxupquote{'float'}}) \textendash{} Default 0.00
+\sphinxstyleliteralstrong{\sphinxupquote{clip\_pctl\_regressors}} (\sphinxtitleref{float}) \textendash{} Default \sphinxtitleref{0.00}
 
 \end{itemize}
 
 \item[{Variables}] \leavevmode
-\sphinxstyleliteralstrong{\sphinxupquote{design\_matrix}} \textendash{} list with design matrici with the following index convention:
+\sphinxstyleliteralstrong{\sphinxupquote{design\_matrix}} (\sphinxtitleref{list’ of {}`ndarray}) \textendash{} 
+list with design matrici with the following index convention:
+\begin{itemize}
+\item {} 
 first index: {[}\# nods{]}
+
+\item {} 
 second index : {[}\# of valid pixels within extraction mask{]}
+
+\item {} 
 third index : {[}0{]}
+
+\end{itemize}
+
 
 \item[{Raises}] \leavevmode
 \sphinxhref{https://docs.python.org/3/library/exceptions.html\#AttributeError}{\sphinxcode{\sphinxupquote{AttributeError}}}
@@ -1053,7 +1077,7 @@ calibrate the input spectral light curve data and to extract the
 planetary signal as function of wavelength.
 \begin{quote}\begin{description}
 \item[{Variables}] \leavevmode
-\sphinxstyleliteralstrong{\sphinxupquote{calibration\_results}} (\sphinxstyleliteralemphasis{\sphinxupquote{'SimpleNamespace'}}) \textendash{} The calibration\_results attribute contains all calibrated data
+\sphinxstyleliteralstrong{\sphinxupquote{calibration\_results}} (\sphinxtitleref{SimpleNamespace}) \textendash{} The calibration\_results attribute contains all calibrated data
 and auxilary data.
 
 \item[{Raises}] \leavevmode
@@ -1083,7 +1107,7 @@ planetary signal execute the following command:
 Extract the planetary spectrum from the calibrated light curve data
 \begin{quote}\begin{description}
 \item[{Variables}] \leavevmode
-\sphinxstyleliteralstrong{\sphinxupquote{exoplanet\_spectrum}} \textendash{} 
+\sphinxstyleliteralstrong{\sphinxupquote{exoplanet\_spectrum}} (\sphinxtitleref{SimpleNamespace}) \textendash{} 
 
 \item[{Raises}] \leavevmode
 \sphinxhref{https://docs.python.org/3/library/exceptions.html\#AttributeError}{\sphinxcode{\sphinxupquote{AttributeError}}}
@@ -1193,41 +1217,75 @@ Solve linear system using SVD with TIKHONOV regularization
 \begin{quote}\begin{description}
 \item[{Parameters}] \leavevmode\begin{itemize}
 \item {} 
-\sphinxstyleliteralstrong{\sphinxupquote{design\_matrx}} (\sphinxstyleliteralemphasis{\sphinxupquote{'ndarray}}\sphinxstyleliteralemphasis{\sphinxupquote{, }}\sphinxstyleliteralemphasis{\sphinxupquote{ndim=2'}}) \textendash{} Design matrix
+\sphinxstyleliteralstrong{\sphinxupquote{design\_matrx}} (\sphinxtitleref{ndarray} with ‘ndim=2’) \textendash{} Design matrix
 
 \item {} 
-\sphinxstyleliteralstrong{\sphinxupquote{data}} (\sphinxstyleliteralemphasis{\sphinxupquote{'ndarray'}}) \textendash{} Data
+\sphinxstyleliteralstrong{\sphinxupquote{data}} (\sphinxtitleref{ndarray}) \textendash{} Data
 
 \item {} 
-\sphinxstyleliteralstrong{\sphinxupquote{weights}} (\sphinxstyleliteralemphasis{\sphinxupquote{'ndarray'}}) \textendash{} Weights used in the linear least square minimization
+\sphinxstyleliteralstrong{\sphinxupquote{weights}} (\sphinxtitleref{ndarray}) \textendash{} Weights used in the linear least square minimization
 
 \item {} 
-\sphinxstyleliteralstrong{\sphinxupquote{cv\_method}} (\sphinxstyleliteralemphasis{\sphinxupquote{\{'gvc'\textbar{}'b95'\textbar{}'B100'\}}}) \textendash{} Method used to find optimal regularization parameter which can be:
-“gvc” :  Generizalize Cross Validation {[}RECOMMENDED!!!{]},
-“b95” :  normalized cumulatative periodogram using 95\% limit,
-“B100”:  normalized cumulatative periodogram
+\sphinxstyleliteralstrong{\sphinxupquote{cv\_method}} ((\sphinxtitleref{‘gvc’\textbar{}’b95’\textbar{}’B100’})) \textendash{} 
+Method used to find optimal regularization parameter which can be:
+\begin{itemize}
+\item {} 
+’gvc’ :  Generizalize Cross Validation {[}RECOMMENDED!!!{]},
 
 \item {} 
-\sphinxstyleliteralstrong{\sphinxupquote{reg\_par}} (\sphinxstyleliteralemphasis{\sphinxupquote{'dict'}}) \textendash{} Parameter describing search grid to find optimal regularization
-parameter lambda: \{lam0 : minimum lambda, lam1 : maximum lambda,
-nlam : number of grid points\}
+’b95’ :  normalized cumulatative periodogram using 95\% limit,
 
 \item {} 
-\sphinxstyleliteralstrong{\sphinxupquote{feature\_scaling}} (\{‘norm’{\color{red}\bfseries{}\textbar{}}None\}) \textendash{} if the value is set to ‘norm’ all features are normalized using L2
+’B100’:  normalized cumulatative periodogram
+
+\end{itemize}
+
+
+\item {} 
+\sphinxstyleliteralstrong{\sphinxupquote{reg\_par}} (\sphinxtitleref{dict}) \textendash{} 
+Parameter describing search grid to find optimal regularization
+parameter lambda:
+\begin{itemize}
+\item {} 
+’lam0’ : minimum lambda
+
+\item {} 
+’lam1’ : maximum lambda,
+
+\item {} 
+’nlam’ : number of grid points
+
+\end{itemize}
+
+
+\item {} 
+\sphinxstyleliteralstrong{\sphinxupquote{feature\_scaling}} ((\sphinxtitleref{‘norm’\textbar{}None})) \textendash{} if the value is set to ‘norm’ all features are normalized using L2
 norm else no featue scaling is applied.
 
 \item {} 
-\sphinxstyleliteralstrong{\sphinxupquote{degrees\_of\_freedom}} (\sphinxstyleliteralemphasis{\sphinxupquote{'int'}}) \textendash{} Effective  degrees\_of\_freedom, if set to None the value is calculated
+\sphinxstyleliteralstrong{\sphinxupquote{degrees\_of\_freedom}} (\sphinxtitleref{int}) \textendash{} Effective  degrees\_of\_freedom, if set to None the value is calculated
 from the dimensions of the imput arrays.
 
 \end{itemize}
 
 \item[{Returns}] \leavevmode
-\sphinxstylestrong{fit\_results} (\sphinxstyleemphasis{‘tuple’}) \textendash{} In case the feature\_scaling is set to None, the tuble contains the
-following parameters: (fit\_parameters, err\_fit\_parameters, lam\_reg)
-else the following results are returned: (fit\_parameters\_scaled,
-err\_fit\_parameters\_scaled, lam\_reg, pc\_matrix, fit\_parameters,
-err\_fit\_parameters)
+
+\sphinxstylestrong{fit\_results} (\sphinxtitleref{tuple}) \textendash{} In case the feature\_scaling is set to None, the tuble contains the
+following parameters:
+\begin{itemize}
+\item {} 
+(fit\_parameters, err\_fit\_parameters, lam\_reg)
+
+\end{itemize}
+
+else the following results are returned:
+\begin{itemize}
+\item {} 
+(fit\_parameters\_scaled, err\_fit\_parameters\_scaled, lam\_reg,
+pc\_matrix, fit\_parameters, err\_fit\_parameters)
+
+\end{itemize}
+
 
 \end{description}\end{quote}
 
@@ -2311,6 +2369,153 @@ Bases: \sphinxhref{https://docs.python.org/3/library/functions.html\#object}{\sp
 
 This class handles the selection of the correct observatory and
 instrument classes and loads the time series data to be analyzed
+The observations specific parameters set during the initialization
+of the TSO object are used to select the observatory and instrument
+through a factory method and to load the specified observations
+into the instance of the TSO object.
+
+\begin{sphinxadmonition}{note}{Examples}
+
+The Observation calss is  called during the following command:
+
+\fvset{hllines={, ,}}%
+\begin{sphinxVerbatim}[commandchars=\\\{\}]
+\PYG{g+gp}{\PYGZgt{}\PYGZgt{}\PYGZgt{} }\PYG{n}{tso}\PYG{o}{.}\PYG{n}{execute}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{load\PYGZus{}data}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+\end{sphinxVerbatim}
+\end{sphinxadmonition}
+\index{\_Observation\_\_check\_observation\_type() (Observation method)@\spxentry{\_Observation\_\_check\_observation\_type()}\spxextra{Observation method}}
+
+\begin{fulllineitems}
+\phantomsection\label{\detokenize{cascade.instruments:cascade.instruments.instruments.Observation._Observation__check_observation_type}}\pysiglinewithargsret{\sphinxbfcode{\sphinxupquote{\_Observation\_\_check\_observation\_type}}}{}{}
+Function to check of the in the .ini specified observation type
+valid.
+\begin{quote}\begin{description}
+\item[{Raises}] \leavevmode
+\sphinxhref{https://docs.python.org/3/library/exceptions.html\#ValueError}{\sphinxcode{\sphinxupquote{ValueError}}} \textendash{} Raises error if the specified observation type is not valid or if
+the tso instance is not initialized.
+
+\end{description}\end{quote}
+
+\end{fulllineitems}
+
+\index{\_Observation\_\_do\_observations() (Observation method)@\spxentry{\_Observation\_\_do\_observations()}\spxextra{Observation method}}
+
+\begin{fulllineitems}
+\phantomsection\label{\detokenize{cascade.instruments:cascade.instruments.instruments.Observation._Observation__do_observations}}\pysiglinewithargsret{\sphinxbfcode{\sphinxupquote{\_Observation\_\_do\_observations}}}{\emph{observatory}}{}
+Factory method to load the needed observatory class and methods
+
+\end{fulllineitems}
+
+\index{\_Observation\_\_get\_observatory\_name() (Observation method)@\spxentry{\_Observation\_\_get\_observatory\_name()}\spxextra{Observation method}}
+
+\begin{fulllineitems}
+\phantomsection\label{\detokenize{cascade.instruments:cascade.instruments.instruments.Observation._Observation__get_observatory_name}}\pysiglinewithargsret{\sphinxbfcode{\sphinxupquote{\_Observation\_\_get\_observatory\_name}}}{}{}
+Function to load the in the .ini files specified observatory name
+\begin{quote}\begin{description}
+\item[{Returns}] \leavevmode
+\sphinxstyleemphasis{ValueError} \textendash{} Returns error if the observatory is not specified or recognized
+
+\end{description}\end{quote}
+
+\end{fulllineitems}
+
+\index{\_Observation\_\_valid\_observation\_type (Observation attribute)@\spxentry{\_Observation\_\_valid\_observation\_type}\spxextra{Observation attribute}}
+
+\begin{fulllineitems}
+\phantomsection\label{\detokenize{cascade.instruments:cascade.instruments.instruments.Observation._Observation__valid_observation_type}}\pysigline{\sphinxbfcode{\sphinxupquote{\_Observation\_\_valid\_observation\_type}}}
+Set listing the current implemented observation types
+
+\end{fulllineitems}
+
+\index{\_Observation\_\_valid\_observatories (Observation attribute)@\spxentry{\_Observation\_\_valid\_observatories}\spxextra{Observation attribute}}
+
+\begin{fulllineitems}
+\phantomsection\label{\detokenize{cascade.instruments:cascade.instruments.instruments.Observation._Observation__valid_observatories}}\pysigline{\sphinxbfcode{\sphinxupquote{\_Observation\_\_valid\_observatories}}}
+Dictionary listing the current implemented observatories,
+used in factory method to select a observatory specific class
+
+\end{fulllineitems}
+
+
+\end{fulllineitems}
+
+\index{ObservatoryBase (class in cascade.instruments.instruments)@\spxentry{ObservatoryBase}\spxextra{class in cascade.instruments.instruments}}
+
+\begin{fulllineitems}
+\phantomsection\label{\detokenize{cascade.instruments:cascade.instruments.instruments.ObservatoryBase}}\pysigline{\sphinxbfcode{\sphinxupquote{class }}\sphinxbfcode{\sphinxupquote{ObservatoryBase}}}
+Bases: \sphinxhref{https://docs.python.org/3/library/functions.html\#object}{\sphinxcode{\sphinxupquote{object}}}
+
+Observatory base class used to define the basic properties an observatory
+class should have
+\index{name (ObservatoryBase attribute)@\spxentry{name}\spxextra{ObservatoryBase attribute}}
+
+\begin{fulllineitems}
+\phantomsection\label{\detokenize{cascade.instruments:cascade.instruments.instruments.ObservatoryBase.name}}\pysigline{\sphinxbfcode{\sphinxupquote{name}}}
+Name of the observatory.
+
+\end{fulllineitems}
+
+\index{location (ObservatoryBase attribute)@\spxentry{location}\spxextra{ObservatoryBase attribute}}
+
+\begin{fulllineitems}
+\phantomsection\label{\detokenize{cascade.instruments:cascade.instruments.instruments.ObservatoryBase.location}}\pysigline{\sphinxbfcode{\sphinxupquote{location}}}
+Location of the observatory
+
+\end{fulllineitems}
+
+\index{NAIF\_ID (ObservatoryBase attribute)@\spxentry{NAIF\_ID}\spxextra{ObservatoryBase attribute}}
+
+\begin{fulllineitems}
+\phantomsection\label{\detokenize{cascade.instruments:cascade.instruments.instruments.ObservatoryBase.NAIF_ID}}\pysigline{\sphinxbfcode{\sphinxupquote{NAIF\_ID}}}
+NAIF ID of the observatory. With this the location relative to the
+sun and the observed target as a function of time can be determined.
+Needed to calculate BJD time.
+
+\end{fulllineitems}
+
+\index{observatory\_instruments (ObservatoryBase attribute)@\spxentry{observatory\_instruments}\spxextra{ObservatoryBase attribute}}
+
+\begin{fulllineitems}
+\phantomsection\label{\detokenize{cascade.instruments:cascade.instruments.instruments.ObservatoryBase.observatory_instruments}}\pysigline{\sphinxbfcode{\sphinxupquote{observatory\_instruments}}}
+The names of the instruments part of the observatory.
+
+\end{fulllineitems}
+
+
+\end{fulllineitems}
+
+\index{InstrumentBase (class in cascade.instruments.instruments)@\spxentry{InstrumentBase}\spxextra{class in cascade.instruments.instruments}}
+
+\begin{fulllineitems}
+\phantomsection\label{\detokenize{cascade.instruments:cascade.instruments.instruments.InstrumentBase}}\pysigline{\sphinxbfcode{\sphinxupquote{class }}\sphinxbfcode{\sphinxupquote{InstrumentBase}}}
+Bases: \sphinxhref{https://docs.python.org/3/library/functions.html\#object}{\sphinxcode{\sphinxupquote{object}}}
+
+Instrument base class used to define the basic properties an instrument
+class should have
+\index{load\_data() (InstrumentBase method)@\spxentry{load\_data()}\spxextra{InstrumentBase method}}
+
+\begin{fulllineitems}
+\phantomsection\label{\detokenize{cascade.instruments:cascade.instruments.instruments.InstrumentBase.load_data}}\pysiglinewithargsret{\sphinxbfcode{\sphinxupquote{load\_data}}}{}{}
+Method which allows to load data.
+
+\end{fulllineitems}
+
+\index{get\_instrument\_setup() (InstrumentBase method)@\spxentry{get\_instrument\_setup()}\spxextra{InstrumentBase method}}
+
+\begin{fulllineitems}
+\phantomsection\label{\detokenize{cascade.instruments:cascade.instruments.instruments.InstrumentBase.get_instrument_setup}}\pysiglinewithargsret{\sphinxbfcode{\sphinxupquote{get\_instrument\_setup}}}{}{}
+Method which gets the specific setup of the used instrument.
+
+\end{fulllineitems}
+
+\index{name (InstrumentBase attribute)@\spxentry{name}\spxextra{InstrumentBase attribute}}
+
+\begin{fulllineitems}
+\phantomsection\label{\detokenize{cascade.instruments:cascade.instruments.instruments.InstrumentBase.name}}\pysigline{\sphinxbfcode{\sphinxupquote{name}}}
+Name of the instrument.
+
+\end{fulllineitems}
+
 
 \end{fulllineitems}
 
@@ -2318,7 +2523,7 @@ instrument classes and loads the time series data to be analyzed
 
 \begin{fulllineitems}
 \phantomsection\label{\detokenize{cascade.instruments:cascade.instruments.instruments.HST}}\pysigline{\sphinxbfcode{\sphinxupquote{class }}\sphinxbfcode{\sphinxupquote{HST}}}
-Bases: \sphinxcode{\sphinxupquote{cascade.instruments.instruments.ObservatoryBase}}
+Bases: {\hyperref[\detokenize{cascade.instruments:cascade.instruments.instruments.ObservatoryBase}]{\sphinxcrossref{\sphinxcode{\sphinxupquote{cascade.instruments.instruments.ObservatoryBase}}}}}
 
 This observatory class defines the instuments and data handling for the
 spectropgraphs of the Spitzer Space telescope
@@ -2326,24 +2531,32 @@ spectropgraphs of the Spitzer Space telescope
 
 \begin{fulllineitems}
 \phantomsection\label{\detokenize{cascade.instruments:cascade.instruments.instruments.HST.name}}\pysigline{\sphinxbfcode{\sphinxupquote{name}}}
+Set to ‘HST’
+
 \end{fulllineitems}
 
 \index{location (HST attribute)@\spxentry{location}\spxextra{HST attribute}}
 
 \begin{fulllineitems}
 \phantomsection\label{\detokenize{cascade.instruments:cascade.instruments.instruments.HST.location}}\pysigline{\sphinxbfcode{\sphinxupquote{location}}}
+Set to ‘SPACE’
+
 \end{fulllineitems}
 
 \index{NAIF\_ID (HST attribute)@\spxentry{NAIF\_ID}\spxextra{HST attribute}}
 
 \begin{fulllineitems}
 \phantomsection\label{\detokenize{cascade.instruments:cascade.instruments.instruments.HST.NAIF_ID}}\pysigline{\sphinxbfcode{\sphinxupquote{NAIF\_ID}}}
+Set to -48
+
 \end{fulllineitems}
 
 \index{observatory\_instruments (HST attribute)@\spxentry{observatory\_instruments}\spxextra{HST attribute}}
 
 \begin{fulllineitems}
 \phantomsection\label{\detokenize{cascade.instruments:cascade.instruments.instruments.HST.observatory_instruments}}\pysigline{\sphinxbfcode{\sphinxupquote{observatory\_instruments}}}
+Returns \{‘WFC3’\}
+
 \end{fulllineitems}
 
 
@@ -2353,20 +2566,54 @@ spectropgraphs of the Spitzer Space telescope
 
 \begin{fulllineitems}
 \phantomsection\label{\detokenize{cascade.instruments:cascade.instruments.instruments.HSTWFC3}}\pysigline{\sphinxbfcode{\sphinxupquote{class }}\sphinxbfcode{\sphinxupquote{HSTWFC3}}}
-Bases: \sphinxcode{\sphinxupquote{cascade.instruments.instruments.InstrumentBase}}
+Bases: {\hyperref[\detokenize{cascade.instruments:cascade.instruments.instruments.InstrumentBase}]{\sphinxcrossref{\sphinxcode{\sphinxupquote{cascade.instruments.instruments.InstrumentBase}}}}}
 
 This instrument class defines the properties of the WFC3 instrument of
 the Hubble Space Telescope
+
+For the instrument and observations the following valid options are
+available:
+\begin{itemize}
+\item {} 
+detector subarrays : \{‘IRSUB128’, ‘IRSUB256’, ‘IRSUB512’, ‘GRISM128’,
+‘GRISM256’, ‘GRISM512’\}
+
+\item {} 
+spectroscopic filters : \{‘G141’\}
+
+\item {} 
+imaging filters :  \{‘F139M’, ‘F132N’, ‘F167N’\}
+
+\item {} 
+data type : \{‘SPECTRUM’, ‘SPECTRAL\_IMAGE’\}
+
+\item {} 
+observing strategy : \{‘STARING’\}
+
+\item {} 
+data products : \{‘SPC’, ‘flt’, ‘COE’\}
+
+\end{itemize}
 \index{name (HSTWFC3 attribute)@\spxentry{name}\spxextra{HSTWFC3 attribute}}
 
 \begin{fulllineitems}
 \phantomsection\label{\detokenize{cascade.instruments:cascade.instruments.instruments.HSTWFC3.name}}\pysigline{\sphinxbfcode{\sphinxupquote{name}}}
+‘WFC3’
+\begin{quote}\begin{description}
+\item[{Type}] \leavevmode
+Name of the HST instrument
+
+\end{description}\end{quote}
+
 \end{fulllineitems}
 
 \index{load\_data() (HSTWFC3 method)@\spxentry{load\_data()}\spxextra{HSTWFC3 method}}
 
 \begin{fulllineitems}
 \phantomsection\label{\detokenize{cascade.instruments:cascade.instruments.instruments.HSTWFC3.load_data}}\pysiglinewithargsret{\sphinxbfcode{\sphinxupquote{load\_data}}}{}{}
+This function loads the WFC3 data form disk based on the
+parameters defined during the initialization of the TSO object.
+
 \end{fulllineitems}
 
 \index{get\_instrument\_setup() (HSTWFC3 method)@\spxentry{get\_instrument\_setup()}\spxextra{HSTWFC3 method}}
@@ -2374,6 +2621,15 @@ the Hubble Space Telescope
 \begin{fulllineitems}
 \phantomsection\label{\detokenize{cascade.instruments:cascade.instruments.instruments.HSTWFC3.get_instrument_setup}}\pysiglinewithargsret{\sphinxbfcode{\sphinxupquote{get\_instrument\_setup}}}{}{}
 Retrieve all relevant parameters defining the instrument and data setup
+\begin{quote}\begin{description}
+\item[{Returns}] \leavevmode
+\sphinxstylestrong{par} (\sphinxtitleref{collections.OrderedDict}) \textendash{} Dictionary containg all relevant parameters
+
+\item[{Raises}] \leavevmode
+\sphinxhref{https://docs.python.org/3/library/exceptions.html\#ValueError}{\sphinxcode{\sphinxupquote{ValueError}}} \textendash{} If obseervationla parameters are not or incorrect defined an
+error will be raised
+
+\end{description}\end{quote}
 
 \end{fulllineitems}
 
@@ -2381,7 +2637,23 @@ Retrieve all relevant parameters defining the instrument and data setup
 
 \begin{fulllineitems}
 \phantomsection\label{\detokenize{cascade.instruments:cascade.instruments.instruments.HSTWFC3.get_spectra}}\pysiglinewithargsret{\sphinxbfcode{\sphinxupquote{get\_spectra}}}{\emph{is\_background=False}}{}
-read (uncalibrated) spectral timeseries, phase and wavelength
+This function combines all functionallity to read fits files
+containing the (uncalibrated) spectral timeseries, including
+orbital phase and wavelength information
+\begin{quote}\begin{description}
+\item[{Parameters}] \leavevmode
+\sphinxstyleliteralstrong{\sphinxupquote{is\_background}} (\sphinxtitleref{bool}) \textendash{} if \sphinxtitleref{True} the data represents an observaton of the IR background
+to be subtracted of the data of the transit spectroscopy target.
+
+\item[{Returns}] \leavevmode
+\sphinxstylestrong{SpectralTimeSeries} (\sphinxtitleref{cascade.data\_model.SpectralDataTimeSeries}) \textendash{} Instance of \sphinxtitleref{SpectralDataTimeSeries} containing all spectroscopic
+data including uncertainties, time, wavelength and bad pixel mask.
+
+\item[{Raises}] \leavevmode
+\sphinxstyleemphasis{AssertionError, KeyError} \textendash{} Raises an error if no data is found or if certain expected
+fits keywords are not present in the data files.
+
+\end{description}\end{quote}
 
 \end{fulllineitems}
 
@@ -2389,7 +2661,23 @@ read (uncalibrated) spectral timeseries, phase and wavelength
 
 \begin{fulllineitems}
 \phantomsection\label{\detokenize{cascade.instruments:cascade.instruments.instruments.HSTWFC3.get_spectral_images}}\pysiglinewithargsret{\sphinxbfcode{\sphinxupquote{get\_spectral\_images}}}{\emph{is\_background=False}}{}
-read uncalibrated spectral images (flt data product)
+This function combines all functionallity to read fits files
+containing the (uncalibrated) spectral image timeseries, including
+orbital phase and wavelength information
+\begin{quote}\begin{description}
+\item[{Parameters}] \leavevmode
+\sphinxstyleliteralstrong{\sphinxupquote{is\_background}} (\sphinxtitleref{bool}) \textendash{} if \sphinxtitleref{True} the data represents an observaton of the IR background
+to be subtracted of the data of the transit spectroscopy target.
+
+\item[{Returns}] \leavevmode
+\sphinxstylestrong{SpectralTimeSeries} (\sphinxtitleref{cascade.data\_model.SpectralDataTimeSeries}) \textendash{} Instance of \sphinxtitleref{SpectralDataTimeSeries} containing all spectroscopic
+data including uncertainties, time, wavelength and bad pixel mask.
+
+\item[{Raises}] \leavevmode
+\sphinxstyleemphasis{AssertionError, KeyError} \textendash{} Raises an error if no data is found or if certain expected
+fits keywords are not present in the data files.
+
+\end{description}\end{quote}
 
 \end{fulllineitems}
 
@@ -2415,8 +2703,22 @@ Defines region on detector which containes the intended target star.
 \begin{fulllineitems}
 \phantomsection\label{\detokenize{cascade.instruments:cascade.instruments.instruments.HSTWFC3._get_background_cal_data}}\pysiglinewithargsret{\sphinxbfcode{\sphinxupquote{\_get\_background\_cal\_data}}}{}{}
 Get the calibration data from which the background in the science
-images can be determined.  For further details see:
+images can be determined.
+\begin{quote}\begin{description}
+\item[{Raises}] \leavevmode
+\sphinxstyleemphasis{FileNotFoundError, AttributeError} \textendash{} An error is raised if the calibration images are not found or the
+background data is not properly defined.
+
+\end{description}\end{quote}
+
+\begin{sphinxadmonition}{note}{Notes}
+
+For further details see:
+\begin{quote}
+
 \sphinxurl{http://www.stsci.edu/hst/wfc3/documents/ISRs/WFC3-2015-17.pdf}
+\end{quote}
+\end{sphinxadmonition}
 
 \end{fulllineitems}
 
@@ -2424,8 +2726,23 @@ images can be determined.  For further details see:
 
 \begin{fulllineitems}
 \phantomsection\label{\detokenize{cascade.instruments:cascade.instruments.instruments.HSTWFC3._fit_background}}\pysiglinewithargsret{\sphinxbfcode{\sphinxupquote{\_fit\_background}}}{\emph{science\_data\_in}}{}
-Fits the background in the HST Grism data using the method described
-in: \sphinxurl{http://www.stsci.edu/hst/wfc3/documents/ISRs/WFC3-2015-17.pdf}
+Determes the background in the HST Grism data using a model for the
+background to the spectral timeseries data
+\begin{quote}\begin{description}
+\item[{Parameters}] \leavevmode
+\sphinxstyleliteralstrong{\sphinxupquote{science\_data\_in}} (\sphinxtitleref{masked quantity}) \textendash{} Input data for which the background will be determined
+
+\item[{Returns}] \leavevmode
+\sphinxstylestrong{SpectralTimeSeries} (\sphinxtitleref{SpectralDataTimeSeries}) \textendash{} The fitted IR bacgound as a function of time
+
+\end{description}\end{quote}
+
+\begin{sphinxadmonition}{note}{Notes}
+
+All details of the implemented model is described in:
+
+\sphinxurl{http://www.stsci.edu/hst/wfc3/documents/ISRs/WFC3-2015-17.pdf}
+\end{sphinxadmonition}
 
 \end{fulllineitems}
 
@@ -2441,10 +2758,11 @@ the dispersion direction and psf size (relative to pixel size)
 \begin{quote}\begin{description}
 \item[{Parameters}] \leavevmode\begin{itemize}
 \item {} 
-\sphinxstyleliteralstrong{\sphinxupquote{spectral\_image\_cube}} \textendash{} 
+\sphinxstyleliteralstrong{\sphinxupquote{spectral\_image\_cube}} (\sphinxtitleref{ndarray}) \textendash{} Input spectral image data cube.
 
 \item {} 
-\sphinxstyleliteralstrong{\sphinxupquote{mask}} \textendash{} 
+\sphinxstyleliteralstrong{\sphinxupquote{mask}} (\sphinxtitleref{ndarray} of \sphinxtitleref{int}) \textendash{} Bad pixel and region of interest mask. Values of 1 indicate
+flagged data.
 
 \end{itemize}
 
@@ -2461,6 +2779,21 @@ the dispersion direction and psf size (relative to pixel size)
 \phantomsection\label{\detokenize{cascade.instruments:cascade.instruments.instruments.HSTWFC3._determine_source_position_from_cal_image}}\pysiglinewithargsret{\sphinxbfcode{\sphinxupquote{\_determine\_source\_position\_from\_cal\_image}}}{\emph{calibration\_image\_cube}, \emph{calibration\_data\_files}}{}
 Determines the source position on the detector of the target source in
 the calibration image takes prior to the spectroscopic observations.
+\begin{quote}\begin{description}
+\item[{Parameters}] \leavevmode\begin{itemize}
+\item {} 
+\sphinxstyleliteralstrong{\sphinxupquote{calibration\_image\_cube}} (\sphinxtitleref{ndarray}) \textendash{} Cube containing all acquisition images of the target.
+
+\item {} 
+\sphinxstyleliteralstrong{\sphinxupquote{calibration\_data\_files}} (\sphinxtitleref{list} of \sphinxtitleref{str}) \textendash{} List containing the file names associated with the calibraton data.
+
+\end{itemize}
+
+\item[{Variables}] \leavevmode
+\sphinxstyleliteralstrong{\sphinxupquote{calibration\_source\_position}} (\sphinxtitleref{list’ of {}`tuple}) \textendash{} The position of the source in the acquisition images associated
+with the HST spectral timeseries observations.
+
+\end{description}\end{quote}
 
 \end{fulllineitems}
 
@@ -2469,6 +2802,22 @@ the calibration image takes prior to the spectroscopic observations.
 \begin{fulllineitems}
 \phantomsection\label{\detokenize{cascade.instruments:cascade.instruments.instruments.HSTWFC3._read_grism_configuration_files}}\pysiglinewithargsret{\sphinxbfcode{\sphinxupquote{\_read\_grism\_configuration\_files}}}{}{}
 Gets the relevant data from WFC3 configuration files
+\begin{quote}\begin{description}
+\item[{Variables}] \leavevmode\begin{itemize}
+\item {} 
+\sphinxstyleliteralstrong{\sphinxupquote{DYDX}} (\sphinxtitleref{list}) \textendash{} The parameters for the spectral trace
+
+\item {} 
+\sphinxstyleliteralstrong{\sphinxupquote{DLDP}} (\sphinxstyleliteralemphasis{\sphinxupquote{'list{}`}}) \textendash{} The parameters for the wavelength calibration
+
+\end{itemize}
+
+\item[{Raises}] \leavevmode
+\sphinxhref{https://docs.python.org/3/library/exceptions.html\#ValueError}{\sphinxcode{\sphinxupquote{ValueError}}} \textendash{} An error is raised if the parameters associated
+with the specified instrument mode can not be found in the
+calibration file.
+
+\end{description}\end{quote}
 
 \end{fulllineitems}
 
@@ -2478,6 +2827,12 @@ Gets the relevant data from WFC3 configuration files
 \phantomsection\label{\detokenize{cascade.instruments:cascade.instruments.instruments.HSTWFC3._read_reference_pixel_file}}\pysiglinewithargsret{\sphinxbfcode{\sphinxupquote{\_read\_reference\_pixel\_file}}}{}{}
 Read the calibration file containig the definition
 of the reference pixel appropriate for a given sub array and or filer
+\begin{quote}\begin{description}
+\item[{Variables}] \leavevmode
+\sphinxstyleliteralstrong{\sphinxupquote{reference\_pixels}} (\sphinxtitleref{collections.OrderedDict}) \textendash{} Ordered dict containing the reference pixels to be used in the
+wavelength calibration.
+
+\end{description}\end{quote}
 
 \end{fulllineitems}
 
@@ -2487,7 +2842,43 @@ of the reference pixel appropriate for a given sub array and or filer
 \phantomsection\label{\detokenize{cascade.instruments:cascade.instruments.instruments.HSTWFC3._search_ref_pixel_cal_file}}\pysiglinewithargsret{\sphinxbfcode{\sphinxupquote{static }}\sphinxbfcode{\sphinxupquote{\_search\_ref\_pixel\_cal\_file}}}{\emph{ptable}, \emph{inst\_aperture}, \emph{inst\_filter}}{}
 Search the reference pixel calibration file for the reference pixel
 given the instrument aperture and filter.
-See also \sphinxurl{http://www.stsci.edu/hst/observatory/apertures/wfc3.html}
+\begin{quote}\begin{description}
+\item[{Parameters}] \leavevmode\begin{itemize}
+\item {} 
+\sphinxstyleliteralstrong{\sphinxupquote{ptable}} (\sphinxtitleref{dict}) \textendash{} Calibratrion table with reference positions
+
+\item {} 
+\sphinxstyleliteralstrong{\sphinxupquote{inst\_aperture}} (\sphinxtitleref{str}) \textendash{} The instrument aperture
+
+\item {} 
+\sphinxstyleliteralstrong{\sphinxupquote{inst\_filter}} (\sphinxtitleref{str}) \textendash{} The instrument filter
+
+\end{itemize}
+
+\item[{Returns}] \leavevmode
+\begin{itemize}
+\item {} 
+\sphinxstylestrong{XREF} (\sphinxtitleref{float}) \textendash{} X reference position for the acquisition image
+
+\item {} 
+\sphinxstylestrong{YREF} (\sphinxtitleref{float}) \textendash{} Y reference position for the acquisition image
+
+\end{itemize}
+
+
+\item[{Raises}] \leavevmode
+\sphinxhref{https://docs.python.org/3/library/exceptions.html\#ValueError}{\sphinxcode{\sphinxupquote{ValueError}}} \textendash{} An error is raises if the instrument aperture if filter is not
+fount in the calibration table
+
+\end{description}\end{quote}
+
+\begin{sphinxadmonition}{note}{Notes}
+\begin{description}
+\item[{See also:}] \leavevmode
+\sphinxurl{http://www.stsci.edu/hst/observatory/apertures/wfc3.html}
+
+\end{description}
+\end{sphinxadmonition}
 
 \end{fulllineitems}
 
@@ -2495,13 +2886,41 @@ See also \sphinxurl{http://www.stsci.edu/hst/observatory/apertures/wfc3.html}
 
 \begin{fulllineitems}
 \phantomsection\label{\detokenize{cascade.instruments:cascade.instruments.instruments.HSTWFC3._get_subarray_size}}\pysiglinewithargsret{\sphinxbfcode{\sphinxupquote{\_get\_subarray\_size}}}{\emph{calibration\_data}, \emph{spectral\_data}}{}
+This function determines the size of the used subarray.
+\begin{quote}\begin{description}
+\item[{Parameters}] \leavevmode\begin{itemize}
+\item {} 
+\sphinxstyleliteralstrong{\sphinxupquote{calibration\_data}} \textendash{} 
+
+\item {} 
+\sphinxstyleliteralstrong{\sphinxupquote{spectral\_data}} \textendash{} 
+
+\end{itemize}
+
+\item[{Variables}] \leavevmode
+\sphinxstyleliteralstrong{\sphinxupquote{subarray\_sizes}} \textendash{} 
+
+\item[{Raises}] \leavevmode
+\sphinxhref{https://docs.python.org/3/library/exceptions.html\#AttributeError}{\sphinxcode{\sphinxupquote{AttributeError}}}
+
+\end{description}\end{quote}
+
 \end{fulllineitems}
 
 \index{\_get\_wavelength\_calibration() (HSTWFC3 method)@\spxentry{\_get\_wavelength\_calibration()}\spxextra{HSTWFC3 method}}
 
 \begin{fulllineitems}
 \phantomsection\label{\detokenize{cascade.instruments:cascade.instruments.instruments.HSTWFC3._get_wavelength_calibration}}\pysiglinewithargsret{\sphinxbfcode{\sphinxupquote{\_get\_wavelength\_calibration}}}{}{}
-Return the wavelength calibration
+The functions returns the wavelength calibration
+\begin{quote}\begin{description}
+\item[{Returns}] \leavevmode
+\sphinxstylestrong{wave\_cal} (\sphinxtitleref{ndarray}) \textendash{} Wavelength calibraiton of the observations.
+
+\item[{Raises}] \leavevmode
+\sphinxhref{https://docs.python.org/3/library/exceptions.html\#AttributeError}{\sphinxcode{\sphinxupquote{AttributeError}}} \textendash{} An error is raised if the necessary calibration data
+is not yet defined.
+
+\end{description}\end{quote}
 
 \end{fulllineitems}
 
@@ -2510,6 +2929,16 @@ Return the wavelength calibration
 \begin{fulllineitems}
 \phantomsection\label{\detokenize{cascade.instruments:cascade.instruments.instruments.HSTWFC3.get_spectral_trace}}\pysiglinewithargsret{\sphinxbfcode{\sphinxupquote{get\_spectral\_trace}}}{}{}
 Get spectral trace
+\begin{quote}\begin{description}
+\item[{Returns}] \leavevmode
+\sphinxstylestrong{spectral\_trace} (\sphinxtitleref{collections.OrderedDict}) \textendash{} The spectral trace of the dispersed light (both position and
+wavelength)
+
+\item[{Raises}] \leavevmode
+\sphinxhref{https://docs.python.org/3/library/exceptions.html\#AttributeError}{\sphinxcode{\sphinxupquote{AttributeError}}} \textendash{} An error is raised in the necessary calibration data is
+not yet defined.
+
+\end{description}\end{quote}
 
 \end{fulllineitems}
 
@@ -2518,16 +2947,55 @@ Get spectral trace
 \begin{fulllineitems}
 \phantomsection\label{\detokenize{cascade.instruments:cascade.instruments.instruments.HSTWFC3._WFC3Trace}}\pysiglinewithargsret{\sphinxbfcode{\sphinxupquote{static }}\sphinxbfcode{\sphinxupquote{\_WFC3Trace}}}{\emph{xc}, \emph{yc}, \emph{DYDX}, \emph{xref=522}, \emph{yref=522}, \emph{xref\_grism=522}, \emph{yref\_grism=522}, \emph{subarray=256}, \emph{subarray\_grism=256}}{}
 This function defines the spectral trace for the wfc3 grism modes.
+\begin{quote}\begin{description}
+\item[{Parameters}] \leavevmode\begin{itemize}
+\item {} 
+\sphinxstyleliteralstrong{\sphinxupquote{xc}} \textendash{} 
+
+\item {} 
+\sphinxstyleliteralstrong{\sphinxupquote{yc}} \textendash{} 
+
+\item {} 
+\sphinxstyleliteralstrong{\sphinxupquote{DYDX}} \textendash{} 
+
+\item {} 
+\sphinxstyleliteralstrong{\sphinxupquote{xref=522}} \textendash{} 
+
+\item {} 
+\sphinxstyleliteralstrong{\sphinxupquote{yref=522}} \textendash{} 
+
+\item {} 
+\sphinxstyleliteralstrong{\sphinxupquote{xref\_grism=522}} \textendash{} 
+
+\item {} 
+\sphinxstyleliteralstrong{\sphinxupquote{yref\_grism=522}} \textendash{} 
+
+\item {} 
+\sphinxstyleliteralstrong{\sphinxupquote{subarray=256}} \textendash{} 
+
+\item {} 
+\sphinxstyleliteralstrong{\sphinxupquote{subarray\_grism=256}} \textendash{} 
+
+\end{itemize}
+
+\item[{Returns}] \leavevmode
+\sphinxstyleemphasis{trace}
+
+\end{description}\end{quote}
 
 \begin{sphinxadmonition}{note}{Notes}
-\begin{description}
-\item[{Details can be found in:}] \leavevmode
+
+Details can be found in:
+\begin{quote}
+
 \sphinxurl{http://www.stsci.edu/hst/wfc3/documents/ISRs/WFC3-2016-15.pdf}
+\end{quote}
 
-\item[{and}] \leavevmode
+and
+\begin{quote}
+
 \sphinxurl{http://www.stsci.edu/hst/observatory/apertures/wfc3.html}
-
-\end{description}
+\end{quote}
 \end{sphinxadmonition}
 
 \end{fulllineitems}
@@ -2536,13 +3004,7 @@ This function defines the spectral trace for the wfc3 grism modes.
 
 \begin{fulllineitems}
 \phantomsection\label{\detokenize{cascade.instruments:cascade.instruments.instruments.HSTWFC3._WFC3Dispersion}}\pysiglinewithargsret{\sphinxbfcode{\sphinxupquote{static }}\sphinxbfcode{\sphinxupquote{\_WFC3Dispersion}}}{\emph{xc}, \emph{yc}, \emph{DYDX}, \emph{DLDP}, \emph{xref=522}, \emph{yref=522}, \emph{xref\_grism=522}, \emph{yref\_grism=522}, \emph{subarray=256}, \emph{subarray\_grism=256}}{}
-Convert pixel coordinate to wavelength. Method and coefficient
-adopted from Kuntschner et al. (2009), Wilkins et al. (2014). See also
-\sphinxurl{http://www.stsci.edu/hst/wfc3/documents/ISRs/WFC3-2016-15.pdf}
-
-In case the direct image and spectral image are not taken with the
-same aperture, the centroid measurement is adjusted according to the
-table in: \sphinxurl{http://www.stsci.edu/hst/observatory/apertures/wfc3.html}
+Convert pixel coordinate to wavelength.
 \begin{quote}\begin{description}
 \item[{Parameters}] \leavevmode\begin{itemize}
 \item {} 
@@ -2576,6 +3038,35 @@ table in: \sphinxurl{http://www.stsci.edu/hst/observatory/apertures/wfc3.html}
 
 \end{description}\end{quote}
 
+\begin{sphinxadmonition}{note}{Notes}
+
+For details of the method and coefficient adopted see %
+\begin{footnote}[1]\sphinxAtStartFootnote
+Kuntschner et al. (2009)
+%
+\end{footnote} and %
+\begin{footnote}[2]\sphinxAtStartFootnote
+Wilkins et al. (2014)
+%
+\end{footnote}.
+See also:
+\begin{quote}
+
+\sphinxurl{http://www.stsci.edu/hst/wfc3/documents/ISRs/WFC3-2016-15.pdf}
+\end{quote}
+
+In case the direct image and spectral image are not taken with the
+same aperture, the centroid measurement is adjusted according to the
+table in:
+\begin{quote}
+
+\sphinxurl{http://www.stsci.edu/hst/observatory/apertures/wfc3.html}
+\end{quote}
+\end{sphinxadmonition}
+
+\begin{sphinxadmonition}{note}{References}
+\end{sphinxadmonition}
+
 \end{fulllineitems}
 
 
@@ -2585,7 +3076,7 @@ table in: \sphinxurl{http://www.stsci.edu/hst/observatory/apertures/wfc3.html}
 
 \begin{fulllineitems}
 \phantomsection\label{\detokenize{cascade.instruments:cascade.instruments.instruments.Spitzer}}\pysigline{\sphinxbfcode{\sphinxupquote{class }}\sphinxbfcode{\sphinxupquote{Spitzer}}}
-Bases: \sphinxcode{\sphinxupquote{cascade.instruments.instruments.ObservatoryBase}}
+Bases: {\hyperref[\detokenize{cascade.instruments:cascade.instruments.instruments.ObservatoryBase}]{\sphinxcrossref{\sphinxcode{\sphinxupquote{cascade.instruments.instruments.ObservatoryBase}}}}}
 
 This observatory class defines the instuments and data handling for the
 spectropgraphs of the Spitzer Space telescope
@@ -2593,24 +3084,34 @@ spectropgraphs of the Spitzer Space telescope
 
 \begin{fulllineitems}
 \phantomsection\label{\detokenize{cascade.instruments:cascade.instruments.instruments.Spitzer.name}}\pysigline{\sphinxbfcode{\sphinxupquote{name}}}
+Name of the observatory.
+
 \end{fulllineitems}
 
 \index{location (Spitzer attribute)@\spxentry{location}\spxextra{Spitzer attribute}}
 
 \begin{fulllineitems}
 \phantomsection\label{\detokenize{cascade.instruments:cascade.instruments.instruments.Spitzer.location}}\pysigline{\sphinxbfcode{\sphinxupquote{location}}}
+Location of the observatory
+
 \end{fulllineitems}
 
 \index{NAIF\_ID (Spitzer attribute)@\spxentry{NAIF\_ID}\spxextra{Spitzer attribute}}
 
 \begin{fulllineitems}
 \phantomsection\label{\detokenize{cascade.instruments:cascade.instruments.instruments.Spitzer.NAIF_ID}}\pysigline{\sphinxbfcode{\sphinxupquote{NAIF\_ID}}}
+NAIF ID of the observatory. With this the location relative to the
+sun and the observed target as a function of time can be determined.
+Needed to calculate BJD time.
+
 \end{fulllineitems}
 
 \index{observatory\_instruments (Spitzer attribute)@\spxentry{observatory\_instruments}\spxextra{Spitzer attribute}}
 
 \begin{fulllineitems}
 \phantomsection\label{\detokenize{cascade.instruments:cascade.instruments.instruments.Spitzer.observatory_instruments}}\pysigline{\sphinxbfcode{\sphinxupquote{observatory\_instruments}}}
+The names of the instruments part of the observatory.
+
 \end{fulllineitems}
 
 
@@ -2620,20 +3121,43 @@ spectropgraphs of the Spitzer Space telescope
 
 \begin{fulllineitems}
 \phantomsection\label{\detokenize{cascade.instruments:cascade.instruments.instruments.SpitzerIRS}}\pysigline{\sphinxbfcode{\sphinxupquote{class }}\sphinxbfcode{\sphinxupquote{SpitzerIRS}}}
-Bases: \sphinxcode{\sphinxupquote{cascade.instruments.instruments.InstrumentBase}}
+Bases: {\hyperref[\detokenize{cascade.instruments:cascade.instruments.instruments.InstrumentBase}]{\sphinxcrossref{\sphinxcode{\sphinxupquote{cascade.instruments.instruments.InstrumentBase}}}}}
 
 This instrument class defines the properties of the IRS instrument of
-the Spitzer Space Telescope
+the Spitzer Space Telescope.
+For the instrument and observations the following valid options are
+available:
+\begin{itemize}
+\item {} 
+detectors :  \{‘SL’, ‘LL’\}
+
+\item {} 
+spectral orders : \{‘1’, ‘2’\}
+
+\item {} 
+data products : \{‘droop’, ‘COE’\}
+
+\item {} 
+observing mode : \{‘STARING’, ‘NODDED’\}
+
+\item {} 
+data type : \{‘SPECTRUM’, ‘SPECTRAL\_IMAGE’, ‘SPECTRAL\_DETECTOR\_CUBE’\}
+
+\end{itemize}
 \index{name (SpitzerIRS attribute)@\spxentry{name}\spxextra{SpitzerIRS attribute}}
 
 \begin{fulllineitems}
 \phantomsection\label{\detokenize{cascade.instruments:cascade.instruments.instruments.SpitzerIRS.name}}\pysigline{\sphinxbfcode{\sphinxupquote{name}}}
+Name of the instrument.
+
 \end{fulllineitems}
 
 \index{load\_data() (SpitzerIRS method)@\spxentry{load\_data()}\spxextra{SpitzerIRS method}}
 
 \begin{fulllineitems}
 \phantomsection\label{\detokenize{cascade.instruments:cascade.instruments.instruments.SpitzerIRS.load_data}}\pysiglinewithargsret{\sphinxbfcode{\sphinxupquote{load\_data}}}{}{}
+Method which allows to load data.
+
 \end{fulllineitems}
 
 \index{get\_instrument\_setup() (SpitzerIRS method)@\spxentry{get\_instrument\_setup()}\spxextra{SpitzerIRS method}}
@@ -2648,7 +3172,23 @@ Retrieve all relevant parameters defining the instrument and data setup
 
 \begin{fulllineitems}
 \phantomsection\label{\detokenize{cascade.instruments:cascade.instruments.instruments.SpitzerIRS.get_spectra}}\pysiglinewithargsret{\sphinxbfcode{\sphinxupquote{get\_spectra}}}{\emph{is\_background=False}}{}
-read uncalibrated spectral timeseries, phase and wavelength
+This function combines all functionallity to read fits files
+containing the (uncalibrated) spectral timeseries, including
+orbital phase and wavelength information
+\begin{quote}\begin{description}
+\item[{Parameters}] \leavevmode
+\sphinxstyleliteralstrong{\sphinxupquote{is\_background}} (\sphinxtitleref{bool}) \textendash{} if \sphinxtitleref{True} the data represents an observaton of the IR background
+to be subtracted of the data of the transit spectroscopy target.
+
+\item[{Returns}] \leavevmode
+\sphinxstylestrong{SpectralTimeSeries} (\sphinxtitleref{cascade.data\_model.SpectralDataTimeSeries}) \textendash{} Instance of \sphinxtitleref{SpectralDataTimeSeries} containing all spectroscopic
+data including uncertainties, time, wavelength and bad pixel mask.
+
+\item[{Raises}] \leavevmode
+\sphinxstyleemphasis{AssertionError, KeyError} \textendash{} Raises an error if no data is found or if certain expected
+fits keywords are not present in the data files.
+
+\end{description}\end{quote}
 
 \end{fulllineitems}
 
@@ -2656,26 +3196,67 @@ read uncalibrated spectral timeseries, phase and wavelength
 
 \begin{fulllineitems}
 \phantomsection\label{\detokenize{cascade.instruments:cascade.instruments.instruments.SpitzerIRS.get_spectral_images}}\pysiglinewithargsret{\sphinxbfcode{\sphinxupquote{get\_spectral\_images}}}{\emph{is\_background=False}}{}
-read uncalibrated spectral images
+This function combines all functionallity to read fits files
+containing the (uncalibrated) spectral timeseries, including
+orbital phase and wavelength information
+\begin{quote}\begin{description}
+\item[{Parameters}] \leavevmode
+\sphinxstyleliteralstrong{\sphinxupquote{is\_background}} (\sphinxtitleref{bool}) \textendash{} if \sphinxtitleref{True} the data represents an observaton of the IR background
+to be subtracted of the data of the transit spectroscopy target.
+
+\item[{Returns}] \leavevmode
+\sphinxstylestrong{SpectralTimeSeries} (\sphinxtitleref{cascade.data\_model.SpectralDataTimeSeries}) \textendash{} Instance of \sphinxtitleref{SpectralDataTimeSeries} containing all spectroscopic
+data including uncertainties, time, wavelength and bad pixel mask.
+
+\item[{Raises}] \leavevmode
+\sphinxstyleemphasis{AssertionError, KeyError} \textendash{} Raises an error if no data is found or if certain expected
+fits keywords are not present in the data files.
+
+\end{description}\end{quote}
 
 \begin{sphinxadmonition}{note}{Notes}
+\begin{description}
+\item[{Notes on FOV:}] \leavevmode
+in the fits header the following relevant info is used:
+\begin{itemize}
+\item {} 
+FOVID     26     IRS\_Short-Lo\_1st\_Order\_1st\_Position
 
-Notes on FOV:
+\item {} 
+FOVID     27     IRS\_Short-Lo\_1st\_Order\_2nd\_Position
 
-\# in the fits header the following relevant info is used:
-\# FOVID     26     IRS\_Short-Lo\_1st\_Order\_1st\_Position
-\# FOVID     27     IRS\_Short-Lo\_1st\_Order\_2nd\_Position
-\# FOVID     28     IRS\_Short-Lo\_1st\_Order\_Center\_Position
-\# FOVID     29     IRS\_Short-Lo\_Module\_Center
-\# FOVID     32     IRS\_Short-Lo\_2nd\_Order\_1st\_Position
-\# FOVID     33     IRS\_Short-Lo\_2nd\_Order\_2nd\_Position
-\# FOVID     34     IRS\_Short-Lo\_2nd\_Order\_Center\_Position
-\# FOVID     40     IRS\_Long-Lo\_1st\_Order\_Center\_Position
-\# FOVID     46     IRS\_Long-Lo\_2nd\_Order\_Center\_Position
+\item {} 
+FOVID     28     IRS\_Short-Lo\_1st\_Order\_Center\_Position
+
+\item {} 
+FOVID     29     IRS\_Short-Lo\_Module\_Center
+
+\item {} 
+FOVID     32     IRS\_Short-Lo\_2nd\_Order\_1st\_Position
+
+\item {} 
+FOVID     33     IRS\_Short-Lo\_2nd\_Order\_2nd\_Position
+
+\item {} 
+FOVID     34     IRS\_Short-Lo\_2nd\_Order\_Center\_Position
+
+\item {} 
+FOVID     40     IRS\_Long-Lo\_1st\_Order\_Center\_Position
+
+\item {} 
+FOVID     46     IRS\_Long-Lo\_2nd\_Order\_Center\_Position
+
+\end{itemize}
+
+\end{description}
 
 Notes on timing:
+\begin{itemize}
+\item {} 
+FRAMTIME the total effective exposure time (ramp length)
+in seconds
 
-\# FRAMTIME the total effective exposure time (ramp length) in seconds
+\end{itemize}
 \end{sphinxadmonition}
 
 \end{fulllineitems}
@@ -2717,7 +3298,24 @@ Get wavelength calibration file
 
 \begin{fulllineitems}
 \phantomsection\label{\detokenize{cascade.instruments:cascade.instruments.instruments.SpitzerIRS.get_detector_cubes}}\pysiglinewithargsret{\sphinxbfcode{\sphinxupquote{get\_detector\_cubes}}}{\emph{is\_background=False}}{}
-Get detector cube data
+This function combines all functionallity to read fits files
+containing the (uncalibrated) detector cubes (detector data
+on ramp level) timeseries, including
+orbital phase and wavelength information
+\begin{quote}\begin{description}
+\item[{Parameters}] \leavevmode
+\sphinxstyleliteralstrong{\sphinxupquote{is\_background}} (\sphinxtitleref{bool}) \textendash{} if \sphinxtitleref{True} the data represents an observaton of the IR background
+to be subtracted of the data of the transit spectroscopy target.
+
+\item[{Returns}] \leavevmode
+\sphinxstylestrong{SpectralTimeSeries} (\sphinxtitleref{cascade.data\_model.SpectralDataTimeSeries}) \textendash{} Instance of \sphinxtitleref{SpectralDataTimeSeries} containing all spectroscopic
+data including uncertainties, time, wavelength and bad pixel mask.
+
+\item[{Raises}] \leavevmode
+\sphinxstyleemphasis{AssertionError, KeyError} \textendash{} Raises an error if no data is found or if certain expected
+fits keywords are not present in the data files.
+
+\end{description}\end{quote}
 
 \begin{sphinxadmonition}{note}{Notes}
 
@@ -2748,11 +3346,12 @@ So, for an N-read ramp:
 
 RAMPTIME = 2x(N-1)xSAMPTIME
 \end{quote}
-\begin{description}
-\item[{and}] \leavevmode
-DCE duration = DEADTIME + GRPTIME + RAMPTIME
 
-\end{description}
+and
+\begin{quote}
+
+DCE duration = DEADTIME + GRPTIME + RAMPTIME
+\end{quote}
 
 Note that peak-up data is not obtained in SUR mode. It is obtained in
 Double Correlated Sampling (DCS) mode. In that case, RAMPTIME gives the

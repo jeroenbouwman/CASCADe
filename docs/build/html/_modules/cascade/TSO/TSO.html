@@ -122,7 +122,7 @@
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
-<span class="sd">    init_files: &#39;list&#39; of &#39;str&#39;</span>
+<span class="sd">    init_files: `list` of `str`</span>
 <span class="sd">        List containing all the initialization files needed to run the</span>
 <span class="sd">        CASCADe code.</span>
 
@@ -176,13 +176,13 @@
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
-<span class="sd">        command:</span>
+<span class="sd">        command : `str`</span>
 <span class="sd">            Command to be excecuted. If valid the method corresponding</span>
 <span class="sd">            to the command will be excecuted</span>
-<span class="sd">        *init_files</span>
+<span class="sd">        *init_files : `tuple` of `str`</span>
 <span class="sd">            Single or multiple file names of the .ini files containing the</span>
 <span class="sd">            parameters defining the observation and calibration settings.</span>
-<span class="sd">        path</span>
+<span class="sd">        path : `str`</span>
 <span class="sd">            (optional) Filepath to the .ini files, standard value in None</span>
 
 <span class="sd">        Raises</span>
@@ -213,10 +213,10 @@
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
-<span class="sd">        *init_files</span>
+<span class="sd">        *init_files : `tuple` of `str`</span>
 <span class="sd">            Single or multiple file names of the .ini files containing the</span>
 <span class="sd">            parameters defining the observation and calibration settings.</span>
-<span class="sd">        path</span>
+<span class="sd">        path : `str`</span>
 <span class="sd">            (optional) Filepath to the .ini files, standard value in None</span>
 
 <span class="sd">        Attributes</span>
@@ -267,8 +267,8 @@
 
 <span class="sd">        Attributes</span>
 <span class="sd">        ----------</span>
-<span class="sd">        observation</span>
-<span class="sd">            cascade.instruments.instruments.Observation</span>
+<span class="sd">        observation : `cascade.instruments.instruments.Observation`</span>
+<span class="sd">            Instance of Observation class containing all observational data</span>
 
 <span class="sd">        Examples</span>
 <span class="sd">        --------</span>
@@ -285,8 +285,8 @@
 
 <span class="sd">        Attributes</span>
 <span class="sd">        ----------</span>
-<span class="sd">        isBackgroundSubtracted : &#39;bool&#39;</span>
-<span class="sd">            True if background is subtracted</span>
+<span class="sd">        isBackgroundSubtracted : `bool`</span>
+<span class="sd">            `True` if background is subtracted</span>
 
 <span class="sd">        Raises</span>
 <span class="sd">        ------</span>
@@ -363,15 +363,15 @@
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ---------</span>
-<span class="sd">        data : &#39;array_like&#39;</span>
+<span class="sd">        data : `ndarray`</span>
 <span class="sd">            Input data to be cliped, last axis of data to be assumed the time</span>
-<span class="sd">        sigma : &#39;float&#39;</span>
+<span class="sd">        sigma : `float`</span>
 <span class="sd">            Sigma value of sigmaclip</span>
 
 <span class="sd">        Returns</span>
 <span class="sd">        -------</span>
-<span class="sd">        sigma_clip_mask : &#39;array_like&#39;</span>
-<span class="sd">            Updated mask for input data wiith bad data points flagged (=1)</span>
+<span class="sd">        sigma_clip_mask : `ndarray`</span>
+<span class="sd">            Updated mask for input data with bad data points flagged `(=1)`</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="c1"># time axis always the last axis in data,</span>
         <span class="c1"># or the first in the transposed array</span>
@@ -385,8 +385,8 @@
 
 <span class="sd">        Attributes</span>
 <span class="sd">        ---------</span>
-<span class="sd">        isSigmaCliped : &#39;bool&#39;</span>
-<span class="sd">            Set to True if bad data has been masked using sigma clip</span>
+<span class="sd">        isSigmaCliped : `bool`</span>
+<span class="sd">            Set to `True` if bad data has been masked using sigma clip</span>
 
 <span class="sd">        Raises</span>
 <span class="sd">        ------</span>
@@ -460,7 +460,7 @@
 
 <span class="sd">        Attributes</span>
 <span class="sd">        ----------</span>
-<span class="sd">        cleaned_data : &#39;masked quantity&#39;</span>
+<span class="sd">        cleaned_data : `masked quantity`</span>
 <span class="sd">            A cleaned version of the spctral timeseries data of the transiting</span>
 <span class="sd">            exoplanet system</span>
 
@@ -564,15 +564,15 @@
 
 <span class="sd">        Attributes</span>
 <span class="sd">        ----------</span>
-<span class="sd">        light_curve : &#39;array_like&#39;</span>
+<span class="sd">        light_curve : `ndarray`</span>
 <span class="sd">            The lightcurve model</span>
-<span class="sd">        transit_timing : &#39;list&#39;</span>
+<span class="sd">        transit_timing : `list`</span>
 <span class="sd">            list with start time and end time of transit</span>
-<span class="sd">        light_curve_interpolated : &#39;list&#39; of &#39;ndarray&#39;</span>
+<span class="sd">        light_curve_interpolated : `list` of `ndarray`</span>
 <span class="sd">            to the time grid of the observations interpolated lightcurve model</span>
-<span class="sd">        calibration_signal : &#39;list&#39; of &#39;ndarray&#39;</span>
+<span class="sd">        calibration_signal : `list` of `ndarray`</span>
 <span class="sd">            lightcurve model of the calibration signal</span>
-<span class="sd">        transittype : &#39;str&#39;</span>
+<span class="sd">        transittype : `str`</span>
 <span class="sd">            Currently either &#39;eclipse&#39; or &#39;transit&#39;</span>
 
 <span class="sd">        Raises</span>
@@ -676,15 +676,15 @@
 
 <span class="sd">        Attributes</span>
 <span class="sd">        ----------</span>
-<span class="sd">        spectral_trace : &#39;ndarray&#39;</span>
+<span class="sd">        spectral_trace : `ndarray`</span>
 <span class="sd">            The trace of the dispersed light on the detector normalized</span>
 <span class="sd">            to its median position. In case the data are extracted spectra,</span>
 <span class="sd">            the trace is zero.</span>
-<span class="sd">        position : &#39;ndarray&#39;</span>
+<span class="sd">        position : `ndarray`</span>
 <span class="sd">            Postion of the source on the detector in the cross dispersion</span>
 <span class="sd">            directon as a function of time, normalized to the</span>
 <span class="sd">            median position.</span>
-<span class="sd">        median_position : &#39;float&#39;</span>
+<span class="sd">        median_position : `float`</span>
 <span class="sd">            median source position.</span>
 
 <span class="sd">        Raises</span>
@@ -870,11 +870,11 @@
 
 <span class="sd">        Attributes</span>
 <span class="sd">        ----------</span>
-<span class="sd">        nExtractionWidth : &#39;int&#39;</span>
+<span class="sd">        nExtractionWidth : `int`</span>
 <span class="sd">            The width of the extraction aperture , cetered on the</span>
 <span class="sd">            spectral trace of the source. In case of 1d spectral data, a</span>
 <span class="sd">            width of 1 will be assumed.</span>
-<span class="sd">        extraction_mask : &#39;ndarray&#39;</span>
+<span class="sd">        extraction_mask : `ndarray`</span>
 <span class="sd">            In case data are Spectra : 1D mask</span>
 <span class="sd">            In case data are Spectral images or cubes: 2D mask</span>
 
@@ -966,11 +966,11 @@
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
-<span class="sd">        kernel : &#39;array_like&#39;</span>
+<span class="sd">        kernel : `array_like`</span>
 <span class="sd">            Convolution kernel specific for a given instrument and observing</span>
 <span class="sd">            mode, used in tasks such as replacing bad pixels and</span>
 <span class="sd">            spectral extraction.</span>
-<span class="sd">        roi_mask : &#39;array_like&#39;</span>
+<span class="sd">        roi_mask : `ndarray`</span>
 <span class="sd">            Mask defining the region of interest from which the speectra will</span>
 <span class="sd">            be extracted.</span>
 
@@ -998,16 +998,16 @@
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
-<span class="sd">        cleaned_data_with_roi_mask : &#39;numpy.ma.core.MaskedArray&#39;</span>
+<span class="sd">        cleaned_data_with_roi_mask : `numpy.ma.core.MaskedArray`</span>
 <span class="sd">            The cleaned input data from which the extraction profile is</span>
 <span class="sd">            derived. The mask attached to this data defines the region of</span>
 <span class="sd">            interest around the target source.</span>
-<span class="sd">        extracted_spectra : &#39;numpy.ma.core.MaskedArray&#39;</span>
+<span class="sd">        extracted_spectra : `numpy.ma.core.MaskedArray`</span>
 <span class="sd">            Best guess for the spectrum of the source from which the extraction</span>
 <span class="sd">            profile is determined.</span>
-<span class="sd">        kernel : &#39;ndarray&#39;</span>
+<span class="sd">        kernel : `ndarray`</span>
 <span class="sd">            Convolution kernel used to create smoothed spectral images</span>
-<span class="sd">        mask_for_extraction : &#39;ndarray&#39;</span>
+<span class="sd">        mask_for_extraction : `ndarray`</span>
 <span class="sd">            Mask containing all pixels which are flagged as bad in the not</span>
 <span class="sd">            cleaned data, i.e. all pixels which value have been replaced</span>
 <span class="sd">            after cleaning.</span>
@@ -1050,11 +1050,11 @@
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
-<span class="sd">        sigma_time : &#39;float&#39;</span>
+<span class="sd">        sigma_time : `float`</span>
 
 <span class="sd">        Returns</span>
 <span class="sd">        -------</span>
-<span class="sd">        3dKernel : &#39;ndarray&#39;</span>
+<span class="sd">        3dKernel : `ndarray`</span>
 
 <span class="sd">        Raises</span>
 <span class="sd">        ------</span>
@@ -1094,7 +1094,7 @@
 
 <span class="sd">        Attributes</span>
 <span class="sd">        ----------</span>
-<span class="sd">        dataset_optimal_extracted : cascade.data_model.SpectralDataTimeSeries&#39;</span>
+<span class="sd">        dataset_optimal_extracted : `cascade.data_model.SpectralDataTimeSeries`</span>
 <span class="sd">            Time series if optimally extracted 1d spectra.</span>
 
 <span class="sd">        Raises</span>
@@ -1377,13 +1377,14 @@
 
 <span class="sd">        Attributes</span>
 <span class="sd">        ----------</span>
-<span class="sd">        regressor_list</span>
+<span class="sd">        regressor_list : `list` of `int`</span>
 <span class="sd">            List of regressors, using the following list index:</span>
-<span class="sd">            first index: [# nod]</span>
-<span class="sd">            second index: [# valid pixel in extraction mask]</span>
-<span class="sd">            third index: [0=pixel coord; 1=list of regressors]</span>
-<span class="sd">            forth index: [0=coordinate wave direction;</span>
-<span class="sd">            1=coordinate spatial direction]</span>
+
+<span class="sd">                - first index: [# nod]</span>
+<span class="sd">                - second index: [# valid pixel in extraction mask]</span>
+<span class="sd">                - third index: [0=pixel coord; 1=list of regressors]</span>
+<span class="sd">                - forth index: [0=coordinate wave direction;</span>
+<span class="sd">                  1=coordinate spatial direction]</span>
 
 <span class="sd">        Examples</span>
 <span class="sd">        --------</span>
@@ -1496,15 +1497,22 @@
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
-<span class="sd">        cleaned_data_in : &#39;masked quantity&#39;</span>
+<span class="sd">        cleaned_data_in : `masked quantity`</span>
 <span class="sd">            time series data with bad pixels corrected</span>
-<span class="sd">        original_mask_in : &#39;ndarray&#39;</span>
+<span class="sd">        original_mask_in : `ndarray`</span>
 <span class="sd">            data mask before cleaning</span>
-<span class="sd">        regressor_selection : &#39;list&#39; of &#39;int&#39;</span>
-<span class="sd">        nrebin : &#39;int&#39;</span>
-<span class="sd">        clip : &#39;float&#39;</span>
-<span class="sd">        clip_pctl_time : &#39;float&#39;</span>
-<span class="sd">        clip_pctl_regressors : &#39;float&#39;</span>
+<span class="sd">        regressor_selection : `list` of `int`</span>
+<span class="sd">            List of index values of the data used as regressors</span>
+<span class="sd">        nrebin : `int`</span>
+<span class="sd">            Rebinning value for regressions [LEAVE at 1!!]</span>
+<span class="sd">        clip : `bool`</span>
+<span class="sd">            If &#39;True` bad regressors will be clipped out of selection</span>
+<span class="sd">        clip_pctl_time : `float`</span>
+<span class="sd">            Percentile of &#39;worst&#39; regressors to be cut out in the</span>
+<span class="sd">            time direction.</span>
+<span class="sd">        clip_pctl_regressors : `float`</span>
+<span class="sd">            Percentile of &#39;worst&#39; regressors to be cut out in the</span>
+<span class="sd">            wavelegth direction.</span>
 
 <span class="sd">        Returns</span>
 <span class="sd">        -------</span>
@@ -1553,11 +1561,11 @@
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
-<span class="sd">        data_in : &#39;ndarray&#39;</span>
+<span class="sd">        data_in : `ndarray`</span>
 
 <span class="sd">        Returns</span>
 <span class="sd">        -------</span>
-<span class="sd">        data_out : &#39;ndarray&#39;</span>
+<span class="sd">        data_out : `ndarray`</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">data_in</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
             <span class="n">data_list</span> <span class="o">=</span> <span class="p">[]</span>
@@ -1594,20 +1602,21 @@
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
-<span class="sd">        clip : &#39;bool&#39;</span>
+<span class="sd">        clip : `bool`</span>
 <span class="sd">            default False</span>
-<span class="sd">        clip_pctl_time : &#39;float&#39;</span>
-<span class="sd">            Default 0.00</span>
-<span class="sd">        clip_pctl_regressors : &#39;float&#39;</span>
-<span class="sd">            Default 0.00</span>
+<span class="sd">        clip_pctl_time : `float`</span>
+<span class="sd">            Default `0.00`</span>
+<span class="sd">        clip_pctl_regressors : `float`</span>
+<span class="sd">            Default `0.00`</span>
 
 <span class="sd">        Attributes</span>
 <span class="sd">        ----------</span>
-<span class="sd">        design_matrix</span>
+<span class="sd">        design_matrix : `list&#39; of `ndarray`</span>
 <span class="sd">            list with design matrici with the following index convention:</span>
-<span class="sd">               first index: [# nods]</span>
-<span class="sd">               second index : [# of valid pixels within extraction mask]</span>
-<span class="sd">               third index : [0]</span>
+
+<span class="sd">                - first index: [# nods]</span>
+<span class="sd">                - second index : [# of valid pixels within extraction mask]</span>
+<span class="sd">                - third index : [0]</span>
 
 <span class="sd">        Raises</span>
 <span class="sd">        ------</span>
@@ -1656,7 +1665,7 @@
 
 <span class="sd">        Attributes</span>
 <span class="sd">        ----------</span>
-<span class="sd">        calibration_results : &#39;SimpleNamespace&#39;</span>
+<span class="sd">        calibration_results : `SimpleNamespace`</span>
 <span class="sd">            The calibration_results attribute contains all calibrated data</span>
 <span class="sd">            and auxilary data.</span>
 
@@ -2149,7 +2158,7 @@
 
 <span class="sd">        Attributes</span>
 <span class="sd">        ----------</span>
-<span class="sd">        exoplanet_spectrum</span>
+<span class="sd">        exoplanet_spectrum : `SimpleNamespace`</span>
 
 <span class="sd">        Raises</span>
 <span class="sd">        ------</span>
@@ -2976,9 +2985,9 @@
 
 <h3>Navigation</h3>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="../../../install.html">Howto Install CASCADe</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../install.html">Installing CASCADe</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../howto.html">Using Cascade</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../cascade.html">Modules of the CASCADe package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../cascade.html">CASCADe API</a></li>
 </ul>
 
 <div class="relations">

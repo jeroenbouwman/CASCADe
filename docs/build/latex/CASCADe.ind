@@ -5,29 +5,38 @@
 \let\spxextra \sphinxstyleindexextra
 
   \bigletter {\sphinxsymbolsname}
-  \item \spxentry{\_WFC3Dispersion()}\spxextra{HSTWFC3 static method}, \hyperpage{22}
-  \item \spxentry{\_WFC3Trace()}\spxextra{HSTWFC3 static method}, \hyperpage{21}
+  \item \spxentry{\_Observation\_\_check\_observation\_type()}\spxextra{Observation method}, 
+		\hyperpage{20}
+  \item \spxentry{\_Observation\_\_do\_observations()}\spxextra{Observation method}, \hyperpage{21}
+  \item \spxentry{\_Observation\_\_get\_observatory\_name()}\spxextra{Observation method}, 
+		\hyperpage{21}
+  \item \spxentry{\_Observation\_\_valid\_observation\_type}\spxextra{Observation attribute}, 
+		\hyperpage{21}
+  \item \spxentry{\_Observation\_\_valid\_observatories}\spxextra{Observation attribute}, 
+		\hyperpage{21}
+  \item \spxentry{\_WFC3Dispersion()}\spxextra{HSTWFC3 static method}, \hyperpage{25}
+  \item \spxentry{\_WFC3Trace()}\spxextra{HSTWFC3 static method}, \hyperpage{24}
   \item \spxentry{\_create\_3dKernel()}\spxextra{TSOSuite method}, \hyperpage{9}
   \item \spxentry{\_create\_edge\_mask()}\spxextra{TSOSuite method}, \hyperpage{8}
   \item \spxentry{\_create\_extraction\_profile()}\spxextra{TSOSuite method}, \hyperpage{8}
-  \item \spxentry{\_define\_convolution\_kernel()}\spxextra{HSTWFC3 method}, \hyperpage{21}
-  \item \spxentry{\_define\_convolution\_kernel()}\spxextra{SpitzerIRS method}, \hyperpage{23}
-  \item \spxentry{\_define\_region\_of\_interest()}\spxextra{HSTWFC3 method}, \hyperpage{21}
-  \item \spxentry{\_define\_region\_of\_interest()}\spxextra{SpitzerIRS method}, \hyperpage{23}
+  \item \spxentry{\_define\_convolution\_kernel()}\spxextra{HSTWFC3 method}, \hyperpage{22}
+  \item \spxentry{\_define\_convolution\_kernel()}\spxextra{SpitzerIRS method}, \hyperpage{26}
+  \item \spxentry{\_define\_region\_of\_interest()}\spxextra{HSTWFC3 method}, \hyperpage{22}
+  \item \spxentry{\_define\_region\_of\_interest()}\spxextra{SpitzerIRS method}, \hyperpage{26}
   \item \spxentry{\_determine\_relative\_source\_position()}\spxextra{HSTWFC3 method}, 
-		\hyperpage{21}
+		\hyperpage{23}
   \item \spxentry{\_determine\_source\_position\_from\_cal\_image()}\spxextra{HSTWFC3 method}, 
-		\hyperpage{21}
-  \item \spxentry{\_fit\_background()}\spxextra{HSTWFC3 method}, \hyperpage{21}
-  \item \spxentry{\_get\_background\_cal\_data()}\spxextra{HSTWFC3 method}, \hyperpage{21}
-  \item \spxentry{\_get\_order\_mask()}\spxextra{SpitzerIRS method}, \hyperpage{23}
-  \item \spxentry{\_get\_subarray\_size()}\spxextra{HSTWFC3 method}, \hyperpage{21}
-  \item \spxentry{\_get\_wavelength\_calibration()}\spxextra{HSTWFC3 method}, \hyperpage{21}
-  \item \spxentry{\_get\_wavelength\_calibration()}\spxextra{SpitzerIRS method}, \hyperpage{23}
-  \item \spxentry{\_read\_grism\_configuration\_files()}\spxextra{HSTWFC3 method}, \hyperpage{21}
-  \item \spxentry{\_read\_reference\_pixel\_file()}\spxextra{HSTWFC3 method}, \hyperpage{21}
+		\hyperpage{23}
+  \item \spxentry{\_fit\_background()}\spxextra{HSTWFC3 method}, \hyperpage{23}
+  \item \spxentry{\_get\_background\_cal\_data()}\spxextra{HSTWFC3 method}, \hyperpage{22}
+  \item \spxentry{\_get\_order\_mask()}\spxextra{SpitzerIRS method}, \hyperpage{26}
+  \item \spxentry{\_get\_subarray\_size()}\spxextra{HSTWFC3 method}, \hyperpage{24}
+  \item \spxentry{\_get\_wavelength\_calibration()}\spxextra{HSTWFC3 method}, \hyperpage{24}
+  \item \spxentry{\_get\_wavelength\_calibration()}\spxextra{SpitzerIRS method}, \hyperpage{26}
+  \item \spxentry{\_read\_grism\_configuration\_files()}\spxextra{HSTWFC3 method}, \hyperpage{23}
+  \item \spxentry{\_read\_reference\_pixel\_file()}\spxextra{HSTWFC3 method}, \hyperpage{23}
   \item \spxentry{\_search\_ref\_pixel\_cal\_file()}\spxextra{HSTWFC3 static method}, 
-		\hyperpage{21}
+		\hyperpage{23}
 
   \indexspace
   \bigletter A
@@ -48,20 +57,20 @@
   \item \spxentry{cascade.initialize.initialize}\spxextra{module}, \hyperpage{19}
   \item \spxentry{cascade.instruments.instruments}\spxextra{module}, \hyperpage{20}
   \item \spxentry{cascade.TSO.TSO}\spxextra{module}, \hyperpage{5}
-  \item \spxentry{cascade.utilities.utilities}\spxextra{module}, \hyperpage{23}
+  \item \spxentry{cascade.utilities.utilities}\spxextra{module}, \hyperpage{27}
   \item \spxentry{cascade\_configuration}\spxextra{in module cascade.initialize.initialize}, 
 		\hyperpage{20}
   \item \spxentry{combine\_spectra()}\spxextra{in module cascade.exoplanet\_tools.exoplanet\_tools}, 
 		\hyperpage{17}
   \item \spxentry{configurator}\spxextra{class in cascade.initialize.initialize}, \hyperpage{20}
   \item \spxentry{convert\_spectrum\_to\_brighness\_temperature()}\spxextra{in module cascade.exoplanet\_tools.exoplanet\_tools}, 
-		\hyperpage{16}
-  \item \spxentry{correct\_extracted\_spectrum()}\spxextra{TSOSuite method}, \hyperpage{10}
+		\hyperpage{17}
+  \item \spxentry{correct\_extracted\_spectrum()}\spxextra{TSOSuite method}, \hyperpage{11}
   \item \spxentry{create\_cleaned\_dataset()}\spxextra{TSOSuite method}, \hyperpage{7}
 
   \indexspace
   \bigletter D
-  \item \spxentry{data}\spxextra{SpectralData attribute}, \hyperpage{13}
+  \item \spxentry{data}\spxextra{SpectralData attribute}, \hyperpage{14}
   \item \spxentry{data\_unit}\spxextra{SpectralData attribute}, \hyperpage{14}
   \item \spxentry{default\_initialization\_path}\spxextra{in module cascade.initialize.initialize}, 
 		\hyperpage{20}
@@ -77,13 +86,13 @@
 		\hyperpage{16}
   \item \spxentry{execute()}\spxextra{TSOSuite method}, \hyperpage{5}
   \item \spxentry{extract\_exoplanet\_data()}\spxextra{in module cascade.exoplanet\_tools.exoplanet\_tools}, 
-		\hyperpage{17}
+		\hyperpage{18}
   \item \spxentry{extract\_spectrum()}\spxextra{TSOSuite method}, \hyperpage{10}
 
   \indexspace
   \bigletter F
-  \item \spxentry{find()}\spxextra{in module cascade.utilities.utilities}, \hyperpage{23}
-  \item \spxentry{FlagDesc}\spxextra{class in cascade.data\_model.data\_model}, \hyperpage{12}
+  \item \spxentry{find()}\spxextra{in module cascade.utilities.utilities}, \hyperpage{27}
+  \item \spxentry{FlagDesc}\spxextra{class in cascade.data\_model.data\_model}, \hyperpage{13}
 
   \indexspace
   \bigletter G
@@ -92,26 +101,29 @@
   \item \spxentry{get\_calalog()}\spxextra{in module cascade.exoplanet\_tools.exoplanet\_tools}, 
 		\hyperpage{17}
   \item \spxentry{get\_design\_matrix()}\spxextra{TSOSuite static method}, \hyperpage{9}
-  \item \spxentry{get\_detector\_cubes()}\spxextra{SpitzerIRS method}, \hyperpage{23}
-  \item \spxentry{get\_instrument\_setup()}\spxextra{HSTWFC3 method}, \hyperpage{20}
-  \item \spxentry{get\_instrument\_setup()}\spxextra{SpitzerIRS method}, \hyperpage{22}
-  \item \spxentry{get\_spectra()}\spxextra{HSTWFC3 method}, \hyperpage{21}
-  \item \spxentry{get\_spectra()}\spxextra{SpitzerIRS method}, \hyperpage{22}
-  \item \spxentry{get\_spectral\_images()}\spxextra{HSTWFC3 method}, \hyperpage{21}
-  \item \spxentry{get\_spectral\_images()}\spxextra{SpitzerIRS method}, \hyperpage{22}
-  \item \spxentry{get\_spectral\_trace()}\spxextra{HSTWFC3 method}, \hyperpage{21}
-  \item \spxentry{get\_spectral\_trace()}\spxextra{SpitzerIRS method}, \hyperpage{23}
+  \item \spxentry{get\_detector\_cubes()}\spxextra{SpitzerIRS method}, \hyperpage{27}
+  \item \spxentry{get\_instrument\_setup()}\spxextra{HSTWFC3 method}, \hyperpage{22}
+  \item \spxentry{get\_instrument\_setup()}\spxextra{InstrumentBase method}, \hyperpage{21}
+  \item \spxentry{get\_instrument\_setup()}\spxextra{SpitzerIRS method}, \hyperpage{26}
+  \item \spxentry{get\_spectra()}\spxextra{HSTWFC3 method}, \hyperpage{22}
+  \item \spxentry{get\_spectra()}\spxextra{SpitzerIRS method}, \hyperpage{26}
+  \item \spxentry{get\_spectral\_images()}\spxextra{HSTWFC3 method}, \hyperpage{22}
+  \item \spxentry{get\_spectral\_images()}\spxextra{SpitzerIRS method}, \hyperpage{26}
+  \item \spxentry{get\_spectral\_trace()}\spxextra{HSTWFC3 method}, \hyperpage{24}
+  \item \spxentry{get\_spectral\_trace()}\spxextra{SpitzerIRS method}, \hyperpage{27}
 
   \indexspace
   \bigletter H
-  \item \spxentry{HST}\spxextra{class in cascade.instruments.instruments}, \hyperpage{20}
-  \item \spxentry{HSTWFC3}\spxextra{class in cascade.instruments.instruments}, \hyperpage{20}
+  \item \spxentry{HST}\spxextra{class in cascade.instruments.instruments}, \hyperpage{21}
+  \item \spxentry{HSTWFC3}\spxextra{class in cascade.instruments.instruments}, \hyperpage{22}
 
   \indexspace
   \bigletter I
   \item \spxentry{initialize\_TSO()}\spxextra{TSOSuite method}, \hyperpage{5}
   \item \spxentry{InstanceDescriptorMixin}\spxextra{class in cascade.data\_model.data\_model}, 
 		\hyperpage{12}
+  \item \spxentry{InstrumentBase}\spxextra{class in cascade.instruments.instruments}, 
+		\hyperpage{21}
   \item \spxentry{isInitialized}\spxextra{configurator attribute}, \hyperpage{20}
 
   \indexspace
@@ -130,11 +142,13 @@
   \bigletter L
   \item \spxentry{lightcuve}\spxextra{class in cascade.exoplanet\_tools.exoplanet\_tools}, 
 		\hyperpage{18}
-  \item \spxentry{load\_data()}\spxextra{HSTWFC3 method}, \hyperpage{20}
-  \item \spxentry{load\_data()}\spxextra{SpitzerIRS method}, \hyperpage{22}
+  \item \spxentry{load\_data()}\spxextra{HSTWFC3 method}, \hyperpage{22}
+  \item \spxentry{load\_data()}\spxextra{InstrumentBase method}, \hyperpage{21}
+  \item \spxentry{load\_data()}\spxextra{SpitzerIRS method}, \hyperpage{26}
   \item \spxentry{load\_data()}\spxextra{TSOSuite method}, \hyperpage{6}
-  \item \spxentry{location}\spxextra{HST attribute}, \hyperpage{20}
-  \item \spxentry{location}\spxextra{Spitzer attribute}, \hyperpage{22}
+  \item \spxentry{location}\spxextra{HST attribute}, \hyperpage{21}
+  \item \spxentry{location}\spxextra{ObservatoryBase attribute}, \hyperpage{21}
+  \item \spxentry{location}\spxextra{Spitzer attribute}, \hyperpage{25}
 
   \indexspace
   \bigletter M
@@ -146,18 +160,24 @@
 
   \indexspace
   \bigletter N
-  \item \spxentry{NAIF\_ID}\spxextra{HST attribute}, \hyperpage{20}
-  \item \spxentry{NAIF\_ID}\spxextra{Spitzer attribute}, \hyperpage{22}
-  \item \spxentry{name}\spxextra{HST attribute}, \hyperpage{20}
-  \item \spxentry{name}\spxextra{HSTWFC3 attribute}, \hyperpage{20}
-  \item \spxentry{name}\spxextra{Spitzer attribute}, \hyperpage{22}
-  \item \spxentry{name}\spxextra{SpitzerIRS attribute}, \hyperpage{22}
+  \item \spxentry{NAIF\_ID}\spxextra{HST attribute}, \hyperpage{21}
+  \item \spxentry{NAIF\_ID}\spxextra{ObservatoryBase attribute}, \hyperpage{21}
+  \item \spxentry{NAIF\_ID}\spxextra{Spitzer attribute}, \hyperpage{25}
+  \item \spxentry{name}\spxextra{HST attribute}, \hyperpage{21}
+  \item \spxentry{name}\spxextra{HSTWFC3 attribute}, \hyperpage{22}
+  \item \spxentry{name}\spxextra{InstrumentBase attribute}, \hyperpage{21}
+  \item \spxentry{name}\spxextra{ObservatoryBase attribute}, \hyperpage{21}
+  \item \spxentry{name}\spxextra{Spitzer attribute}, \hyperpage{25}
+  \item \spxentry{name}\spxextra{SpitzerIRS attribute}, \hyperpage{26}
 
   \indexspace
   \bigletter O
   \item \spxentry{Observation}\spxextra{class in cascade.instruments.instruments}, \hyperpage{20}
-  \item \spxentry{observatory\_instruments}\spxextra{HST attribute}, \hyperpage{20}
-  \item \spxentry{observatory\_instruments}\spxextra{Spitzer attribute}, \hyperpage{22}
+  \item \spxentry{observatory\_instruments}\spxextra{HST attribute}, \hyperpage{21}
+  \item \spxentry{observatory\_instruments}\spxextra{ObservatoryBase attribute}, \hyperpage{21}
+  \item \spxentry{observatory\_instruments}\spxextra{Spitzer attribute}, \hyperpage{25}
+  \item \spxentry{ObservatoryBase}\spxextra{class in cascade.instruments.instruments}, 
+		\hyperpage{21}
   \item \spxentry{optimal\_extraction()}\spxextra{TSOSuite method}, \hyperpage{9}
 
   \indexspace
@@ -192,16 +212,16 @@
   \item \spxentry{SpectralData}\spxextra{class in cascade.data\_model.data\_model}, \hyperpage{13}
   \item \spxentry{SpectralDataTimeSeries}\spxextra{class in cascade.data\_model.data\_model}, 
 		\hyperpage{14}
-  \item \spxentry{spectres()}\spxextra{in module cascade.utilities.utilities}, \hyperpage{24}
-  \item \spxentry{Spitzer}\spxextra{class in cascade.instruments.instruments}, \hyperpage{22}
-  \item \spxentry{SpitzerIRS}\spxextra{class in cascade.instruments.instruments}, \hyperpage{22}
+  \item \spxentry{spectres()}\spxextra{in module cascade.utilities.utilities}, \hyperpage{28}
+  \item \spxentry{Spitzer}\spxextra{class in cascade.instruments.instruments}, \hyperpage{25}
+  \item \spxentry{SpitzerIRS}\spxextra{class in cascade.instruments.instruments}, \hyperpage{25}
   \item \spxentry{subtract\_background()}\spxextra{TSOSuite method}, \hyperpage{6}
   \item \spxentry{SurfaceGravity()}\spxextra{in module cascade.exoplanet\_tools.exoplanet\_tools}, 
 		\hyperpage{16}
 
   \indexspace
   \bigletter T
-  \item \spxentry{time}\spxextra{SpectralDataTimeSeries attribute}, \hyperpage{14}
+  \item \spxentry{time}\spxextra{SpectralDataTimeSeries attribute}, \hyperpage{15}
   \item \spxentry{time\_unit}\spxextra{SpectralDataTimeSeries attribute}, \hyperpage{15}
   \item \spxentry{transit\_to\_eclipse()}\spxextra{in module cascade.exoplanet\_tools.exoplanet\_tools}, 
 		\hyperpage{17}
@@ -212,7 +232,7 @@
   \indexspace
   \bigletter U
   \item \spxentry{uncertainty}\spxextra{SpectralData attribute}, \hyperpage{14}
-  \item \spxentry{UnitDesc}\spxextra{class in cascade.data\_model.data\_model}, \hyperpage{12}
+  \item \spxentry{UnitDesc}\spxextra{class in cascade.data\_model.data\_model}, \hyperpage{13}
 
   \indexspace
   \bigletter V
@@ -222,9 +242,9 @@
 
   \indexspace
   \bigletter W
-  \item \spxentry{wavelength}\spxextra{SpectralData attribute}, \hyperpage{13}
-  \item \spxentry{wavelength\_unit}\spxextra{SpectralData attribute}, \hyperpage{13}
+  \item \spxentry{wavelength}\spxextra{SpectralData attribute}, \hyperpage{14}
+  \item \spxentry{wavelength\_unit}\spxextra{SpectralData attribute}, \hyperpage{14}
   \item \spxentry{write\_timeseries\_to\_fits()}\spxextra{in module cascade.utilities.utilities}, 
-		\hyperpage{23}
+		\hyperpage{27}
 
 \end{sphinxtheindex}

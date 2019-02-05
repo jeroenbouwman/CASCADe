@@ -1,5 +1,5 @@
-Modules of the CASCADe package
-==============================
+CASCADe API
+===========
 
 .. toctree::
 

@@ -63,6 +63,17 @@ class Observation(object):
     """
     This class handles the selection of the correct observatory and
     instrument classes and loads the time series data to be analyzed
+    The observations specific parameters set during the initialization
+    of the TSO object are used to select the observatory and instrument
+    through a factory method and to load the specified observations
+    into the instance of the TSO object.
+
+    Examples
+    --------
+    The Observation calss is  called during the following command:
+
+    >>> tso.execute("load_data")
+
     """
 
     def __init__(self):
@@ -80,16 +91,34 @@ class Observation(object):
 
     @property
     def __valid_observatories(self):
+        """
+        Dictionary listing the current implemented observatories,
+        used in factory method to select a observatory specific class
+        """
         return {"SPITZER": Spitzer, "HST": HST}
 
     @property
     def __valid_observation_type(self):
+        """
+        Set listing the current implemented observation types
+        """
         return {"TRANSIT", "ECLIPSE"}
 
     def __do_observations(self, observatory):
+        """
+        Factory method to load the needed observatory class and methods
+        """
         return self.__valid_observatories[observatory]()
 
     def __get_observatory_name(self):
+        """
+        Function to load the in the .ini files specified observatory name
+
+        Returns
+        -------
+        ValueError
+            Returns error if the observatory is not specified or recognized
+        """
         if cascade_configuration.isInitialized:
             observatory = cascade_configuration.instrument_observatory
             if observatory not in self.__valid_observatories:
@@ -104,6 +133,16 @@ class Observation(object):
         return observatory
 
     def __check_observation_type(self):
+        """
+        Function to check of the in the .ini specified observation type
+        valid.
+
+        Raises
+        ------
+        ValueError
+            Raises error if the specified observation type is not valid or if
+            the tso instance is not initialized.
+        """
         if cascade_configuration.isInitialized:
             observation_type = cascade_configuration.observations_type
             if observation_type not in self.__valid_observation_type:
@@ -118,34 +157,65 @@ class Observation(object):
 
 
 class ObservatoryBase(metaclass=ABCMeta):
+    """
+    Observatory base class used to define the basic properties an observatory
+    class should have
+    """
     @abstractproperty
     def name(self):
+        """
+        Name of the observatory.
+        """
         pass
 
     @abstractproperty
     def location(self):
+        """
+        Location of the observatory
+        """
         pass
 
     @abstractproperty
     def NAIF_ID(self):
+        """
+        NAIF ID of the observatory. With this the location relative to the
+        sun and the observed target as a function of time can be determined.
+        Needed to calculate BJD time.
+        """
         pass
 
     @abstractproperty
     def observatory_instruments(self):
+        """
+        The names of the instruments part of the observatory.
+        """
         pass
 
 
 class InstrumentBase(metaclass=ABCMeta):
+    """
+    Instrument base class used to define the basic properties an instrument
+    class should have
+    """
     @abstractmethod
     def load_data(self):
+        """
+        Method which allows to load data.
+        """
         pass
 
     @abstractmethod
     def get_instrument_setup(self):
+        """
+        Method which gets the specific setup of the used instrument.
+        """
         pass
 
     @abstractproperty
     def name(self):
+        """
+        Name of the instrument.
+        """
         pass
 
 
@@ -182,18 +252,22 @@ class HST(ObservatoryBase):
 
     @property
     def name(self):
+        """Set to 'HST'"""
         return "HST"
 
     @property
     def location(self):
+        """Set to 'SPACE'"""
         return "SPACE"
 
     @property
     def NAIF_ID(self):
+        """Set to -48"""
         return -48
 
     @property
     def observatory_instruments(self):
+        """Returns {'WFC3'}"""
         return{"WFC3"}
 
 
@@ -201,6 +275,17 @@ class HSTWFC3(InstrumentBase):
     """
     This instrument class defines the properties of the WFC3 instrument of
     the Hubble Space Telescope
+
+    For the instrument and observations the following valid options are
+    available:
+
+       - detector subarrays : {'IRSUB128', 'IRSUB256', 'IRSUB512', 'GRISM128',
+         'GRISM256', 'GRISM512'}
+       - spectroscopic filters : {'G141'}
+       - imaging filters :  {'F139M', 'F132N', 'F167N'}
+       - data type : {'SPECTRUM', 'SPECTRAL_IMAGE'}
+       - observing strategy : {'STARING'}
+       - data products : {'SPC', 'flt', 'COE'}
     """
 
     __valid_sub_array = {'IRSUB128', 'IRSUB256', 'IRSUB512', 'GRISM128',
@@ -213,7 +298,6 @@ class HSTWFC3(InstrumentBase):
     __valid_data_products = {'SPC', 'flt', 'COE'}
 
     def __init__(self):
-
         self.par = self.get_instrument_setup()
         if self.par['obs_has_backgr']:
             self.data, self.data_background = self.load_data()
@@ -228,9 +312,16 @@ class HSTWFC3(InstrumentBase):
 
     @property
     def name(self):
+        """
+        Name of the HST instrument: 'WFC3'
+        """
         return "WFC3"
 
     def load_data(self):
+        """
+        This function loads the WFC3 data form disk based on the
+        parameters defined during the initialization of the TSO object.
+        """
         if self.par["obs_data"] == 'SPECTRUM':
             data = self.get_spectra()
             if self.par['obs_has_backgr']:
@@ -251,6 +342,17 @@ class HSTWFC3(InstrumentBase):
     def get_instrument_setup(self):
         """
         Retrieve all relevant parameters defining the instrument and data setup
+
+        Returns
+        -------
+        par : `collections.OrderedDict`
+            Dictionary containg all relevant parameters
+
+        Raises
+        ------
+        ValueError
+            If obseervationla parameters are not or incorrect defined an
+            error will be raised
         """
         # instrument parameters
         inst_inst_name = cascade_configuration.instrument
@@ -353,7 +455,27 @@ class HSTWFC3(InstrumentBase):
 
     def get_spectra(self, is_background=False):
         """
-        read (uncalibrated) spectral timeseries, phase and wavelength
+        This function combines all functionallity to read fits files
+        containing the (uncalibrated) spectral timeseries, including
+        orbital phase and wavelength information
+
+        Parameters
+        ----------
+        is_background : `bool`
+            if `True` the data represents an observaton of the IR background
+            to be subtracted of the data of the transit spectroscopy target.
+
+        Returns
+        -------
+        SpectralTimeSeries : `cascade.data_model.SpectralDataTimeSeries`
+            Instance of `SpectralDataTimeSeries` containing all spectroscopic
+            data including uncertainties, time, wavelength and bad pixel mask.
+
+        Raises
+        ------
+        AssertionError, KeyError
+            Raises an error if no data is found or if certain expected
+            fits keywords are not present in the data files.
         """
 
         # get data files
@@ -483,7 +605,27 @@ class HSTWFC3(InstrumentBase):
 
     def get_spectral_images(self, is_background=False):
         """
-        read uncalibrated spectral images (flt data product)
+        This function combines all functionallity to read fits files
+        containing the (uncalibrated) spectral image timeseries, including
+        orbital phase and wavelength information
+
+        Parameters
+        ----------
+        is_background : `bool`
+            if `True` the data represents an observaton of the IR background
+            to be subtracted of the data of the transit spectroscopy target.
+
+        Returns
+        -------
+        SpectralTimeSeries : `cascade.data_model.SpectralDataTimeSeries`
+            Instance of `SpectralDataTimeSeries` containing all spectroscopic
+            data including uncertainties, time, wavelength and bad pixel mask.
+
+        Raises
+        ------
+        AssertionError, KeyError
+            Raises an error if no data is found or if certain expected
+            fits keywords are not present in the data files.
         """
         # get data files
         if is_background and not self.par['obs_uses_backgr_model']:
@@ -709,8 +851,20 @@ class HSTWFC3(InstrumentBase):
     def _get_background_cal_data(self):
         """
         Get the calibration data from which the background in the science
-        images can be determined.  For further details see:
-        http://www.stsci.edu/hst/wfc3/documents/ISRs/WFC3-2015-17.pdf
+        images can be determined.
+
+        Raises
+        ------
+        FileNotFoundError, AttributeError
+            An error is raised if the calibration images are not found or the
+            background data is not properly defined.
+
+        Notes
+        -----
+        For further details see:
+
+            http://www.stsci.edu/hst/wfc3/documents/ISRs/WFC3-2015-17.pdf
+
         """
         _applied_flatfields = {"G141": "uc72113oi_pfl.fits",
                                "G102": "uc721143i_pfl.fits"}
@@ -793,8 +947,25 @@ class HSTWFC3(InstrumentBase):
 
     def _fit_background(self, science_data_in):
         """
-        Fits the background in the HST Grism data using the method described
-        in: http://www.stsci.edu/hst/wfc3/documents/ISRs/WFC3-2015-17.pdf
+        Determes the background in the HST Grism data using a model for the
+        background to the spectral timeseries data
+
+        Parameters
+        ----------
+        science_data_in : `masked quantity`
+            Input data for which the background will be determined
+
+        Returns
+        -------
+        SpectralTimeSeries : `SpectralDataTimeSeries`
+            The fitted IR bacgound as a function of time
+
+        Notes
+        -----
+        All details of the implemented model is described in:
+
+        http://www.stsci.edu/hst/wfc3/documents/ISRs/WFC3-2015-17.pdf
+
         """
         try:
             background_cal_data = self.wfc3_cal.background_cal_data
@@ -898,8 +1069,11 @@ class HSTWFC3(InstrumentBase):
 
         Parameters
         ----------
-        spectral_image_cube
-        mask
+        spectral_image_cube : `ndarray`
+            Input spectral image data cube.
+        mask : `ndarray` of `int`
+            Bad pixel and region of interest mask. Values of 1 indicate
+            flagged data.
 
         Attributes
         ----------
@@ -944,6 +1118,19 @@ class HSTWFC3(InstrumentBase):
         """
         Determines the source position on the detector of the target source in
         the calibration image takes prior to the spectroscopic observations.
+
+        Parameters
+        ----------
+        calibration_image_cube : `ndarray`
+            Cube containing all acquisition images of the target.
+        calibration_data_files : `list` of `str`
+            List containing the file names associated with the calibraton data.
+
+        Attributes
+        ----------
+        calibration_source_position : `list' of `tuple`
+            The position of the source in the acquisition images associated
+            with the HST spectral timeseries observations.
         """
         calibration_source_position = []
         for im, image_file in enumerate(calibration_data_files):
@@ -989,6 +1176,20 @@ class HSTWFC3(InstrumentBase):
     def _read_grism_configuration_files(self):
         """
         Gets the relevant data from WFC3 configuration files
+
+        Attributes
+        ----------
+        DYDX : `list`
+            The parameters for the spectral trace
+        DLDP : 'list`
+            The parameters for the wavelength calibration
+
+        Raises
+        ------
+        ValueError
+            An error is raised if the parameters associated
+            with the specified instrument mode can not be found in the
+            calibration file.
         """
         calibration_file_name = os.path.join(self.par['obs_cal_path'],
                                              self.par['inst_inst_name'],
@@ -1057,6 +1258,12 @@ class HSTWFC3(InstrumentBase):
         """
         Read the calibration file containig the definition
         of the reference pixel appropriate for a given sub array and or filer
+
+        Attributes
+        ----------
+        reference_pixels : `collections.OrderedDict`
+            Ordered dict containing the reference pixels to be used in the
+            wavelength calibration.
         """
         calibration_file_name = os.path.join(self.par['obs_cal_path'],
                                              self.par['inst_inst_name'],
@@ -1097,7 +1304,34 @@ class HSTWFC3(InstrumentBase):
         """
         Search the reference pixel calibration file for the reference pixel
         given the instrument aperture and filter.
-        See also http://www.stsci.edu/hst/observatory/apertures/wfc3.html
+
+        Parameters
+        ----------
+        ptable : `dict`
+            Calibratrion table with reference positions
+        inst_aperture : `str`
+            The instrument aperture
+        inst_filter : `str`
+            The instrument filter
+
+        Returns
+        -------
+        XREF : `float`
+            X reference position for the acquisition image
+        YREF : `float`
+            Y reference position for the acquisition image
+
+        Raises
+        ------
+        ValueError
+            An error is raises if the instrument aperture if filter is not
+            fount in the calibration table
+
+        Notes
+        -----
+        See also:
+            http://www.stsci.edu/hst/observatory/apertures/wfc3.html
+
         """
         ptable_aperture = \
             ptable[(ptable.APERTURE == inst_aperture)]
@@ -1123,6 +1357,20 @@ class HSTWFC3(InstrumentBase):
 
     def _get_subarray_size(self, calibration_data, spectral_data):
         """
+        This function determines the size of the used subarray.
+
+        Parameters
+        ----------
+        calibration_data
+        spectral_data
+
+        Attributes
+        ----------
+        subarray_sizes
+
+        Raises
+        ------
+        AttributeError
         """
         nintegrations, nspatial, nwavelength = spectral_data.shape
         nintegrations_cal, npix_y_cal, npix_x_cal = calibration_data.shape
@@ -1140,7 +1388,18 @@ class HSTWFC3(InstrumentBase):
 
     def _get_wavelength_calibration(self):
         """
-        Return the wavelength calibration
+        The functions returns the wavelength calibration
+
+        Returns
+        -------
+        wave_cal : `ndarray`
+            Wavelength calibraiton of the observations.
+
+        Raises
+        ------
+        AttributeError
+            An error is raised if the necessary calibration data
+            is not yet defined.
         """
         try:
             self.wfc3_cal
@@ -1167,6 +1426,18 @@ class HSTWFC3(InstrumentBase):
     def get_spectral_trace(self):
         """
         Get spectral trace
+
+        Returns
+        -------
+        spectral_trace : `collections.OrderedDict`
+            The spectral trace of the dispersed light (both position and
+            wavelength)
+
+        Raises
+        ------
+        AttributeError
+            An error is raised in the necessary calibration data is
+            not yet defined.
         """
         dim = self.data.data.shape
 #        wavelength_unit = self.data.wavelength_unit
@@ -1225,12 +1496,32 @@ class HSTWFC3(InstrumentBase):
         """
         This function defines the spectral trace for the wfc3 grism modes.
 
+        Parameters
+        ----------
+        xc
+        yc
+        DYDX
+        xref=522
+        yref=522
+        xref_grism=522
+        yref_grism=522
+        subarray=256
+        subarray_grism=256
+
+        Returns
+        -------
+        trace
+
         Notes
         -----
         Details can be found in:
+
            http://www.stsci.edu/hst/wfc3/documents/ISRs/WFC3-2016-15.pdf
+
         and
+
            http://www.stsci.edu/hst/observatory/apertures/wfc3.html
+
         """
         # adjust position in case different subarrays are used.
         xc = xc - (xref - xref_grism)
@@ -1265,13 +1556,7 @@ class HSTWFC3(InstrumentBase):
                         xref_grism=522, yref_grism=522, subarray=256,
                         subarray_grism=256):
         """
-        Convert pixel coordinate to wavelength. Method and coefficient
-        adopted from Kuntschner et al. (2009), Wilkins et al. (2014). See also
-        http://www.stsci.edu/hst/wfc3/documents/ISRs/WFC3-2016-15.pdf
-
-        In case the direct image and spectral image are not taken with the
-        same aperture, the centroid measurement is adjusted according to the
-        table in: http://www.stsci.edu/hst/observatory/apertures/wfc3.html
+        Convert pixel coordinate to wavelength.
 
         Parameters
         ----------
@@ -1290,6 +1575,24 @@ class HSTWFC3(InstrumentBase):
         -------
         wavelength : 'astropy.units.core.Quantity'
             return wavelength mapping of x coordinate in micron
+
+        Notes
+        -----
+        For details of the method and coefficient adopted see [1]_ and [2]_.
+        See also:
+
+            http://www.stsci.edu/hst/wfc3/documents/ISRs/WFC3-2016-15.pdf
+
+        In case the direct image and spectral image are not taken with the
+        same aperture, the centroid measurement is adjusted according to the
+        table in:
+
+            http://www.stsci.edu/hst/observatory/apertures/wfc3.html
+
+        References
+        ----------
+        .. [1] Kuntschner et al. (2009)
+        .. [2] Wilkins et al. (2014)
         """
 
         # adjust position in case different subarrays are used.
@@ -1374,7 +1677,16 @@ class Spitzer(ObservatoryBase):
 class SpitzerIRS(InstrumentBase):
     """
     This instrument class defines the properties of the IRS instrument of
-    the Spitzer Space Telescope
+    the Spitzer Space Telescope.
+    For the instrument and observations the following valid options are
+    available:
+
+       - detectors :  {'SL', 'LL'}
+       - spectral orders : {'1', '2'}
+       - data products : {'droop', 'COE'}
+       - observing mode : {'STARING', 'NODDED'}
+       - data type : {'SPECTRUM', 'SPECTRAL_IMAGE', 'SPECTRAL_DETECTOR_CUBE'}
+
     """
     __valid_arrays = {'SL', 'LL'}
     __valid_orders = {'1', '2'}
@@ -1492,7 +1804,27 @@ class SpitzerIRS(InstrumentBase):
 
     def get_spectra(self, is_background=False):
         """
-        read uncalibrated spectral timeseries, phase and wavelength
+        This function combines all functionallity to read fits files
+        containing the (uncalibrated) spectral timeseries, including
+        orbital phase and wavelength information
+
+        Parameters
+        ----------
+        is_background : `bool`
+            if `True` the data represents an observaton of the IR background
+            to be subtracted of the data of the transit spectroscopy target.
+
+        Returns
+        -------
+        SpectralTimeSeries : `cascade.data_model.SpectralDataTimeSeries`
+            Instance of `SpectralDataTimeSeries` containing all spectroscopic
+            data including uncertainties, time, wavelength and bad pixel mask.
+
+        Raises
+        ------
+        AssertionError, KeyError
+            Raises an error if no data is found or if certain expected
+            fits keywords are not present in the data files.
         """
         # get data files
         if is_background:
@@ -1606,26 +1938,49 @@ class SpitzerIRS(InstrumentBase):
 
     def get_spectral_images(self, is_background=False):
         """
-        read uncalibrated spectral images
+        This function combines all functionallity to read fits files
+        containing the (uncalibrated) spectral timeseries, including
+        orbital phase and wavelength information
+
+        Parameters
+        ----------
+        is_background : `bool`
+            if `True` the data represents an observaton of the IR background
+            to be subtracted of the data of the transit spectroscopy target.
+
+        Returns
+        -------
+        SpectralTimeSeries : `cascade.data_model.SpectralDataTimeSeries`
+            Instance of `SpectralDataTimeSeries` containing all spectroscopic
+            data including uncertainties, time, wavelength and bad pixel mask.
+
+        Raises
+        ------
+        AssertionError, KeyError
+            Raises an error if no data is found or if certain expected
+            fits keywords are not present in the data files.
 
         Notes
         -----
-        Notes on FOV:
 
-        # in the fits header the following relevant info is used:
-        # FOVID     26     IRS_Short-Lo_1st_Order_1st_Position
-        # FOVID     27     IRS_Short-Lo_1st_Order_2nd_Position
-        # FOVID     28     IRS_Short-Lo_1st_Order_Center_Position
-        # FOVID     29     IRS_Short-Lo_Module_Center
-        # FOVID     32     IRS_Short-Lo_2nd_Order_1st_Position
-        # FOVID     33     IRS_Short-Lo_2nd_Order_2nd_Position
-        # FOVID     34     IRS_Short-Lo_2nd_Order_Center_Position
-        # FOVID     40     IRS_Long-Lo_1st_Order_Center_Position
-        # FOVID     46     IRS_Long-Lo_2nd_Order_Center_Position
+        Notes on FOV:
+            in the fits header the following relevant info is used:
+
+            - FOVID     26     IRS_Short-Lo_1st_Order_1st_Position
+            - FOVID     27     IRS_Short-Lo_1st_Order_2nd_Position
+            - FOVID     28     IRS_Short-Lo_1st_Order_Center_Position
+            - FOVID     29     IRS_Short-Lo_Module_Center
+            - FOVID     32     IRS_Short-Lo_2nd_Order_1st_Position
+            - FOVID     33     IRS_Short-Lo_2nd_Order_2nd_Position
+            - FOVID     34     IRS_Short-Lo_2nd_Order_Center_Position
+            - FOVID     40     IRS_Long-Lo_1st_Order_Center_Position
+            - FOVID     46     IRS_Long-Lo_2nd_Order_Center_Position
 
         Notes on timing:
 
-        # FRAMTIME the total effective exposure time (ramp length) in seconds
+            - FRAMTIME the total effective exposure time (ramp length)
+              in seconds
+
         """
         # order mask
         mask = self._get_order_mask()
@@ -1851,7 +2206,28 @@ class SpitzerIRS(InstrumentBase):
 
     def get_detector_cubes(self, is_background=False):
         """
-        Get detector cube data
+        This function combines all functionallity to read fits files
+        containing the (uncalibrated) detector cubes (detector data
+        on ramp level) timeseries, including
+        orbital phase and wavelength information
+
+        Parameters
+        ----------
+        is_background : `bool`
+            if `True` the data represents an observaton of the IR background
+            to be subtracted of the data of the transit spectroscopy target.
+
+        Returns
+        -------
+        SpectralTimeSeries : `cascade.data_model.SpectralDataTimeSeries`
+            Instance of `SpectralDataTimeSeries` containing all spectroscopic
+            data including uncertainties, time, wavelength and bad pixel mask.
+
+        Raises
+        ------
+        AssertionError, KeyError
+            Raises an error if no data is found or if certain expected
+            fits keywords are not present in the data files.
 
         Notes
         -----
@@ -1861,7 +2237,9 @@ class SpitzerIRS(InstrumentBase):
         Of greatest interest to the observer is the
         “effective integration time”, which is the time on-chip between
         the first and last non-destructive reads for each pixel. It is called:
+
             RAMPTIME = Total integration time for the current DCE.
+
         The value of RAMPTIME gives the usable portion of the integration ramp,
         occurring between the beginning of the first read and the end of the
         last read. It excludes detector array pre-conditioning time.
@@ -1874,12 +2252,17 @@ class SpitzerIRS(InstrumentBase):
         through the array without reading or resetting. The time it takes to
         clock through the array once is given by the SAMPTIME keyword.
         So, for an N-read ramp:
+
             RAMPTIME = 2x(N-1)xSAMPTIME
+
         and
+
            DCE duration = DEADTIME + GRPTIME + RAMPTIME
+
         Note that peak-up data is not obtained in SUR mode. It is obtained in
         Double Correlated Sampling (DCS) mode. In that case, RAMPTIME gives the
         time interval between the 2nd sample and the preceeding reset.
+
         """
         # order mask
         mask = self._get_order_mask()

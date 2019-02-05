@@ -80,7 +80,7 @@ class TSOSuite:
 
     Parameters
     ----------
-    init_files: 'list' of 'str'
+    init_files: `list` of `str`
         List containing all the initialization files needed to run the
         CASCADe code.
 
@@ -134,13 +134,13 @@ class TSOSuite:
 
         Parameters
         ----------
-        command:
+        command : `str`
             Command to be excecuted. If valid the method corresponding
             to the command will be excecuted
-        *init_files
+        *init_files : `tuple` of `str`
             Single or multiple file names of the .ini files containing the
             parameters defining the observation and calibration settings.
-        path
+        path : `str`
             (optional) Filepath to the .ini files, standard value in None
 
         Raises
@@ -171,10 +171,10 @@ class TSOSuite:
 
         Parameters
         ----------
-        *init_files
+        *init_files : `tuple` of `str`
             Single or multiple file names of the .ini files containing the
             parameters defining the observation and calibration settings.
-        path
+        path : `str`
             (optional) Filepath to the .ini files, standard value in None
 
         Attributes
@@ -225,8 +225,8 @@ class TSOSuite:
 
         Attributes
         ----------
-        observation
-            cascade.instruments.instruments.Observation
+        observation : `cascade.instruments.instruments.Observation`
+            Instance of Observation class containing all observational data
 
         Examples
         --------
@@ -243,8 +243,8 @@ class TSOSuite:
 
         Attributes
         ----------
-        isBackgroundSubtracted : 'bool'
-            True if background is subtracted
+        isBackgroundSubtracted : `bool`
+            `True` if background is subtracted
 
         Raises
         ------
@@ -321,15 +321,15 @@ class TSOSuite:
 
         Parameters
         ---------
-        data : 'array_like'
+        data : `ndarray`
             Input data to be cliped, last axis of data to be assumed the time
-        sigma : 'float'
+        sigma : `float`
             Sigma value of sigmaclip
 
         Returns
         -------
-        sigma_clip_mask : 'array_like'
-            Updated mask for input data wiith bad data points flagged (=1)
+        sigma_clip_mask : `ndarray`
+            Updated mask for input data with bad data points flagged `(=1)`
         """
         # time axis always the last axis in data,
         # or the first in the transposed array
@@ -343,8 +343,8 @@ class TSOSuite:
 
         Attributes
         ---------
-        isSigmaCliped : 'bool'
-            Set to True if bad data has been masked using sigma clip
+        isSigmaCliped : `bool`
+            Set to `True` if bad data has been masked using sigma clip
 
         Raises
         ------
@@ -418,7 +418,7 @@ class TSOSuite:
 
         Attributes
         ----------
-        cleaned_data : 'masked quantity'
+        cleaned_data : `masked quantity`
             A cleaned version of the spctral timeseries data of the transiting
             exoplanet system
 
@@ -522,15 +522,15 @@ class TSOSuite:
 
         Attributes
         ----------
-        light_curve : 'array_like'
+        light_curve : `ndarray`
             The lightcurve model
-        transit_timing : 'list'
+        transit_timing : `list`
             list with start time and end time of transit
-        light_curve_interpolated : 'list' of 'ndarray'
+        light_curve_interpolated : `list` of `ndarray`
             to the time grid of the observations interpolated lightcurve model
-        calibration_signal : 'list' of 'ndarray'
+        calibration_signal : `list` of `ndarray`
             lightcurve model of the calibration signal
-        transittype : 'str'
+        transittype : `str`
             Currently either 'eclipse' or 'transit'
 
         Raises
@@ -634,15 +634,15 @@ class TSOSuite:
 
         Attributes
         ----------
-        spectral_trace : 'ndarray'
+        spectral_trace : `ndarray`
             The trace of the dispersed light on the detector normalized
             to its median position. In case the data are extracted spectra,
             the trace is zero.
-        position : 'ndarray'
+        position : `ndarray`
             Postion of the source on the detector in the cross dispersion
             directon as a function of time, normalized to the
             median position.
-        median_position : 'float'
+        median_position : `float`
             median source position.
 
         Raises
@@ -828,11 +828,11 @@ class TSOSuite:
 
         Attributes
         ----------
-        nExtractionWidth : 'int'
+        nExtractionWidth : `int`
             The width of the extraction aperture , cetered on the
             spectral trace of the source. In case of 1d spectral data, a
             width of 1 will be assumed.
-        extraction_mask : 'ndarray'
+        extraction_mask : `ndarray`
             In case data are Spectra : 1D mask
             In case data are Spectral images or cubes: 2D mask
 
@@ -924,11 +924,11 @@ class TSOSuite:
 
         Parameters
         ----------
-        kernel : 'array_like'
+        kernel : `array_like`
             Convolution kernel specific for a given instrument and observing
             mode, used in tasks such as replacing bad pixels and
             spectral extraction.
-        roi_mask : 'array_like'
+        roi_mask : `ndarray`
             Mask defining the region of interest from which the speectra will
             be extracted.
 
@@ -956,16 +956,16 @@ class TSOSuite:
 
         Parameters
         ----------
-        cleaned_data_with_roi_mask : 'numpy.ma.core.MaskedArray'
+        cleaned_data_with_roi_mask : `numpy.ma.core.MaskedArray`
             The cleaned input data from which the extraction profile is
             derived. The mask attached to this data defines the region of
             interest around the target source.
-        extracted_spectra : 'numpy.ma.core.MaskedArray'
+        extracted_spectra : `numpy.ma.core.MaskedArray`
             Best guess for the spectrum of the source from which the extraction
             profile is determined.
-        kernel : 'ndarray'
+        kernel : `ndarray`
             Convolution kernel used to create smoothed spectral images
-        mask_for_extraction : 'ndarray'
+        mask_for_extraction : `ndarray`
             Mask containing all pixels which are flagged as bad in the not
             cleaned data, i.e. all pixels which value have been replaced
             after cleaning.
@@ -1008,11 +1008,11 @@ class TSOSuite:
 
         Parameters
         ----------
-        sigma_time : 'float'
+        sigma_time : `float`
 
         Returns
         -------
-        3dKernel : 'ndarray'
+        3dKernel : `ndarray`
 
         Raises
         ------
@@ -1052,7 +1052,7 @@ class TSOSuite:
 
         Attributes
         ----------
-        dataset_optimal_extracted : cascade.data_model.SpectralDataTimeSeries'
+        dataset_optimal_extracted : `cascade.data_model.SpectralDataTimeSeries`
             Time series if optimally extracted 1d spectra.
 
         Raises
@@ -1335,13 +1335,14 @@ class TSOSuite:
 
         Attributes
         ----------
-        regressor_list
+        regressor_list : `list` of `int`
             List of regressors, using the following list index:
-            first index: [# nod]
-            second index: [# valid pixel in extraction mask]
-            third index: [0=pixel coord; 1=list of regressors]
-            forth index: [0=coordinate wave direction;
-            1=coordinate spatial direction]
+
+                - first index: [# nod]
+                - second index: [# valid pixel in extraction mask]
+                - third index: [0=pixel coord; 1=list of regressors]
+                - forth index: [0=coordinate wave direction;
+                  1=coordinate spatial direction]
 
         Examples
         --------
@@ -1454,15 +1455,22 @@ class TSOSuite:
 
         Parameters
         ----------
-        cleaned_data_in : 'masked quantity'
+        cleaned_data_in : `masked quantity`
             time series data with bad pixels corrected
-        original_mask_in : 'ndarray'
+        original_mask_in : `ndarray`
             data mask before cleaning
-        regressor_selection : 'list' of 'int'
-        nrebin : 'int'
-        clip : 'float'
-        clip_pctl_time : 'float'
-        clip_pctl_regressors : 'float'
+        regressor_selection : `list` of `int`
+            List of index values of the data used as regressors
+        nrebin : `int`
+            Rebinning value for regressions [LEAVE at 1!!]
+        clip : `bool`
+            If 'True` bad regressors will be clipped out of selection
+        clip_pctl_time : `float`
+            Percentile of 'worst' regressors to be cut out in the
+            time direction.
+        clip_pctl_regressors : `float`
+            Percentile of 'worst' regressors to be cut out in the
+            wavelegth direction.
 
         Returns
         -------
@@ -1511,11 +1519,11 @@ class TSOSuite:
 
         Parameters
         ----------
-        data_in : 'ndarray'
+        data_in : `ndarray`
 
         Returns
         -------
-        data_out : 'ndarray'
+        data_out : `ndarray`
         """
         if isinstance(data_in, list):
             data_list = []
@@ -1552,20 +1560,21 @@ class TSOSuite:
 
         Parameters
         ----------
-        clip : 'bool'
+        clip : `bool`
             default False
-        clip_pctl_time : 'float'
-            Default 0.00
-        clip_pctl_regressors : 'float'
-            Default 0.00
+        clip_pctl_time : `float`
+            Default `0.00`
+        clip_pctl_regressors : `float`
+            Default `0.00`
 
         Attributes
         ----------
-        design_matrix
+        design_matrix : `list' of `ndarray`
             list with design matrici with the following index convention:
-               first index: [# nods]
-               second index : [# of valid pixels within extraction mask]
-               third index : [0]
+
+                - first index: [# nods]
+                - second index : [# of valid pixels within extraction mask]
+                - third index : [0]
 
         Raises
         ------
@@ -1614,7 +1623,7 @@ class TSOSuite:
 
         Attributes
         ----------
-        calibration_results : 'SimpleNamespace'
+        calibration_results : `SimpleNamespace`
             The calibration_results attribute contains all calibrated data
             and auxilary data.
 
@@ -2107,7 +2116,7 @@ class TSOSuite:
 
         Attributes
         ----------
-        exoplanet_spectrum
+        exoplanet_spectrum : `SimpleNamespace`
 
         Raises
         ------

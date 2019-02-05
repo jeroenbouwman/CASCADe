@@ -45,36 +45,44 @@ def solve_linear_equation(design_matrix, data, weights=None, cv_method='gcv',
 
     Parameters
     ----------
-    design_matrx : 'ndarray, ndim=2'
+    design_matrx : `ndarray` with 'ndim=2'
         Design matrix
-    data : 'ndarray'
+    data : `ndarray`
         Data
-    weights : 'ndarray'
+    weights : `ndarray`
         Weights used in the linear least square minimization
-    cv_method : {'gvc'|'b95'|'B100'}
+    cv_method : (`'gvc'|'b95'|'B100'`)
         Method used to find optimal regularization parameter which can be:
-        "gvc" :  Generizalize Cross Validation [RECOMMENDED!!!],
-        "b95" :  normalized cumulatative periodogram using 95% limit,
-        "B100":  normalized cumulatative periodogram
-    reg_par : 'dict'
+
+           - 'gvc' :  Generizalize Cross Validation [RECOMMENDED!!!],
+           - 'b95' :  normalized cumulatative periodogram using 95% limit,
+           - 'B100':  normalized cumulatative periodogram
+    reg_par : `dict`
         Parameter describing search grid to find optimal regularization
-        parameter lambda: {lam0 : minimum lambda, lam1 : maximum lambda,
-        nlam : number of grid points}
-    feature_scaling : {'norm'|None}
+        parameter lambda:
+
+          - 'lam0' : minimum lambda
+          - 'lam1' : maximum lambda,
+          - 'nlam' : number of grid points
+    feature_scaling : (`'norm'|None`)
         if the value is set to 'norm' all features are normalized using L2
         norm else no featue scaling is applied.
-    degrees_of_freedom : 'int'
+    degrees_of_freedom : `int`
         Effective  degrees_of_freedom, if set to None the value is calculated
         from the dimensions of the imput arrays.
 
     Returns
     -------
-    fit_results : 'tuple'
+    fit_results : `tuple`
         In case the feature_scaling is set to None, the tuble contains the
-        following parameters: (fit_parameters, err_fit_parameters, lam_reg)
-        else the following results are returned: (fit_parameters_scaled,
-        err_fit_parameters_scaled, lam_reg, pc_matrix, fit_parameters,
-        err_fit_parameters)
+        following parameters:
+
+            - (fit_parameters, err_fit_parameters, lam_reg)
+
+        else the following results are returned:
+
+            - (fit_parameters_scaled, err_fit_parameters_scaled, lam_reg,
+              pc_matrix, fit_parameters, err_fit_parameters)
 
     Notes
     -----
@@ -88,6 +96,7 @@ def solve_linear_equation(design_matrix, data, weights=None, cv_method='gcv',
         ||y-A*\hat{x}||^2 + \lambda * ||\hat{x}||^2
 
     For details on the implementation see [1]_, [2]_, [3]_, [4]_
+
     References
     -----------
     .. [1] PHD thesis by Diana Maria SIMA, "Regularization techniques in

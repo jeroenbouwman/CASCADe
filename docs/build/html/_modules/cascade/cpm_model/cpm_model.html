@@ -87,36 +87,44 @@
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
-<span class="sd">    design_matrx : &#39;ndarray, ndim=2&#39;</span>
+<span class="sd">    design_matrx : `ndarray` with &#39;ndim=2&#39;</span>
 <span class="sd">        Design matrix</span>
-<span class="sd">    data : &#39;ndarray&#39;</span>
+<span class="sd">    data : `ndarray`</span>
 <span class="sd">        Data</span>
-<span class="sd">    weights : &#39;ndarray&#39;</span>
+<span class="sd">    weights : `ndarray`</span>
 <span class="sd">        Weights used in the linear least square minimization</span>
-<span class="sd">    cv_method : {&#39;gvc&#39;|&#39;b95&#39;|&#39;B100&#39;}</span>
+<span class="sd">    cv_method : (`&#39;gvc&#39;|&#39;b95&#39;|&#39;B100&#39;`)</span>
 <span class="sd">        Method used to find optimal regularization parameter which can be:</span>
-<span class="sd">        &quot;gvc&quot; :  Generizalize Cross Validation [RECOMMENDED!!!],</span>
-<span class="sd">        &quot;b95&quot; :  normalized cumulatative periodogram using 95% limit,</span>
-<span class="sd">        &quot;B100&quot;:  normalized cumulatative periodogram</span>
-<span class="sd">    reg_par : &#39;dict&#39;</span>
+
+<span class="sd">           - &#39;gvc&#39; :  Generizalize Cross Validation [RECOMMENDED!!!],</span>
+<span class="sd">           - &#39;b95&#39; :  normalized cumulatative periodogram using 95% limit,</span>
+<span class="sd">           - &#39;B100&#39;:  normalized cumulatative periodogram</span>
+<span class="sd">    reg_par : `dict`</span>
 <span class="sd">        Parameter describing search grid to find optimal regularization</span>
-<span class="sd">        parameter lambda: {lam0 : minimum lambda, lam1 : maximum lambda,</span>
-<span class="sd">        nlam : number of grid points}</span>
-<span class="sd">    feature_scaling : {&#39;norm&#39;|None}</span>
+<span class="sd">        parameter lambda:</span>
+
+<span class="sd">          - &#39;lam0&#39; : minimum lambda</span>
+<span class="sd">          - &#39;lam1&#39; : maximum lambda,</span>
+<span class="sd">          - &#39;nlam&#39; : number of grid points</span>
+<span class="sd">    feature_scaling : (`&#39;norm&#39;|None`)</span>
 <span class="sd">        if the value is set to &#39;norm&#39; all features are normalized using L2</span>
 <span class="sd">        norm else no featue scaling is applied.</span>
-<span class="sd">    degrees_of_freedom : &#39;int&#39;</span>
+<span class="sd">    degrees_of_freedom : `int`</span>
 <span class="sd">        Effective  degrees_of_freedom, if set to None the value is calculated</span>
 <span class="sd">        from the dimensions of the imput arrays.</span>
 
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
-<span class="sd">    fit_results : &#39;tuple&#39;</span>
+<span class="sd">    fit_results : `tuple`</span>
 <span class="sd">        In case the feature_scaling is set to None, the tuble contains the</span>
-<span class="sd">        following parameters: (fit_parameters, err_fit_parameters, lam_reg)</span>
-<span class="sd">        else the following results are returned: (fit_parameters_scaled,</span>
-<span class="sd">        err_fit_parameters_scaled, lam_reg, pc_matrix, fit_parameters,</span>
-<span class="sd">        err_fit_parameters)</span>
+<span class="sd">        following parameters:</span>
+
+<span class="sd">            - (fit_parameters, err_fit_parameters, lam_reg)</span>
+
+<span class="sd">        else the following results are returned:</span>
+
+<span class="sd">            - (fit_parameters_scaled, err_fit_parameters_scaled, lam_reg,</span>
+<span class="sd">              pc_matrix, fit_parameters, err_fit_parameters)</span>
 
 <span class="sd">    Notes</span>
 <span class="sd">    -----</span>
@@ -130,6 +138,7 @@
 <span class="sd">        ||y-A*\hat{x}||^2 + \lambda * ||\hat{x}||^2</span>
 
 <span class="sd">    For details on the implementation see [1]_, [2]_, [3]_, [4]_</span>
+
 <span class="sd">    References</span>
 <span class="sd">    -----------</span>
 <span class="sd">    .. [1] PHD thesis by Diana Maria SIMA, &quot;Regularization techniques in</span>
@@ -378,9 +387,9 @@
 
 <h3>Navigation</h3>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="../../../install.html">Howto Install CASCADe</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../install.html">Installing CASCADe</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../howto.html">Using Cascade</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../cascade.html">Modules of the CASCADe package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../cascade.html">CASCADe API</a></li>
 </ul>
 
 <div class="relations">
