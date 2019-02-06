@@ -3,8 +3,17 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-CASCADe: Calibration of trAnsit Spectroscopy using CAusal Data
-==============================================================
+.. role:: red
+
+.. role:: blue
+
+.. raw:: html
+
+    <style> .blue {color:#1f618d} </style>
+    <style> .red {color:red} </style>
+
+:blue:`CASCADe`: :blue:`C`\alibration of tr\ :blue:`A`\nsit :blue:`S`\pectroscopy using :blue:`CA`\usal :blue:`D`\ata
+=====================================================================================================================
 
 At present several thousand transiting exoplanet systems have been discovered. 
 For relatively few systems, however, a spectro-photometric characterization of
@@ -18,8 +27,8 @@ stars. Though significant progress has been made, most of these methods have dra
 as they either have to make too many assumptions or do not fully utilize all
 information available in the data to negate the noise terms. 
 
-The CASCADe project implements a novel “data driven” method, pioneered by 
-Schoelkopf et al (2015) utilizing the causal connections within a data set,
+The :blue:`CASCADe` project implements a novel “data driven” method, pioneered by 
+Schoelkopf et al (2016) utilizing the causal connections within a data set,
 and uses this to calibrate the spectral timeseries data of single transiting
 systems. The current code has been tested successfully to spectroscopic data
 obtained with the Spitzer and HST observatories.

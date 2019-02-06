@@ -1,32 +1,52 @@
 Installing CASCADe
 ==================
 
-### Clone a repository
+Using Anaconda
+--------------
 
-To start working locally on an existing remote repository,
-clone it with the command `git clone <repository path>`.
-By cloning a repository, you'll download a copy of its
-files into your local computer, preserving the Git
-connection with the remote repository.
+The easiest way is to create an anaconda environment
+and to install and run CASCADe wihtin this environment.
+In case anaconda is not yet installed on the local system, start with 
+downloading the installer, which can be found at:
 
-You can either clone it via HTTPS or [SSH](../ssh/README.md).
-If you chose to clone it via HTTPS, you'll have to enter your
-credentials every time you pull and push. With SSH, you enter
-your credentials once and can pull and push straightaway.
+	https://www.anaconda.com/download/
 
-You can find both paths (HTTPS and SSH) by navigating to
-your project's landing page and clicking **Clone**. GitLab
-will prompt you with both paths, from which you can copy
-and paste in your command line.
+Once installed update conda to the latest version:
 
-As an example, consider a repository path:
+```bash
+conda update conda
+```
+
+and then create and environment for CASCADe:
+
+```bash
+conda create --name cascade
+```
+
+The conda cascade environment can then be activated with the following command:
+
+```bash
+source activate cascade
+```
+
+One can now install all necessary packages for CASCADe within this environment either with conda install or
+pip install. The CASCADe package itself can be downloaded from gitlab.
+
+
+Getting CASCADe from gitlab
+---------------------------
+The CASCADe code can be found at gitlab and can be downloaded with git. Note that the gitlab repository
+is private and to download the code, one needs to create a gitlab account after which the account can be 
+added to the list of users which have acces to the repository. 
+
+The CASCADe repository path is, depending if the HTTPS or SSH protocol is used:
 
 - HTTPS: `https://gitlab.com/jbouwman/CASCADe`
 - SSH: `` git@gitlab.com:jbouwman/CASCADe ``
 
 To get started, open a terminal window in the directory
 you wish to clone the repository files into, and run one
-of the following commands.
+of the following commands:
 
 Clone via HTTPS:
 
@@ -41,24 +61,16 @@ git clone git@gitlab.com:jbouwman/CASCADe
 ```
 
 Both commands will download a copy of the files in a
-folder named after the project's name.
+folder named after the project's name. You can then navigate to the directory and start working
+on it locally. In case one is using Anaconda make sure the environment is activated before installing CASCADe.
 
-You can then navigate to the directory and start working
-on it locally.
+Updating the CASCADe code
+-------------------------
 
-### Go to the master branch to pull the latest changes from there
-
-```bash
-git checkout master
-```
-
-### Download the latest changes in the project
-
-This is for you to work on an up-to-date copy (it is important to do this every time you start working on a project), while you set up tracking branches. You pull from remote repositories to get all the changes made by users since the last time you cloned or pulled the project. Later, you can push your local commits to the remote repositories.
+The insalled CASCADe code can be kept up to date by regularly checking for updates. The latest version can be
+pulled from gitlab with the command:
 
 ```bash
-git pull REMOTE NAME-OF-BRANCH
+git pull master
 ```
-
-When you first clone a repository, REMOTE is typically "origin". This is where the repository came from, and it indicates the SSH or HTTPS URL of the repository on the remote server. NAME-OF-BRANCH is usually "master", but it may be any existing branch.
 
