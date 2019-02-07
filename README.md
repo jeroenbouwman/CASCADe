@@ -107,12 +107,14 @@ tso.execute("save_results")
 Plot results (planetary spectrum, residual etc.)
 ```python
 tso.execute("plot_results")
+```
 
 ##Documentation
 
-extended documentation can be found in the `docs`  directory. 
+Extended documentation can be found in the `docs`  directory. 
 To generate the documentation, make sure you have 'Sphinx' installed and than execute in the in the
 `docs` directory the following command
+:w
 
 ```bash
 make html
