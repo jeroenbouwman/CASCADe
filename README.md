@@ -1,22 +1,23 @@
 # CASCADe: Calibration of trAnsit Spectroscopy using CAusal Data
 
-At present several thousand transiting exoplanet systems have been discovered. 
+At present several thousand transiting exoplanet systems have been discovered.
 For relatively few systems, however, a spectro-photometric characterization of
-the planetary atmospheres could be performed due to the tiny photometric signatures 
-of the atmospheres and the large systematic noise introduced by the used instruments 
-or the earth atmosphere. Several methods have been developed to deal with instrument 
-and atmospheric noise. These methods include high precision calibration and modeling 
-of the instruments, modeling of the noise using methods like principle component 
+the planetary atmospheres could be performed due to the tiny photometric signatures
+of the atmospheres and the large systematic noise introduced by the used instruments
+or the earth atmosphere. Several methods have been developed to deal with instrument
+and atmospheric noise. These methods include high precision calibration and modeling
+of the instruments, modeling of the noise using methods like principle component
 analysis or Gaussian processes and the simultaneous observations of many reference
-stars. Though significant progress has been made, most of these methods have drawbacks 
-as they either have to make too many assumptions or do not fully utilize all 
+stars. Though significant progress has been made, most of these methods have drawbacks
+as they either have to make too many assumptions or do not fully utilize all
 information available in the data to negate the noise terms.
 
-The CASCADe project implements a novel “data driven” method, pioneered by
-Schoelkopf et al (2015) utilizing the causal connections within a data set,
-and uses this to calibrate the spectral timeseries data of single transiting 
-systems. The current code has been tested successfully to spectroscopic data 
+The <span style="color:#1f618d">CASCADe </span> project implements a novel “data driven” method, pioneered by
+Schoelkopf et al (2016) utilizing the causal connections within a data set,
+and uses this to calibrate the spectral timeseries data of single transiting
+systems. The current code has been tested successfully to spectroscopic data
 obtained with the Spitzer and HST observatories.
+
 
 
 ## Using Cascade

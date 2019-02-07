@@ -12,7 +12,7 @@ config = {
     'version': '1.0',
     'install_requires': ['nose','batman','astropy','scipy','numpy','configparser',
 			 'os', 'weakref', 'sklearn', 'matplotlib', 'tqdm', 'seaborn',
-			 'skimage', 'warnings', 'abc'],
+			 'skimage', 'warnings', 'abc', 'sphinx'],
     'packages': ['cascade'],
     'scripts': [],
     'name': 'CASCADe'
