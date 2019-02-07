@@ -12,12 +12,11 @@ stars. Though significant progress has been made, most of these methods have dra
 as they either have to make too many assumptions or do not fully utilize all
 information available in the data to negate the noise terms.
 
-The <span style="color:#1f618d">CASCADe </span> project implements a novel “data driven” method, pioneered by
+The <span style="color:#1F618D">CASCADe </span> project implements a novel “data driven” method, pioneered by
 Schoelkopf et al (2016) utilizing the causal connections within a data set,
 and uses this to calibrate the spectral timeseries data of single transiting
 systems. The current code has been tested successfully to spectroscopic data
 obtained with the Spitzer and HST observatories.
-
 
 
 ## Using Cascade
@@ -108,3 +107,18 @@ tso.execute("save_results")
 Plot results (planetary spectrum, residual etc.)
 ```python
 tso.execute("plot_results")
+
+##Documentation
+
+extended documentation can be found in the `docs`  directory. 
+To generate the documentation, make sure you have 'Sphinx' installed and than execute in the in the
+`docs` directory the following command
+
+```bash
+make html
+make latexpdf
+```
+
+The generated HTML and PDF will be located in the location specified by `conf.py`,
+in this case `build/html` and 'build\latex'.
+

@@ -73,4 +73,3 @@ pulled from gitlab with the command:
 ```bash
 git pull master
 ```
-
