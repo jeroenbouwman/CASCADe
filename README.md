@@ -21,7 +21,13 @@ obtained with the Spitzer and HST observatories.
 
 ## Using Cascade
 
-to run the code, first load all needed modules:
+The CASCADe distribution comes with a few wroking examples and datasets which can be found in the examples and
+data sub-directories, respectively. All needed parameters for running the code are defined in the provided 
+initialization files. The user only has to change those, particularly the path settings to the data and .ini files
+to run the examples. 
+
+The basic structure of the CASCADe pipeline is as follows:
+To run the code, first import the cascade module
 ```python
 import cascade
 ```
@@ -36,30 +42,34 @@ To reset all previous divined or initialized parameters
 tso.execute("reset")
 ```
 
-initialize the TSO object using ini files which define the data, model parameters and behavior of the causal pixel model implemented in CASCADe.
+Initialize the TSO object using .ini files which define the data, system and causal noise model parameters 
+needed to load all data, create a calibration model and to extract the planetary signal
 ```python
 path = cascade.initialize.default_initialization_path
 tso = cascade.TSO.TSOSuite("initialize", "cascade_cpm.ini",
                            "cascade_object.ini",
-                           "cascade_data_spectral_images.ini", path=path)
+                           "cascade_data.ini", path=path_to_ini_files)
 ```
 
-Load the observational data
+Load the observational data. In case of spectral images, any background data or background model
+will also be loaded at this step.
 ```python
 tso.execute("load_data")
 ```
 
-Subtract the background
+Subtract the background from the science data. In case no background needs to be subtracted, 
+a flag can be set in the configuration files and this step will be ignored.
 ```python
 tso.execute("subtract_background")
 ```
 
-Sigma clip data
+Sigma clip the data
 ```python
 tso.execute("sigma_clip_data")
 ```
 
-Determine the position of source from the spectroscopic data set
+Determine the position of source from the spectroscopic data set. In case 1D spectra are used,
+the positional information stored in the fits headers is used.
 ```python
 tso.execute("determine_source_position")
 ```
@@ -69,7 +79,8 @@ Set the extraction area within which the signal of the exoplanet will be determi
 tso.execute("set_extraction_mask")
 ```
 
-Extract the spectrum of the Star + planet in an optimal way
+Extract the spectrum of the Star + planet in an optimal way. In case of 1D spectra,
+this step is ignored
 ```python
 tso.execute("optimal_extraction")
 ```
