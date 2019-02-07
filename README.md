@@ -109,13 +109,11 @@ Plot results (planetary spectrum, residual etc.)
 tso.execute("plot_results")
 ```
 
-##Documentation
+## Documentation
 
 Extended documentation can be found in the `docs`  directory. 
 To generate the documentation, make sure you have 'Sphinx' installed and than execute in the in the
-`docs` directory the following command
-:w
-
+`docs` directory the following command:
 ```bash
 make html
 make latexpdf
@@ -123,4 +121,3 @@ make latexpdf
 
 The generated HTML and PDF will be located in the location specified by `conf.py`,
 in this case `build/html` and 'build\latex'.
-
