@@ -31,7 +31,7 @@ except KeyError:
     default_cascade_dir = os.environ['HOME']
 
 # path to init files defining observations and pipeline settings
-init_path = os.path.join(default_cascade_dir, "CASCADe/init_files/")
+init_path = os.path.join(default_cascade_dir, "CASCADe/examples/init_files/")
 
 # create transit spectoscopy object
 tso = cascade.TSO.TSOSuite()
