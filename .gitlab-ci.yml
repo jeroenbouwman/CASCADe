@@ -1,8 +1,8 @@
 image: continuumio/anaconda3:latest
 
 services:
-  - gcc:latest
-  command: ["/usr/bin/gcc", "gcc"]
+  - name: gcc:latest
+    command: ["/usr/bin/gcc", "gcc"]
 
 before_script:
   - export PIP_CACHE_DIR="/opt/cache/pip"
