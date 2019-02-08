@@ -26,5 +26,14 @@ dependencies:
   - pytest=4.2.0=py36_0
   - python=3.6.8=h0371630_0
   - qt=5.9.7=h5867ecd_1 
+  - gcc_impl_linux-64=7.3.0=habb00fd_1  
+  - gcc_linux-64=7.3.0=h553295d_6  
+  - gfortran_impl_linux-64=7.3.0=hdf63c60_1  
+  - gfortran_linux-64=7.3.0=h553295d_6
+  - gxx_impl_linux-64=7.3.0=hdf63c60_1  
+  - gxx_linux-64=7.3.0=h553295d_6 
+  - libgcc=7.2.0=h69d50b8_2  
+  - libgcc-ng=8.2.0=hdf63c60_1  
+  - libgfortran-ng=7.3.0=hdf63c60_0
   - pip:
     - batman-package==2.4.6

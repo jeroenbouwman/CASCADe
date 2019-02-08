@@ -1,9 +1,5 @@
 image: continuumio/anaconda3:latest
 
-services:
-  - name: gcc:latest
-    command: ["/usr/bin/gcc", "gcc"]
-
 before_script:
   - export PIP_CACHE_DIR="/opt/cache/pip"
   - conda env create -f environment.yml
