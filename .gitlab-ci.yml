@@ -1,0 +1,11 @@
+image: continuumio/anaconda3:latest
+
+before_script:
+  - export PIP_CACHE_DIR="/opt/cache/pip"
+  - conda env create -f environment.yml
+  - source activate cascade
+
+tests:
+  stage: test
+  script:
+    - python -m unittest discover -v
