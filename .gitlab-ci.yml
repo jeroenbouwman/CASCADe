@@ -1,6 +1,7 @@
 image: continuumio/anaconda3:latest
 
 before_script:
+  image: gcc
   - export PIP_CACHE_DIR="/opt/cache/pip"
   - conda env create -f environment.yml
   - source activate cascade
