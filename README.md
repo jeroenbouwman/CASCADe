@@ -1,3 +1,6 @@
+
+[![pipeline status](https://gitlab.com/jbouwman/CASCADe/badges/master/pipeline.svg)](https://gitlab.com/jbouwman/CASCADe/commits/master)
+
 # CASCADe: Calibration of trAnsit Spectroscopy using CAusal Data
 
 At present several thousand transiting exoplanet systems have been discovered.
