@@ -1,14 +1,24 @@
-from nose.tools import *
+import unittest
 import cascade
+from cascade.TSO import TSOSuite
 
 
-def setup():
-    print("SETUP!")
+
+class TestCascade(unittest.TestCase):
+    def setUp(self):
+        self.tso = TSOSuite()
+
+    def tearDown(self):
+        del self.tso
+
+    def test_basic_cascade(self):
+        self.assertIsInstance(self.tso, cascade.TSO.TSOSuite)
 
 
-def teardown():
-    print("TEAR DOWN!")
-
-
-def test_basic():
-    print("I RAN!")
+if __name__ == '__main__':
+#    unittest.main()
+#    suite = unittest.TestLoader().loadTestsFromModule(TestCascade)
+#    unittest.TextTestRunner(verbosity=2).run(suite)
+    suite = unittest.TestLoader().loadTestsFromTestCase(TestCascade)
+    runner = unittest.TextTestRunner(verbosity=2)
+    runner.run(suite)

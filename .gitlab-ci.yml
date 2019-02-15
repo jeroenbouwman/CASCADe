@@ -9,4 +9,5 @@ before_script:
 tests:
   stage: test
   script:
-    - python -m unittest discover -v
+    - python -m unittest discover -v -p *tests.py -s tests
+
