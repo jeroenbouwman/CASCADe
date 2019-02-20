@@ -1,14 +1,9 @@
 image: continuumio/miniconda3:latest
 
 before_script:
-  - export PIP_CACHE_DIR="pip-cache"
   - conda env create -f environment.yml
   - source activate cascade
   - pip install -r requirements2.txt
-
-cache:
-  paths:
-    - pip-cache
 
 tests:
   stage: test
