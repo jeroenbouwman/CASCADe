@@ -2,7 +2,7 @@ image: continuumio/miniconda3:latest
 
 stages:
   - test
-  - build
+  - doc
 
 before_script:
   - apt-get update -q -y
