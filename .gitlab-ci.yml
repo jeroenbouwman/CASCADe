@@ -7,19 +7,25 @@ stages:
 before_script:
   - apt-get update -q -y
   - apt-get install -y build-essential
-  - conda update -n base -c defaults conda
-  - conda install git pip
-  - conda env create -f environment.yml
+  - conda update conda
+  - conda env create -n cascade
   - source activate cascade
+  - conda install git pip
+  - conda update --all
+  - conda deactivate
 
 unittests:
   stage: test
   script:
+    - conda update -f environment.yml
+    - source activate cascade
     - python -m unittest discover -v -p *tests.py -s tests
 
 pages:
-  stage: build
+  stage: doc
   script:
+  - conda update -f environment.yml
+  - source activate cascade
   - cd docs
   - make html
   - mv build/html ../public
