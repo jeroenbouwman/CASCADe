@@ -4,6 +4,7 @@ before_script:
   - apt-get update -q -y
   - apt-get install -y build-essential
   - conda update -n base -c defaults conda
+  - conda install git pip
   - conda env create -f environment.yml
   - source activate cascade
 
