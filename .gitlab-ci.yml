@@ -13,3 +13,12 @@ tests:
   script:
     - python -m unittest discover -v -p *tests.py -s tests
 
+pages:
+  script:
+  - mkdir .public
+  - mv .public public
+  artifacts:
+    paths:
+    - public
+  only:
+  - master
