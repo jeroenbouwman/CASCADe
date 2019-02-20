@@ -1,9 +1,11 @@
 image: continuumio/miniconda3:latest
 
 before_script:
+  - apt-get update -q -y
+  - apt-get install -y build-essential
+  - conda update -n base -c defaults conda
   - conda env create -f environment.yml
   - source activate cascade
-  - pip install -r requirements2.txt
 
 tests:
   stage: test
