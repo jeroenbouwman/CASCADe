@@ -1,10 +1,13 @@
 image: continuumio/anaconda3:latest
 
 before_script:
-  - export PIP_CACHE_DIR="/opt/cache/pip"
+  - ls -la
+  - conda info
   - conda env create -f environment.yml
   - source activate cascade
   - pip install -r requirements2.txt
+  - ls -la
+  - conda info
 
 tests:
   stage: test

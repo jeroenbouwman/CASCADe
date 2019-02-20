@@ -3,7 +3,6 @@ import cascade
 from cascade.TSO import TSOSuite
 
 
-
 class TestCascade(unittest.TestCase):
     def setUp(self):
         self.tso = TSOSuite()
@@ -16,9 +15,7 @@ class TestCascade(unittest.TestCase):
 
 
 if __name__ == '__main__':
-#    unittest.main()
-#    suite = unittest.TestLoader().loadTestsFromModule(TestCascade)
-#    unittest.TextTestRunner(verbosity=2).run(suite)
+    #  unittest.main()
     suite = unittest.TestLoader().loadTestsFromTestCase(TestCascade)
     runner = unittest.TextTestRunner(verbosity=2)
     runner.run(suite)

@@ -38,10 +38,7 @@ class TestCpmModel(unittest.TestCase):
 
 
 if __name__ == '__main__':
-#    unittest.main()
-#    suite = unittest.TestLoader().loadTestsFromModule(TestCpmModel)
-#    unittest.TextTestRunner(verbosity=2).run(suite)
+    #  unittest.main()
     suite = unittest.TestLoader().loadTestsFromTestCase(TestCpmModel)
     runner = unittest.TextTestRunner(verbosity=2)
     runner.run(suite)
-
