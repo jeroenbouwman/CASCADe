@@ -10,21 +10,20 @@ before_script:
   - conda update conda
   - conda env create -n cascade
   - source activate cascade
-  - conda install git pip
   - conda update --all
   - conda deactivate
 
 unittests:
   stage: test
   script:
-    - conda update -f environment.yml
+    - conda env update -f environment.yml
     - source activate cascade
     - python -m unittest discover -v -p *tests.py -s tests
 
 pages:
   stage: doc
   script:
-  - conda update -f environment.yml
+  - conda env update -f environment.yml
   - source activate cascade
   - cd docs
   - make html
