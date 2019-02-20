@@ -1,5 +1,9 @@
 image: continuumio/miniconda3:latest
 
+stages:
+  - test
+  - build
+
 before_script:
   - apt-get update -q -y
   - apt-get install -y build-essential
@@ -8,15 +12,17 @@ before_script:
   - conda env create -f environment.yml
   - source activate cascade
 
-tests:
+unittests:
   stage: test
   script:
     - python -m unittest discover -v -p *tests.py -s tests
 
 pages:
+  stage: build
   script:
-  - mkdir .public
-  - mv .public public
+  - cd docs
+  - make html
+  - mv build/html ../public
   artifacts:
     paths:
     - public
