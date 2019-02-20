@@ -12,9 +12,9 @@ dependencies:
   - scipy=1.2.0=py37h7c811a0_0
   - matplotlib=3.0.2=py37h5429711_0
   - seaborn=0.9.0=py37_0
-  - astropy=3.1.1=py36h7b6447c_0
+  - astropy=3.1.1=py37h7b6447c_0
   - photutils=0.6=py37h14c3975_1000
-  - astroquery=0.3.7=py36_1
+  - astroquery=0.3.9=py_1000
   - pandas=0.24.1=py37he6710b0_0
   - sphinx=1.8.4=py37_0
   - alabaster=0.7.12=py37_0
