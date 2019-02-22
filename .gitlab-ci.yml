@@ -7,8 +7,13 @@ stages:
 before_script:
   - apt-get update -q -y
   - apt-get install -y build-essential
+  - export PIP_CACHE_DIR="pip-cache"
   - conda update conda
   - conda update pip
+
+cache:
+  paths:
+    - pip-cache
 
 units_and_doc_tests:
   stage: test
