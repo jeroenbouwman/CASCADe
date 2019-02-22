@@ -14,11 +14,9 @@ units_and_doc_tests:
     - conda update -n base -c defaults conda
     - conda env create -f .environment_gitlab.yml
     - source activate cascade
-    - which pip
     - conda deactivate
-    - which pip
     - source activate cascade
-    - pip install batman-package
+    - conda env update -f environment.yml
     - python -m unittest discover -v -p *tests.py -s tests
     - cd docs
     - make html
