@@ -9,7 +9,7 @@ before_script:
   - apt-get install -y build-essential
   - export PIP_CACHE_DIR="pip-cache"
   - conda update conda
-  - conda update pip
+  - conda update --all
 
 cache:
   paths:
@@ -18,8 +18,9 @@ cache:
 units_and_doc_tests:
   stage: test
   script:
-    - conda env create --quiet --force --file environment.yml
+    - conda env create --quiet --force --file .environment_gitlab.yml
     - source activate cascade
+    - pip install batman-package
     - python -m unittest discover -v -p *tests.py -s tests
     - cd docs
     - make html
