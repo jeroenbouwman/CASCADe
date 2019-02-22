@@ -5,8 +5,8 @@ stages:
   - doc
 
 before_script:
-  - apt-get update -q -y
-  - apt-get install -y build-essential
+#  - apt-get update -q -y
+#  - apt-get install -y build-essential
   - export PIP_CACHE_DIR="pip-cache"
   - conda update conda
   - conda update --all
