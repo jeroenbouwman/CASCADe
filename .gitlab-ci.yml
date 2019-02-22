@@ -8,22 +8,20 @@ before_script:
   - apt-get update -q -y
   - apt-get install -y build-essential
   - conda update conda
-  - conda env create -n cascade
-  - source activate cascade
   - conda update --all
+  - conda env create -n cascade pip -f environment.yml --force
+  - source activate cascade
   - conda deactivate
 
 unittests:
   stage: test
   script:
-    - conda env update -f environment.yml
     - source activate cascade
     - python -m unittest discover -v -p *tests.py -s tests
 
 pages:
   stage: doc
   script:
-  - conda env update -f environment.yml
   - source activate cascade
   - cd docs
   - make html

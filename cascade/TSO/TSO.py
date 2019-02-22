@@ -35,9 +35,11 @@ import os.path
 from functools import reduce
 from types import SimpleNamespace
 import warnings
-
-import astropy.units as u
 import numpy as np
+from scipy import interpolate
+from scipy.linalg import pinv2
+from scipy.ndimage import binary_dilation
+import astropy.units as u
 from astropy.convolution import interpolate_replace_nans
 from astropy.convolution import Gaussian1DKernel
 from astropy.convolution import convolve as ap_convolve
@@ -49,11 +51,8 @@ from astropy.table import MaskedColumn, Table
 from astropy.visualization import quantity_support
 from matplotlib import pyplot as plt
 from matplotlib.ticker import MaxNLocator, ScalarFormatter
-from scipy import interpolate
-from scipy.linalg import pinv2
-from scipy.ndimage import binary_dilation
-from tqdm import tqdm
 import seaborn as sns
+from tqdm import tqdm
 from sklearn.preprocessing import RobustScaler
 from sklearn.decomposition import PCA
 
@@ -372,7 +371,7 @@ class TSOSuite:
                                  Aborting sigma clip on data.")
         try:
             nfilter = int(self.cascade_parameters.cpm_nfilter)
-            if (nfilter % 2 == 0):  # even
+            if nfilter % 2 == 0:  # even
                 nfilter += 1
         except AttributeError:
             raise AttributeError("Filter length for sigma clip not defined. \
@@ -454,7 +453,7 @@ class TSOSuite:
                                  "creation of a cleaned dataset.")
         try:
             roi_mask = self.observation.instrument_calibration.roi.copy()
-        except (AttributeError):
+        except AttributeError:
             raise AttributeError("Region of interest not set. Aborting the "
                                  "creation of a cleaned dataset.")
         try:
@@ -475,7 +474,7 @@ class TSOSuite:
                                                fill_value=np.nan)
 
         ndim = spectral_image_using_roi.ndim
-        shape = spectral_image_using_roi.shape
+        image_shape = spectral_image_using_roi.shape
         data_unit = dataset.data.data.unit
 
         if ndim == 2:
@@ -509,7 +508,8 @@ class TSOSuite:
         except AttributeError:
             self.cpm = SimpleNamespace()
         finally:
-            mask = np.repeat(roi_mask[..., np.newaxis], shape[-1], axis=ndim-1)
+            mask = np.repeat(roi_mask[..., np.newaxis], image_shape[-1],
+                             axis=ndim-1)
             self.cpm.cleaned_data = \
                 np.ma.array(cleaned_spectral_image_using_roi*data_unit,
                             mask=mask)
@@ -939,7 +939,7 @@ class TSOSuite:
         """
         dilation_mask = np.ones(kernel.shape)
 
-        edge_mask = (binary_dilation(roi_mask_cube,  structure=dilation_mask,
+        edge_mask = (binary_dilation(roi_mask_cube, structure=dilation_mask,
                                      border_value=True) ^ roi_mask_cube)
         return edge_mask
 
@@ -1182,9 +1182,9 @@ class TSOSuite:
 
                 mask_flaged_data = \
                     np.ma.where((data - extraction_profile *
-                                np.ma.repeat(np.expand_dims(extracted_spectra,
-                                                            axis=1), (mpix),
-                                             axis=1)
+                                 np.ma.repeat(np.expand_dims(extracted_spectra,
+                                                             axis=1), (mpix),
+                                              axis=1)
                                  )**2 > nsigma**2 * variance, 0.0, 1.0)
                 mask_flaged_data = np.where(mask_flaged_data.filled() == 0,
                                             True, False)
@@ -1207,7 +1207,7 @@ class TSOSuite:
                 iiter += 1
                 pbar.update(1)
             pbar.close()
-            if not (number_different_masked != 0):
+            if not number_different_masked != 0:
                 warnings.warn("Mask not converged in optimal spectral "
                               "extraction. {} mask values not converged. An "
                               "increase of the maximum number of iteration "
@@ -1225,9 +1225,8 @@ class TSOSuite:
                 mask_flaged_data = \
                     np.ma.where((data - extraction_profile *
                                  np.ma.repeat(
-                                              np.expand_dims(extracted_spectra,
-                                                             axis=1),
-                                              (mpix), axis=1)
+                                     np.expand_dims(extracted_spectra, axis=1),
+                                     mpix, axis=1)
                                  )**2 > nsigma**2 * variance, 0.0, 1.0)
                 mask_flaged_data = \
                     np.where(mask_flaged_data.filled() == 0, True, False)
@@ -1249,7 +1248,7 @@ class TSOSuite:
                 iiter += 1
                 pbar.update(1)
             pbar.close()
-            if not (number_different_masked != 0):
+            if not number_different_masked != 0:
                 warnings.warn("Mask not converged in optimal spectral "
                               "extraction. {} mask values not converged. "
                               "An increase of the maximum number of "
@@ -1283,7 +1282,8 @@ class TSOSuite:
         data_product_optimal = 'COE'
         dataFileNames = dataset.dataFiles
         dataFileNameNew = [fname.split("/")[-1].replace(data_product,
-                           data_product_optimal) for fname in dataFileNames]
+                                                        data_product_optimal)
+                           for fname in dataFileNames]
 
         target_name = self.observation.dataset_parameters['obs_target_name']
         observation_path = self.observation.dataset_parameters['obs_path']
@@ -1413,7 +1413,7 @@ class TSOSuite:
 
                 if cpm_use_pca:
                     idx_select = np.where(((idx_all_wave < il_cal_min) |
-                                          (idx_all_wave > il_cal_max)))
+                                           (idx_all_wave > il_cal_max)))
                     regressor_list.append([(il, ir),
                                            (idx_all_wave[idx_select],
                                             idx_all_spatial[idx_select])])
@@ -1513,7 +1513,8 @@ class TSOSuite:
                                     mask=design_matrix.mask)
         return design_matrix
 
-    def reshape_data(self, data_in):
+    @staticmethod
+    def reshape_data(data_in):
         """
         Reshape the time series data to a uniform dimentional shape
 
@@ -1606,11 +1607,11 @@ class TSOSuite:
             for regressor_selection in regressor_list:
                 regressor_matrix = \
                     self.get_design_matrix(
-                            data_use, original_mask_data_use,
-                            regressor_selection,
-                            nrebin, clip=clip,
-                            clip_pctl_time=clip_pctl_time,
-                            clip_pctl_regressors=clip_pctl_regressors)
+                        data_use, original_mask_data_use,
+                        regressor_selection,
+                        nrebin, clip=clip,
+                        clip_pctl_time=clip_pctl_time,
+                        clip_pctl_regressors=clip_pctl_regressors)
                 design_matrix_list.append([regressor_matrix])
             design_matrix_list_nod.append(design_matrix_list)
         self.cpm.design_matrix = design_matrix_list_nod
@@ -1850,11 +1851,11 @@ class TSOSuite:
                     (il, ir), (idx_cal, trace) = regressor_selection
                     regressor_matrix = \
                         self.get_design_matrix(
-                                data_use, original_mask_data_use,
-                                regressor_selection,
-                                nrebin, clip=True,
-                                clip_pctl_time=clip_pctl_time,
-                                clip_pctl_regressors=clip_pctl_regressors)
+                            data_use, original_mask_data_use,
+                            regressor_selection,
+                            nrebin, clip=True,
+                            clip_pctl_time=clip_pctl_time,
+                            clip_pctl_regressors=clip_pctl_regressors)
                     # remove bad regressors
                     idx_cut = np.all(regressor_matrix.mask, axis=1)
                     idx_regressors_used = idx_cal[~idx_cut]
@@ -2270,7 +2271,7 @@ class TSOSuite:
         weighted_residual = \
             np.ma.average(residual, axis=1,
                           weights=(np.tile((extraction_weigths_mask *
-                                           extraction_weights).T,
+                                            extraction_weights).T,
                                            (nintegrations, 1, 1)).T *
                                    np.ma.ones((npix, mpix, nintegrations)) /
                                    np.tile(calibrated_error.copy().T,
@@ -2393,14 +2394,12 @@ class TSOSuite:
         if transittype == 'secondary':
             brightness_temperature, error_brightness_temperature = \
              convert_spectrum_to_brighness_temperature(
-                     exoplanet_spectrum.
-                     wavelength,
-                     exoplanet_spectrum.data,
-                     stellar_temperature,
-                     stellar_radius,
-                     planet_radius *
-                     stellar_radius,
-                     error=exoplanet_spectrum.uncertainty)
+                 exoplanet_spectrum.wavelength,
+                 exoplanet_spectrum.data,
+                 stellar_temperature,
+                 stellar_radius,
+                 planet_radius*stellar_radius,
+                 error=exoplanet_spectrum.uncertainty)
             exoplanet_spectrum_in_brightnes_temperature = \
                 SpectralData(wavelength=exoplanet_spectrum.wavelength,
                              wavelength_unit=wavelength_unit,
@@ -2716,7 +2715,7 @@ class TSOSuite:
         fig.savefig(save_path+observations_id+'_residual_signal.png',
                     bbox_inches='tight')
 
-        if (results.weighted_image.shape[1] <= 1):
+        if results.weighted_image.shape[1] <= 1:
             fig, ax = plt.subplots(figsize=(7, 5))
 #            for item in ([ax.title, ax.xaxis.label, ax.yaxis.label] +
 #                         ax.get_xticklabels() + ax.get_yticklabels()):
@@ -2797,9 +2796,9 @@ class TSOSuite:
             axes.set_ylim([np.ma.median(flux_temp)/1.2,
                            1.2*np.ma.median(flux_temp)])
             ax.set_ylabel('Transit Depth [{}]'.format(results.
-                          spectrum.data_unit))
+                                                      spectrum.data_unit))
         ax.set_xlabel('Wavelength [{}]'.format(results.
-                      spectrum.wavelength_unit))
+                                               spectrum.wavelength_unit))
         ax.legend(loc='lower left', fancybox=True, framealpha=1.0,
                   ncol=2, mode="expand",
                   bbox_to_anchor=(0, 0.95, 1, 0.2), shadow=True,
@@ -2877,7 +2876,7 @@ class TSOSuite:
                         yerr=error_corr_temp)
             axes = plt.gca()
             axes.set_xlim([0.95*np.ma.min(wav_corr_temp),
-                          1.05*np.max(wav_corr_temp)])
+                           1.05*np.max(wav_corr_temp)])
             axes.set_ylim([-1.0*np.ma.median(flux_temp),
                            np.ma.median(flux_temp)])
             ax.set_ylabel('Calibration correction [{}]'.format(results.
@@ -2901,7 +2900,7 @@ class TSOSuite:
                 ax.plot(results.spectrum.wavelength, snr_signal)
                 axes = plt.gca()
                 axes.set_xlim([0.95*np.ma.min(wav_temp),
-                              1.05*np.ma.max(wav_temp)])
+                               1.05*np.ma.max(wav_temp)])
                 axes.set_ylim([0.0, 2.0*np.ma.median(snr_cal)])
                 ax.set_ylabel('SNR')
                 ax.set_xlabel('Wavelength [{}]'.format(results.
