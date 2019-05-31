@@ -127,7 +127,8 @@ def generate_default_initialization():
                         'object_ephemeris': '2454279.436714 d'}
     config['CATALOG'] = {'catalog_use_catalog': 'True',
                          'catalog_name': 'EXOPLANETS.ORG',
-                         'catalog_update': 'True'}
+                         'catalog_update': 'True',
+                         'catalog_search_radius': '1 arcmin'}
     config['MODEL'] = {'model_type': 'batman',
                        'model_limb darkening': 'quadratic',
                        'model_limb_darkening_coeff': '[0.0, 0.0]',

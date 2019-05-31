@@ -30,6 +30,7 @@ class TestExoplanetsTools(unittest.TestCase):
         self.catalog_dir = ["exoplanets.org"]
         self.catalog_file_name = ["exoplanets.csv"]
         self.test_system_name = 'HD 189733 b'
+        self.test_search_radius = 1.0*u.arcminute
         self.path_init_files = default_initialization_path
 
     def tearDown(self):
@@ -86,7 +87,8 @@ class TestExoplanetsTools(unittest.TestCase):
             self.assertTrue(len(catalog[0]) > 1)
             # test extracting data record for single system
             data_record = \
-                extract_exoplanet_data(catalog, self.test_system_name)
+                extract_exoplanet_data(catalog, self.test_system_name,
+                                       search_radius=self.test_search_radius)
             self.assertIsInstance(catalog, list)
             self.assertIsInstance(catalog[0], Table)
             self.assertTrue(data_record[0]['NAME'][0] == self.test_system_name)

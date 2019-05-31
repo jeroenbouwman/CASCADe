@@ -8,9 +8,9 @@ dependencies:
   - ipython=7.5.0
   - pip=19.1.1
   - qt=5.9.7
-  - numpy=1.16.3
+  - numpy=1.16.4
   - scipy=1.2.1
-  - matplotlib=3.0.3
+  - matplotlib=3.1.0
   - seaborn
   - astropy=3.1.2
   - photutils
