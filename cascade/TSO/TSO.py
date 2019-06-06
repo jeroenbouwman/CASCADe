@@ -2697,7 +2697,7 @@ class TSOSuite:
         wavelength_unit = dataset.wavelength_unit
         wave0_min = np.ma.min(wave0).data.value
         wave0_max = np.ma.max(wave0).data.value
-        fig, ax = plt.subplots(figsize=(7, 6))
+        fig, ax = plt.subplots(figsize=(7, 6), dpi=72)
         for item in ([ax.title, ax.xaxis.label, ax.yaxis.label] +
                      ax.get_xticklabels() + ax.get_yticklabels()):
             item.set_fontsize(20)
@@ -2716,7 +2716,7 @@ class TSOSuite:
                     bbox_inches='tight')
 
         if results.weighted_image.shape[1] <= 1:
-            fig, ax = plt.subplots(figsize=(7, 5))
+            fig, ax = plt.subplots(figsize=(7, 5), dpi=72)
 #            for item in ([ax.title, ax.xaxis.label, ax.yaxis.label] +
 #                         ax.get_xticklabels() + ax.get_yticklabels()):
 #                item.set_fontsize(20)
@@ -2727,7 +2727,7 @@ class TSOSuite:
                                                    spectrum.wavelength_unit))
             plt.show()
         else:
-            fig, ax = plt.subplots(figsize=(6, 6))
+            fig, ax = plt.subplots(figsize=(6, 6), dpi=72)
 #            for item in ([ax.title, ax.xaxis.label, ax.yaxis.label] +
 #                         ax.get_xticklabels() + ax.get_yticklabels()):
 #                item.set_fontsize(20)
@@ -2765,7 +2765,7 @@ class TSOSuite:
         except AttributeError:
             pass
 #        with quantity_support():
-        fig, ax = plt.subplots(figsize=(7, 4))
+        fig, ax = plt.subplots(figsize=(7, 4), dpi=72)
 #        for item in ([ax.title, ax.xaxis.label, ax.yaxis.label] +
 #                     ax.get_xticklabels() + ax.get_yticklabels()):
 #            item.set_fontsize(20)
@@ -2824,7 +2824,7 @@ class TSOSuite:
                 np.ma.array(results.brightness_temperature.data.data.value,
                             mask=results.brightness_temperature.data.mask)
 
-            fig, ax = plt.subplots(figsize=(7, 4))
+            fig, ax = plt.subplots(figsize=(7, 4), dpi=72)
 #            for item in ([ax.title, ax.xaxis.label, ax.yaxis.label] +
 #                         ax.get_xticklabels() + ax.get_yticklabels()):
 #                item.set_fontsize(20)
@@ -2866,7 +2866,7 @@ class TSOSuite:
                             data.value,
                             mask=results.calibration_correction.mask)
 
-            fig, ax = plt.subplots(figsize=(7, 4))
+            fig, ax = plt.subplots(figsize=(7, 4), dpi=72)
 #            for item in ([ax.title, ax.xaxis.label, ax.yaxis.label] +
 #                         ax.get_xticklabels() + ax.get_yticklabels()):
 #                item.set_fontsize(20)
@@ -2892,7 +2892,7 @@ class TSOSuite:
             snr_signal = flux_temp / err_temp
 
             with quantity_support():
-                fig, ax = plt.subplots(figsize=(7, 4))
+                fig, ax = plt.subplots(figsize=(7, 4), dpi=72)
 #                for item in ([ax.title, ax.xaxis.label, ax.yaxis.label] +
 #                             ax.get_xticklabels() + ax.get_yticklabels()):
 #                    item.set_fontsize(20)
