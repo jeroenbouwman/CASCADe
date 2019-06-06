@@ -1022,8 +1022,8 @@ def extract_exoplanet_data(data_list, target_name_or_position, coord_unit=None,
                             coordinates = \
                                 SkyCoord.from_name(stellar_name_stripped)
                         except NameResolveError:
-                                target_name = target_name_or_position
-                                searchName = True
+                            target_name = target_name_or_position
+                            searchName = True
                     else:
                         target_name = target_name_or_position
                         searchName = True
@@ -1031,7 +1031,10 @@ def extract_exoplanet_data(data_list, target_name_or_position, coord_unit=None,
                 target_name = target_name_or_position
                 searchName = True
         conf.reset('remote_timeout')
+<<<<<<< HEAD
     print(coordinates)
+=======
+>>>>>>> 370eb678a98559aaa771d75907668e60ba1ca100
     table_list = []
     for idata, data in enumerate(data_list):
         multiple_entries_flag = False
@@ -1357,7 +1360,13 @@ class batman_model:
         catalog_update = ast.literal_eval(cascade_configuration.catalog_update)
         catalog = parse_database(catalog_name, update=catalog_update)
         target_name = cascade_configuration.object_name.strip()
-        system_info = extract_exoplanet_data(catalog, target_name)
+        try:
+            search_radius = \
+                u.Quantity(cascade_configuration.catalog_search_radius)
+        except (AttributeError, NameError):
+            search_radius = 5.0*u.arcsec
+        system_info = extract_exoplanet_data(catalog, target_name,
+                                             search_radius=search_radius)
 
         planet_radius = (system_info[0]['R'].quantity[0] /
                          system_info[0]['RSTAR'].quantity[0])
