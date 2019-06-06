@@ -1031,10 +1031,6 @@ def extract_exoplanet_data(data_list, target_name_or_position, coord_unit=None,
                 target_name = target_name_or_position
                 searchName = True
         conf.reset('remote_timeout')
-<<<<<<< HEAD
-    print(coordinates)
-=======
->>>>>>> 370eb678a98559aaa771d75907668e60ba1ca100
     table_list = []
     for idata, data in enumerate(data_list):
         multiple_entries_flag = False
