@@ -4,8 +4,17 @@ CASCADe init file
 
 @author: bouwman
 """
-from .instruments import *
 
-__all__ = (instruments.__all__)
+from .ObservationGenerator import Observation 
+from .InstrumentsBaseClasses import  ObservatoryBase, InstrumentBase
+from .HST.HST import HST, HSTWFC3
+from .Spitzer.Spitzer import Spitzer, SpitzerIRS
+from .JWST.JWST import JWST, JWSTMIRILRS
+from .Generic.Generic import Generic, GenericSpectrograph
 
-del instruments
+__all__ = ['Observation', 'HST', 'HSTWFC3', 'Spitzer', 'SpitzerIRS', 'JWST', 'JWSTMIRILRS',
+           'Generic', 'GenericSpectrograph']
+
+del(ObservationGenerator)
+del(InstrumentsBaseClasses)
+

@@ -224,7 +224,7 @@ class TSOSuite:
 
         Attributes
         ----------
-        observation : `cascade.instruments.instruments.Observation`
+        observation : `cascade.instruments.ObservationGenerator.Observation`
             Instance of Observation class containing all observational data
 
         Examples
