@@ -13,7 +13,7 @@ Then, create transit spectroscopy object
 
    tso = cascade.TSO.TSOSuite()
 
-To reset all previous divined or initialized parameters
+To reset all previous defined or initialized parameters
 
 .. code-block:: python
 

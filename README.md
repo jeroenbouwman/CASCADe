@@ -24,7 +24,7 @@ obtained with the Spitzer and HST observatories.
 
 ## Using Cascade
 
-The CASCADe distribution comes with a few wroking examples and datasets which can be found in the examples and
+The CASCADe distribution comes with a few working examples and datasets which can be found in the examples and
 data sub-directories, respectively. All needed parameters for running the code are defined in the provided 
 initialization files. The user only has to change those, particularly the path settings to the data and .ini files
 to run the examples. 
