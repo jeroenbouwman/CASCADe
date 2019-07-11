@@ -28,3 +28,10 @@ The cascade.instruments module
    :ignore-module-all:
    :member-order: bysource
    :show-inheritance:
+
+.. automodule:: cascade.instruments.Generic.Generic
+   :members:
+   :private-members:
+   :ignore-module-all:
+   :member-order: bysource
+   :show-inheritance:

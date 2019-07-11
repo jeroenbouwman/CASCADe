@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# This file is part of CASCADe package which has been
+# This file is part of the CASCADe package which has been 
 # developed within the ExoplANETS-A H2020 program.
 #
 # See the COPYRIGHT file at the top-level directory of this distribution
@@ -19,7 +19,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright (C) 2018, 2019  Jeroen Bouwman
+# Copyright (C) 2018, 2019  Jeroen Bouwman, MPIA
 
 import cascade
 import os
@@ -40,13 +40,13 @@ tso = cascade.TSO.TSOSuite()
 tso.execute("reset")
 
 # initialize TSO object
-# The files used in this example are for spectral data of the transit of 
+# The files used in this example are for spectral data of the transit of
 # WASP 19 b observed with the WFC3 isntument of HST.
 # Before running the code, make sure that the paths specified in the .ini
 # files are correctly set.
-tso.execute("initialize", "cascade_WASP19b_transit_spectral_images_cpm.ini",
-            "cascade_WASP19b_object.ini",
-            "cascade_WASP19b_transit_spectral_images_data.ini", path=init_path)
+tso.execute("initialize", "cascade_WASP103b_transit_spectra_cpm.ini",
+            "cascade_WASP103b_object.ini",
+            "cascade_WASP103b_transit_spectra_data.ini", path=init_path)
 
 # load the spectral data
 tso.execute("load_data")
@@ -72,3 +72,25 @@ tso.execute("set_extraction_mask")
 # optimally extract spectrum of target star
 # In case of 1D spectra (already extracted) this step will be ignored
 tso.execute("optimal_extraction")
+
+# setup regressors
+tso.execute("select_regressors")
+
+# eclipse model
+tso.execute("define_eclipse_model")
+
+# create calibrated time series and derive planetary signal
+tso.execute("calibrate_timeseries")
+
+# extract planetary signal
+tso.execute("extract_spectrum")
+
+# correct the extracted planetary signal for non uniform
+#  subtraction of averige signal
+tso.execute("correct_extracted_spectrum")
+
+# save planetary signal
+tso.execute("save_results")
+
+# plot planetary signal
+tso.execute("plot_results")

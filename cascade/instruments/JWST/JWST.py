@@ -25,7 +25,6 @@
 JWST Observatory and Instruments specific module of the CASCADe package
 """
 
-
 from ...initialize import cascade_configuration
 from ...data_model import SpectralDataTimeSeries
 from ...utilities import find

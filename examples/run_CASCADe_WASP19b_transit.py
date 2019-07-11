@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# This file is part of CASCADe package
-#
-# Developed within the ExoplANETS-A H2020 program.
+# This file is part of the CASCADe package which has been
+# developed within the ExoplANETS-A H2020 program.
 #
 # See the COPYRIGHT file at the top-level directory of this distribution
 # for details of code ownership.
@@ -20,7 +19,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright (C) 2018  Jeroen Bouwman
+# Copyright (C) 2018, 2019  Jeroen Bouwman
 
 import cascade
 import os

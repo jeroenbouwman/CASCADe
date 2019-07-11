@@ -340,8 +340,6 @@ class GenericSpectrograph(InstrumentBase):
         """
         dim = self.data.data.shape
         roi = np.zeros((dim[0]), dtype=np.bool)
-        roi[0] = True
-        roi[-1] = True
 
         try:
             self.Generic_cal
