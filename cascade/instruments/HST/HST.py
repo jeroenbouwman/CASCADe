@@ -233,8 +233,8 @@ class HSTWFC3(InstrumentBase):
         if not (obs_mode in self.__valid_observing_strategy):
             raise ValueError("Observational stategy not recognized, \
                      check your init file for the following \
-                     valid types: {}. \
-                     Aborting loading data".format(self.__valid_data))
+                     valid types: {}. Aborting loading \
+                     data".format(self.__valid_observing_strategy))
         if not (inst_filter in self.__valid_spectroscopic_filter):
             raise ValueError("Instrument spectroscopic filter not recognized, \
                      check your init file for the following \

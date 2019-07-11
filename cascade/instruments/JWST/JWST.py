@@ -1,13 +1,5 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""
-Created on Tue Jul  2 18:15:07 2019
-
-@author: bouwman
-"""
-
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 # This file is part of CASCADe package
 #
 # Developed within the ExoplANETS-A H2020 program.

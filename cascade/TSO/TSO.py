@@ -381,7 +381,8 @@ class TSOSuite:
         temp_data = np.ma.array(data_in.data.data.value, mask=data_in.mask)
         sigma_cliped_mask = self.sigma_clip_data_cosmic(temp_data, sigma)
         # update mask
-        updated_mask = np.ma.mask_or(data_in.mask, sigma_cliped_mask)
+        updated_mask = np.ma.mask_or(data_in.mask, sigma_cliped_mask,
+                                     shrink=False)
         data_in.mask = updated_mask
 
         dim = data_in.data.shape
@@ -405,7 +406,8 @@ class TSOSuite:
             tiling = dim[ndim-1:] + tuple(np.ones(ndim-1).astype(int))
             mask_new = np.tile(temp_data.mask, tiling)
             # add to mask
-            mask[filter_index] = np.ma.mask_or(mask[filter_index], mask_new.T)
+            mask[filter_index] = np.ma.mask_or(mask[filter_index], mask_new.T,
+                                               shrink=False)
         # update mask and set flag
         updated_mask = np.ma.mask_or(data_in.mask, mask)
         self.observation.dataset.mask = mask

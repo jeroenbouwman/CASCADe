@@ -27,6 +27,7 @@ Top level Observatory and Instruments specific module of the CASCADe package.
 
 from .HST.HST import HST
 from .Spitzer.Spitzer import Spitzer
+from .Generic.Generic import Generic
 from ..initialize import cascade_configuration
 
 __all__ = ['Observation']
@@ -68,7 +69,7 @@ class Observation(object):
         Dictionary listing the current implemented observatories,
         used in factory method to select a observatory specific class
         """
-        return {"SPITZER": Spitzer, "HST": HST}
+        return {"SPITZER": Spitzer, "HST": HST, "Generic": Generic}
 
     @property
     def __valid_observation_type(self):

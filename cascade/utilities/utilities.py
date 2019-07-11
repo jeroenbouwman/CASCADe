@@ -28,12 +28,17 @@ This Module defines some utility functions used in cascade
 import numpy as np
 import os
 import fnmatch
+import copy
 from astropy.io import fits
+from astropy.table import QTable
+import astropy.units as u
+from tqdm import tqdm
 
-__all__ = ['write_timeseries_to_fits', 'find', 'spectres']
+__all__ = ['write_timeseries_to_fits', 'find', 'get_data_from_fits',
+           'spectres']
 
 
-def write_timeseries_to_fits(data, path):
+def write_timeseries_to_fits(data, path, additional_file_string=None):
     """
     Write spectral timeseries data object to fits files
 
@@ -44,7 +49,8 @@ def write_timeseries_to_fits(data, path):
         a fits file will be generated.
     path : 'str'
         Path to the directory where the fits files will be saved.
-
+    additional_file_string : 'str' (optional)
+        Additional information to be added to the file name.
     """
     ndim = data.data.ndim
     ntime = data.data.shape[-1]
@@ -57,7 +63,9 @@ def write_timeseries_to_fits(data, path):
             fileBase = "image"
         else:
             fileBase = "image_cube"
-        dataFiles = [fileBase+"_{}.fits".format(it) for it in range(ntime)]
+        if not isinstance(additional_file_string, type(None)):
+            fileBase = fileBase + '_' + str(additional_file_string).strip(' ')
+        dataFiles = [fileBase+"_{0:0=3d}.fits".format(it) for it in range(ntime)]
 
     if ndim == 2:
         for itime, fileName in enumerate(dataFiles):
@@ -67,7 +75,10 @@ def write_timeseries_to_fits(data, path):
             except AttributeError:
                 pass
             hdr['COMMENT'] = "Created by CASCADe pipeline"
-            hdr['PHASE'] = np.ma.mean(data.time[..., itime]).value
+            try:
+                hdr['PHASE'] = np.ma.mean(data.time[..., itime]).value
+            except np.ma.MaskError:
+                pass
             try:
                 hdr['TIME_BJD'] = np.ma.mean(data.time_bjd[..., itime]).value
                 hdr['TBJDUNIT'] = data.time_bjd_unit.to_string()
@@ -126,6 +137,58 @@ def find(pattern, path):
             if fnmatch.fnmatch(name, pattern):
                 result.append(os.path.join(root, name))
     return sorted(result)
+
+
+def get_data_from_fits(data_files, data_list, auxilary_list):
+    """
+    This function reads in a list of fits files containing the
+    spectral time series data and auxilary information like position and time.
+
+    Parameters
+    ----------
+    data_files : 'list' of 'str'
+        List containing the names of all fits filaes to be read in.
+    data_list : 'list' of 'str'
+        List containing all the fits data keywords
+    auxilary_list : 'list' of 'str'
+        List containing all keywords for the auxilary data
+
+    Returns
+    -------
+    data_dict : 'dict'
+        Dictonary containing all spectral time series data
+    auxilary_dict : dict'
+        Dictonary containing all auxilary data
+    """
+    ndata = len(data_files)
+    data_struct = {'data': [], 'flag': True}
+    data_dict = {k: copy.deepcopy(data_struct) for k in data_list}
+    auxilary_data_struct = {"data": np.zeros(ndata), "flag": False}
+    auxilary_dict = {k: copy.deepcopy(auxilary_data_struct)
+                     for k in auxilary_list}
+
+    for ifile, fits_file in enumerate(tqdm(data_files,
+                                           dynamic_ncols=True)):
+        with fits.open(fits_file) as hdu_list:
+            fits_header = hdu_list[0].header
+            for key, value in auxilary_dict.items():
+                try:
+                    value['data'][ifile] = fits_header[key]
+                    value['flag'] = True
+                except KeyError:
+                    value['flag'] = False
+            data_table = QTable.read(hdu_list[1])
+            for key, value in data_dict.items():
+                try:
+                    try:
+                        value['data'].append(data_table[key].value *
+                                      u.Unit(data_table[key].unit.to_string()))
+                    except AttributeError:
+                        value['data'].append(data_table[key])
+                    value['flag'] = True
+                except KeyError:
+                    value['flag'] = False
+    return data_dict, auxilary_dict
 
 
 def spectres(new_spec_wavs, old_spec_wavs, spec_fluxes, spec_errs=None):
