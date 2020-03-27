@@ -56,22 +56,22 @@ tso.execute("load_data")
 # the configuration files
 tso.execute("subtract_background")
 
-# sigma clip the data
-tso.execute("sigma_clip_data")
+# filter data and create cleaned dataset
+tso.execute("filter_dataset")
 
-# create a cleaned version of the spectral data
-tso.execute("create_cleaned_dataset")
-
-# determine position of source from data set
+# determine the relative movement from the input data.
 # In case of 1D spectra, positional data given in the fits header will be used.
-tso.execute("determine_source_position")
+tso.execute("determine_source_movement")
+
+# correct wavelengths fo telescope movements
+tso.execute("correct_wavelengths")
 
 # set the extraction area
 tso.execute("set_extraction_mask")
 
-# optimally extract spectrum of target star
-# In case of 1D spectra (already extracted) this step will be ignored
-tso.execute("optimal_extraction")
+# extract timeseries of 1D spectra of the target
+# in case the input data is already 1D spectra
+tso.execute("extract_1d_spectra")
 
 # setup regressors
 tso.execute("select_regressors")

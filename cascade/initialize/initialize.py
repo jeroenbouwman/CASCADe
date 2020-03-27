@@ -65,56 +65,181 @@ Default directory for CASCADe initialization files
 """
 
 
-def generate_default_initialization():
+def generate_default_initialization(observatory='HST', data='SPECTRUM',
+                                    mode='STARING', observation='TRANSIT'):
     """
     Convenience function to generate an example .ini file for CASCADe
     initialization. The file will be saved in the default directory defined by
     default_initialization_path. Returns True if successfully runned.
+
+    Parameters
+    ----------
+    observatory : 'str', optional
+        Name of the observatory, can either be 'SPITZER', 'HST' or 'Generic'
+    data : 'str', optional
+        Type of data, can either be 'SPECTRUM', 'SPECTRAL_IMAGE' or
+        'SPECTRAL_CUBE'
+    mode : 'str', optional
+        Observation type, can either be STARING, NODDED (Spitzer) or
+        SCANNING (HST)
+    observation : 'str'
+        type of observed event. Can either be TRANSIT or ECLIPSE
+
+    Returns
+    -------
+    None
     """
+    __valid_observing_strategy = {'STARING', 'NODDED', 'SCANNING'}
+    __valid_data = {'SPECTRUM', 'SPECTRAL_IMAGE', 'SPECTRAL_DETECTOR_CUBE'}
+    __valid_observatory = {"SPITZER", "HST", "Generic"}
+    __valid_observations = {'TRANSIT', 'ECLIPSE'}
+
+    if not (mode in __valid_observing_strategy):
+        raise ValueError("Observational stategy not recognized, "
+                         "check your init file for the following "
+                         "valid types: {}. Aborting loading "
+                         "data".format(__valid_observing_strategy))
+    if not (data in __valid_data):
+        raise ValueError("Data type not recognized, "
+                         "check your init file for the following "
+                         "valid types: {}. "
+                         "Aborting loading data".format(__valid_data))
+    if not (observatory in __valid_observatory):
+        raise ValueError("Observatory not recognized, "
+                         "check your init file for the following "
+                         "valid types: {}. "
+                         "Aborting loading data".format(__valid_observatory))
+    if not (observation in __valid_observations):
+        raise ValueError("Observattion type not recognized, "
+                         "check your init file for the following "
+                         "valid types: {}. "
+                         "Aborting loading data".format(__valid_observations))
+
+    if observatory == 'HST':
+        if data == 'SPECTRUM':
+            data_product = 'COE'
+            hasBackground = 'False'
+        elif data == 'SPECTRAL_IMAGE':
+            data_product = 'flt'
+            hasBackground = 'True'
+        else:
+            data_product = 'ima'
+            hasBackground = 'True'
+    elif observatory == 'SPITZER':
+        if data == 'SPECTRUM':
+            data_product = 'COE'
+            hasBackground = 'False'
+        elif data == 'SPECTRAL_IMAGE':
+            data_product = 'droop'
+            hasBackground = 'True'
+        else:
+            data_product = 'lnz'
+            hasBackground = 'True'
+
     path = default_initialization_path
     os.makedirs(path, exist_ok=True)
 
     config = configparser.ConfigParser()
 
-    config['CASCADE'] = {'cascade_save_path': os.environ['HOME']}
-    config['CPM'] = {'cpm_cv_method': 'gvc',
-                     'cpm_lam0': '1.0e-6',
-                     'cpm_lam1': '1.0e2',
-                     'cpm_nlam': '60',
-                     'cpm_sigma': '3.0',
-                     'cpm_nfilter': '5',
-                     'cpm_nextraction': '5',
-                     'cpm_DeltaPix': '9',
+    config['CASCADE'] = {'cascade_save_path': default_cascade_dir,
+                         'cascade_useMultiProcesses': 'True',
+                         'cascade_verbose': 'True',
+                         'cascade_save_verbose': 'True'}
+
+    if data == 'SPECTRUM':
+        config['PROCESSING'] = \
+            {'processing_sigma_filtering': '3.5',
+             'processing_nfilter': '5',
+             'processing_stdv_kernel_time_axis_filter': '0.4',
+             'processing_nextraction': '1'}
+    else:
+        config['PROCESSING'] = \
+            {'processing_sigma_filtering': '3.5',
+             'processing_max_number_of_iterations_filtering': '15',
+             'processing_fractional_acceptance_limit_filtering': '0.005',
+             'processing_quantile_cut_movement': '0.1',
+             'processing_order_trace_movement': '1',
+             'processing_nreferences_movement':  '6',
+             'processing_main_reference_movement':  '4',
+             'processing_upsample_factor_movement':  '111',
+             'processing_angle_oversampling_movement': '2',
+             'processing_nextraction': '7',
+             'processing_rebin_factor_extract1d': '1.05'}
+
+    config['CPM'] = {'cpm_cv_method': 'gcv',
+                     'cpm_lam0': '1.0e-9',
+                     'cpm_lam1': '1.0e3',
+                     'cpm_nlam': '150',
+                     'cpm_deltapix': '1',
                      'cpm_nrebin': '1',
-                     'cpm_stdv_kernel_time_axis': '0.4',
-                     'cpm_max_iter_optimal_extraction': '7',
-                     'cpm_sigma_optimal_extraction': '4.0',
-                     'cpm_add_time': 'True',
+                     'cpm_use_pca': 'False',
+                     'cpm_use_pca_filter': 'False',
+                     'cpm_number_of_pca_components': '39',
+                     'cpm_add_time': 'False',
                      'cpm_add_postition': 'True',
-                     'cpm_clip_percentile_time': '0.01',
-                     'cpm_clip_percentile_regressors': '0.01',
-                     'cpm_add_calibration_signal': 'True',
-                     'cpm_calibration_signal_depth': '0.02',
-                     'cpm_calibration_signal_position': 'before'}
-    config['INSTRUMENT'] = {'instrument_observatory': 'SPITZER',
-                            'instrument': 'IRS',
-                            'instrument_mode': 'SL',
-                            'instrument_order': '1'}
-    config['OBSERVATIONS'] = {'observations_type': 'ECLIPSE',
-                              'observations_mode': 'STARING',
-                              'observations_data': 'SPECTRAL_IMAGE',
-                              'observations_path': os.environ['HOME'],
-                              'observations_cal_path': os.environ['HOME'],
-                              'observations_id': '',
-                              'observations_cal_version': '',
-                              'observations_data_product': '',
-                              'observations_target_name': '',
-                              'observations_has_background': 'True',
-                              'observations_background_id': '',
-                              'observations_background_name': '',
-                              'observations_median_signal': ''}
-    config['AUXILARY'] = {'auxilary_path': '',
-                          'auxilary_data': ''}
+                     'cpm_add_calibration_signal': 'False',
+                     'cpm_calibration_signal_position': 'after',
+                     'cpm_clip_percentile_time': '0.00',
+                     'cpm_clip_percentile_regressors': '0.00',
+                     'cpm_calibration_signal_depth': '0.08',
+                     'cpm_relative_sig_value_limit': '4.e-1'}
+
+    config['MODEL'] = {'model_type': 'batman',
+                       'model_limb darkening': 'quadratic',
+                       'model_limb_darkening_coeff': '[0.0, 0.0]',
+                       'model_nphase_points': '10000',
+                       'model_phase_range': '0.5'}
+
+    if observatory == 'SPITZER':
+        config['INSTRUMENT'] = {'instrument_observatory': observatory,
+                                'instrument': 'IRS',
+                                'instrument_mode': 'SL',
+                                'instrument_order': '1'}
+        config['OBSERVATIONS'] = {'observations_type': observation,
+                                  'observations_mode': mode,
+                                  'observations_data': data,
+                                  'observations_path': default_cascade_dir,
+                                  'observations_target_name': 'HD189733b',
+                                  'observations_cal_path': default_cascade_dir,
+                                  'observations_id': '',
+                                  'observations_cal_version': 'S18.18.0',
+                                  'observations_data_product': data_product,
+                                  'observations_has_background': hasBackground,
+                                  'observations_background_id': '',
+                                  'observations_background_name': 'HD189733b',
+                                  'observations_median_signal': '0.04'}
+    elif observatory == 'HST':
+        config['INSTRUMENT'] = {'instrument_observatory': observatory,
+                                'instrument': 'WFC3',
+                                'instrument_filter': 'G141',
+                                'instrument_aperture': 'IRSUB128',
+                                'instrument_cal_filter': 'F139M',
+                                'instrument_cal_aperture': 'IRSUB512',
+                                'instrument_beam': 'A'}
+        config['OBSERVATIONS'] = {'observations_type': observation,
+                                  'observations_mode': mode,
+                                  'observations_data': data,
+                                  'observations_path': default_cascade_dir,
+                                  'observations_target_name': 'HD189733b',
+                                  'observations_cal_path': default_cascade_dir,
+                                  'observations_id': '',
+                                  'observations_cal_version': '4.32',
+                                  'observations_data_product': data_product,
+                                  'observations_has_background': hasBackground,
+                                  'observations_uses_background_model': 'True',
+                                  'observations_median_signal': '0.01'}
+    else:
+        config['INSTRUMENT'] = {'instrument_observatory': observatory,
+                                'instrument': 'GenericSpectrograph'}
+        config['OBSERVATIONS'] = {'observations_type': observation,
+                                  'observations_mode': 'STARING',
+                                  'observations_data': 'SPECTRUM',
+                                  'observations_path': default_cascade_dir,
+                                  'observations_target_name': 'HD189733b',
+                                  'observations_id': '',
+                                  'observations_has_background': 'False',
+                                  'observations_median_signal': '0.01'}
+
     config['OBJECT'] = {'object_name': 'HD 189733 b',
                         'object_radius': '1.151 Rjup',
                         'object_radius_host_star': '0.752 Rsun',
@@ -125,15 +250,10 @@ def generate_default_initialization():
                         'object_omega': '90.0 deg',
                         'object_period': '2.218575200 d',
                         'object_ephemeris': '2454279.436714 d'}
-    config['CATALOG'] = {'catalog_use_catalog': 'True',
+    config['CATALOG'] = {'catalog_use_catalog': 'False',
                          'catalog_name': 'EXOPLANETS.ORG',
                          'catalog_update': 'True',
                          'catalog_search_radius': '1 arcmin'}
-    config['MODEL'] = {'model_type': 'batman',
-                       'model_limb darkening': 'quadratic',
-                       'model_limb_darkening_coeff': '[0.0, 0.0]',
-                       'model_nphase_points': '10000',
-                       'model_phase_range': '0.5'}
 
     with open(path + 'cascade_default.ini', 'w') as configfile:
         config.write(configfile)

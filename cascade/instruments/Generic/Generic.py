@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# This file is part of CASCADe package
-#
-# Developed within the ExoplANETS-A H2020 program.
+# This file is part of the CASCADe package which has been
+# developed within the ExoplANETS-A H2020 program.
 #
 # See the COPYRIGHT file at the top-level directory of this distribution
 # for details of code ownership.
@@ -20,7 +19,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright (C) 2018  Jeroen Bouwman
+# Copyright (C) 2018, 2019  Jeroen Bouwman
 """
 Generic Observatory and Instruments specific module of the CASCADe package
 """
@@ -28,10 +27,7 @@ import os
 import collections
 import ast
 from types import SimpleNamespace
-import gc
-
 import numpy as np
-from astropy.io import fits
 import astropy.units as u
 from astropy.convolution import Gaussian1DKernel
 
@@ -281,7 +277,8 @@ class GenericSpectrograph(InstrumentBase):
         if auxilary_dict['PHASE']['flag']:
             phase = np.array(auxilary_dict['PHASE']['data'])
         else:
-            phase = (time.value - self.par['obj_ephemeris']) / self.par['obj_period']
+            phase = (time.value - self.par['obj_ephemeris']) / \
+                self.par['obj_period']
             phase = phase - np.int(np.max(phase))
             if np.max(phase) < 0.0:
                 phase = phase + 1.0

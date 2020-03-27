@@ -9,4 +9,5 @@ CASCADe API
    cascade.exoplanet_tools
    cascade.initialize
    cascade.instruments
+   cascade.spectral_extraction
    cascade.utilities

@@ -291,7 +291,7 @@ class SpectralData(InstanceDescriptorMixin):
     def wavelength(self, value):
         if isinstance(value, np.ma.masked_array):
             wave_in = value.data
-            mask_in = value.mask
+            mask_in = np.ma.getmaskarray(value)
             self._mask = mask_in
         else:
             wave_in = value
@@ -356,7 +356,7 @@ class SpectralData(InstanceDescriptorMixin):
     def data(self, value):
         if isinstance(value, np.ma.masked_array):
             data_in = value.data
-            mask_in = value.mask
+            mask_in = np.ma.getmaskarray(value)
             self._mask = mask_in
         else:
             data_in = value
@@ -398,7 +398,7 @@ class SpectralData(InstanceDescriptorMixin):
     def uncertainty(self, value):
         if isinstance(value, np.ma.masked_array):
             data_in = value.data
-            mask_in = value.mask
+            mask_in = np.ma.getmaskarray(value)
             self._mask = mask_in
         else:
             data_in = value
@@ -460,6 +460,35 @@ class SpectralData(InstanceDescriptorMixin):
             self._mask = np.array([value]).astype(bool)
         else:
             self._mask = np.array(value).astype(bool)
+
+    def return_masked_array(self, attr):
+        if attr == 'data':
+            if self._data.shape == ():
+                return np.ma.array(np.array([self._data]), mask=self.mask)
+            else:
+                return np.ma.array(self._data, mask=self.mask)
+        elif attr == 'wavelength':
+            if (self.mask.shape == ()) or (self.mask.shape ==
+                                           self._wavelength.shape):
+                wavelength_out = self._wavelength
+            else:
+                ntile = len(self._wavelength.shape)
+                tiling = ((self._data.shape)[::-1])[:-ntile] + \
+                    tuple(np.ones(ntile).astype(int))
+                wavelength_out = np.tile(self._wavelength.T, tiling).T
+            if wavelength_out.shape == ():
+                return np.ma.array(np.array([wavelength_out]), mask=self.mask)
+            else:
+                return np.ma.array(wavelength_out, mask=self.mask)
+        elif attr == 'uncertainty':
+            if self._uncertainty.shape == ():
+                return np.ma.array(np.array([self._uncertainty]),
+                                   mask=self.mask)
+            else:
+                if np.all(np.isnan(self._uncertainty)):
+                    return np.ma.array(self._uncertainty)
+                else:
+                    return np.ma.array(self._uncertainty, mask=self.mask)
 
 
 class SpectralDataTimeSeries(SpectralData):
@@ -584,3 +613,38 @@ class SpectralDataTimeSeries(SpectralData):
                     self._time = ((self._time*self._time_unit).to(value)).value
         self._time_unit = value
 
+    def return_masked_array(self, attr):
+        if attr == 'time':
+            if (self.mask.shape == ()) or (self.mask.shape ==
+                                           self._time.shape):
+                time_out = self._time
+            else:
+                ntile = len(self._time.shape)
+                if ntile != 1:
+                    raise ValueError("Unkwon time structure")
+                tiling = (self._data.shape[:-1]) + \
+                    tuple(np.ones(ntile).astype(int))
+                time_out = np.tile(self._time, tiling)
+            if time_out.shape == ():
+                return np.ma.array(np.array([time_out]), mask=self.mask)
+            else:
+                return np.ma.array(time_out, mask=self.mask)
+        elif attr == 'position':
+            if hasattr(self, 'position'):
+                if (self.mask.shape == ()) or (self.mask.shape ==
+                                               self._position.shape):
+                    position_out = self._position
+                else:
+                    ntile = len(self._position.shape)
+                    if ntile != 1:
+                        raise ValueError("Unkwon time structure")
+                    tiling = (self._data.shape[:-1]) + \
+                        tuple(np.ones(ntile).astype(int))
+                    position_out = np.tile(self._position, tiling)
+                if position_out.shape == ():
+                    return np.ma.array(np.array([position_out]),
+                                       mask=self.mask)
+                else:
+                    return np.ma.array(position_out, mask=self.mask)
+        else:
+            return super().return_masked_array(attr)

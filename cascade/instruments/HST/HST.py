@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# This file is part of CASCADe package
-#
-# Developed within the ExoplANETS-A H2020 program.
+# This file is part of the CASCADe package which has been
+# developed within the ExoplANETS-A H2020 program.
 #
 # See the COPYRIGHT file at the top-level directory of this distribution
 # for details of code ownership.
@@ -20,7 +19,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright (C) 2018  Jeroen Bouwman
+# Copyright (C) 2018, 2019  Jeroen Bouwman
 """
 HST Observatory and Instruments specific module of the CASCADe package
 """
@@ -40,6 +39,7 @@ from astropy.wcs import WCS
 from astropy.stats import sigma_clipped_stats
 from astropy.convolution import Gaussian2DKernel, interpolate_replace_nans
 from astropy.convolution import Gaussian1DKernel
+from astropy.stats import sigma_clipped_stats
 from photutils import IRAFStarFinder
 import pandas as pd
 from scipy.optimize import nnls
@@ -56,8 +56,10 @@ __all__ = ['HST', 'HSTWFC3']
 
 class HST(ObservatoryBase):
     """
+    Class defining HST observatory.
+
     This observatory class defines the instuments and data handling for the
-    spectropgraphs of the Spitzer Space telescope
+    spectropgraphs of the Hubble Space telescope.
     """
 
     def __init__(self):
@@ -77,37 +79,55 @@ class HST(ObservatoryBase):
                     self.instrument_calibration = \
                         factory.instrument_calibration
             else:
-                raise ValueError("HST instrument not recognized, \
-                                 check your init file for the following \
-                                 valid instruments: {}. Aborting loading \
-                                 instrument".format(self.valid_instruments))
+                raise ValueError("HST instrument not recognized, "
+                                 "check your init file for the following "
+                                 "valid instruments: {}. Aborting loading "
+                                 "instrument".format(self.valid_instruments))
         else:
             raise ValueError("CASCADe not initialized, \
                                  aborting loading Observatory")
 
     @property
     def name(self):
-        """Set to 'HST'"""
+        """
+        Name of observatory.
+
+        Returns 'HST'
+        """
         return "HST"
 
     @property
     def location(self):
-        """Set to 'SPACE'"""
+        """
+        Location of observatory.
+
+        Returns 'SPACE'
+        """
         return "SPACE"
 
     @property
     def NAIF_ID(self):
-        """Set to -48"""
+        """
+        NAIF ID of observatory.
+
+        Returns -48 for HST observatory
+        """
         return -48
 
     @property
     def observatory_instruments(self):
-        """Returns {'WFC3'}"""
+        """
+        Instruments of the HST observatory usable with CASCADe.
+
+        Returns {'WFC3'}
+        """
         return{"WFC3"}
 
 
 class HSTWFC3(InstrumentBase):
     """
+    Defines the WFC3 instrument.
+
     This instrument class defines the properties of the WFC3 instrument of
     the Hubble Space Telescope
 
@@ -117,8 +137,8 @@ class HSTWFC3(InstrumentBase):
        - detector subarrays : {'IRSUB128', 'IRSUB256', 'IRSUB512', 'GRISM128',
          'GRISM256', 'GRISM512'}
        - spectroscopic filters : {'G141'}
-       - imaging filters :  {'F139M', 'F132N', 'F167N'}
-       - data type : {'SPECTRUM', 'SPECTRAL_IMAGE'}
+       - imaging filters :  {'F139M', 'F132N', 'F167N', 'F126N'}
+       - data type : {'SPECTRUM', 'SPECTRAL_IMAGE', 'SPECTRAL_CUBE'}
        - observing strategy : {'STARING'}
        - data products : {'SPC', 'flt', 'COE'}
     """
@@ -126,11 +146,11 @@ class HSTWFC3(InstrumentBase):
     __valid_sub_array = {'IRSUB128', 'IRSUB256', 'IRSUB512', 'GRISM128',
                          'GRISM256', 'GRISM512'}
     __valid_spectroscopic_filter = {'G141'}
-    __valid_imaging_filter = {'F139M', 'F132N', 'F167N'}
+    __valid_imaging_filter = {'F139M', 'F132N', 'F167N', 'F126N'}
     __valid_beams = {'A'}
-    __valid_data = {'SPECTRUM', 'SPECTRAL_IMAGE'}
-    __valid_observing_strategy = {'STARING'}
-    __valid_data_products = {'SPC', 'flt', 'COE'}
+    __valid_data = {'SPECTRUM', 'SPECTRAL_IMAGE', 'SPECTRAL_CUBE'}
+    __valid_observing_strategy = {'STARING', 'SCANNING'}
+    __valid_data_products = {'SPC', 'flt', 'ima', 'COE', 'CAE'}
 
     def __init__(self):
         self.par = self.get_instrument_setup()
@@ -148,12 +168,16 @@ class HSTWFC3(InstrumentBase):
     @property
     def name(self):
         """
-        Name of the HST instrument: 'WFC3'
+        Define name of instrument.
+
+        This function returns the tame of the HST instrument: 'WFC3'
         """
         return "WFC3"
 
     def load_data(self):
         """
+        Load observational data.
+
         This function loads the WFC3 data form disk based on the
         parameters defined during the initialization of the TSO object.
         """
@@ -169,14 +193,25 @@ class HSTWFC3(InstrumentBase):
                 else:
                     self._get_background_cal_data()
                     data_back = self._fit_background(data)
+        elif self.par["obs_data"] == 'SPECTRAL_CUBE':
+            data = self.get_spectral_cubes()
+            if self.par['obs_has_backgr']:
+                if not self.par['obs_uses_backgr_model']:
+                    data_back = self.get_spectral_cubes(is_background=True)
+                else:
+                    self._get_background_cal_data()
+                    data_back = self._fit_background(data)
+
         if self.par['obs_has_backgr']:
             return data, data_back
-        else:
-            return data
+        return data
 
     def get_instrument_setup(self):
         """
-        Retrieve all relevant parameters defining the instrument and data setup
+        Get all instrument parameters.
+
+        This funtion retrieves all relevant parameters defining the instrument
+        and observational data setup.
 
         Returns
         -------
@@ -290,6 +325,8 @@ class HSTWFC3(InstrumentBase):
 
     def get_spectra(self, is_background=False):
         """
+        Load spectral(1D) timeseries data.
+
         This function combines all functionallity to read fits files
         containing the (uncalibrated) spectral timeseries, including
         orbital phase and wavelength information
@@ -312,7 +349,6 @@ class HSTWFC3(InstrumentBase):
             Raises an error if no data is found or if certain expected
             fits keywords are not present in the data files.
         """
-
         # get data files
         if is_background:
             # obsid = self.par['obs_backgr_id']
@@ -345,7 +381,6 @@ class HSTWFC3(InstrumentBase):
         mask = np.ma.make_mask_none(spectral_data.shape)
         position = np.zeros((nintegrations))
         time = np.zeros((nintegrations))
-        phase = np.zeros((nintegrations))
         for im, spectral_data_file in enumerate(tqdm(data_files,
                                                      dynamic_ncols=True)):
             # WARNING fits data is single precision!!
@@ -355,18 +390,13 @@ class HSTWFC3(InstrumentBase):
             wavelength_data[:, im] = spectrum['LAMBDA']
             try:
                 mask[:, im] = spectrum['MASK']
-            except:
+            except KeyError:
                 pass
             try:
                 position[im] = fits.getval(spectral_data_file, "POSITION",
                                            ext=0)
             except KeyError:
                 pass
-            try:
-                phase[im] = fits.getval(spectral_data_file, "PHASE", ext=0)
-                hasPhase = True
-            except KeyError:
-                hasPhase = False
             try:
                 time[im] = fits.getval(spectral_data_file, "TIME_BJD", ext=0)
                 hasTimeBJD = True
@@ -375,10 +405,7 @@ class HSTWFC3(InstrumentBase):
                 exptime = fits.getval(spectral_data_file, "EXPTIME", ext=0)
                 expstart = fits.getval(spectral_data_file, "EXPSTART", ext=0)
                 time[im] = expstart + 0.5*(exptime/(24.0*3600.0))
-# BUG FIX
-#        if hasPhase:
-#            idx = np.argsort(phase)
-#        else:
+
         idx = np.argsort(time)
         time = time[idx]
         spectral_data = spectral_data[:, idx]
@@ -386,10 +413,21 @@ class HSTWFC3(InstrumentBase):
         wavelength_data = wavelength_data[:, idx]
         mask = mask[:, idx]
         data_files = [data_files[i] for i in idx]
-        phase = phase[idx]
         position = position[idx]
 
-        if (not hasTimeBJD) and (not hasPhase):
+        try:
+            medPos = fits.getval(data_files[0], "MEDPOS")
+            medPosUnit = fits.getval(data_files[0], "MPUNIT")
+            hasMedPos = True
+        except KeyError:
+            hasMedPos = False
+        try:
+            posUnit = fits.getval(data_files[0], "PUNIT")
+            hasPosUnit = True
+        except KeyError:
+            hasPosUnit = False
+
+        if (not hasTimeBJD):
             # convert to BJD
             ra_target = fits.getval(data_files[0], "RA_TARG")
             dec_target = fits.getval(data_files[0], "DEC_TARG")
@@ -402,15 +440,15 @@ class HSTWFC3(InstrumentBase):
             time_barycentre = time_obs.tdb + ltt_bary_jpl
             time = time_barycentre.jd
 
-        if not hasPhase:
-            # orbital phase
-            phase = (time - self.par['obj_ephemeris']) / self.par['obj_period']
-            phase = phase - np.int(np.max(phase))
-            if np.max(phase) < 0.0:
-                phase = phase + 1.0
+        # orbital phase
+        phase = (time - self.par['obj_ephemeris']) / self.par['obj_period']
+        phase = phase - np.int(np.max(phase))
+        if np.max(phase) < 0.0:
+            phase = phase + 1.0
 
         # set the units of the observations
-        if self.par['obs_data_product'] == 'COE':
+        if ((self.par['obs_data_product'] == 'COE') |
+                (self.par['obs_data_product'] == 'CAE')):
             flux_unit = u.Unit("electron/s")
             wave_unit = u.Unit('micron')
             time_unit = u.day
@@ -420,8 +458,6 @@ class HSTWFC3(InstrumentBase):
             time_unit = u.day
 
         time = time * time_unit
-
-        self._define_convolution_kernel()
 
         SpectralTimeSeries = \
             SpectralDataTimeSeries(wavelength=wavelength_data,
@@ -435,11 +471,41 @@ class HSTWFC3(InstrumentBase):
                                    position=position,
                                    isRampFitted=True,
                                    isNodded=False,
+                                   target_name=target_name,
+                                   dataProduct=self.par['obs_data_product'],
                                    dataFiles=data_files)
+# TEST
+        # make sure that the date units are as "standard" as posible
+        data_unit = (1.0*SpectralTimeSeries.data_unit).decompose().unit
+        SpectralTimeSeries.data_unit = data_unit
+        wave_unit = (1.0*SpectralTimeSeries.wavelength_unit).decompose().unit
+        SpectralTimeSeries.wavelength_unit = wave_unit
+        # To make the as standard as posible, by defaut change to
+        # mean nomalized data units and use micron as wavelength unit
+        mean_signal, _, _ = \
+            sigma_clipped_stats(SpectralTimeSeries.return_masked_array("data"),
+                                sigma=3, maxiters=10)
+        data_unit = u.Unit(mean_signal*SpectralTimeSeries.data_unit)
+        SpectralTimeSeries.data_unit = data_unit
+        SpectralTimeSeries.wavelength_unit = u.micron
+
+        SpectralTimeSeries.period = self.par['obj_period']
+        SpectralTimeSeries.ephemeris = self.par['obj_ephemeris']
+
+        if hasPosUnit:
+            SpectralTimeSeries.position_unit = u.Unit(posUnit)
+        if hasMedPos:
+            SpectralTimeSeries.median_position = medPos
+            SpectralTimeSeries.median_position_unit = u.Unit(medPosUnit)
+
+        self._define_convolution_kernel()
+
         return SpectralTimeSeries
 
     def get_spectral_images(self, is_background=False):
         """
+        Get spectral image timeseries data.
+
         This function combines all functionallity to read fits files
         containing the (uncalibrated) spectral image timeseries, including
         orbital phase and wavelength information
@@ -465,16 +531,14 @@ class HSTWFC3(InstrumentBase):
         # get data files
         if is_background and not self.par['obs_uses_backgr_model']:
             target_name = self.par['obs_backgr_target_name']
-            # obsid = self.par['obs_backgr_id']
         else:
-            # obsid = self.par['obs_id']
             target_name = self.par['obs_target_name']
 
         path_to_files = os.path.join(self.par['obs_path'],
                                      self.par['inst_inst_name'],
                                      target_name,
                                      'SPECTRAL_IMAGES/')
-        data_files = find(self.par['obs_id'] + '*_' +
+        data_files = find('*' + self.par['obs_id'] + '*_' +
                           self.par['obs_data_product']+'.fits', path_to_files)
 
         # check if time series data can be found
@@ -508,17 +572,10 @@ class HSTWFC3(InstrumentBase):
                 spectral_image_cube.append(spectral_image.copy())
                 spectral_image_unc = hdul['ERR'].data
                 spectral_image_unc_cube.append(spectral_image_unc.copy())
-                spectral_image_dq = spectral_image_unc = hdul['DQ'].data
+                spectral_image_dq = hdul['DQ'].data
                 spectral_image_dq_cube.append(spectral_image_dq.copy())
                 spectral_data_files.append(image_file)
                 time.append(expstart + 0.5*(exptime/(24.0*3600.0)))
-                del spectral_image
-                del spectral_image_unc
-                del spectral_image_dq
-                del instrument_fiter
-                del expstart
-                del exptime
-                gc.collect()
 
         if len(spectral_image_cube) == 0:
             raise ValueError("No science data found for the \
@@ -609,8 +666,252 @@ class HSTWFC3(InstrumentBase):
         time_unit = u.day
         time = time * time_unit
 
-        # position = self.wfc3_cal.relative_source_shift['cross_disp_shift']
-        # position = -position-np.median(-position)
+        SpectralTimeSeries = \
+            SpectralDataTimeSeries(wavelength=wave_cal,
+                                   data=spectral_image_cube,
+                                   uncertainty=spectral_image_unc_cube,
+                                   time=phase,
+                                   mask=mask,
+                                   time_bjd=time,
+                                   isRampFitted=True,
+                                   isNodded=False,
+                                   target_name=target_name,
+                                   dataProduct=self.par['obs_data_product'],
+                                   dataFiles=spectral_data_files)
+        if is_background and self.par['obs_uses_backgr_model']:
+            self._get_background_cal_data()
+            SpectralTimeSeries = self._fit_background(SpectralTimeSeries)
+        return SpectralTimeSeries
+
+    def get_spectral_cubes(self, is_background=False):
+        """
+        Load spectral cubes.
+
+        This function combines all functionallity to read fits files
+        containing the (uncalibrated) spectral image cubes timeseries,
+        including orbital phase and wavelength information
+
+        Parameters
+        ----------
+        is_background : `bool`
+            if `True` the data represents an observaton of the IR background
+            to be subtracted of the data of the transit spectroscopy target.
+
+        Returns
+        -------
+        SpectralTimeSeries : `cascade.data_model.SpectralDataTimeSeries`
+            Instance of `SpectralDataTimeSeries` containing all spectroscopic
+            data including uncertainties, time, wavelength and bad pixel mask.
+
+        Raises
+        ------
+        AssertionError, KeyError
+            Raises an error if no data is found or if certain expected
+            fits keywords are not present in the data files.
+        """
+        # get data files
+        if is_background and not self.par['obs_uses_backgr_model']:
+            target_name = self.par['obs_backgr_target_name']
+            # obsid = self.par['obs_backgr_id']
+        else:
+            # obsid = self.par['obs_id']
+            target_name = self.par['obs_target_name']
+
+        path_to_files = os.path.join(self.par['obs_path'],
+                                     self.par['inst_inst_name'],
+                                     target_name,
+                                     'SPECTRAL_IMAGES/')
+        data_files = find('*' + self.par['obs_id'] + '*_' +
+                          self.par['obs_data_product']+'.fits', path_to_files)
+
+        # check if time series data can be found
+        if len(data_files) < 2:
+            raise AssertionError("No Timeseries data found in the \
+                                 directory: {}".format(path_to_files))
+
+        calibration_image_cube = []
+        spectral_image_cube = []
+        spectral_image_unc_cube = []
+        spectral_image_dq_cube = []
+        spectral_sampling_time = []
+        time = []
+        cal_time = []
+        calibration_data_files = []
+        spectral_data_files_in = []
+        spectral_data_files_out = []
+        spectral_sample_number = []
+        spectral_scan_directon = []
+        for im, image_file in enumerate(tqdm(data_files, dynamic_ncols=True)):
+            with fits.open(image_file) as hdul:
+                instrument_fiter = hdul['PRIMARY'].header['FILTER']
+                if instrument_fiter != self.par["inst_filter"]:
+                    if instrument_fiter == self.par["inst_cal_filter"]:
+                        image_file_flt = image_file.replace('_ima', '_flt')
+                        with fits.open(image_file_flt) as hdul_cal:
+                            calibration_image = hdul_cal['SCI'].data
+                            exptime = hdul_cal['PRIMARY'].header['EXPTIME']
+                            expstart = hdul_cal['PRIMARY'].header['EXPSTART']
+                            calibration_image_cube.append(calibration_image.copy())
+                            cal_time.append(expstart+0.5*exptime/(24.0*3600.0))
+                        calibration_data_files.append(image_file_flt)
+                    continue
+                isSparse = self._is_sparse_sequence(hdul)
+                cubeCalType = self._get_cube_cal_type(hdul)
+                nsamp = hdul['PRIMARY'].header['NSAMP']
+                # The angle difference between “SCAN_ANG” and “PA_V3"
+                # determines if it is an up or down scan.
+                # For up scan, this angle is around +90 degrees (91.8),
+                # for down scan, this angle is around -90 degrees (-88.1).
+                scanAng = hdul['PRIMARY'].header['SCAN_ANG']
+                paV3 = hdul['PRIMARY'].header['PA_V3']
+                if scanAng - paV3 > 80:
+                    isUpScan = True
+                else:
+                    isUpScan = False
+                if isSparse:
+                    nsampMax = nsamp-2
+                else:
+                    nsampMax = nsamp-1
+                for isample in range(0, nsampMax):
+                    routtime = hdul[1+5*isample].header['ROUTTIME']
+                    deltaTime = hdul[1+5*isample].header['DELTATIM']
+                    if ((cubeCalType == 'COUNTS') |
+                       (cubeCalType == 'ELECTRONS')):
+                        # Note that there is always a 10 pixel
+                        # border in ima files
+                        spectral_image = \
+                            (hdul[1+5*isample].data[5:-5, 5:-5] -
+                             hdul[1+5*(isample+1)].data[5:-5, 5:-5])/deltaTime
+                        spectral_image_unc = \
+                            np.sqrt(hdul[2+5*isample].data[5:-5, 5:-5]**2 +
+                                    hdul[2+5*(isample+1)].data[5:-5, 5:-5]**2)
+                        spectral_image_unc = spectral_image_unc/deltaTime
+                        spectral_image_dq = \
+                            (hdul[3+5*isample].data[5:-5, 5:-5] |
+                             hdul[3+5*(isample+1)].data[5:-5, 5:-5])
+                    elif ((cubeCalType == 'COUNTRATE') |
+                          (cubeCalType == 'ELECTRONRATE')):
+                        # Note the 10 pixel border in ima files
+                        spectral_image = hdul[1+5*isample].data[5:-5, 5:-5]
+                        spectral_image_unc = hdul[2+5*isample].data[5:-5, 5:-5]
+                        spectral_image_dq = hdul[3+5*isample].data[5:-5, 5:-5]
+                    else:
+                        raise ValueError("Unknown cubeCalType")
+                    spectral_image_cube.append(spectral_image.copy())
+                    spectral_image_unc_cube.append(spectral_image_unc.copy())
+                    spectral_image_dq_cube.append(spectral_image_dq.copy())
+                    spectral_sample_number.append(isample)
+                    spectral_scan_directon.append(isUpScan)
+                    spectral_sampling_time.append(deltaTime)
+                    time.append(routtime - 0.5*deltaTime/86400.0)
+                    image_file_sample = \
+                        image_file.replace('_ima',
+                                           '_sample{0:04d}_ima'.format(isample)
+                                           )
+                    spectral_data_files_out.append(image_file_sample)
+                    spectral_data_files_in.append(image_file)
+
+        if len(spectral_image_cube) == 0:
+            raise ValueError("No science data found for the \
+                             filter: {}".format(self.par["inst_filter"]))
+        if len(calibration_image_cube) == 0:
+            raise ValueError("No calibration image found for the \
+                             filter: {}".format(self.par["inst_cal_filter"]))
+        # WARNING fits data is single precision!!
+        spectral_image_cube = np.array(spectral_image_cube, dtype=np.float64)
+        spectral_image_unc_cube = \
+            np.array(spectral_image_unc_cube, dtype=np.float64)
+        spectral_image_dq_cube = \
+            np.array(spectral_image_dq_cube, dtype=np.int64)
+        calibration_image_cube = \
+            np.array(calibration_image_cube, dtype=np.float64)
+        spectral_sampling_time = np.array(spectral_sampling_time,
+                                          dtype=np.float64)
+        time = np.array(time, dtype=np.float64)
+        cal_time = np.array(cal_time, dtype=np.float64)
+        spectral_sample_number = \
+            np.array(spectral_sample_number, dtype=np.int64)
+        spectral_scan_directon = \
+            np.array(spectral_scan_directon, dtype=np.int64)
+
+        idx_time_sort = np.argsort(time)
+        time = time[idx_time_sort]
+        spectral_sampling_time = spectral_sampling_time[idx_time_sort]
+        spectral_image_cube = spectral_image_cube[idx_time_sort, :, :]
+        spectral_image_unc_cube = spectral_image_unc_cube[idx_time_sort, :, :]
+        spectral_image_dq_cube = spectral_image_dq_cube[idx_time_sort, :, :]
+        spectral_data_files_out = \
+            list(np.array(spectral_data_files_out)[idx_time_sort])
+        spectral_sample_number = spectral_sample_number[idx_time_sort]
+        spectral_scan_directon = spectral_scan_directon[idx_time_sort]
+
+        idx_time_sort = np.argsort(cal_time)
+        cal_time = cal_time[idx_time_sort]
+        calibration_image_cube = calibration_image_cube[idx_time_sort]
+        calibration_data_files = \
+            list(np.array(calibration_data_files)[idx_time_sort])
+
+        nintegrations, mpix, npix = spectral_image_cube.shape
+        nintegrations_cal, ypix_cal, xpix_cal = calibration_image_cube.shape
+
+        mask = ((spectral_image_dq_cube != 0) &
+                (spectral_image_dq_cube != 8192) &
+                (spectral_image_dq_cube != 2048) &
+                (spectral_image_dq_cube != 8192+2048))
+
+        # convert to BJD
+        ra_target = fits.getval(spectral_data_files_in[0], "RA_TARG")
+        dec_target = fits.getval(spectral_data_files_in[0], "DEC_TARG")
+        target_coord = coord.SkyCoord(ra_target, dec_target,
+                                      unit=(u.deg, u.deg), frame='icrs')
+        time_obs = Time(time, format='mjd', scale='utc',
+                        location=('0d', '0d'))
+        cal_time_obs = Time(cal_time, format='mjd', scale='utc',
+                            location=('0d', '0d'))
+        ltt_bary_jpl = time_obs.light_travel_time(target_coord,
+                                                  ephemeris='jpl')
+        time_barycentre = time_obs.tdb + ltt_bary_jpl
+        time = time_barycentre.jd
+        cal_ltt_bary_jpl = cal_time_obs.light_travel_time(target_coord,
+                                                          ephemeris='jpl')
+        cal_time_barycentre = cal_time_obs.tdb + cal_ltt_bary_jpl
+        cal_time = cal_time_barycentre.jd
+
+        # orbital phase
+        phase = (time - self.par['obj_ephemeris']) / self.par['obj_period']
+        phase = phase - np.int(np.max(phase))
+        if np.max(phase) < 0.0:
+            phase = phase + 1.0
+        if np.min(phase) > 0.5:
+            phase = phase - 1.0
+        cal_phase = (cal_time - self.par['obj_ephemeris']) / \
+            self.par['obj_period']
+        cal_phase = cal_phase - np.int(np.max(cal_phase))
+        if np.max(cal_phase) < 0.0:
+            cal_phase = cal_phase + 1.0
+        if np.min(cal_phase) > 0.5:
+            cal_phase = cal_phase - 1.0
+
+        # self._determine_relative_source_position(spectral_image_cube, mask)
+        self._define_convolution_kernel()
+        self._determine_source_position_from_cal_image(
+                calibration_image_cube, calibration_data_files)
+        self._read_grism_configuration_files()
+        self._read_reference_pixel_file()
+        self._get_subarray_size(calibration_image_cube, spectral_image_cube)
+
+        wave_cal = self._get_wavelength_calibration()
+
+        if 'COUNTS' in cubeCalType:
+            flux_unit = u.counts/u.second
+        else:
+            flux_unit = u.electron/u.second
+        spectral_image_cube = spectral_image_cube.T * flux_unit
+        spectral_image_unc_cube = spectral_image_unc_cube.T * flux_unit
+        mask = mask.T
+
+        time_unit = u.day
+        time = time * time_unit
 
         SpectralTimeSeries = \
             SpectralDataTimeSeries(wavelength=wave_cal,
@@ -618,20 +919,82 @@ class HSTWFC3(InstrumentBase):
                                    uncertainty=spectral_image_unc_cube,
                                    time=phase,
                                    mask=mask,
-                                   # position=position,
                                    time_bjd=time,
                                    isRampFitted=True,
                                    isNodded=False,
-                                   dataFiles=spectral_data_files)
+                                   target_name=target_name,
+                                   dataProduct=self.par['obs_data_product'],
+                                   dataFiles=spectral_data_files_out)
+        SpectralTimeSeries.sampleNumber = spectral_sample_number
+        SpectralTimeSeries.scanDirection = spectral_scan_directon
+
         if is_background and self.par['obs_uses_backgr_model']:
             self._get_background_cal_data()
             SpectralTimeSeries = self._fit_background(SpectralTimeSeries)
         return SpectralTimeSeries
 
+    @staticmethod
+    def _get_cube_cal_type(hdul):
+        """
+        Determine the type of applied flux calibration of the spectral cubes.
+
+        This function checks which type of flux calibraiton has been applied
+        to the spetral data cubes and returns the calibration type according
+        to the values of the relevant header keywords found in the fits data
+        files.
+
+        Parameters
+        ----------
+        hdul : 'astropy.io.fits.hdu.hdulist.HDUList'
+
+        Returns
+        -------
+        calType : 'str'
+
+        Raises
+        ------
+        ValueError
+        """
+        unitcorr = hdul['PRIMARY'].header['UNITCORR']
+        flatcorr = hdul['PRIMARY'].header['FLATCORR']
+        bunit = hdul['SCI'].header['BUNIT']
+        if (unitcorr == 'OMIT') & (flatcorr == 'OMIT'):
+            calType = 'COUNTS'
+        elif (unitcorr == 'OMIT') & (flatcorr == 'COMPLETE'):
+            calType = 'ELECTRONS'
+        elif (unitcorr == 'COMPLETE') & (flatcorr == 'OMIT'):
+            calType = 'COUNTRATE'
+        elif (unitcorr == 'COMPLETE') & (flatcorr == 'COMPLETE'):
+            calType = 'ELECTRONRATE'
+        else:
+            raise ValueError("Unknown dataproduct {} in Spectral Cubes. \
+                             Check the UNITCORR and FLATCORR header \
+                             keywords".format(bunit))
+        return calType
+
+    @staticmethod
+    def _is_sparse_sequence(hdul):
+        """
+        Check fo sparse sequence.
+
+        This funtion checks for SPARSE timing sequence. If so, the first
+        readout time is shorter than the rest and should be discarded.
+
+        Parameters
+        ----------
+        hdul : 'astropy.io.fits.hdu.hdulist.HDUList'
+
+        Returns
+        -------
+        isSparse : 'bool'
+        """
+        isSparse = 'SPARS' in hdul['PRIMARY'].header['SAMP_SEQ']
+        return isSparse
+
     def _define_convolution_kernel(self):
         """
         Define the instrument specific convolution kernel which will be used
-        in the correction procedure of bad pixels
+        in the correction procedure of bad pixels.
         """
         if self.par["obs_data"] == 'SPECTRUM':
             kernel = Gaussian1DKernel(4.0, x_size=19)
@@ -651,11 +1014,16 @@ class HSTWFC3(InstrumentBase):
         Defines region on detector which containes the intended target star.
         """
         if self.par["inst_beam"] == 'A':
-            wavelength_min = 1.082*u.micron
-            wavelength_max = 1.678*u.micron
+            wavelength_min = 0.98*1.082*u.micron
+            wavelength_max = 1.02*1.678*u.micron
             # wavelength_min = 1.100*u.micron
             # wavelength_max = 1.670*u.micron
-            roi_width = 15
+            if self.par["obs_mode"] == 'STARING':
+                roi_width = 15
+            elif self.par["obs_mode"] == 'SCANNING':
+                roi_width = 150
+            else:
+                roi_width = 15
         trace = self.spectral_trace.copy()
         mask_min = trace['wavelength'] > wavelength_min
         mask_max = trace['wavelength'] < wavelength_max
@@ -703,6 +1071,8 @@ class HSTWFC3(InstrumentBase):
         """
         _applied_flatfields = {"G141": "uc72113oi_pfl.fits",
                                "G102": "uc721143i_pfl.fits"}
+        _grism_flatfields = {"G141": "u4m1335mi_pfl.fits",
+                             "G102": "u4m1335li_pfl.fits"}
         _zodi_cal_files = {"G141": "zodi_G141_clean.fits",
                            "G102": "zodi_G102_clean.fits"}
         _helium_cal_files = {"G141": "excess_lo_G141_clean.fits",
@@ -713,6 +1083,10 @@ class HSTWFC3(InstrumentBase):
             os.path.join(self.par['obs_cal_path'],
                          self.par['inst_inst_name'],
                          _applied_flatfields[self.par['inst_filter']])
+        calibration_file_name_grism_flatfield = \
+            os.path.join(self.par['obs_cal_path'],
+                         self.par['inst_inst_name'],
+                         _grism_flatfields[self.par['inst_filter']])
         calibration_file_name_zodi = \
             os.path.join(self.par['obs_cal_path'],
                          self.par['inst_inst_name'],
@@ -759,9 +1133,18 @@ class HSTWFC3(InstrumentBase):
             raise FileNotFoundError("Flatfield calibration file {} not \
                             found. \
                             Aborting".format(calibration_file_name_flatfield))
-        zodi = zodi*flatfield
-        helium = helium*flatfield
-        scattered = scattered*flatfield
+        try:
+            grism_flatfield = \
+                fits.getdata(calibration_file_name_grism_flatfield,
+                             ext=0)[:-10, :-10]
+        except FileNotFoundError:
+            raise FileNotFoundError("Flatfield calibration file {} not \
+                            found. \
+                            Aborting".format(calibration_file_name_flatfield))
+
+        zodi = zodi*flatfield/grism_flatfield
+        helium = helium*flatfield/grism_flatfield
+        scattered = scattered*flatfield/grism_flatfield
 
         try:
             self.wfc3_cal.subarray_sizes
@@ -896,6 +1279,8 @@ class HSTWFC3(InstrumentBase):
 
     def _determine_relative_source_position(self, spectral_image_cube, mask):
         """
+        Determine relative pointing movement.
+
         Determine the shift of the spectra (source) relative to the first
         integration. Note that it is important for this to work properly
         to have identified bad pixels and to correct the values using an edge
@@ -973,11 +1358,6 @@ class HSTWFC3(InstrumentBase):
                 ra_target = hdul['PRIMARY'].header['RA_TARG']
                 dec_target = hdul['PRIMARY'].header['DEC_TARG']
                 w = WCS(hdul['SCI'].header)
-                # BUG FIX
-                #            ra_target = fits.getval(image_file, "RA_TARG")
-                #            dec_target = fits.getval(image_file, "DEC_TARG")
-                #            hdu = fits.open(image_file)[1]
-                #            w = WCS(hdu.header)
                 expected_target_position = \
                     w.all_world2pix(ra_target, dec_target, 0)
                 expexted_xcentroid = expected_target_position[0].reshape(1)[0]
@@ -985,7 +1365,7 @@ class HSTWFC3(InstrumentBase):
 
                 mean, median, std = \
                     sigma_clipped_stats(calibration_image_cube[im, :, :],
-                                        sigma=3.0, iters=5)
+                                        sigma=3.0, maxiters=5)
 
                 iraffind = IRAFStarFinder(fwhm=2.0, threshold=30.*std)
 
@@ -1010,7 +1390,7 @@ class HSTWFC3(InstrumentBase):
 
     def _read_grism_configuration_files(self):
         """
-        Gets the relevant data from WFC3 configuration files
+        Gets the relevant data from WFC3 configuration files.
 
         Attributes
         ----------
@@ -1223,12 +1603,12 @@ class HSTWFC3(InstrumentBase):
 
     def _get_wavelength_calibration(self):
         """
-        The functions returns the wavelength calibration
+        The functions returns the wavelength calibration.
 
         Returns
         -------
         wave_cal : `ndarray`
-            Wavelength calibraiton of the observations.
+            Wavelength calibration of the observation.
 
         Raises
         ------
@@ -1260,7 +1640,7 @@ class HSTWFC3(InstrumentBase):
 
     def get_spectral_trace(self):
         """
-        Get spectral trace
+        Get spectral trace.
 
         Returns
         -------
@@ -1329,7 +1709,7 @@ class HSTWFC3(InstrumentBase):
     def _WFC3Trace(xc, yc, DYDX, xref=522, yref=522, xref_grism=522,
                    yref_grism=522, subarray=256, subarray_grism=256):
         """
-        This function defines the spectral trace for the wfc3 grism modes.
+        Define the spectral trace for the wfc3 grism modes.
 
         Parameters
         ----------
@@ -1395,16 +1775,26 @@ class HSTWFC3(InstrumentBase):
 
         Parameters
         ----------
-        xc :
+        xc : 'float'
             X coordinate of direct image centroid
-        yc :
+        yc : 'float'
             Y coordinate of direct image centroid
-        xref
-        yref
-        xref_grism
-        yref_grism
-        subarray
-        subarray_grism
+        xref : 'int'
+            Reference X coordinate of target aquisition image.
+            Default 522
+        yref : 'int'
+            Reference Y coordinate of target aquisition image.
+            Default 522
+        xref_grism : 'int'
+            Reference X coordinate of used grism spectral image.
+            Default 522
+        yref_grism :
+            Reference Y coordinate of used grism spectral image.
+            Default 522
+        subarray :'int'
+            Used subarray of target aquisition image. Default 256
+        subarray_grism : 'int'
+            Used subarray of spectral image. Default 256
 
         Returns
         -------
@@ -1414,22 +1804,17 @@ class HSTWFC3(InstrumentBase):
         Notes
         -----
         For details of the method and coefficient adopted see [1]_ and [2]_.
-        See also:
-
-            http://www.stsci.edu/hst/wfc3/documents/ISRs/WFC3-2016-15.pdf
+        See also: http://www.stsci.edu/hst/wfc3/documents/ISRs/WFC3-2016-15.pdf
 
         In case the direct image and spectral image are not taken with the
         same aperture, the centroid measurement is adjusted according to the
-        table in:
-
-            http://www.stsci.edu/hst/observatory/apertures/wfc3.html
+        table in: http://www.stsci.edu/hst/observatory/apertures/wfc3.html
 
         References
         ----------
         .. [1] Kuntschner et al. (2009)
         .. [2] Wilkins et al. (2014)
         """
-
         # adjust position in case different subarrays are used.
         xc = xc - (xref - xref_grism)
         yc = yc - (yref - yref_grism)

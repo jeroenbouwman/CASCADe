@@ -12,9 +12,9 @@ config = {
     'version': '1.0',
     'install_requires': ['batman-package', 'astropy', 'jplephem', 'scipy',
                          'numpy', 'configparser', 'photutils', 'pandas',
-			             'scikit-learn', 'matplotlib', 'tqdm', 'seaborn',
+	                 'scikit-learn', 'matplotlib', 'tqdm', 'seaborn',
                          'pytest', 'scikit-image', 'sphinx', 'alabaster',
-                         'networkx', 'cython', 'astroquery'],
+                         'networkx', 'cython', 'astroquery', 'numba', 'ray'],
     'packages': ['cascade'],
     'scripts': [],
     'name': 'CASCADe'

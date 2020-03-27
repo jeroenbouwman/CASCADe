@@ -28,29 +28,35 @@ Initialize the TSO object using ini files which define the data, model parameter
                               "cascade_object.ini",
                               "cascade_data_spectral_images.ini", path=path)
 
-Load the observational data
+Load the observational dataset.
 
 .. code-block:: python
 
    tso.execute("load_data")
 
-Subtract the background
+Subtract the background from the spectral images.
 
 .. code-block:: python
 
    tso.execute("subtract_background")
 
-Sigma clip data
+Filter the input data to flag bad pixels and create a cleaned dataset.
 
 .. code-block:: python
 
-   tso.execute("sigma_clip_data")
+   tso.execute("filter_dataset")
 
-Determine the position of source from the spectroscopic data set
+Determine the relative position, rotation and scale change of the source spectrum from the input spectroscopic data set.
 
 .. code-block:: python
 
-   tso.execute("determine_source_position")
+   tso.execute("determine_source_movement")
+
+Correct the wavelength assaciated with the detector pixels for telescope movements.
+
+.. code-block:: python
+
+   tso.execute("correct_wavelengths")
 
 Set the extraction area within which the signal of the exoplanet will be determined
 
@@ -58,11 +64,11 @@ Set the extraction area within which the signal of the exoplanet will be determi
 
    tso.execute("set_extraction_mask")
 
-Extract the spectrum of the Star + planet in an optimal way
+Extract the spectrum of the Star + planet using both optimal as well as aperture extraction.
 
 .. code-block:: python
 
-   tso.execute("optimal_extraction")
+   tso.execute("extract_1d_spectra")
 
 Setup the matrix of regressors used to model the noise
 

@@ -37,15 +37,15 @@ from types import SimpleNamespace
 import warnings
 import numpy as np
 from scipy import interpolate
-from scipy.linalg import pinv2
-from scipy.ndimage import binary_dilation
+# from scipy.linalg import pinv2
+# from scipy.ndimage import binary_dilation
 import astropy.units as u
-from astropy.convolution import interpolate_replace_nans
-from astropy.convolution import Gaussian1DKernel
-from astropy.convolution import convolve as ap_convolve
-from astropy.convolution import Kernel as apKernel
+# from astropy.convolution import interpolate_replace_nans
+# from astropy.convolution import Gaussian1DKernel
+# from astropy.convolution import convolve as ap_convolve
+# from astropy.convolution import Kernel as apKernel
 # from skimage.feature import register_translation
-from astropy.stats import sigma_clip
+# from astropy.stats import sigma_clip
 from astropy.stats import akaike_info_criterion
 from astropy.table import MaskedColumn, Table
 from astropy.visualization import quantity_support
@@ -55,6 +55,7 @@ import seaborn as sns
 from tqdm import tqdm
 from sklearn.preprocessing import RobustScaler
 from sklearn.decomposition import PCA
+from skimage.morphology import binary_dilation
 
 from ..cpm_model import solve_linear_equation
 from ..data_model import SpectralData
@@ -63,8 +64,20 @@ from ..exoplanet_tools import (convert_spectrum_to_brighness_temperature,
 from ..initialize import (cascade_configuration, configurator,
                           default_initialization_path)
 from ..instruments import Observation
-from ..data_model import SpectralDataTimeSeries
+# from ..data_model import SpectralDataTimeSeries
 from ..utilities import write_timeseries_to_fits
+from ..spectral_extraction import define_image_regions_to_be_filtered
+from ..spectral_extraction import iterative_bad_pixel_flagging
+from ..spectral_extraction import directional_filters
+from ..spectral_extraction import sigma_clip_data
+from ..spectral_extraction import sigma_clip_data_cosmic
+from ..spectral_extraction import create_cleaned_dataset
+from ..spectral_extraction import determine_absolute_cross_dispersion_position
+from ..spectral_extraction import register_telescope_movement
+from ..spectral_extraction import correct_wavelength_for_source_movent
+from ..spectral_extraction import create_extraction_profile
+from ..spectral_extraction import extract_spectrum
+from ..spectral_extraction import rebin_to_common_wavelength_grid
 
 __all__ = ['TSOSuite']
 
@@ -93,7 +106,9 @@ class TSOSuite:
     To make instance of TSOSuite class
 
     >>> tso = cascade.TSO.TSOSuite()
+
     """
+
     def __init__(self, *init_files, path=None):
         if path is None:
             path = default_initialization_path
@@ -114,12 +129,12 @@ class TSOSuite:
         return {"initialize": self.initialize_TSO, "reset": self.reset_TSO,
                 "load_data": self.load_data,
                 "subtract_background": self.subtract_background,
-                "sigma_clip_data": self.sigma_clip_data,
-                "create_cleaned_dataset": self.create_cleaned_dataset,
-                "define_eclipse_model": self.define_eclipse_model,
-                "determine_source_position": self.determine_source_position,
+                "filter_dataset": self.filter_dataset,
+                "determine_source_movement": self.determine_source_movement,
+                "correct_wavelengths": self.correct_wavelengths,
                 "set_extraction_mask": self.set_extraction_mask,
-                "optimal_extraction": self.optimal_extraction,
+                "extract_1d_spectra": self.extract_1d_spectra,
+                "define_eclipse_model": self.define_eclipse_model,
                 "select_regressors": self.select_regressors,
                 "calibrate_timeseries": self.calibrate_timeseries,
                 "extract_spectrum": self.extract_spectrum,
@@ -153,10 +168,10 @@ class TSOSuite:
         >>> tso.execute('reset')
         """
         if command not in self.__valid_commands:
-            raise ValueError("Command not recognized, \
-                             check your data reduction command for the \
-                             following valid commands: {}. Aborting \
-                             command".format(self.__valid_commands.keys()))
+            raise ValueError("Command not recognized, "
+                             "check your data reduction command for the "
+                             "following valid commands: {}. Aborting "
+                             "command".format(self.__valid_commands.keys()))
         else:
             if command == "initialize":
                 self.__valid_commands[command](*init_files, path=path)
@@ -261,7 +276,7 @@ class TSOSuite:
             obs_has_backgr = ast.literal_eval(self.cascade_parameters.
                                               observations_has_background)
             if not obs_has_backgr:
-                print("Background subtraction not needed: returning")
+                warnings.warn("Background subtraction not needed: returning")
                 return
         except AttributeError:
             raise AttributeError("backgound switch not defined. \
@@ -272,7 +287,7 @@ class TSOSuite:
             raise AttributeError("No Background data found. \
                                  Aborting background subtraction")
         try:
-            sigma = float(self.cascade_parameters.cpm_sigma)
+            sigma = float(self.cascade_parameters.processing_sigma_filtering)
         except AttributeError:
             raise AttributeError("Sigma clip value not defined. \
                                  Aborting background subtraction")
@@ -295,7 +310,7 @@ class TSOSuite:
         input_background_data = np.ma.array(background.data.data.value,
                                             mask=background.mask)
         sigma_cliped_mask = \
-            self.sigma_clip_data_cosmic(input_background_data, sigma)
+            sigma_clip_data_cosmic(input_background_data, sigma)
         # update mask
         updated_mask = np.ma.mask_or(background.mask, sigma_cliped_mask)
         background.mask = updated_mask
@@ -313,208 +328,878 @@ class TSOSuite:
             median_background
         self.observation.dataset.isBackgroundSubtracted = True
 
-    @staticmethod
-    def sigma_clip_data_cosmic(data, sigma):
+    def filter_dataset(self):
         """
-        Sigma clip of time series data cube allong the time axis.
+        Filter dataset.
 
-        Parameters
-        ---------
-        data : `ndarray`
-            Input data to be cliped, last axis of data to be assumed the time
-        sigma : `float`
-            Sigma value of sigmaclip
+        This task used directional filters (edge preserving) to identify
+        and flag all bad pixels and create a cleaned data set. In addition
+        a data set of filtered (smoothed) spectral images is created.
+
+        To run this task the follwoing configuration parameters nood to be set:
+
+          - cascade_parameters.observations_data
+          - cascade_parameters.processing_sigma_filtering
+
+        In case the input data is a timeseries of 1D spectra addtionally the
+        following parameters need to be set:
+
+          - cascade_parameters.processing_nfilter
+          - cascade_parameters.processing_stdv_kernel_time_axis_filter
+
+        In case of spectral images or cubes, the following configuration
+        parameters are needed:
+
+          - cascade_parameters.processing_max_number_of_iterations_filtering
+          - cascade_parameters.processing_fractional_acceptance_limit_filtering
+          - cascade_parameters.cascade_useMultiProcesses
 
         Returns
         -------
-        sigma_clip_mask : `ndarray`
-            Updated mask for input data with bad data points flagged `(=1)`
-        """
-        # time axis always the last axis in data,
-        # or the first in the transposed array
-        filtered_data = sigma_clip(data.T, sigma=sigma, axis=0)
-        sigma_clip_mask = filtered_data.mask.T
-        return sigma_clip_mask
-
-    def sigma_clip_data(self):
-        """
-        Perform sigma clip on science data to flag bad data.
+        None.
 
         Attributes
-        ---------
-        isSigmaCliped : `bool`
-            Set to `True` if bad data has been masked using sigma clip
+        ----------
+        cpm.cleanedDataset : `SpectralDataTimeSeries`
+            A cleaned version of the spctral timeseries data of the transiting
+            exoplanet system
+        cpm.ilteredDataset : 'SpectralDataTimeSeries'
+            A filtered (smoothed) version of the spctral timeseries data
+            of the transiting exoplanet system
 
         Raises
         ------
         AttributeError
-            Error is raised if sigma value, the filter length or
-            the convolution kernel are not defined.
+            In case needed parameters or data are not set an error is reaised.
 
         Examples
         --------
         To sigma clip the observation data stored in an instance of a TSO
         object, run the following example:
 
-        >>> tso.execute("sigma_clip_data")
+        >>> tso.execute("filter_dataset")
 
         """
         try:
-            data_in = self.observation.dataset
+            datasetIn = copy.deepcopy(self.observation.dataset)
+            ntime = datasetIn.data.shape[-1]
         except AttributeError:
-            raise AttributeError("No Valid data found. \
-                                 Aborting sigma clip on data.")
+            raise AttributeError("No Valid data found. "
+                                 "Aborting filtering of data.")
         try:
-            sigma = float(self.cascade_parameters.cpm_sigma)
+            ROI = self.observation.instrument_calibration.roi.copy()
         except AttributeError:
-            raise AttributeError("Sigma clip value not defined. \
-                                 Aborting sigma clip on data.")
+            raise AttributeError("Region of interest not set. "
+                                 "Aborting filtering of data.")
         try:
-            nfilter = int(self.cascade_parameters.cpm_nfilter)
-            if nfilter % 2 == 0:  # even
-                nfilter += 1
+            sigma = float(self.cascade_parameters.processing_sigma_filtering)
         except AttributeError:
-            raise AttributeError("Filter length for sigma clip not defined. \
-                                 Aborting sigma clip on data.")
+            raise AttributeError("Sigma clip value not defined. "
+                                 "Aborting filtering of data.")
+        try:
+            obs_data = self.cascade_parameters.observations_data
+        except AttributeError:
+            raise AttributeError("No observation data type set. "
+                                 "Aborting filtering of data.")
+        # in case of 2D timeseries data, one has a timeseries of
+        # extracted 1D spectra and simpler filtering is applied.
+        if obs_data == 'SPECTRUM':
+            try:
+                nfilter = int(self.cascade_parameters.processing_nfilter)
+                if nfilter % 2 == 0:  # even
+                    nfilter += 1
+            except AttributeError:
+                raise AttributeError("Filter length for sigma clip not "
+                                     "defined. Aborting filtering of data.")
+            try:
+                kernel = \
+                    self.observation.instrument_calibration.convolution_kernel
+            except AttributeError:
+                raise AttributeError("Convolution kernel not set. "
+                                     "Aborting filtering of data.")
+            try:
+                stdv_kernel_time = \
+                    float(self.cascade_parameters.
+                          processing_stdv_kernel_time_axis_filter)
+            except AttributeError:
+                raise AttributeError("Parameters for time dependenccy "
+                                     "convolution kernel not set. "
+                                     "Aborting filtering of data.")
+        else:
+            try:
+                max_number_of_iterations = \
+                    int(self.cascade_parameters.
+                        processing_max_number_of_iterations_filtering)
+            except AttributeError:
+                raise AttributeError("Maximum number of iterations not set. "
+                                     "Aborting filtering of data.")
+            try:
+                fractional_acceptance_limit = \
+                    float(self.cascade_parameters.
+                          processing_fractional_acceptance_limit_filtering)
+            except AttributeError:
+                raise AttributeError("Fractional ecceptance limit not set. "
+                                     "Aborting filtering of data.")
+            try:
+                useMultiProcesses = \
+                    bool(self.cascade_parameters.
+                         cascade_useMultiProcesses)
+            except AttributeError:
+                raise AttributeError("UseMultiProcesses flag not set. "
+                                     "Aborting filtering of data.")
 
-        # mask cosmic hits
-        temp_data = np.ma.array(data_in.data.data.value, mask=data_in.mask)
-        sigma_cliped_mask = self.sigma_clip_data_cosmic(temp_data, sigma)
-        # update mask
-        updated_mask = np.ma.mask_or(data_in.mask, sigma_cliped_mask,
-                                     shrink=False)
-        data_in.mask = updated_mask
+        # if timeseries data of 1D spctra use simpler filtering
+        if obs_data == 'SPECTRUM':
+            # sigma clip data
+            datasetOut = sigma_clip_data(datasetIn, sigma, nfilter)
+            self.observation.dataset = datasetOut
+            # clean data
+            cleanedDataset = \
+                create_cleaned_dataset(datasetIn, ROI, kernel,
+                                       stdv_kernel_time)
+            try:
+                self.cpm
+            except AttributeError:
+                self.cpm = SimpleNamespace()
+            finally:
+                self.cpm.cleaned_dataset = cleanedDataset
+            return
 
-        dim = data_in.data.shape
-        ndim = data_in.data.ndim
-        mask = data_in.mask.copy()
+        # expand ROI to cube
+        ROIcube = np.tile(ROI.T, (ntime, 1, 1)).T
 
-        for il in range(0+(nfilter-1)//2, dim[0]-(nfilter-1)//2):
-            filter_index = \
-                [slice(il - (nfilter-1)//2, il+(nfilter-1)//2+1, None)] + \
-                [slice(None)]*(ndim-1)
-            filter_index = tuple(filter_index)
-            # reformat to masked array without quantity
-            temp_data = np.ma.array(data_in.data.data.value, mask=data_in.mask)
-            # median along time axis
-            temp_data = np.ma.median(temp_data[filter_index].T, axis=0)
-            # filter in box in the wavelength direction
-            temp_data = sigma_clip(temp_data, sigma=sigma, axis=ndim-2)
-            # specra:  tiling=(dim[1], 1)
-            # spectral images:  tiling=(dim[2], 1, 1)
-            # spectral data cubes: tiling=(dim[3], 1, 1, 1)
-            tiling = dim[ndim-1:] + tuple(np.ones(ndim-1).astype(int))
-            mask_new = np.tile(temp_data.mask, tiling)
-            # add to mask
-            mask[filter_index] = np.ma.mask_or(mask[filter_index], mask_new.T,
-                                               shrink=False)
-        # update mask and set flag
-        updated_mask = np.ma.mask_or(data_in.mask, mask)
-        self.observation.dataset.mask = mask
-        self.observation.dataset.isSigmaCliped = True
+        # directional filters
+        Filters = directional_filters()
+        filter_shape = Filters.shape[0:2]
 
-    def create_cleaned_dataset(self):
+        # all sub regions used to filter the data
+        enumerated_sub_regions = \
+            define_image_regions_to_be_filtered(ROI, filter_shape)
+
+        # filter data
+        (dataset_out, filteredDataset, cleanedDataset) = \
+            iterative_bad_pixel_flagging(
+                datasetIn, ROIcube, Filters,
+                enumerated_sub_regions,
+                sigmaLimit=sigma,
+                maxNumberOfIterations=max_number_of_iterations,
+                fractionalAcceptanceLimit=fractional_acceptance_limit,
+                useMultiProcesses=useMultiProcesses)
+
+        self.observation.dataset = dataset_out
+        try:
+            self.cpm
+        except AttributeError:
+            self.cpm = SimpleNamespace()
+        finally:
+            self.cpm.cleaned_dataset = cleanedDataset
+            self.cpm.filtered_dataset = filteredDataset
+
+    def determine_source_movement(self):
         """
-        Create a cleaned dataset to be used in regresion analysis.
+        This function determines the position of the source in the slit
+        over time and the spectral trace.
+
+        If the spectral trace and position are not already set,
+        this task determines the telescope movement and position.
+        First the absolute cross-dispersion position and
+        initial spectral trace shift are determined. Finally, the relative
+        movement of the telescope us measured  using a cross corelation method.
+
+        To run this task the following configuration parameters need to be
+        set:
+            
+          -  cascade_parameters.processing_quantile_cut_movement
+          -  cascade_parameters.processing_order_trace_movement
+          -  cascade_parameters.processing_nreferences_movement
+          -  cascade_parameters.processing_main_reference_movement
+          -  cascade_parameters.processing_upsample_factor_movement
+          -  cascade_parameters.processing_angle_oversampling_movement
+          -  cascade_parameters.cascade_verbose
+          -  cascade_parameters.cascade_save_path
 
         Attributes
         ----------
-        cleaned_data : `masked quantity`
-            A cleaned version of the spctral timeseries data of the transiting
-            exoplanet system
+        spectral_trace : `ndarray`
+            The trace of the dispersed light on the detector normalized
+            to its median position. In case the data are extracted spectra,
+            the trace is zero.
+        position : `ndarray`
+            Postion of the source on the detector in the cross dispersion
+            directon as a function of time, normalized to the
+            median position.
+        median_position : `float`
+            median source position.
+
+        Raises
+        ------
+        AttributeError
+            Raises error if input observational data or type of data is
+            not properly difined.
+
+        Examples
+        --------
+        To determine the position of the source in the cross dispersion
+        direction from the in the tso object loaded data set, excecute the
+        following command:
+
+        >>> tso.execute("determine_source_movement")
+
+        """
+        try:
+            verbose = bool(self.cascade_parameters.cascade_verbose)
+        except AttributeError:
+            warnings.warn("Verbose flag not set, assuming it to be False.")
+            verbose = False
+        try:
+            savePathVerbose = self.cascade_parameters.cascade_save_path
+            os.makedirs(savePathVerbose, exist_ok=True)
+        except AttributeError:
+            warnings.warn("No save path defined to save verbose output "
+                          "No verbose plots will be saved")
+            savePathVerbose = None
+        try:
+            datasetIn = self.cpm.cleaned_dataset
+            dim = datasetIn.data.shape
+            ndim = datasetIn.data.ndim
+        except AttributeError:
+            raise AttributeError("No valid cleaned data found. "
+                                 "Aborting position determination")
+        try:
+            isNodded = self.observation.dataset.isNodded
+        except AttributeError:
+            raise AttributeError("Observational strategy not properly set. "
+                                 "Aborting position determination")
+        try:
+            spectralTrace = self.observation.spectral_trace
+            position = self.observation.dataset.position
+        except AttributeError:
+            warnings.warn("Position and trace are not both defined yet. "
+                          "Calculating source position and trace.")
+        else:
+            warnings.warn("Position and trace already set in dataset. "
+                          "Using those in further analysis.")
+            try:
+                medianPosition = self.observation.dataset.median_position
+                warnings.warn("Median position already set in dataset. "
+                              "Using this in further analysis.")
+                normalizedPosition = position.data.value.copy()
+                medianSpetralTrace = 0.0
+            except AttributeError:
+                medianSpetralTrace = \
+                    np.median(spectralTrace['positional_pixel'].value)
+                if isNodded:
+                    new_shape = dim[:-1] + (dim[-1]//2, 2)
+                    axis_selection = tuple(np.arange(ndim).astype(int))
+                    temp1 = np.median(np.reshape(position.data.value,
+                                                 new_shape),
+                                      axis=(axis_selection))
+                    normalizedPosition = position.data.value.copy()
+                    nodIndex = [slice(None)]*(ndim-1) + \
+                        [slice(0, dim[-1]//2 - 1, None)]
+                    normalizedPosition[nodIndex] = \
+                        normalizedPosition[nodIndex] - temp1[0]
+                    nodIndex = [slice(None)]*(ndim-1) + \
+                        [slice(dim[-1]//2, dim[-1] - 1, None)]
+                    normalizedPosition[nodIndex] = \
+                        normalizedPosition[nodIndex] - temp1[1]
+                else:
+                    temp1 = np.array([np.median(position.data.value)])
+                    normalizedPosition = position.data.value.copy()
+                    normalizedPosition = normalizedPosition - temp1
+                medianPosition = medianSpetralTrace + temp1
+            self.cpm.spectral_trace = \
+                spectralTrace['positional_pixel'].value - medianSpetralTrace
+            self.cpm.position = normalizedPosition
+            self.cpm.median_position = medianPosition
+            return
+
+        # determine absolute cross-dispersion position and initial spectral
+        # trace shift
+        try:
+            quantileCut = \
+                float(self.cascade_parameters.processing_quantile_cut_movement)
+        except AttributeError:
+            raise AttributeError("quantile_cut_movement parameter not set. "
+                                 "Aborting position determination")
+        try:
+            orderTrace = \
+                int(self.cascade_parameters.processing_order_trace_movement)
+        except AttributeError:
+            raise AttributeError("processing_order_trace_movement parameter "
+                                 "not set. Aborting position determination")
+        verboseSaveFile = 'determine_absolute_cross_dispersion_position.png'
+        verboseSaveFile = os.path.join(savePathVerbose, verboseSaveFile)
+        (newShiftedTrace, newFittedTrace, medianCrossDispersionPosition,
+         initialCorssDispersionShift) = \
+            determine_absolute_cross_dispersion_position(
+                datasetIn,
+                spectralTrace,
+                verbose=verbose,
+                verboseSaveFile=verboseSaveFile,
+                quantileCut=quantileCut,
+                orderTrace=orderTrace)
+
+        # Determine the telescope movement
+        try:
+            nreferences = \
+                int(self.cascade_parameters.processing_nreferences_movement)
+        except AttributeError:
+            raise AttributeError("processing_nreferences_movement parameter "
+                                 "not set. Aborting position determination")
+        try:
+            mainReference = \
+                int(self.cascade_parameters.processing_main_reference_movement)
+        except AttributeError:
+            raise AttributeError("processing_main_reference_movement "
+                                 "parameter not set. Aborting position "
+                                 "determination")
+        try:
+            upsampleFactor = \
+                int(self.cascade_parameters.
+                    processing_upsample_factor_movement)
+        except AttributeError:
+            raise AttributeError("processing_upsample_factor_movement "
+                                 "parameter not set. Aborting position "
+                                 "determination")
+        try:
+            AngleOversampling = \
+                int(self.cascade_parameters.
+                    processing_angle_oversampling_movement)
+        except AttributeError:
+            raise AttributeError("processing_angle_oversampling_movement "
+                                 "parameter not set. Aborting position "
+                                 "determination")
+        verboseSaveFile = 'register_telescope_movement.png'
+        verboseSaveFile = os.path.join(savePathVerbose, verboseSaveFile)
+        spectral_movement = \
+            register_telescope_movement(datasetIn,
+                                        nreferences=nreferences,
+                                        mainReference=mainReference,
+                                        upsampleFactor=upsampleFactor,
+                                        AngleOversampling=AngleOversampling,
+                                        verbose=verbose,
+                                        verboseSaveFile=verboseSaveFile)
+        newShiftedTrace["positional_pixel"] = \
+            newShiftedTrace["positional_pixel"] - \
+            medianCrossDispersionPosition * \
+            newShiftedTrace['positional_pixel'].unit
+        try:
+            self.cpm
+        except AttributeError:
+            self.cpm = SimpleNamespace()
+        finally:
+            self.cpm.spectral_trace = newShiftedTrace
+            self.cpm.spectral_movement = spectral_movement
+            self.cpm.position = spectral_movement["crossDispersionShift"]
+            self.cpm.median_position = medianCrossDispersionPosition
+
+    def correct_wavelengths(self):
+        """
+        Correct wavelengths.
+
+        This task corrects the wavelength solution for each spectral image
+        in the time series.
+        the following configuration parameters have to be set:
+
+            - cascade_parameters.cascade_verbose
+            - cascade_parameters.observations_data
+
+        The following product from the determine_source_movement task is
+        required:
+
+            - cpm.spectral_movement
+
+        Returns
+        -------
+        None.
+
+        Attributes
+        ----------
+        observation.dataset : `SpectralDataTimeSeries`
+            Updated spectral dataset.
+        cpm.filtered_dataset : `SpectralDataTimeSeries`
+            Updated cleaned dataset
+        cpm.cleaned_dataset : `SpectralDataTimeSeries`
+            Updated filtered dataset
+
+        Raises
+        ------
+        AttributeError
+            Raises error if input observational data or type of data is
+            not properly difined.
+
+        Note
+        ----
+        1D spectra are assumed to be already corrected.
+
+        Examples
+        --------
+        To correct the wavelengths for the observed, cleaned and
+        filtered datasets, excecute the following command:
+
+        >>> tso.execute("correct_wavelengths")
+
+        """
+        try:
+            verbose = bool(self.cascade_parameters.cascade_verbose)
+        except AttributeError:
+            warnings.warn("Verbose flag not set, assuming it to be False.")
+            verbose = False
+        try:
+            savePathVerbose = self.cascade_parameters.cascade_save_path
+            os.makedirs(savePathVerbose, exist_ok=True)
+        except AttributeError:
+            warnings.warn("No save path defined to save verbose output "
+                          "No verbose plots will be saved")
+            savePathVerbose = None
+        try:
+            datasetIn = self.observation.dataset
+        except AttributeError:
+            raise AttributeError("No valid data found. "
+                                 "Aborting position determination")
+        try:
+            obs_data = self.cascade_parameters.observations_data
+        except AttributeError:
+            raise AttributeError("No observation data type set. "
+                                 "Aborting position determination")
+        if obs_data == 'SPECTRUM':
+            warnings.warn("Spectral time series of 1D spectra are assumed "
+                          "to be movement corrected. Skipping the "
+                          "correct_wavelengths pipeline step.")
+            return
+        else:
+            try:
+                spectralMovement = self.cpm.spectral_movement
+            except AttributeError:
+                raise AttributeError("No information on the telescope "
+                                     "movement found. Did you run the "
+                                     "determine_source_movement pipeline "
+                                     "step? Aborting wavelength correction")
+            else:
+                try:
+                    isMovementCorrected = datasetIn.isMovementCorrected
+                except AttributeError:
+                    isMovementCorrected = False
+                # Correct the wavelength images for movement if not already
+                # corrected
+                if isMovementCorrected is not True:
+                    verboseSaveFile = \
+                        'correct_wavelength_for_source_movent' + \
+                        '_flagged_data.png'
+                    verboseSaveFile = os.path.join(savePathVerbose,
+                                                   verboseSaveFile)
+                    datasetIn = correct_wavelength_for_source_movent(
+                            datasetIn,
+                            spectralMovement,
+                            verbose=verbose,
+                            verboseSaveFile=verboseSaveFile)
+                    self.observation.dataset = datasetIn
+                else:
+                    warnings.warn("Data already corrected for telescope "
+                                  "movement. Skipping correction step")
+                try:
+                    cleanedDataset = self.cpm.cleaned_dataset
+                except AttributeError:
+                    warnings.warn("No valid cleaned data found. "
+                                  "Skipping wavelength correction step")
+                else:
+                    try:
+                        isMovementCorrected = \
+                            cleanedDataset.isMovementCorrected
+                    except AttributeError:
+                        isMovementCorrected = False
+                    # Correct the wavelength images for movement if not already
+                    # corrected
+                    if isMovementCorrected is not True:
+                        verboseSaveFile = \
+                            'correct_wavelength_for_source_movent' + \
+                            '_cleaned_data.png'
+                        verboseSaveFile = os.path.join(savePathVerbose,
+                                                       verboseSaveFile)
+                        cleanedDataset = \
+                            correct_wavelength_for_source_movent(
+                                cleanedDataset,
+                                spectralMovement,
+                                verbose=verbose,
+                                verboseSaveFile=verboseSaveFile)
+                        self.cpm.cleaned_dataset = cleanedDataset
+
+                try:
+                    filteredDataset = self.cpm.filtered_dataset
+                except AttributeError:
+                    warnings.warn("No valid filtered data found. "
+                                  "Skipping wavelength correction step")
+                else:
+                    try:
+                        isMovementCorrected = \
+                            filteredDataset.isMovementCorrected
+                    except AttributeError:
+                        isMovementCorrected = False
+                    # Correct the wavelength images for movement if not already
+                    # corrected
+                    if isMovementCorrected is not True:
+                        verboseSaveFile = \
+                            'correct_wavelength_for_source_movent' + \
+                            '_filtered_data.png'
+                        verboseSaveFile = os.path.join(savePathVerbose,
+                                                       verboseSaveFile)
+                        filteredDataset = \
+                            correct_wavelength_for_source_movent(
+                                filteredDataset,
+                                spectralMovement,
+                                verbose=verbose,
+                                verboseSaveFile=verboseSaveFile)
+                        self.cpm.filtered_dataset = filteredDataset
+
+    def set_extraction_mask(self):
+        """
+        Set mask which defines the area of interest within which
+        a transit signal will be determined. The mask is set along the
+        spectral trace with a fixed width in pixels specified by the
+        processing_nextraction parameter.
+
+        The following configureation parameters need to be set:
+
+          - cascade_parameters.processing_nextraction
+
+        The following data product set by the determine_source_movement task
+        is needed for this task to be able to run:
+
+          - cpm.spectral_trace
+          - cpm.position
+          - cpm.med_position
+
+        Returns
+        -------
+        None
+
+        Attributes
+        ----------
+        cpm.extraction_mask : `ndarray`
+            In case data are Spectra : 1D mask
+            In case data are Spectral images or cubes:  cube of 2D mask
+
+        Raises
+        ------
+        AttributeError
+            Raises error if the width of the mask or the source position
+            and spectral trace are not defined.
+
+        Notes
+        -----
+        The extraction mask is defined such that all True values are not used
+        following the convention of numpy masked arrays
+
+        Examples
+        --------
+        To set the extraction mask, which will define the sub set of the data
+        from which the planetary spectrum will be determined, sexcecute the
+        following command:
+
+        >>> tso.execute("set_extraction_mask")
+
+        """
+        try:
+            nExtractionWidth = \
+                int(self.cascade_parameters.processing_nextraction)
+            if nExtractionWidth % 2 == 0:  # even
+                nExtractionWidth += 1
+        except AttributeError:
+            raise AttributeError("The width of the extraction mask "
+                                 "is not defined. Check the CPM init file "
+                                 "if the processing_nextraction parameter is "
+                                 "set. Aborting setting extraction mask")
+        try:
+            spectralTrace = self.cpm.spectral_trace
+            position = self.cpm.position
+            medianPosition = self.cpm.median_position
+        except AttributeError:
+            raise AttributeError("No spectral trace or source position \
+                                 found. Aborting setting extraction mask")
+        try:
+            datasetIn = self.observation.dataset
+            dim = datasetIn.data.shape
+        except AttributeError:
+            raise AttributeError("No Valid data found. \
+                                 Aborting setting extraction mask")
+        try:
+            ROI = self.observation.instrument_calibration.roi
+        except AttributeError:
+            raise AttributeError("No ROI defined. "
+                                 "Aborting setting extraction mask")
+        try:
+            obs_data = self.cascade_parameters.observations_data
+        except AttributeError:
+            raise AttributeError("No observation data type set. "
+                                 "Aborting setting extraction mask")
+        # if spectral time series of 1D speectra, the extraction mask is
+        # simply the ROI for each time step
+        if obs_data == 'SPECTRUM':
+            ExtractionMask = np.tile(ROI.T, (dim[-1], 1)).T
+            self.cpm.extraction_mask = [ExtractionMask[..., 0]]
+            return
+        else:
+            ExtractionMask = np.zeros(dim, dtype=bool)
+
+            for itime, (image, pos) in enumerate(
+                    zip(ExtractionMask.T, (position+medianPosition))):
+                image.T[:, np.round(spectralTrace['positional_pixel'].value +
+                                    pos).astype(int)] = True
+                selim = np.zeros((nExtractionWidth, nExtractionWidth))
+                selim[nExtractionWidth//2, :] = 1.0
+                image_new = binary_dilation(image.T, selim)
+                ExtractionMask[..., itime] = ~image_new
+
+            self.cpm.extraction_mask = ExtractionMask
+
+    def extract_1d_spectra(self):
+        """
+        Extract 1d spectra from spectral images.
+
+        This task extracts the 1D spectra from spectral images of cubes.
+        For this both an aperture extraction as well as an optimal extraction
+        is performed. For the aperture extraction, a constant width mask
+        along the spectral trace is used. For optimal extraction we use the
+        definition by Horne 1986 [1]_ though our implementation to derive the
+        extraction profile and flagging of 'bad' pixels is different.
+
+        To run this task the following tasks have to be executed prior to
+        this tasks:
+
+          - filter_dataset
+          - determine_source_movement
+          - correct_wavelengths
+          - set_extraction_mask
+
+        The following configuration parameters are required:
+
+          - cascade_parameters.cascade_save_path
+          - cascade_parameters.observations_data
+          - cascade_parameters.cascade_verbose
+          - cascade_parameters.processing_rebin_factor_extract1d
+          - observation.dataset_parameters
+
+        Returns
+        -------
+        None.
+
+        Attributes
+        ----------
+        observation..dataset_optimal_extracted : `SpectralDataTimeSeries`
+            Time series of optimally extracted 1D spectra.
+        observation.dataset_aperture_extracted : `SpectralDataTimeSeries`
+            Time series of apreture extracted 1D spectra.
+        cpm.extraction_profile : 'ndarray'
+        cpm.extraction_profile_mask : 'ndarray' of type 'bool'
 
         Raises
         ------
         AttributeError, AssertionError
-            An error is raised if the data set to be cleaned has not been
-            background subtracted or no sigma clip has been run first to
-            identify those pixels to be cleaned.
+            An error is raised if the data and cleaned data sets are not
+            defined, the source position is not determined or of the
+            parameters for the optimal extraction task are not set in the
+            initialization files.
+
+        Notes
+        -----
+        We use directional filtering rather than a polynomial fit along the
+        trace as in the original paper by Horne 1986 to determine the
+        extraction profile
+
+        References
+        ----------
+        .. [1] Horne 1986, PASP 98, 609
 
         Examples
         --------
-        To create a cleaned version of the spectral data stored in an instance
-        of a TSO object run:
+        To extract the 1D spectra of the target, excecute the
+        following command:
 
-        >>> tso.execute("create_cleaned_dataset")
+        >>> tso.execute("extract_1d_spectra")
 
         """
         try:
-            dataset = self.observation.dataset
+            obs_data = self.cascade_parameters.observations_data
         except AttributeError:
-            raise AttributeError("Spectral dataset not found. Aborting "
-                                 "the creation of a cleaned dataset.")
+            raise AttributeError("No observation data type set. "
+                                 "Aborting optimal extraction")
+        # do not continue if data are already 1d spectra
+        if obs_data == "SPECTRUM":
+            warnings.warn("Dataset is already a timeseries of 1d spectra "
+                          "Aborting extraction of 1d spectra.")
+            return
+
         try:
-            obs_has_backgr = ast.literal_eval(self.cascade_parameters.
-                                              observations_has_background)
-            if obs_has_backgr:
-                assert dataset.isBackgroundSubtracted is True
-            assert dataset.isSigmaCliped is True
-        except (AttributeError, AssertionError):
-            raise AssertionError("Spectral dataset not background subtracted "
-                                 "and/or sigma clipped. Aborting the "
-                                 "creation of a cleaned dataset.")
-        try:
-            roi_mask = self.observation.instrument_calibration.roi.copy()
+            verbose = bool(self.cascade_parameters.cascade_verbose)
         except AttributeError:
-            raise AttributeError("Region of interest not set. Aborting the "
-                                 "creation of a cleaned dataset.")
+            warnings.warn("Verbose flag not set, assuming it to be False.")
+            verbose = False
         try:
-            kernel = self.observation.instrument_calibration.convolution_kernel
+            datasetIn = self.observation.dataset
+            dim = datasetIn.data.shape
+            ndim = datasetIn.data.ndim
         except AttributeError:
-            raise AttributeError("Convolution kernel not set. Aborting the "
-                                 "creation of a cleaned dataset.")
+            raise AttributeError("No valid dataset found. "
+                                 "Aborting extraction of 1d spectra.")
         try:
-            stdv_kernel_time = float(self.cascade_parameters.
-                                     cpm_stdv_kernel_time_axis)
+            assert (datasetIn.isBackgroundSubtracted is True), \
+               ("Data not background subtracted. Aborting spectral extraction")
         except AttributeError:
-            raise AttributeError("Parameters for time dependenccy "
-                                 "convolution kernel not set. "
-                                 "Aborting optimal extraction.")
+            raise AttributeError("Unclear if data is background subtracted as "
+                                 "isBackgroundSubtracted flag is not set."
+                                 "Aborting extraction of 1d spectra.")
+        try:
+            assert (datasetIn.isMovementCorrected is True), \
+               ("Data not movement correced. Aborting spectral extraction")
+        except AttributeError:
+            raise AttributeError("Unclear if data is movement corrected as "
+                                 "isMovementCorrected flag is not set."
+                                 "Aborting extraction of 1d spectra.")
+        try:
+            assert (datasetIn.isSigmaCliped is True), \
+                ("Data not sigma clipped. Aborting spectral extraction")
+        except AttributeError:
+            raise AttributeError("Unclear if data is filtered as "
+                                 "isSigmaCliped flag is not set."
+                                 "Aborting extraction of 1d spectra.")
+        try:
+            cleanedDataset = self.cpm.cleaned_dataset
+        except AttributeError:
+            raise AttributeError("No valid cleaned dataset found. "
+                                 "Aborting extraction of 1d spectra.")
+        try:
+            filteredDataset = self.cpm.filtered_dataset
+        except AttributeError:
+            raise AttributeError("No valid filtered dataset found. "
+                                 "Aborting extraction of 1d spectra.")
+        try:
+            ROI = self.observation.instrument_calibration.roi
+        except AttributeError:
+            raise AttributeError("No ROI defined. "
+                                 "Aborting extraction of 1d spectra.")
+        try:
+            extractionMask = self.cpm.extraction_mask
+        except AttributeError:
+            raise AttributeError("No extraction mask defined. "
+                                 "Aborting extraction of 1d spectra.")
+        try:
+            spectralMovement = self.cpm.spectral_movement
+            medianCrossDispersionPosition = self.cpm.median_position
+        except AttributeError:
+            raise AttributeError("No telecope movement values defined. "
+                                 "Aborting extraction of 1d spectra.")
+        try:
+            rebinFactor = \
+                float(self.cascade_parameters.
+                      processing_rebin_factor_extract1d)
+        except AttributeError:
+            raise AttributeError("The processing_rebin_factor_extract1d "
+                                 "configuration parameter is not defined. "
+                                 "Aborting extraction of 1d spectra.")
+        try:
+            savePathVerbose = self.cascade_parameters.cascade_save_path
+            os.makedirs(savePathVerbose, exist_ok=True)
+        except AttributeError:
+            warnings.warn("No save path defined to save verbose output "
+                          "No verbose plots will be saved")
+            savePathVerbose = None
 
-        spectral_image_using_roi = np.ma.array(dataset.data.data.value.copy(),
-                                               mask=dataset.mask.copy(),
-                                               fill_value=np.nan)
+        # create extraction profile
+        extractionProfile = create_extraction_profile(filteredDataset)
 
-        ndim = spectral_image_using_roi.ndim
-        image_shape = spectral_image_using_roi.shape
-        data_unit = dataset.data.data.unit
+        roiCube = np.tile(ROI.T, (dim[-1],) + (1,)*(ndim-1)).T
+        roiCube = roiCube | extractionMask
 
-        if ndim == 2:
-            RS = RobustScaler(with_scaling=True)
-            data_scaled = RS.fit_transform(spectral_image_using_roi.filled().T)
-            spectral_image_using_roi = \
-                np.ma.array(data_scaled.T, mask=spectral_image_using_roi.mask)
+        # extract the 1D spectra using both optimal extration as well as
+        # aperture extraction
+        verboseSaveFile = 'extract_spectrum' + \
+            '_optimally_extracted_data.png'
+        verboseSaveFile = os.path.join(savePathVerbose, verboseSaveFile)
+        optimallyExtractedDataset = \
+            extract_spectrum(datasetIn, roiCube,
+                             extractionProfile=extractionProfile,
+                             optimal=True,
+                             verbose=verbose,
+                             verboseSaveFile=verboseSaveFile)
+        verboseSaveFile = 'extract_spectrum' + \
+            '_aperture_extracted_data.png'
+        verboseSaveFile = os.path.join(savePathVerbose, verboseSaveFile)
+        apertureExtractedDataset = \
+            extract_spectrum(cleanedDataset, roiCube, optimal=False,
+                             verbose=verbose,
+                             verboseSaveFile=verboseSaveFile)
 
-        spectral_image_using_roi[roi_mask] = 0.0
-        spectral_image_using_roi.mask[roi_mask] = False
-        spectral_image_using_roi.set_fill_value(np.nan)
+        # rebin the spectra to single wavelength per row
+        verboseSaveFile = 'rebin_to_common_wavelength_grid' + \
+            '_optimally_extracted_data.png'
+        verboseSaveFile = os.path.join(savePathVerbose, verboseSaveFile)
+        rebinnedOptimallyExtractedDataset = \
+            rebin_to_common_wavelength_grid(optimallyExtractedDataset,
+                                            spectralMovement['referenceIndex'],
+                                            nrebin=rebinFactor,
+                                            verbose=verbose,
+                                            verboseSaveFile=verboseSaveFile)
+        verboseSaveFile = 'rebin_to_common_wavelength_grid' + \
+            '_aperture_extracted_data.png'
+        verboseSaveFile = os.path.join(savePathVerbose, verboseSaveFile)
+        rebinnedApertureExtractedDataset = \
+            rebin_to_common_wavelength_grid(apertureExtractedDataset,
+                                            spectralMovement['referenceIndex'],
+                                            nrebin=rebinFactor,
+                                            verbose=verbose,
+                                            verboseSaveFile=verboseSaveFile)
 
-        kernel_size = kernel.shape[0]
-        kernel_1d = Gaussian1DKernel(stdv_kernel_time, x_size=kernel_size)
-        kernel = np.repeat(np.expand_dims(kernel, axis=ndim-1),
-                           (kernel_size), axis=ndim-1)
-        selection = tuple([slice(None)])+tuple([None])*(ndim-1)
-        kernel = kernel*kernel_1d.array[selection].T
-        kernel = kernel/np.sum(kernel)
+        # add position info to data set
+        nwave, ntime = rebinnedOptimallyExtractedDataset.data.shape
+        rebinnedOptimallyExtractedDataset.position = \
+            np.tile(spectralMovement['crossDispersionShift'], (nwave, 1))*u.pix
+        rebinnedOptimallyExtractedDataset.position_unit = u.pix
+        rebinnedOptimallyExtractedDataset.median_position = \
+            medianCrossDispersionPosition
 
-        cleaned_spectral_image_using_roi = \
-            interpolate_replace_nans(spectral_image_using_roi.filled(),
-                                     kernel, boundary='extend')
+        nwave, ntime = rebinnedApertureExtractedDataset.data.shape
+        rebinnedApertureExtractedDataset.position = \
+            np.tile(spectralMovement['crossDispersionShift'], (nwave, 1))*u.pix
+        rebinnedApertureExtractedDataset.position_unit = u.pix
+        rebinnedApertureExtractedDataset.median_position = \
+            medianCrossDispersionPosition
 
-        if ndim == 2:
-            cleaned_spectral_image_using_roi = \
-                RS.inverse_transform(cleaned_spectral_image_using_roi.T).T
+        try:
+            datasetParametersDict = self.observation.dataset_parameters
+        except AttributeError:
+            warnings.warn("No save path for extracted 1D spectra can"
+                          "be defined due to missing "
+                          "observation.dataset_parameters attribute "
+                          "Aborting saving 1D spectra.")
+        else:
+            savePathData = \
+                os.path.join(datasetParametersDict['obs_path'],
+                             datasetParametersDict['inst_inst_name'],
+                             datasetParametersDict['obs_target_name'],
+                             'SPECTRA/')
+            os.makedirs(savePathData, exist_ok=True)
+            write_timeseries_to_fits(rebinnedOptimallyExtractedDataset,
+                                     savePathData)
+            write_timeseries_to_fits(rebinnedApertureExtractedDataset,
+                                     savePathData)
 
         try:
             self.cpm
         except AttributeError:
             self.cpm = SimpleNamespace()
         finally:
-            mask = np.repeat(roi_mask[..., np.newaxis], image_shape[-1],
-                             axis=ndim-1)
-            self.cpm.cleaned_data = \
-                np.ma.array(cleaned_spectral_image_using_roi*data_unit,
-                            mask=mask)
+            self.cpm.extraction_profile = extractionProfile
+            self.cpm.extraction_profile_mask = roiCube
+        try:
+            self.observation
+        except AttributeError:
+            self.observation = SimpleNamespace()
+        finally:
+            self.observation.dataset_optimal_extracted = \
+                rebinnedOptimallyExtractedDataset
+            self.observation.dataset_aperture_extracted = \
+                rebinnedApertureExtractedDataset
 
     def define_eclipse_model(self):
         """
@@ -624,712 +1309,6 @@ class TSOSuite:
         self.model.light_curve_interpolated = lcmodel_list
         self.model.calibration_signal = lcmodel_cal_list
         self.model.transittype = lc_model.par['transittype']
-
-    def determine_source_position(self):
-        """
-        This function determines the position of the source in the slit
-        over time and the spectral trace.
-
-        We check if trace and position are already set, if not, determine them
-        from the data by deriving the "center of light" of the dispersed
-        light.
-
-        Attributes
-        ----------
-        spectral_trace : `ndarray`
-            The trace of the dispersed light on the detector normalized
-            to its median position. In case the data are extracted spectra,
-            the trace is zero.
-        position : `ndarray`
-            Postion of the source on the detector in the cross dispersion
-            directon as a function of time, normalized to the
-            median position.
-        median_position : `float`
-            median source position.
-
-        Raises
-        ------
-        AttributeError, AssertionError
-            Raises error if input observational data or type of data is
-            not properly difined. Also raises arror if data is not sigma cliped
-
-        Examples
-        --------
-        To determine the position of the source in the cross dispersion
-        direction from the in the tso object loaded data set, excecute the
-        following command:
-
-        >>> tso.execute("determine_source_position")
-
-        """
-        try:
-            data_in = self.observation.dataset
-            dim = self.observation.dataset.data.shape
-            ndim = self.observation.dataset.data.ndim
-            roi = self.observation.instrument_calibration.roi
-#            data_in = self.cpm.cleaned_data
-#            dim = data_in.shape
-#            ndim = data_in.data.ndim
-        except AttributeError:
-            raise AttributeError("No Valid data found. \
-                                 Aborting position determination")
-        try:
-            isNodded = self.observation.dataset.isNodded
-        except AttributeError:
-            raise AttributeError("Observational strategy not properly set. \
-                                 Aborting position determination")
-        try:
-            spectral_trace = self.observation.spectral_trace
-            position = self.observation.dataset.position
-        except AttributeError:
-            print("Position and trace are not both defined yet. Calculating.")
-        else:
-            print("Position and trace already set in dataset. \
-                  Using that in further analysis.")
-            try:
-                self.cpm
-            except AttributeError:
-                self.cpm = SimpleNamespace()
-            finally:
-                temp0 = np.median(spectral_trace['positional_pixel'].value)
-                if isNodded:
-                    new_shape = dim[:-1] + (dim[-1]//2, 2)
-                    axis_selection = tuple(np.arange(ndim).astype(int))
-                    temp1 = np.median(np.reshape(position.data.value,
-                                                 new_shape),
-                                      axis=(axis_selection))
-                    normalized_pos = position.data.value.copy()
-                    nod_index = [slice(None)]*(ndim-1) + \
-                        [slice(0, dim[-1]//2 - 1, None)]
-                    normalized_pos[nod_index] = \
-                        normalized_pos[nod_index] - temp1[0]
-                    nod_index = [slice(None)]*(ndim-1) + \
-                        [slice(dim[-1]//2, dim[-1] - 1, None)]
-                    normalized_pos[nod_index] = \
-                        normalized_pos[nod_index] - temp1[1]
-                else:
-                    temp1 = np.array([np.median(position.data.value)])
-                    normalized_pos = position.data.value.copy()
-                    normalized_pos = normalized_pos - temp1
-                self.cpm.spectral_trace = \
-                    spectral_trace['positional_pixel'].value - temp0
-                self.cpm.position = normalized_pos
-                self.cpm.median_position = temp0 + temp1
-            return
-        try:
-            sigma_clip_flag = self.observation.dataset.isSigmaCliped
-        except AttributeError:
-            raise AttributeError("Data not sigma clipped, which can result \
-                                 in wrong positions")
-        else:
-            if not sigma_clip_flag:
-                raise AssertionError("Data not sigma clipped, \
-                                     which can result in wrong positions")
-        try:
-            ramp_fitted_flag = self.observation.dataset.isRampFitted
-        except AttributeError:
-            raise AttributeError("type of data not properly set, \
-                                 or not consistent with spectral images \
-                                 or cubes. Aborting position determination")
-        if not ramp_fitted_flag:
-            # determine ramp slope from 2 point difference and collapse image
-            # in detector cubes, last index is time,
-            # and the prelast index samples up the ramp
-            data_use = np.ma.median(data_in.data, axis=ndim-2)
-#            data_use = np.ma.median(data_in, axis=ndim-2)
-            data_use[roi] = 0.0
-            data_use.mask[roi] = True
-            time_in = self.observation.dataset.time.data.value
-            time_use = np.ma.median(time_in, axis=ndim-2)
-        else:
-            data_use = np.ma.array(data_in.data.data.value.copy(),
-                                   mask=data_in.data.mask.copy())
-            data_use[roi] = 0.0
-            data_use.mask[roi] = True
-#            data_use = data_in
-            time_in = self.observation.dataset.time.data.value
-            time_use = time_in
-
-        npix, mpix, nintegrations = data_use.shape
-        # check if data is nodded or not
-        if isNodded:
-            time_idx = [np.arange(nintegrations//2).astype(int),
-                        np.arange(nintegrations//2).astype(int) +
-                        nintegrations//2]
-        else:
-            time_idx = [np.arange(nintegrations).astype(int)]
-        # determine source position in time and source trace for
-        # each nod seperately.
-        pos_list = []
-        trace_list = []
-        median_pos_list = []
-        for inod in time_idx:
-            nint_use = inod.shape[0]
-            pos_trace = np.ma.zeros((npix))
-            pos = np.ma.zeros((nint_use))
-
-            prof_temp = np.ma.median(data_use[:, :, inod], axis=2)
-            grid_temp = np.linspace(0, mpix-1, num=mpix)
-            array_temp = np.ma.array(grid_temp, dtype=np.float64)
-            tile_temp = np.tile(array_temp, (npix, 1))
-            pos_trace = np.ma.sum(prof_temp * tile_temp, axis=1) / \
-                np.ma.sum(prof_temp, axis=1)
-            weight = np.ma.swapaxes(np.tile(array_temp,
-                                            (nint_use, npix, 1)).T, 0, 1)
-
-            pos = np.ma.median((np.ma.sum(data_use[:, :, inod] *
-                                          weight, axis=1) /
-                                np.ma.sum(data_use[:, :, inod], axis=1)) /
-                               np.tile(pos_trace[:, None], (1, nint_use)),
-                               axis=0)
-            # add 0.5 pix to shift position to center of pixel
-            pos_trace = pos_trace+0.5
-
-            pos_slit = pos * np.ma.median(pos_trace) - np.ma.median(pos_trace)
-            pos_list.append(pos_slit.data)
-            median_pos_list.append(np.ma.median(pos_trace))
-            pos_trace = pos_trace - np.ma.median(pos_trace)
-            trace_list.append(pos_trace.data)
-
-        pos_slit = np.asarray([item for sublist in pos_list
-                               for item in sublist], dtype=np.float64)
-        median_pos = np.asarray(median_pos_list, dtype=np.float64)
-        # if nodded combine traces.
-        if len(trace_list) == 2:
-            pos_trace = np.squeeze(np.mean(trace_list, axis=0))
-        else:
-            pos_trace = np.squeeze(np.asarray(trace_list, dtype=np.float64))
-
-        # make sure position is given on time grid acociated with data
-        f = interpolate.interp1d(time_use[0, 0, :], pos_slit,
-                                 fill_value='extrapolate')
-        pos_slit_interpolated = f(time_in)
-
-        try:
-            self.cpm
-        except AttributeError:
-            self.cpm = SimpleNamespace()
-        finally:
-            try:
-                spectral_trace = self.observation.spectral_trace
-            except AttributeError:
-                print("Using calculated trace")
-                self.cpm.spectral_trace = pos_trace
-            else:
-                temp0 = np.median(spectral_trace['positional_pixel'].value)
-                self.cpm.spectral_trace = \
-                    spectral_trace['positional_pixel'].value - temp0
-            self.cpm.position = pos_slit_interpolated
-            self.cpm.median_position = median_pos
-
-    def set_extraction_mask(self):
-        """
-        Set mask which defines the area of interest within which
-        a transit signal will be determined. The mask is set along the
-        spectral trace with a pixel width of nExtractionWidth
-
-        Attributes
-        ----------
-        nExtractionWidth : `int`
-            The width of the extraction aperture , cetered on the
-            spectral trace of the source. In case of 1d spectral data, a
-            width of 1 will be assumed.
-        extraction_mask : `ndarray`
-            In case data are Spectra : 1D mask
-            In case data are Spectral images or cubes: 2D mask
-
-        Raises
-        ------
-        AttributeError
-            Raises error if the width of the mask or the source position
-            and spectral trace are not defined.
-
-        Examples
-        --------
-        To set the extraction mask, which will define the sub set of the data
-        from which the planetary spectrum will be determined, sexcecute the
-        following command:
-
-        >>> tso.execute("set_extraction_mask")
-
-        """
-        try:
-            nExtractionWidth = int(self.cascade_parameters.cpm_nextraction)
-        except AttributeError:
-            raise AttributeError("The width of the extraction mask \
-                                 is not define. Check the initialiation \
-                                 of the TSO object. \
-                                 Aborting setting extraction mask")
-        try:
-            spectral_trace = self.cpm.spectral_trace
-            median_position = self.cpm.median_position
-        except AttributeError:
-            raise AttributeError("No spectral trace or source position \
-                                 found. Aborting setting extraction mask")
-        try:
-            data_in = self.observation.dataset
-        except AttributeError:
-            raise AttributeError("No Valid data found. \
-                                 Aborting setting extraction mask")
-        try:
-            roi = self.observation.instrument_calibration.roi
-        except AttributeError:
-            raise AttributeError("No ROI defined. "
-                                 "Aborting setting extraction mask")
-
-        dim = data_in.data.shape
-        ndim = data_in.data.ndim
-        mask = data_in.mask.copy()
-
-        ndim_extractionMask = min((2, ndim-1))
-
-        select_axis = tuple(np.arange(ndim))
-
-        ExtractionMask = [np.all(mask, axis=select_axis[ndim_extractionMask:])]
-        ExtractionMask[0] = np.logical_or(roi, ExtractionMask[0])
-
-        if ndim_extractionMask != 1:
-            idx_mask_y = np.tile(np.arange(np.max((1, nExtractionWidth))).
-                                 astype(int), (dim[0], 1)) - \
-                np.max((1, nExtractionWidth))//2
-
-            idx_mask_x = \
-                np.tile(np.arange(dim[0]).astype(int),
-                        (np.max((1, nExtractionWidth)), 1)).T
-
-#            extraction_mask = np.ones_like(ExtractionMask[0]).astype(bool)
-
-            ExtractionMaskperNod = []
-            for ipos in median_position:
-                extraction_mask = np.ones_like(ExtractionMask[0]).astype(bool)
-                idx_mask_y_shifted = \
-                    np.tile(np.rint(spectral_trace + ipos).astype(int),
-                            (np.max((1, nExtractionWidth)), 1)).T + idx_mask_y
-                idx_fix = idx_mask_y_shifted < 0
-                idx_mask_y_shifted[idx_fix] = 0
-                idx_fix = idx_mask_y_shifted > (dim[1]-1)
-                idx_mask_y_shifted[idx_fix] = (dim[1]-1)
-                extraction_mask[idx_mask_x.astype(int).reshape(-1),
-                                idx_mask_y_shifted.astype(int).reshape(-1)] = \
-                    False
-                ExtractionMaskperNod.append(np.logical_or(extraction_mask,
-                                                          ExtractionMask[0]))
-            ExtractionMask = ExtractionMaskperNod
-
-        self.cpm.extraction_mask = ExtractionMask
-
-    def _create_edge_mask(self, kernel, roi_mask_cube):
-        """
-        Helper function for the optimal extraction task. This function
-        creates an edge mask to mask all pixels for which the convolution
-        kernel extends beyond the region of interest.
-
-        Parameters
-        ----------
-        kernel : `array_like`
-            Convolution kernel specific for a given instrument and observing
-            mode, used in tasks such as replacing bad pixels and
-            spectral extraction.
-        roi_mask : `ndarray`
-            Mask defining the region of interest from which the speectra will
-            be extracted.
-
-        Returns
-        -------
-        edge_mask : 'array_like'
-            The edge mask based on the input kernel and roi_mask
-        """
-        dilation_mask = np.ones(kernel.shape)
-
-        edge_mask = (binary_dilation(roi_mask_cube, structure=dilation_mask,
-                                     border_value=True) ^ roi_mask_cube)
-        return edge_mask
-
-    def _create_extraction_profile(self, cleaned_data_with_roi_mask,
-                                   extracted_spectra, kernel,
-                                   mask_for_extraction):
-        """
-        Helper function for the optimal extraction task.
-        This function creates the normilzed source profile used for optimal
-        extraction. The cleaned data is convolved with an appropriate kernel
-        to smooth the profile and to increase the SNR. On the edges, where the
-        kernel extends over the boundary, non convolved data is used to
-        prevent edge effects.
-
-        Parameters
-        ----------
-        cleaned_data_with_roi_mask : `numpy.ma.core.MaskedArray`
-            The cleaned input data from which the extraction profile is
-            derived. The mask attached to this data defines the region of
-            interest around the target source.
-        extracted_spectra : `numpy.ma.core.MaskedArray`
-            Best guess for the spectrum of the source from which the extraction
-            profile is determined.
-        kernel : `ndarray`
-            Convolution kernel used to create smoothed spectral images
-        mask_for_extraction : `ndarray`
-            Mask containing all pixels which are flagged as bad in the not
-            cleaned data, i.e. all pixels which value have been replaced
-            after cleaning.
-
-        Returns
-        -------
-        extraction_profile : 'ndarray'
-            The extraction profile used for optimal spectral extraction.
-        """
-        npix, mpix, ntime = cleaned_data_with_roi_mask.shape
-        roi_mask = cleaned_data_with_roi_mask.mask.copy()
-        extraction_profile_nc = (
-            cleaned_data_with_roi_mask.data.copy() /
-            np.repeat(np.expand_dims(extracted_spectra.data, axis=1),
-                      (mpix), axis=1))
-
-        edge_mask = self._create_edge_mask(kernel, roi_mask)
-
-        extraction_profile = ap_convolve(extraction_profile_nc, kernel,
-                                         mask=mask_for_extraction,
-                                         boundary=None,
-                                         nan_treatment='interpolate',
-                                         fill_value=np.NaN)
-        extraction_profile = np.ma.array(extraction_profile, mask=roi_mask,
-                                         hard_mask=False, fill_value=np.NaN)
-        extraction_profile[edge_mask] = extraction_profile_nc[edge_mask]
-        extraction_profile.harden_mask()
-        extraction_profile[extraction_profile < 0.0] = 0.0
-        extraction_profile = extraction_profile / \
-            np.ma.sum(extraction_profile, axis=1, keepdims=True)
-
-        return extraction_profile
-
-    def _create_3dKernel(self, sigma_time):
-        """
-        Helper function for the optimal extraction taks. This function
-        creates a 3d kernel from a 2d instrument specific kernel
-        to include the time dimention thus enabling convolution in both the
-        spatial and wavelength direction as well as along the time axis.
-
-        Parameters
-        ----------
-        sigma_time : `float`
-
-        Returns
-        -------
-        3dKernel : `ndarray`
-
-        Raises
-        ------
-        AttributeError
-            An error is raised if no instrument specific kernel is defined.
-        """
-        try:
-            kernel = self.observation.instrument_calibration.convolution_kernel
-        except AttributeError:
-            raise AttributeError("No Kernel found. \
-                                 Aborting 3d Kernel creation")
-
-        kernel_size = kernel.shape[0]
-        kernel_time_dimension = Gaussian1DKernel(sigma_time,
-                                                 x_size=kernel_size)
-        kernel3d = np.repeat(np.expand_dims(kernel, axis=2),
-                             (kernel_size), axis=2)
-        kernel3d = kernel3d*kernel_time_dimension.array[:, None, None].T
-        kernel3d = apKernel(kernel3d)
-        kernel3d._separable = True
-        kernel3d.normalize()
-
-        return kernel3d
-
-    def optimal_extraction(self):
-        """
-        Optimally extract spectrum using procedure of Horne 1986
-        [1]_ The extraction consists of two iterations: The first one to
-        determine the extraction profile, the second itereation to
-        extract the spectrum of the target source.
-
-        Notes
-        -----
-        We use a convolution with a kernel elongated along the spectral trace
-        rather than a polynomial fit along the trace as in the original paper
-        by Horne 1986.
-
-        Attributes
-        ----------
-        dataset_optimal_extracted : `cascade.data_model.SpectralDataTimeSeries`
-            Time series if optimally extracted 1d spectra.
-
-        Raises
-        ------
-        AttributeError, AssertionError
-            An error is raised if the data and cleaned data sets are not
-            defined, the source position is not determined or of the
-            parameters for the optimal extraction task are not set in the
-            initialization files.
-
-        References
-        ----------
-        .. [1] Horne 1986, PASP 98, 609
-
-        Examples
-        --------
-        To optimally extract a spectrum of the target star which data is stored
-        in an TSO instance, excecute the following command:
-
-        >>> tso.execute("optimal_extraction")
-
-        """
-        try:
-            obs_data = self.cascade_parameters.observations_data
-        except AttributeError:
-            raise AttributeError("No observation data type set. "
-                                 "Aborting optimal extraction")
-        if not obs_data == "SPECTRAL_IMAGE":
-            warnings.warn("Data are no spectral images. "
-                          "Aborting optimal extraction")
-            return
-        try:
-            dataset = self.observation.dataset
-        except AttributeError:
-            raise AttributeError("Spectral dataset not found. Aborting "
-                                 "optimal extraction.")
-        try:
-            obs_has_backgr = ast.literal_eval(self.cascade_parameters.
-                                              observations_has_background)
-            if obs_has_backgr:
-                assert dataset.isBackgroundSubtracted is True
-            assert dataset.isSigmaCliped is True
-        except (AttributeError, AssertionError):
-            raise AssertionError("Spectral dataset not background subtracted "
-                                 "and/or sigma clipped. Aborting "
-                                 "optimal extraction.")
-        try:
-            ExtractionMask = self.cpm.extraction_mask
-        except AttributeError:
-            raise AttributeError("No extraction mask found. "
-                                 "Aborting optimal extraction")
-        try:
-            cleaned_data = self.cpm.cleaned_data
-        except AttributeError:
-            raise AttributeError("No cleaned data found. "
-                                 "Aborting optimal extraction")
-        try:
-            isNodded = self.observation.dataset.isNodded
-        except AttributeError:
-            raise AttributeError("Observational strategy not properly set. "
-                                 "Aborting optimal extraction.")
-        try:
-            max_iter = \
-                int(self.cascade_parameters.cpm_max_iter_optimal_extraction)
-            nsigma = \
-                float(self.cascade_parameters.cpm_sigma_optimal_extraction)
-            stdv_kernel_time = float(self.cascade_parameters.
-                                     cpm_stdv_kernel_time_axis)
-        except AttributeError:
-            raise AttributeError("Parameters for optimal extraction not set. "
-                                 "Aborting optimal extraction.")
-        try:
-            position = self.cpm.position
-            median_pos = [str(mp) for mp in self.cpm.median_position]
-            position_unit = u.pix
-        except AttributeError:
-            raise AttributeError("Source position is not determined. "
-                                 "Aborting optimal extraction.")
-
-        data_cleaned = np.ma.array(cleaned_data.data.value.copy(),
-                                   mask=cleaned_data.mask.copy())
-        data = np.ma.array(dataset.data.data.value.copy(),
-                           mask=dataset.mask.copy())
-        data_unit = dataset.data_unit
-        variance = np.ma.array(dataset.uncertainty.data.value.copy()**2,
-                               mask=dataset.mask.copy())
-        wavelength = np.ma.array(dataset.wavelength.data.value.copy(),
-                                 mask=dataset.mask.copy())
-        wavelength_unit = dataset.wavelength_unit
-        time = np.ma.array(dataset.time.data.value.copy(),
-                           mask=dataset.mask.copy())
-        time_unit = dataset.time_unit
-        time_bjd = np.ma.array(dataset.time_bjd.data.value.copy(),
-                               mask=dataset.mask.copy())
-        time_bjd_unit = dataset.time_bjd_unit
-
-        kernel3d = self._create_3dKernel(stdv_kernel_time)
-
-        npix, mpix, ntime = data.shape
-        if not isNodded:
-            ntime_max = ntime
-        else:
-            ntime_max = ntime // 2
-        for inod, extr_mask in enumerate(ExtractionMask):
-            extr_mask_cube = np.tile(~extr_mask.T,
-                                     (ntime_max, 1, 1)).T.astype(int)
-            mask_for_extraction = \
-                data_cleaned.mask[:, :, inod*ntime_max:(inod+1)*ntime_max]
-            data_for_profile = \
-                data_cleaned[:, :, inod*ntime_max:(inod+1)*ntime_max]
-
-            # initial guess of extracted spectra and extraction profile
-            extracted_spectra = np.ma.sum(data_for_profile, axis=1)
-
-            extraction_profile = \
-                self._create_extraction_profile(data_for_profile,
-                                                extracted_spectra,
-                                                kernel3d, mask_for_extraction)
-
-            # Equivalent to Iteration over step 5 to 7 in Horne et al 1986
-            iiter = 0
-            mask_save = mask_for_extraction.copy()
-            number_different_masked = -1
-            pbar = tqdm(total=max_iter+1, dynamic_ncols=True,
-                        desc='Creating extracton profile')
-            while (number_different_masked != 0) and (iiter <= max_iter):
-
-                mask_flaged_data = \
-                    np.ma.where((data - extraction_profile *
-                                 np.ma.repeat(np.expand_dims(extracted_spectra,
-                                                             axis=1), (mpix),
-                                              axis=1)
-                                 )**2 > nsigma**2 * variance, 0.0, 1.0)
-                mask_flaged_data = np.where(mask_flaged_data.filled() == 0,
-                                            True, False)
-                number_different_masked = \
-                    (np.sum(mask_save != mask_flaged_data))
-                pbar.set_postfix_str('# of pixels not previously masked: {}'.
-                                     format(number_different_masked))
-                pbar.refresh()
-                mask_save = mask_flaged_data.copy()
-                mask = (~mask_flaged_data).astype(int) * extr_mask_cube
-                mask_for_profile = np.ma.logical_or(mask_for_extraction,
-                                                    mask_flaged_data)
-
-                extraction_profile =\
-                    self._create_extraction_profile(data_for_profile,
-                                                    extracted_spectra,
-                                                    kernel3d,
-                                                    mask_for_profile)
-
-                iiter += 1
-                pbar.update(1)
-            pbar.close()
-            if not number_different_masked != 0:
-                warnings.warn("Mask not converged in optimal spectral "
-                              "extraction. {} mask values not converged. An "
-                              "increase of the maximum number of iteration "
-                              "steps might be advisable.".
-                              format(number_different_masked))
-
-            # Equivalent to Iteration over step 7 and 8 in Horne et al 1986
-            iiter = 0
-            mask_save = mask_for_extraction.copy()
-            number_different_masked = -1
-            pbar = tqdm(total=max_iter+1, dynamic_ncols=True,
-                        desc='Optimally extracting spectra')
-            while (number_different_masked != 0) and (iiter <= max_iter):
-
-                mask_flaged_data = \
-                    np.ma.where((data - extraction_profile *
-                                 np.ma.repeat(
-                                     np.expand_dims(extracted_spectra, axis=1),
-                                     mpix, axis=1)
-                                 )**2 > nsigma**2 * variance, 0.0, 1.0)
-                mask_flaged_data = \
-                    np.where(mask_flaged_data.filled() == 0, True, False)
-                number_different_masked = \
-                    (np.sum(mask_save != mask_flaged_data))
-                pbar.set_postfix_str('# of pixels not previously masked: '
-                                     '{}'.format(number_different_masked))
-                pbar.refresh()
-                mask_save = mask_flaged_data.copy()
-                mask = (~mask_flaged_data).astype(int) * extr_mask_cube
-
-                extracted_spectra = \
-                    np.ma.sum(mask*extraction_profile*data/variance, axis=1) /\
-                    np.ma.sum(mask*extraction_profile**2/variance, axis=1)
-                variance_extracted_spectrum = \
-                    np.ma.sum(mask*extraction_profile, axis=1) / \
-                    np.ma.sum(mask*extraction_profile**2/variance, axis=1)
-
-                iiter += 1
-                pbar.update(1)
-            pbar.close()
-            if not number_different_masked != 0:
-                warnings.warn("Mask not converged in optimal spectral "
-                              "extraction. {} mask values not converged. "
-                              "An increase of the maximum number of "
-                              "iteration steps might be advisable.".
-                              format(number_different_masked))
-
-# TEST
-        median_signal = np.ma.median(extracted_spectra)
-        extracted_spectra = extracted_spectra/median_signal
-        variance_extracted_spectrum = (variance_extracted_spectrum /
-                                       median_signal**2)
-        data_unit = u.Unit(median_signal*data_unit)
-
-        wavelength_extracted_spectrum = \
-            np.ma.sum(mask*extraction_profile**2*wavelength/variance,
-                      axis=1) /\
-            np.ma.sum(mask*extraction_profile**2/variance, axis=1)
-        uncertainty_extracted_spectrum = \
-            np.ma.sqrt(variance_extracted_spectrum)
-        time_extracted_spectrum = \
-            np.ma.sum(mask*extraction_profile**2*time/variance, axis=1) /\
-            np.ma.sum(mask*extraction_profile**2/variance, axis=1)
-        time_bjd_extracted_spectrum = \
-            np.ma.sum(mask*extraction_profile**2*time_bjd/variance, axis=1) /\
-            np.ma.sum(mask*extraction_profile**2/variance, axis=1)
-        position_extracted_spectrum = \
-            np.ma.sum(mask*extraction_profile**2*position/variance, axis=1) /\
-            np.ma.sum(mask*extraction_profile**2/variance, axis=1)
-
-        data_product = self.observation.dataset_parameters['obs_data_product']
-        data_product_optimal = 'COE'
-        dataFileNames = dataset.dataFiles
-        dataFileNameNew = [fname.split("/")[-1].replace(data_product,
-                                                        data_product_optimal)
-                           for fname in dataFileNames]
-
-        target_name = self.observation.dataset_parameters['obs_target_name']
-        observation_path = self.observation.dataset_parameters['obs_path']
-        instrument_name = self.observation.dataset_parameters['inst_inst_name']
-        path_to_files = os.path.join(observation_path,
-                                     instrument_name,
-                                     target_name,
-                                     'SPECTRA/')
-        os.makedirs(path_to_files, exist_ok=True)
-
-        SpectralTimeSeries = \
-            SpectralDataTimeSeries(wavelength=wavelength_extracted_spectrum,
-                                   wavelength_unit=wavelength_unit,
-                                   data=extracted_spectra,
-                                   data_unit=data_unit,
-                                   time=time_extracted_spectrum,
-                                   time_unit=time_unit,
-                                   uncertainty=uncertainty_extracted_spectrum,
-                                   position=position_extracted_spectrum,
-                                   position_unit=position_unit,
-                                   median_position=median_pos[inod],
-                                   time_bjd=time_bjd_extracted_spectrum,
-                                   time_bjd_unit=time_bjd_unit,
-                                   target_name=target_name,
-                                   isRampFitted=True,
-                                   isNodded=isNodded,
-                                   dataFiles=dataFileNameNew)
-        try:
-            self.cpm
-        except AttributeError:
-            self.cpm = SimpleNamespace()
-        finally:
-            self.cpm.extraction_profile = extraction_profile
-            self.cpm.extraction_profile_mask = mask
-        try:
-            self.observation
-        except AttributeError:
-            self.observation = SimpleNamespace()
-        finally:
-            self.observation.dataset_optimal_extracted = SpectralTimeSeries
-
-        write_timeseries_to_fits(SpectralTimeSeries, path_to_files)
-
-        return
 
     def select_regressors(self):
         """
@@ -1647,7 +1626,7 @@ class TSOSuite:
         """
         try:
             data_in = self.observation.dataset
-            data_in_clean = self.cpm.cleaned_data
+            data_in_clean = self.cpm.cleaned_dataset
         except AttributeError:
             raise AttributeError("No Valid data found. \
                                  Aborting time series calibration")
@@ -1754,7 +1733,7 @@ class TSOSuite:
 
         # reshape input data to general 3D shape.
         original_mask_data_use = self.reshape_data(data_in.data).mask
-        data_use = self.reshape_data(data_in_clean)
+        data_use = self.reshape_data(data_in_clean.data)
         unc_use = self.reshape_data(data_in.uncertainty)
         time_use = self.reshape_data(data_in.time)
         position_use = self.reshape_data(position)
@@ -1875,9 +1854,11 @@ class TSOSuite:
                             regressor_matrix.data.unit
 
                     # select data (y=signal, yerr = error signal)
-                    y = data_use[il, ir, :].copy()
+                    y = np.ma.array(data_use.data.value[il, ir, :],
+                                    mask=data_use.mask[il, ir, :])
                     y.mask = original_mask_data_use[il, ir, :].copy()
-                    yerr = unc_use[il, ir, :].copy()
+                    yerr = np.ma.array(unc_use.data.value[il, ir, :],
+                                       mask=unc_use.mask[il, ir, :])
                     np.ma.set_fill_value(y, 0.0)
                     np.ma.set_fill_value(yerr, 1.0e8)
 
@@ -1902,7 +1883,7 @@ class TSOSuite:
                     yerr.mask[idx_bad_time] = True
                     np.ma.set_fill_value(y, 0.0)
                     np.ma.set_fill_value(yerr, np.ma.median(y)*1.e3)
-                    weights = 1.0/yerr.filled().value**2
+                    weights = 1.0/yerr.filled()**2
 
                     # create design matrix using either the timeseries
                     # directly or the PCA components
@@ -1960,7 +1941,7 @@ class TSOSuite:
                     # solve linear Eq.
                     P, Perr, opt_reg_par, pc_matrix_sle, Pnormed, _ = \
                         solve_linear_equation(design_matrix,
-                                              y.filled().value, weights,
+                                              y.filled(), weights,
                                               cv_method=cv_method,
                                               reg_par=reg_par,
                                               degrees_of_freedom=2)
@@ -2003,7 +1984,7 @@ class TSOSuite:
                     model_time_series[il, ir, :] = \
                         np.dot(design_matrix, P)*data_unit
                     model_time_series.mask[il, ir, idx_bad_time] = True
-                    residual = y.filled() - np.dot(design_matrix, P)*data_unit
+                    residual = (y.filled() - np.dot(design_matrix, P))*data_unit
                     residual_time_series[il, ir, :] = \
                         np.ma.array(residual, mask=y.mask)
                     lnL = -0.5*np.sum(weights*(residual.value)**2)
@@ -2210,6 +2191,7 @@ class TSOSuite:
                                  cubes. Aborting extraction of \
                                  planetary spectrum")
         try:
+            # for spectral images
             extraction_weights = \
                 np.ma.mean(self.cpm.extraction_profile, axis=-1)
             extraction_weigths_mask = \
@@ -2217,7 +2199,7 @@ class TSOSuite:
             extraction_weights = extraction_weights / \
                 np.ma.sum(extraction_weights, axis=1, keepdims=True)
         except AttributeError as e:
-            print(e)
+            # for 1D spectra
             extraction_weights = np.ones_like(calibrated_error)
             extraction_weights = extraction_weights / \
                 np.ma.sum(extraction_weights, axis=1, keepdims=True)
@@ -2491,18 +2473,24 @@ class TSOSuite:
         weighted_signal.set_fill_value(0.0)
 
 #        from sklearn.linear_model import RidgeCV
-
-#        clf = RidgeCV(alphas=[1e-9, 1e-7, 1e-6, 1e-4, 1e-3, 1e-2, 1e-1, 1, 10],
-#                      gcv_mode='svd',
-#                      cv=5,
-#                      fit_intercept=False).fit(K.filled(),
+#
+#        clf = RidgeCV(alphas=[1e-9, 1e-7, 1e-6, 1e-4, 5.e-3, 1e-3, 5.e-2,
+#                              1e-2, 5.e-2, 1.e-1, 5.e-1,
+#                              1., 5.0, 1.e1, 1.e2, 1.e3],
+#                      gcv_mode=None,
+#                      cv=None,
+#                      fit_intercept=True).fit(K.filled(),
 #                                               weighted_signal.filled())
 #        corrected_spectrum = clf.predict(K.filled())
-#        corrected_spectrum = np.linalg.lstsq(K.filled(),
-#                                             -weighted_signal.filled(),
-#                                             rcond=rcond_limit)[0]
-        corrected_spectrum = np.dot(pinv2(K.filled(), rcond=rcond_limit),
-                                    -weighted_signal.filled())
+#        from numpy.linalg import cond
+#        print(cond(K.filled()))
+        import scipy
+        corrected_spectrum = scipy.linalg.lstsq(K.filled(),
+                                                -weighted_signal.filled(),
+                                                cond=rcond_limit)[0]
+
+#        corrected_spectrum = np.dot(pinv2(K.filled(), rcond=rcond_limit),
+#                                    -weighted_signal.filled())
         corrected_spectrum = corrected_spectrum - \
             np.ma.median(corrected_spectrum)
 

@@ -142,7 +142,7 @@ html_static_path = ['_static']
 htmlhelp_basename = 'CASCADedoc'
 
 # Favicon image 
-html_favicon = 'cascade.ico'
+html_favicon = './_static/cascade.ico'
 
 
 

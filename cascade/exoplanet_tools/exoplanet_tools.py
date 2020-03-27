@@ -949,13 +949,14 @@ def extract_exoplanet_data(data_list, target_name_or_position, coord_unit=None,
     ----------
     data_list : 'list' of 'astropy.Table'
         List containing table with exoplanet data
-    target_name_or_position :
+    target_name_or_position : 'str'
         Name of the target or coordinates of the target for
         which the record is extracted
     coord_unit :
         Unit of coordinates e.g (u.hourangle, u.deg)
-    coordinate_frame :
+    coordinate_frame : 'str'
         Frame of coordinate system e.g icrs
+    search_radius : 'astropy.units.Quantity'
 
     Returns
     -------

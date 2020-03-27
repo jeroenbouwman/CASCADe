@@ -56,6 +56,7 @@ def write_timeseries_to_fits(data, path, additional_file_string=None):
     ntime = data.data.shape[-1]
     try:
         dataFiles = data.dataFiles
+        dataFiles = [os.path.split(file)[1] for file in dataFiles]
     except AttributeError:
         if ndim == 2:
             fileBase = "spectrum"
@@ -70,22 +71,24 @@ def write_timeseries_to_fits(data, path, additional_file_string=None):
     if ndim == 2:
         for itime, fileName in enumerate(dataFiles):
             hdr = fits.Header()
+            # makes sure the data is sorted  according to wavelength
+            idx = np.argsort(data.wavelength.data.value[..., itime])
             try:
                 hdr['TARGET'] = data.target_name
             except AttributeError:
                 pass
             hdr['COMMENT'] = "Created by CASCADe pipeline"
             try:
-                hdr['PHASE'] = np.ma.mean(data.time[..., itime]).value
+                hdr['PHASE'] = np.ma.mean(data.time[idx, itime]).value
             except np.ma.MaskError:
                 pass
             try:
-                hdr['TIME_BJD'] = np.ma.mean(data.time_bjd[..., itime]).value
+                hdr['TIME_BJD'] = np.ma.mean(data.time_bjd[idx, itime]).value
                 hdr['TBJDUNIT'] = data.time_bjd_unit.to_string()
             except AttributeError:
                 pass
             try:
-                hdr['POSITION'] = np.ma.mean(data.position[..., itime]).value
+                hdr['POSITION'] = np.ma.mean(data.position[idx, itime]).value
                 hdr['PUNIT'] = data.position_unit.to_string()
             except AttributeError:
                 pass
@@ -98,21 +101,22 @@ def write_timeseries_to_fits(data, path, additional_file_string=None):
             hdu = fits.BinTableHDU.from_columns(
                     [fits.Column(name='LAMBDA', format='D',
                                  unit=data.wavelength_unit.to_string(),
-                                 array=data.wavelength.data.value[..., itime]),
+                                 array=data.wavelength.data.value[idx, itime]),
                      fits.Column(name='FLUX', format='D',
                                  unit=data.data_unit.to_string(),
-                                 array=data.data.data.value[..., itime]),
+                                 array=data.data.data.value[idx, itime]),
                      fits.Column(name='FERROR', format='D',
                                  unit=data.data_unit.to_string(),
-                                 array=data.uncertainty.data.value[..., itime]),
+                                 array=data.uncertainty.data.value[idx, itime]),
                      fits.Column(name='MASK', format='L',
-                                 array=data.mask[..., itime])
+                                 array=data.mask[idx, itime])
                      ])
 
             hdul = fits.HDUList([primary_hdu, hdu])
             hdul.writeto(os.path.join(path, fileName), overwrite=True)
     elif ndim > 2:
-        pass
+        raise ValueError("Saving spectral images to fits file not \
+                          implemented yet")
 
 
 def find(pattern, path):
@@ -163,7 +167,9 @@ def get_data_from_fits(data_files, data_list, auxilary_list):
     ndata = len(data_files)
     data_struct = {'data': [], 'flag': True}
     data_dict = {k: copy.deepcopy(data_struct) for k in data_list}
-    auxilary_data_struct = {"data": np.zeros(ndata), "flag": False}
+    auxilary_data_struct = {"data": np.zeros(ndata),
+                            "data_unit": u.dimensionless_unscaled,
+                            "flag": False}
     auxilary_dict = {k: copy.deepcopy(auxilary_data_struct)
                      for k in auxilary_list}
 
@@ -177,6 +183,9 @@ def get_data_from_fits(data_files, data_list, auxilary_list):
                     value['flag'] = True
                 except KeyError:
                     value['flag'] = False
+                except ValueError:
+                    if 'UNIT' in key:
+                        value['data_unit'] = u.Unit(fits_header[key])
             data_table = QTable.read(hdu_list[1])
             for key, value in data_dict.items():
                 try:

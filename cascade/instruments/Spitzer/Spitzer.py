@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# This file is part of CASCADe package
-#
-# Developed within the ExoplANETS-A H2020 program.
+# This file is part of the CASCADe package which has been
+# developed within the ExoplANETS-A H2020 program.
 #
 # See the COPYRIGHT file at the top-level directory of this distribution
 # for details of code ownership.
@@ -20,28 +19,31 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright (C) 2018  Jeroen Bouwman
+# Copyright (C) 2018, 2019  Jeroen Bouwman
 """
 Spitzer Observatory and Instruments specific module of the CASCADe package
 """
-
+import os
 import collections
 import ast
 from types import SimpleNamespace
+
 import numpy as np
 from astropy.io import fits
 import astropy.units as u
 from astropy.io import ascii
 from astropy.convolution import Gaussian2DKernel
 from astropy.convolution import Gaussian1DKernel
+from astropy.stats import sigma_clipped_stats
 from scipy import interpolate
+from scipy.interpolate import griddata
 from skimage.morphology import dilation
 from skimage.morphology import square
 from tqdm import tqdm
 
 from ...initialize import cascade_configuration
 from ...data_model import SpectralDataTimeSeries
-from ...utilities import find
+from ...utilities import find, get_data_from_fits
 from ..InstrumentsBaseClasses import ObservatoryBase, InstrumentBase
 
 __all__ = ['Spitzer', 'SpitzerIRS']
@@ -113,7 +115,7 @@ class SpitzerIRS(InstrumentBase):
     __valid_orders = {'1', '2'}
     __valid_data = {'SPECTRUM', 'SPECTRAL_IMAGE', 'SPECTRAL_DETECTOR_CUBE'}
     __valid_observing_strategy = {'STARING', 'NODDED'}
-    __valid_data_products = {'droop', 'COE'}
+    __valid_data_products = {'droop', 'COE', 'FEPS', 'CAE'}
 
     def __init__(self):
 
@@ -131,9 +133,11 @@ class SpitzerIRS(InstrumentBase):
 
     @property
     def name(self):
+        """Reteurn instrument name."""
         return "IRS"
 
     def load_data(self):
+        """Load data."""
         if self.par["obs_data"] == 'SPECTRUM':
             data = self.get_spectra()
             if self.par['obs_has_backgr']:
@@ -152,9 +156,7 @@ class SpitzerIRS(InstrumentBase):
             return data
 
     def get_instrument_setup(self):
-        """
-        Retrieve all relevant parameters defining the instrument and data setup
-        """
+        """Retrieve all parameters defining the instrument and data setup."""
         inst_inst_name = cascade_configuration.instrument
         inst_mode = cascade_configuration.instrument_mode
         inst_order = cascade_configuration.instrument_order
@@ -180,30 +182,30 @@ class SpitzerIRS(InstrumentBase):
                 cascade_configuration.observations_background_name
 
         if not (obs_data in self.__valid_data):
-            raise ValueError("Data type not recognized, \
-                     check your init file for the following \
-                     valid types: {}. \
-                     Aborting loading data".format(self.__valid_data))
+            raise ValueError("Data type not recognized, "
+                             "check your init file for the following "
+                             "valid types: {}. "
+                             "Aborting loading data".format(self.__valid_data))
         if not (obs_mode in self.__valid_observing_strategy):
-            raise ValueError("Observational stategy not recognized, \
-                     check your init file for the following \
-                     valid types: {}. \
-                     Aborting loading data".format(self.__valid_data))
+            raise ValueError("Observational stategy not recognized, "
+                             "check your init file for the following "
+                             "valid types: {}. Aborting loading "
+                             "data".format(self.__valid_observing_strategy))
         if not (inst_mode in self.__valid_arrays):
-            raise ValueError("Instrument mode not recognized, \
-                     check your init file for the following \
-                     valid types: {}. \
-                     Aborting loading data".format(self.__valid_arrays))
+            raise ValueError("Instrument mode not recognized, "
+                             "check your init file for the following "
+                             "valid types: {}. Aborting "
+                             "loading data".format(self.__valid_arrays))
         if not (inst_order in self.__valid_orders):
-            raise ValueError("Spectral order not recognized, \
-                     check your init file for the following \
-                     valid types: {}. \
-                     Aborting loading data".format(self.__valid_orders))
+            raise ValueError("Spectral order not recognized, "
+                             "check your init file for the following "
+                             "valid types: {}. Aborting loading "
+                             "data".format(self.__valid_orders))
         if not (obs_data_product in self.__valid_data_products):
-            raise ValueError("Data product not recognized, \
-                     check your init file for the following \
-                     valid types: {}. Aborting loading \
-                     data".format(self.__valid_data_products))
+            raise ValueError("Data product not recognized, "
+                             "check your init file for the following "
+                             "valid types: {}. Aborting loading "
+                             "data".format(self.__valid_data_products))
         par = collections.OrderedDict(inst_inst_name=inst_inst_name,
                                       inst_mode=inst_mode,
                                       inst_order=inst_order,
@@ -225,6 +227,8 @@ class SpitzerIRS(InstrumentBase):
 
     def get_spectra(self, is_background=False):
         """
+        Get the 1D spectra.
+
         This function combines all functionallity to read fits files
         containing the (uncalibrated) spectral timeseries, including
         orbital phase and wavelength information
@@ -255,11 +259,12 @@ class SpitzerIRS(InstrumentBase):
             # obsid = self.par['obs_id']
             target_name = self.par['obs_target_name']
 
-        path_to_files = self.par['obs_path'] + \
-            target_name + '/' + self.par['obs_cal_version'] + '/' + \
-            self.par['inst_mode'] + self.par['inst_order'] + '/'
-        data_files = find(self.par['inst_mode'] + self.par['inst_order'] +
-                          '*cycle*.fits', path_to_files)
+        path_to_files = os.path.join(self.par['obs_path'],
+                                     self.par['inst_inst_name'],
+                                     target_name,
+                                     'SPECTRA/')
+        data_files = find('*' + self.par['obs_id'] + '*' +
+                          self.par['obs_data_product']+'.fits', path_to_files)
 
         # number of integrations
         nintegrations = len(data_files)
@@ -267,98 +272,78 @@ class SpitzerIRS(InstrumentBase):
             raise AssertionError("No Timeseries data found in dir " +
                                  path_to_files)
 
-        # read in the first image and get information on the observations
-        # get the size of the spectral images
-        image_file = data_files[0]
-        spectral_image = fits.getdata(image_file, ext=0)
-        npix, mpix = spectral_image.shape
-        # get frametime from fits header (duration of ramp in sec)
-        framtime = fits.getval(image_file, "FRAMTIME", ext=0)
-        # get the FOVID from the header and check for nodded observations
-        try:
-            fovid = fits.getval(image_file, "FOVID", ext=0)
-        except KeyError:
-            print("FOVID not set in fits files")
-            print("Using 'observations_mode' parameter instead")
-            if self.par['obs_mode'] == "STARING":
-                fovid = 28
-            else:
-                fovid = 26
-        if (fovid != 28) and (fovid != 34) and (fovid != 40) and (fovid != 46):
-            isNodded = True
+        data_list = ['LAMBDA', 'FLUX', 'FERROR', 'MASK']
+        auxilary_list = ["POSITION", "MEDPOS", "PUNIT", "MPUNIT", "TIME_BJD"]
+
+        data_dict, auxilary_dict = \
+            get_data_from_fits(data_files, data_list, auxilary_list)
+
+        if (not auxilary_dict['TIME_BJD']['flag']):
+            raise KeyError("No TIME_BJD keyword found in fits files")
+
+        wavelength_data = np.array(data_dict['LAMBDA']['data']).T
+        wave_unit = data_dict['LAMBDA']['data'][0].unit
+        spectral_data = np.array(data_dict['FLUX']['data']).T
+        flux_unit = data_dict['FLUX']['data'][0].unit
+        uncertainty_spectral_data = np.array(data_dict['FERROR']['data']).T
+        if data_dict['MASK']['flag']:
+            mask = np.array(data_dict['MASK']['data']).T
         else:
-            isNodded = False
-
-        # get the unit of the spectral images
-        try:
-            flux_unit_string = fits.getval(image_file, "BUNIT", ext=0)
-            flux_unit_string = flux_unit_string.replace("e-", "electron")
-            flux_unit_string = flux_unit_string.replace("sec", "s")
-            flux_unit = u.Unit(flux_unit_string)
-        except KeyError:
-            print("No flux unit set in fits files")
-            flux_unit = u.dimensionless_unscaled
-
-        # get the spectra
-        path_to_spectra = self.par['obs_path'] + \
-            target_name + '/' + self.par['obs_cal_version'] + '/' + \
-            self.par['inst_mode'] + self.par['inst_order'] + '/'
-        spectral_file = target_name+'_no_fluxcal_droop_' + \
-            self.par['inst_mode'] + self.par['inst_order'] + '.yaar'
-        spectral_data = fits.getdata(path_to_spectra+spectral_file, ext=0)
-
-        data = spectral_data['FLUX']
-        nwave = data.shape[0]//nintegrations
-        data = np.reshape(data, (nwave, nintegrations)) * flux_unit
-        wave_unit = u.Unit('um')
-        wavelength = spectral_data['WAVE']
-        wavelength = np.reshape(wavelength, (nwave, nintegrations)) * wave_unit
-
-        mask = np.ma.make_mask_none(data.shape)
-
-        uncertainty = np.ones_like(data)
-
-        # get the spectral images to get the timing and positional info
-        time = np.zeros((nintegrations))
-        position = np.zeros((nintegrations))
-        if self.par['inst_order'] == "1":
-            position_keyword = "S_O1P1A"
+            mask = np.zeros_like(spectral_data, dtype=bool)
+        if auxilary_dict['TIME_BJD']['flag']:
+            time = np.array(auxilary_dict['TIME_BJD']['data']) * u.day
+            phase = (time.value - self.par['obj_ephemeris']) / \
+                self.par['obj_period']
+            phase = phase - np.int(np.max(phase))
+            if np.max(phase) < 0.0:
+                phase = phase + 1.0
+        if auxilary_dict['POSITION']['flag']:
+            position = np.array(auxilary_dict['POSITION']['data'])
         else:
-            position_keyword = "S_O2P1A"
-        for im, image_file in enumerate(data_files):
-            # WARNING fits data is single precision!!
-            time[im] = fits.getval(image_file, "BMJD_OBS", ext=0)
-            position_string = fits.getval(image_file, position_keyword, ext=0)
-            position[im] = float(position_string.split(",")[0])
+            position = np.zeros(spectral_data.shape[-1])
 
-        # The time in the spitzer fits header is -2400000.5 and
-        # it is the time at the start of the ramp
-        # As we are using fitted ramps,
-        # shift time by half ramp of length framtime
-        time = (time + 2400000.5) + (0.50*framtime) / (24.0*3600.0)  # in days
-        # orbital phase
-        phase = (time - self.par['obj_ephemeris']) / self.par['obj_period']
-        phase = phase - np.int(np.max(phase))
-        if np.max(phase) < 0.0:
-            phase = phase + 1.0
+        idx = np.argsort(time)
+        time = time[idx]
+        spectral_data = spectral_data[:, idx]
+        uncertainty_spectral_data = uncertainty_spectral_data[:, idx]
+        wavelength_data = wavelength_data[:, idx]
+        mask = mask[:, idx]
+        data_files = [data_files[i] for i in idx]
+        phase = phase[idx]
+        position = position[idx]
+
+        SpectralTimeSeries = \
+            SpectralDataTimeSeries(wavelength=wavelength_data,
+                                   wavelength_unit=wave_unit,
+                                   data=spectral_data,
+                                   data_unit=flux_unit,
+                                   uncertainty=uncertainty_spectral_data,
+                                   time=phase,
+                                   mask=mask,
+                                   time_bjd=time,
+                                   position=position,
+                                   isRampFitted=True,
+                                   isNodded=False,
+                                   target_name=target_name,
+                                   dataProduct=self.par['obs_data_product'],
+                                   dataFiles=data_files)
+# TEST
+        # Standardize signal to mean value.
+        mean_signal, _, _ = \
+            sigma_clipped_stats(SpectralTimeSeries.return_masked_array("data"),
+                                sigma=3, maxiters=10)
+        data_unit = u.Unit(mean_signal*SpectralTimeSeries.data_unit)
+        SpectralTimeSeries.data_unit = data_unit
+        SpectralTimeSeries.wavelength_unit = u.micron
 
         self._define_convolution_kernel()
 
-        # ROI
-        #self._define_region_of_interest(data)
-
-        SpectralTimeSeries = SpectralDataTimeSeries(wavelength=wavelength,
-                                                    data=data, time=phase,
-                                                    mask=mask,
-                                                    uncertainty=uncertainty,
-                                                    position=position,
-                                                    time_bjd=time,
-                                                    isRampFitted=True,
-                                                    isNodded=isNodded)
         return SpectralTimeSeries
 
     def get_spectral_images(self, is_background=False):
         """
+        Get the 2D spectral images.
+
         This function combines all functionallity to read fits files
         containing the (uncalibrated) spectral timeseries, including
         orbital phase and wavelength information
@@ -383,7 +368,6 @@ class SpitzerIRS(InstrumentBase):
 
         Notes
         -----
-
         Notes on FOV:
             in the fits header the following relevant info is used:
 
@@ -406,9 +390,6 @@ class SpitzerIRS(InstrumentBase):
         # order mask
         mask = self._get_order_mask()
 
-        # wavelength calibration
-        wave_cal = self._get_wavelength_calibration()
-
         # get data files
         if is_background:
             obsid = self.par['obs_backgr_id']
@@ -416,18 +397,12 @@ class SpitzerIRS(InstrumentBase):
         else:
             obsid = self.par['obs_id']
             target_name = self.par['obs_target_name']
-        if self.par['inst_mode'] == 'SL':
-            path_to_files = self.par['obs_path'] + \
-                target_name + '/IRSX/' + \
-                self.par['obs_cal_version']+'/bcd/ch0/'
-            data_files = find('SPITZER_S0*'+obsid +
-                              '*droop.fits', path_to_files)
-        else:
-            path_to_files = self.par['obs_path'] + \
-                target_name + '/IRSX/' + \
-                self.par['obs_cal_version']+'/bcd/ch2/'
-            data_files = find('SPITZER_S2*'+obsid +
-                              '*droop.fits', path_to_files)
+        path_to_files = os.path.join(self.par['obs_path'],
+                                     self.par['inst_inst_name'],
+                                     target_name,
+                                     'SPECTRAL_IMAGES/')
+        data_files = find('*' + obsid + '*_' +
+                          self.par['obs_data_product']+'.fits', path_to_files)
 
         # number of integrations
         nintegrations = len(data_files)
@@ -454,8 +429,10 @@ class SpitzerIRS(InstrumentBase):
                 fovid = 26
         if (fovid != 28) and (fovid != 34) and (fovid != 40) and (fovid != 46):
             isNodded = True
+            nodOffset = -5.0 * u.pix
         else:
             isNodded = False
+            nodOffset = 0.0 * u.pix
 
         # get the unit of the spectral images
         try:
@@ -507,28 +484,39 @@ class SpitzerIRS(InstrumentBase):
 
         self._define_convolution_kernel()
 
-        # ROI
-        #self._define_region_of_interest(data)
+        # wavelength calibration
+        wave_cal = self._get_wavelength_calibration(npix, nodOffset)
 
-        SpectralTimeSeries = SpectralDataTimeSeries(wavelength=wave_cal,
-                                                    data=data, time=phase,
-                                                    uncertainty=uncertainty,
-                                                    mask=mask,
-                                                    time_bjd=time,
-                                                    isRampFitted=True,
-                                                    isNodded=isNodded,
-                                                    dataFiles=data_files)
+        # ROI
+        # self._define_region_of_interest(data)
+
+        # reverse spectral data to make sure the shortest wavelengths are
+        # at the first image row
+        SpectralTimeSeries = \
+            SpectralDataTimeSeries(wavelength=wave_cal[::-1, ...],
+                                   data=data[::-1, ...],
+                                   time=phase,
+                                   uncertainty=uncertainty[::-1, ...],
+                                   mask=mask[::-1, ...],
+                                   time_bjd=time,
+                                   isRampFitted=True,
+                                   isNodded=isNodded,
+                                   target_name=target_name,
+                                   dataProduct=self.par['obs_data_product'],
+                                   dataFiles=data_files)
         return SpectralTimeSeries
 
     def _define_convolution_kernel(self):
         """
-        Define the instrument specific convolution kernel which will be used
-        in the correction procedure of bad pixels
+        Define the instrument specific convolution kernel.
+
+        This function defines an instrument specific convolution kernel
+        which will be used in the correction procedure of bad pixels.
         """
         if self.par["obs_data"] == 'SPECTRUM':
             kernel = Gaussian1DKernel(2.2, x_size=13)
         else:
-            kernel = Gaussian2DKernel(x_stddev=0.2, y_stddev=2.2, theta=-0.076,
+            kernel = Gaussian2DKernel(x_stddev=0.2, y_stddev=2.2, theta=0.076,
                                       x_size=5, y_size=13)
         try:
             self.IRS_cal
@@ -540,7 +528,11 @@ class SpitzerIRS(InstrumentBase):
 
     def _define_region_of_interest(self):
         """
-        Defines region on detector which containes the intended target star.
+        Define region on detector.
+
+        This functon defines the region of interest which containes
+        the intended target star. It defines a mask such that all data flagged
+        or of no interest for the data calibraiton and spectral extraction.
         """
         dim = self.data.data.shape
         if len(dim) <= 2:
@@ -549,8 +541,11 @@ class SpitzerIRS(InstrumentBase):
             roi[-1] = True
         else:
             roi = self._get_order_mask()
-            selem = square(2)
+            selem = square(1)
             roi = dilation(roi, selem)
+            roi[:, 0:1] = True
+            roi[:, -1:] = True
+            roi = roi[::-1, ...]
         try:
             self.IRS_cal
         except AttributeError:
@@ -561,7 +556,10 @@ class SpitzerIRS(InstrumentBase):
 
     def _get_order_mask(self):
         """
-        Gets the mask which defines the pixels used with a given spectral order
+        Get the order mask.
+
+        This functions gets the mask which defines the pixels used
+        with a given spectral order
         """
         # order mask
         order_mask_file_name = \
@@ -608,25 +606,115 @@ class SpitzerIRS(InstrumentBase):
             mask = np.logical_and(mask1, mask2)
         return mask
 
-    def _get_wavelength_calibration(self):
+    def _get_wavelength_calibration(self, numberOfWavelengthPixels, nodOffset):
         """
-        Get wavelength calibration file
+        Get wavelength calibration file.
+
+        Parameters
+        ----------
+        numberOfWavelengthPixels : 'int'
+        nodOffset : 'float'
         """
+        wavelength_unit = u.micron
+
+        wave_pixel_grid = np.arange(numberOfWavelengthPixels) * u.pix
+
+        if self.par["obs_data"] == 'SPECTRUM':
+            position_pixel_grid = np.zeros_like(wave_pixel_grid)
+            spectral_trace = \
+                collections.OrderedDict(wavelength_pixel=wave_pixel_grid,
+                                        positional_pixel=position_pixel_grid,
+                                        wavelength=self.data.wavelength.
+                                        data[:, 0])
+            return spectral_trace
+
         wave_cal_name = \
             self.par['obs_cal_path']+self.par['obs_cal_version'] + \
             '/'+'IRSX_'+self.par['inst_mode']+'_' + \
-            self.par['obs_cal_version']+'_cal.wavsamp_wave.fits'
-        wave_cal = fits.getdata(wave_cal_name, ext=0)
-        # units
-        wave_unit_string = fits.getval(wave_cal_name, "BUNIT", ext=0)
-        if wave_unit_string.strip() == 'microns':
-            wave_unit_string = 'um'
-        wave_unit = u.Unit(wave_unit_string)
-        wave_cal = wave_cal * wave_unit
+            self.par['obs_cal_version']+'_cal.wavsamp.tbl'
+        wavesamp = ascii.read(wave_cal_name)
+        order = wavesamp['order']
+
+        spatial_pos = wavesamp['x_center']
+        wavelength_pos = wavesamp['y_center']
+        wavelength = wavesamp['wavelength']
+        x0 = wavesamp['x0']
+        x1 = wavesamp['x1']
+        x2 = wavesamp['x2']
+        x3 = wavesamp['x3']
+        y0 = wavesamp['y0']
+        y1 = wavesamp['y1']
+        y2 = wavesamp['y2']
+        y3 = wavesamp['y3']
+
+        if self.par['inst_order'] == '1':
+            idx = np.where(order == 1)
+        elif (self.par['inst_order'] == '2') or \
+                (self.par['inst_order'] == '3'):
+            idx = np.where((order == 2) | (order == 3))
+
+        spatial_pos = spatial_pos[idx].data - 0.5
+        wavelength_pos = wavelength_pos[idx].data - 0.5
+        wavelength = wavelength[idx].data
+        x0 = x0[idx].data - 0.5
+        x1 = x1[idx].data - 0.5
+        x2 = x2[idx].data - 0.5
+        x3 = x3[idx].data - 0.5
+        y0 = y0[idx].data - 0.5
+        y1 = y1[idx].data - 0.5
+        y2 = y2[idx].data - 0.5
+        y3 = y3[idx].data - 0.5
+
+        spatial_pos_left = (x1+x2)/2
+        spatial_pos_right = (x0+x3)/2
+        wavelength_pos_left = (y1+y2)/2
+        wavelength_pos_right = (y0+y3)/2
+
+        f = interpolate.interp1d(wavelength_pos, spatial_pos,
+                                 fill_value='extrapolate')
+        spatial_pos_interpolated = f(wave_pixel_grid.value) * u.pix
+        f = interpolate.interp1d(wavelength_pos, wavelength,
+                                 fill_value='extrapolate')
+        wavelength_interpolated = f(wave_pixel_grid.value) * wavelength_unit
+
+        f = interpolate.interp1d(wavelength_pos_left, spatial_pos_left,
+                                 fill_value='extrapolate')
+        spatial_pos_left_interpolated = f(wave_pixel_grid.value) * u.pix
+        f = interpolate.interp1d(wavelength_pos_left, wavelength,
+                                 fill_value='extrapolate')
+        wavelength_left_interpolated = \
+            f(wave_pixel_grid.value) * wavelength_unit
+
+        f = interpolate.interp1d(wavelength_pos_right, spatial_pos_right,
+                                 fill_value='extrapolate')
+        spatial_pos_right_interpolated = f(wave_pixel_grid.value) * u.pix
+        f = interpolate.interp1d(wavelength_pos_right, wavelength,
+                                 fill_value='extrapolate')
+        wavelength_right_interpolated = \
+            f(wave_pixel_grid.value) * wavelength_unit
+
+        grid_x = np.hstack([spatial_pos_left_interpolated.value,
+                            spatial_pos_interpolated.value,
+                            spatial_pos_right_interpolated.value])
+        grid_y = np.hstack([wave_pixel_grid.value,
+                            wave_pixel_grid.value, wave_pixel_grid.value])
+        points = np.array([grid_y, grid_x]).T
+        values = np.hstack([wavelength_left_interpolated.value,
+                            wavelength_interpolated.value,
+                            wavelength_right_interpolated.value])
+
+        corrected_spatial_pos = spatial_pos_interpolated+nodOffset
+        wave_cal = griddata(points, values,
+                            (wave_pixel_grid.value,
+                             corrected_spatial_pos.value),
+                            method='cubic') * wavelength_unit
+
         return wave_cal
 
     def get_detector_cubes(self, is_background=False):
         """
+        Get 3D detector cubes.
+
         This function combines all functionallity to read fits files
         containing the (uncalibrated) detector cubes (detector data
         on ramp level) timeseries, including
@@ -688,18 +776,6 @@ class SpitzerIRS(InstrumentBase):
         # order mask
         mask = self._get_order_mask()
 
-        # wavelength calibration
-        wave_cal = self._get_wavelength_calibration()
-
-#        # make list of all spectral images
-#        def find(pattern, path):
-#            result = []
-#            for root, dirs, files in os.walk(path):
-#                for name in files:
-#                    if fnmatch.fnmatch(name, pattern):
-#                        result.append(os.path.join(root, name))
-#            return sorted(result)
-
         # get data files
         if is_background:
             obsid = self.par['obs_backgr_id']
@@ -752,8 +828,10 @@ class SpitzerIRS(InstrumentBase):
                 fovid = 26
         if (fovid != 28) and (fovid != 34) and (fovid != 40) and (fovid != 46):
             isNodded = True
+            nodOffset = -5.0 * u.pix
         else:
             isNodded = False
+            nodOffset = 0.0 * u.pix
 
         # get the unit of the spectral images
         try:
@@ -805,8 +883,8 @@ class SpitzerIRS(InstrumentBase):
 
         self._define_convolution_kernel()
 
-        # ROI
-        #self._define_region_of_interest(data)
+        # wavelength calibration
+        wave_cal = self._get_wavelength_calibration(npix, nodOffset)
 
         SpectralTimeSeries = SpectralDataTimeSeries(wavelength=wave_cal,
                                                     data=data, time=phase,
@@ -817,7 +895,7 @@ class SpitzerIRS(InstrumentBase):
 
     def get_spectral_trace(self):
         """
-        Get spectral trace
+        Get spectral trace.
         """
         dim = self.data.data.shape
         wavelength_unit = self.data.wavelength_unit
@@ -839,17 +917,47 @@ class SpitzerIRS(InstrumentBase):
             self.par['obs_cal_version']+'_cal.wavsamp.tbl'
         wavesamp = ascii.read(wave_cal_name)
         order = wavesamp['order']
+
+        isNodded = self.data.isNodded
+        if isNodded:
+            nodOffset = -5.0 * u.pix
+        else:
+            nodOffset = 0.0 * u.pix
+
         spatial_pos = wavesamp['x_center']
         wavelength_pos = wavesamp['y_center']
         wavelength = wavesamp['wavelength']
+        x0 = wavesamp['x0']
+        x1 = wavesamp['x1']
+        x2 = wavesamp['x2']
+        x3 = wavesamp['x3']
+        y0 = wavesamp['y0']
+        y1 = wavesamp['y1']
+        y2 = wavesamp['y2']
+        y3 = wavesamp['y3']
+
         if self.par['inst_order'] == '1':
             idx = np.where(order == 1)
         elif (self.par['inst_order'] == '2') or \
                 (self.par['inst_order'] == '3'):
             idx = np.where((order == 2) | (order == 3))
-        spatial_pos = spatial_pos[idx]
-        wavelength_pos = wavelength_pos[idx]
-        wavelength = wavelength[idx]
+
+        spatial_pos = spatial_pos[idx].data - 0.5
+        wavelength_pos = wavelength_pos[idx].data - 0.5
+        wavelength = wavelength[idx].data
+        x0 = x0[idx].data - 0.5
+        x1 = x1[idx].data - 0.5
+        x2 = x2[idx].data - 0.5
+        x3 = x3[idx].data - 0.5
+        y0 = y0[idx].data - 0.5
+        y1 = y1[idx].data - 0.5
+        y2 = y2[idx].data - 0.5
+        y3 = y3[idx].data - 0.5
+
+        spatial_pos_left = (x1+x2)/2
+        spatial_pos_right = (x0+x3)/2
+        wavelength_pos_left = (y1+y2)/2
+        wavelength_pos_right = (y0+y3)/2
 
         f = interpolate.interp1d(wavelength_pos, spatial_pos,
                                  fill_value='extrapolate')
@@ -858,9 +966,41 @@ class SpitzerIRS(InstrumentBase):
                                  fill_value='extrapolate')
         wavelength_interpolated = f(wave_pixel_grid.value) * wavelength_unit
 
+        f = interpolate.interp1d(wavelength_pos_left, spatial_pos_left,
+                                 fill_value='extrapolate')
+        spatial_pos_left_interpolated = f(wave_pixel_grid.value) * u.pix
+        f = interpolate.interp1d(wavelength_pos_left, wavelength,
+                                 fill_value='extrapolate')
+        wavelength_left_interpolated = \
+            f(wave_pixel_grid.value) * wavelength_unit
+
+        f = interpolate.interp1d(wavelength_pos_right, spatial_pos_right,
+                                 fill_value='extrapolate')
+        spatial_pos_right_interpolated = f(wave_pixel_grid.value) * u.pix
+        f = interpolate.interp1d(wavelength_pos_right, wavelength,
+                                 fill_value='extrapolate')
+        wavelength_right_interpolated = \
+            f(wave_pixel_grid.value) * wavelength_unit
+
+        grid_x = np.hstack([spatial_pos_left_interpolated.value,
+                            spatial_pos_interpolated.value,
+                            spatial_pos_right_interpolated.value])
+        grid_y = np.hstack([wave_pixel_grid.value,
+                            wave_pixel_grid.value, wave_pixel_grid.value])
+        points = np.array([grid_y, grid_x]).T
+        values = np.hstack([wavelength_left_interpolated.value,
+                            wavelength_interpolated.value,
+                            wavelength_right_interpolated.value])
+
+        corrected_spatial_pos = spatial_pos_interpolated+nodOffset
+        corrected_wavelengths = griddata(points, values,
+                                         (wave_pixel_grid.value,
+                                          corrected_spatial_pos.value),
+                                         method='cubic') * wavelength_unit
+
         spectral_trace = \
             collections.OrderedDict(wavelength_pixel=wave_pixel_grid,
-                                    positional_pixel=spatial_pos_interpolated,
-                                    wavelength=wavelength_interpolated)
+                                    positional_pixel=corrected_spatial_pos[::-1],
+                                    wavelength=corrected_wavelengths[::-1])
 
         return spectral_trace
