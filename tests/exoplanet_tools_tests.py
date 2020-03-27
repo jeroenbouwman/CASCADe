@@ -70,7 +70,7 @@ class TestExoplanetsTools(unittest.TestCase):
                         self.test_bt_unit)
         for i in range(len(self.test_bt)):
             self.assertAlmostEqual(brightness_temperature[0].data.value[i],
-                                   self.test_bt[i], places=6)
+                                   self.test_bt[i], places=3)
 
         # exoplanet catalog tests
         for name, directory, file_name in zip(self.catalog_name,
