@@ -66,26 +66,29 @@ a flag can be set in the configuration files and this step will be ignored.
 tso.execute("subtract_background")
 ```
 
-Sigma clip the data
+Filter the input data to flag bad pixels and create a cleaned dataset.
 ```python
-tso.execute("sigma_clip_data")
+   tso.execute("filter_dataset")
 ```
 
-Determine the position of source from the spectroscopic data set. In case 1D spectra are used,
-the positional information stored in the fits headers is used.
+Determine the relative position, rotation and scale change of the source spectrum from the input spectroscopic data set.
 ```python
-tso.execute("determine_source_position")
+   tso.execute("determine_source_movement")
+```
+
+Correct the wavelength assaciated with the detector pixels for telescope movements.
+```python
+   tso.execute("correct_wavelengths")
 ```
 
 Set the extraction area within which the signal of the exoplanet will be determined
 ```python
-tso.execute("set_extraction_mask")
+   tso.execute("set_extraction_mask")
 ```
 
-Extract the spectrum of the Star + planet in an optimal way. In case of 1D spectra,
-this step is ignored
+Extract the spectrum of the Star + planet using both optimal as well as aperture extraction.
 ```python
-tso.execute("optimal_extraction")
+   tso.execute("extract_1d_spectra")
 ```
 
 Setup the matrix of regressors used to model the noise
