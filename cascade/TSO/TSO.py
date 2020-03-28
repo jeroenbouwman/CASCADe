@@ -119,6 +119,14 @@ class TSOSuite:
             self.cascade_parameters = configurator(*init_files_path)
         else:
             self.cascade_parameters = cascade_configuration
+        try:
+            self.cpm
+        except AttributeError:
+            self.cpm = SimpleNamespace()
+        try:
+            self.observation
+        except AttributeError:
+            self.observation = SimpleNamespace()
 
     @property
     def __valid_commands(self):
@@ -126,7 +134,7 @@ class TSOSuite:
         Dictionary with all the valid commands which can be parsed to the
         instance of the TSO object.
         """
-        return {"initialize": self.initialize_TSO, "reset": self.reset_TSO,
+        return {"initialize": self.initialize_tso, "reset": self.reset_tso,
                 "load_data": self.load_data,
                 "subtract_background": self.subtract_background,
                 "filter_dataset": self.filter_dataset,
@@ -172,13 +180,13 @@ class TSOSuite:
                              "check your data reduction command for the "
                              "following valid commands: {}. Aborting "
                              "command".format(self.__valid_commands.keys()))
-        else:
-            if command == "initialize":
-                self.__valid_commands[command](*init_files, path=path)
-            else:
-                self.__valid_commands[command]()
 
-    def initialize_TSO(self, *init_files, path=None):
+        if command == "initialize":
+            self.__valid_commands[command](*init_files, path=path)
+        else:
+            self.__valid_commands[command]()
+
+    def initialize_tso(self, *init_files, path=None):
         """
         Initializes the TSO object by reading in a single or
         multiple .ini files
@@ -220,7 +228,7 @@ class TSOSuite:
         else:
             self.cascade_parameters = cascade_configuration
 
-    def reset_TSO(self):
+    def reset_tso(self):
         """
         Reset initialization of TSO object by removing all loaded parameters.
 
@@ -397,13 +405,13 @@ class TSOSuite:
             raise AttributeError("Sigma clip value not defined. "
                                  "Aborting filtering of data.")
         try:
-            obs_data = self.cascade_parameters.observations_data
+            observationDataType = self.cascade_parameters.observations_data
         except AttributeError:
             raise AttributeError("No observation data type set. "
                                  "Aborting filtering of data.")
         # in case of 2D timeseries data, one has a timeseries of
         # extracted 1D spectra and simpler filtering is applied.
-        if obs_data == 'SPECTRUM':
+        if observationDataType == 'SPECTRUM':
             try:
                 nfilter = int(self.cascade_parameters.processing_nfilter)
                 if nfilter % 2 == 0:  # even
@@ -434,7 +442,7 @@ class TSOSuite:
                 raise AttributeError("Maximum number of iterations not set. "
                                      "Aborting filtering of data.")
             try:
-                fractional_acceptance_limit = \
+                fractionalAcceptanceLimit = \
                     float(self.cascade_parameters.
                           processing_fractional_acceptance_limit_filtering)
             except AttributeError:
@@ -449,7 +457,7 @@ class TSOSuite:
                                      "Aborting filtering of data.")
 
         # if timeseries data of 1D spctra use simpler filtering
-        if obs_data == 'SPECTRUM':
+        if observationDataType == 'SPECTRUM':
             # sigma clip data
             datasetOut = sigma_clip_data(datasetIn, sigma, nfilter)
             self.observation.dataset = datasetOut
@@ -457,12 +465,8 @@ class TSOSuite:
             cleanedDataset = \
                 create_cleaned_dataset(datasetIn, ROI, kernel,
                                        stdv_kernel_time)
-            try:
-                self.cpm
-            except AttributeError:
-                self.cpm = SimpleNamespace()
-            finally:
-                self.cpm.cleaned_dataset = cleanedDataset
+
+            self.cpm.cleaned_dataset = cleanedDataset
             return
 
         # expand ROI to cube
@@ -470,30 +474,25 @@ class TSOSuite:
 
         # directional filters
         Filters = directional_filters()
-        filter_shape = Filters.shape[0:2]
+        filterShape = Filters.shape[0:2]
 
         # all sub regions used to filter the data
         enumerated_sub_regions = \
-            define_image_regions_to_be_filtered(ROI, filter_shape)
+            define_image_regions_to_be_filtered(ROI, filterShape)
 
         # filter data
-        (dataset_out, filteredDataset, cleanedDataset) = \
+        (datasetOut, filteredDataset, cleanedDataset) = \
             iterative_bad_pixel_flagging(
                 datasetIn, ROIcube, Filters,
                 enumerated_sub_regions,
                 sigmaLimit=sigma,
                 maxNumberOfIterations=max_number_of_iterations,
-                fractionalAcceptanceLimit=fractional_acceptance_limit,
+                fractionalAcceptanceLimit=fractionalAcceptanceLimit,
                 useMultiProcesses=useMultiProcesses)
 
-        self.observation.dataset = dataset_out
-        try:
-            self.cpm
-        except AttributeError:
-            self.cpm = SimpleNamespace()
-        finally:
-            self.cpm.cleaned_dataset = cleanedDataset
-            self.cpm.filtered_dataset = filteredDataset
+        self.observation.dataset = datasetOut
+        self.cpm.cleaned_dataset = cleanedDataset
+        self.cpm.filtered_dataset = filteredDataset
 
     def determine_source_movement(self):
         """
@@ -508,7 +507,7 @@ class TSOSuite:
 
         To run this task the following configuration parameters need to be
         set:
-            
+
           -  cascade_parameters.processing_quantile_cut_movement
           -  cascade_parameters.processing_order_trace_movement
           -  cascade_parameters.processing_nreferences_movement
@@ -684,15 +683,17 @@ class TSOSuite:
             newShiftedTrace["positional_pixel"] - \
             medianCrossDispersionPosition * \
             newShiftedTrace['positional_pixel'].unit
-        try:
-            self.cpm
-        except AttributeError:
-            self.cpm = SimpleNamespace()
-        finally:
-            self.cpm.spectral_trace = newShiftedTrace
-            self.cpm.spectral_movement = spectral_movement
-            self.cpm.position = spectral_movement["crossDispersionShift"]
-            self.cpm.median_position = medianCrossDispersionPosition
+        newFittedTrace["positional_pixel"] = \
+            newFittedTrace["positional_pixel"] - \
+            medianCrossDispersionPosition * \
+            newFittedTrace['positional_pixel'].unit
+
+        self.cpm.spectral_trace = newShiftedTrace
+        self.cpm.spectral_trace_fitted = newFittedTrace
+        self.cpm.spectral_movement = spectral_movement
+        self.cpm.position = spectral_movement["crossDispersionShift"]
+        self.cpm.median_position = medianCrossDispersionPosition
+        self.cpm.initial_position_shift = initialCorssDispersionShift
 
     def correct_wavelengths(self):
         """
@@ -759,26 +760,54 @@ class TSOSuite:
             raise AttributeError("No valid data found. "
                                  "Aborting position determination")
         try:
-            obs_data = self.cascade_parameters.observations_data
+            observationDataType = self.cascade_parameters.observations_data
         except AttributeError:
             raise AttributeError("No observation data type set. "
                                  "Aborting position determination")
-        if obs_data == 'SPECTRUM':
+        if observationDataType == 'SPECTRUM':
             warnings.warn("Spectral time series of 1D spectra are assumed "
                           "to be movement corrected. Skipping the "
                           "correct_wavelengths pipeline step.")
             return
+
+        try:
+            spectralMovement = self.cpm.spectral_movement
+        except AttributeError:
+            raise AttributeError("No information on the telescope "
+                                 "movement found. Did you run the "
+                                 "determine_source_movement pipeline "
+                                 "step? Aborting wavelength correction")
         else:
             try:
-                spectralMovement = self.cpm.spectral_movement
+                isMovementCorrected = datasetIn.isMovementCorrected
             except AttributeError:
-                raise AttributeError("No information on the telescope "
-                                     "movement found. Did you run the "
-                                     "determine_source_movement pipeline "
-                                     "step? Aborting wavelength correction")
+                isMovementCorrected = False
+            # Correct the wavelength images for movement if not already
+            # corrected
+            if isMovementCorrected is not True:
+                verboseSaveFile = \
+                    'correct_wavelength_for_source_movent' + \
+                    '_flagged_data.png'
+                verboseSaveFile = os.path.join(savePathVerbose,
+                                               verboseSaveFile)
+                datasetIn = correct_wavelength_for_source_movent(
+                        datasetIn,
+                        spectralMovement,
+                        verbose=verbose,
+                        verboseSaveFile=verboseSaveFile)
+                self.observation.dataset = datasetIn
+            else:
+                warnings.warn("Data already corrected for telescope "
+                              "movement. Skipping correction step")
+            try:
+                cleanedDataset = self.cpm.cleaned_dataset
+            except AttributeError:
+                warnings.warn("No valid cleaned data found. "
+                              "Skipping wavelength correction step")
             else:
                 try:
-                    isMovementCorrected = datasetIn.isMovementCorrected
+                    isMovementCorrected = \
+                        cleanedDataset.isMovementCorrected
                 except AttributeError:
                     isMovementCorrected = False
                 # Correct the wavelength images for movement if not already
@@ -786,71 +815,43 @@ class TSOSuite:
                 if isMovementCorrected is not True:
                     verboseSaveFile = \
                         'correct_wavelength_for_source_movent' + \
-                        '_flagged_data.png'
+                        '_cleaned_data.png'
                     verboseSaveFile = os.path.join(savePathVerbose,
                                                    verboseSaveFile)
-                    datasetIn = correct_wavelength_for_source_movent(
-                            datasetIn,
+                    cleanedDataset = \
+                        correct_wavelength_for_source_movent(
+                            cleanedDataset,
                             spectralMovement,
                             verbose=verbose,
                             verboseSaveFile=verboseSaveFile)
-                    self.observation.dataset = datasetIn
-                else:
-                    warnings.warn("Data already corrected for telescope "
-                                  "movement. Skipping correction step")
-                try:
-                    cleanedDataset = self.cpm.cleaned_dataset
-                except AttributeError:
-                    warnings.warn("No valid cleaned data found. "
-                                  "Skipping wavelength correction step")
-                else:
-                    try:
-                        isMovementCorrected = \
-                            cleanedDataset.isMovementCorrected
-                    except AttributeError:
-                        isMovementCorrected = False
-                    # Correct the wavelength images for movement if not already
-                    # corrected
-                    if isMovementCorrected is not True:
-                        verboseSaveFile = \
-                            'correct_wavelength_for_source_movent' + \
-                            '_cleaned_data.png'
-                        verboseSaveFile = os.path.join(savePathVerbose,
-                                                       verboseSaveFile)
-                        cleanedDataset = \
-                            correct_wavelength_for_source_movent(
-                                cleanedDataset,
-                                spectralMovement,
-                                verbose=verbose,
-                                verboseSaveFile=verboseSaveFile)
-                        self.cpm.cleaned_dataset = cleanedDataset
+                    self.cpm.cleaned_dataset = cleanedDataset
 
+            try:
+                filteredDataset = self.cpm.filtered_dataset
+            except AttributeError:
+                warnings.warn("No valid filtered data found. "
+                              "Skipping wavelength correction step")
+            else:
                 try:
-                    filteredDataset = self.cpm.filtered_dataset
+                    isMovementCorrected = \
+                        filteredDataset.isMovementCorrected
                 except AttributeError:
-                    warnings.warn("No valid filtered data found. "
-                                  "Skipping wavelength correction step")
-                else:
-                    try:
-                        isMovementCorrected = \
-                            filteredDataset.isMovementCorrected
-                    except AttributeError:
-                        isMovementCorrected = False
-                    # Correct the wavelength images for movement if not already
-                    # corrected
-                    if isMovementCorrected is not True:
-                        verboseSaveFile = \
-                            'correct_wavelength_for_source_movent' + \
-                            '_filtered_data.png'
-                        verboseSaveFile = os.path.join(savePathVerbose,
-                                                       verboseSaveFile)
-                        filteredDataset = \
-                            correct_wavelength_for_source_movent(
-                                filteredDataset,
-                                spectralMovement,
-                                verbose=verbose,
-                                verboseSaveFile=verboseSaveFile)
-                        self.cpm.filtered_dataset = filteredDataset
+                    isMovementCorrected = False
+                # Correct the wavelength images for movement if not already
+                # corrected
+                if isMovementCorrected is not True:
+                    verboseSaveFile = \
+                        'correct_wavelength_for_source_movent' + \
+                        '_filtered_data.png'
+                    verboseSaveFile = os.path.join(savePathVerbose,
+                                                   verboseSaveFile)
+                    filteredDataset = \
+                        correct_wavelength_for_source_movent(
+                            filteredDataset,
+                            spectralMovement,
+                            verbose=verbose,
+                            verboseSaveFile=verboseSaveFile)
+                    self.cpm.filtered_dataset = filteredDataset
 
     def set_extraction_mask(self):
         """
@@ -929,13 +930,13 @@ class TSOSuite:
             raise AttributeError("No ROI defined. "
                                  "Aborting setting extraction mask")
         try:
-            obs_data = self.cascade_parameters.observations_data
+            observationDataType = self.cascade_parameters.observations_data
         except AttributeError:
             raise AttributeError("No observation data type set. "
                                  "Aborting setting extraction mask")
         # if spectral time series of 1D speectra, the extraction mask is
         # simply the ROI for each time step
-        if obs_data == 'SPECTRUM':
+        if observationDataType == 'SPECTRUM':
             ExtractionMask = np.tile(ROI.T, (dim[-1], 1)).T
             self.cpm.extraction_mask = [ExtractionMask[..., 0]]
             return
@@ -1020,12 +1021,12 @@ class TSOSuite:
 
         """
         try:
-            obs_data = self.cascade_parameters.observations_data
+            observationDataType = self.cascade_parameters.observations_data
         except AttributeError:
             raise AttributeError("No observation data type set. "
                                  "Aborting optimal extraction")
         # do not continue if data are already 1d spectra
-        if obs_data == "SPECTRUM":
+        if observationDataType == "SPECTRUM":
             warnings.warn("Dataset is already a timeseries of 1d spectra "
                           "Aborting extraction of 1d spectra.")
             return
@@ -1151,14 +1152,14 @@ class TSOSuite:
                                             verboseSaveFile=verboseSaveFile)
 
         # add position info to data set
-        nwave, ntime = rebinnedOptimallyExtractedDataset.data.shape
+        nwave, _ = rebinnedOptimallyExtractedDataset.data.shape
         rebinnedOptimallyExtractedDataset.position = \
             np.tile(spectralMovement['crossDispersionShift'], (nwave, 1))*u.pix
         rebinnedOptimallyExtractedDataset.position_unit = u.pix
         rebinnedOptimallyExtractedDataset.median_position = \
             medianCrossDispersionPosition
 
-        nwave, ntime = rebinnedApertureExtractedDataset.data.shape
+        nwave, _ = rebinnedApertureExtractedDataset.data.shape
         rebinnedApertureExtractedDataset.position = \
             np.tile(spectralMovement['crossDispersionShift'], (nwave, 1))*u.pix
         rebinnedApertureExtractedDataset.position_unit = u.pix
@@ -1176,30 +1177,24 @@ class TSOSuite:
             savePathData = \
                 os.path.join(datasetParametersDict['obs_path'],
                              datasetParametersDict['inst_inst_name'],
-                             datasetParametersDict['obs_target_name'],
-                             'SPECTRA/')
+                             datasetParametersDict['obs_target_name'])
+            if observationDataType == 'SPECTRAL_DATA_CUBE':
+                savePathData = os.path.join(savePathData, 'SPECTRA_SUR/')
+            else:
+                savePathData = os.path.join(savePathData, 'SPECTRA/')
             os.makedirs(savePathData, exist_ok=True)
             write_timeseries_to_fits(rebinnedOptimallyExtractedDataset,
                                      savePathData)
             write_timeseries_to_fits(rebinnedApertureExtractedDataset,
                                      savePathData)
 
-        try:
-            self.cpm
-        except AttributeError:
-            self.cpm = SimpleNamespace()
-        finally:
-            self.cpm.extraction_profile = extractionProfile
-            self.cpm.extraction_profile_mask = roiCube
-        try:
-            self.observation
-        except AttributeError:
-            self.observation = SimpleNamespace()
-        finally:
-            self.observation.dataset_optimal_extracted = \
-                rebinnedOptimallyExtractedDataset
-            self.observation.dataset_aperture_extracted = \
-                rebinnedApertureExtractedDataset
+        self.cpm.extraction_profile = extractionProfile
+        self.cpm.extraction_profile_mask = roiCube
+
+        self.observation.dataset_optimal_extracted = \
+            rebinnedOptimallyExtractedDataset
+        self.observation.dataset_aperture_extracted = \
+            rebinnedApertureExtractedDataset
 
     def define_eclipse_model(self):
         """
@@ -2198,7 +2193,7 @@ class TSOSuite:
                 np.ma.mean(self.cpm.extraction_profile_mask, axis=-1)
             extraction_weights = extraction_weights / \
                 np.ma.sum(extraction_weights, axis=1, keepdims=True)
-        except AttributeError as e:
+        except AttributeError:
             # for 1D spectra
             extraction_weights = np.ones_like(calibrated_error)
             extraction_weights = extraction_weights / \
