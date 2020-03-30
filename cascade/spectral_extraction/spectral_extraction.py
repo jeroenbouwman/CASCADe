@@ -608,14 +608,17 @@ def iterative_bad_pixel_flagging(dataset, ROIcube, Filters,
         np.sqrt(filteredImageVariance[cleanedUncertainty.mask])
     cleanedUncertainty.mask = filteredImage.mask
 
+    ndim = dataset.data.ndim
+    selection = tuple((ndim-1)*[0]+[Ellipsis])
+
     filteredDataset = \
-        SpectralDataTimeSeries(wavelength=dataset._wavelength,
+        SpectralDataTimeSeries(wavelength=dataset.wavelength,
                                wavelength_unit=dataset.wavelength_unit,
                                data=filteredImage,
                                data_unit=dataset.data_unit,
-                               time=dataset._time,
+                               time=dataset.time.data.value[selection],
                                time_unit=dataset.time_unit,
-                               time_bjd=dataset._time_bjd,
+                               time_bjd=dataset.time_bjd.data.value[selection],
                                time_bjd_unit=dataset.time_bjd_unit,
                                uncertainty=np.sqrt(filteredImageVariance),
                                target_name=dataset.target_name,
@@ -625,13 +628,13 @@ def iterative_bad_pixel_flagging(dataset, ROIcube, Filters,
     filteredDataset.optimalFilterIndex = optimalFilterIndex
 
     cleanedDataset = \
-        SpectralDataTimeSeries(wavelength=dataset._wavelength,
+        SpectralDataTimeSeries(wavelength=dataset.wavelength,
                                wavelength_unit=dataset.wavelength_unit,
                                data=cleanedData,
                                data_unit=dataset.data_unit,
-                               time=dataset._time,
+                               time=dataset.time.data.value[selection],
                                time_unit=dataset.time_unit,
-                               time_bjd=dataset._time_bjd,
+                               time_bjd=dataset.time_bjd.data.value[selection],
                                time_bjd_unit=dataset.time_bjd_unit,
                                uncertainty=cleanedUncertainty,
                                target_name=dataset.target_name,
@@ -700,7 +703,6 @@ def extract_spectrum(dataset, ROICube, extractionProfile=None, optimal=False,
     data = dataset.return_masked_array('data').copy()
     variance = (dataset.return_masked_array('uncertainty').copy())**2
     wavelength = dataset.return_masked_array('wavelength').copy()
-    npix, mpix, ntime = data.shape
     if optimal:
         mask = (~data.mask).astype(int) * (~ROICube).astype(int)
         extractedSpectra = \
@@ -740,9 +742,9 @@ def extract_spectrum(dataset, ROICube, extractionProfile=None, optimal=False,
                                wavelength_unit=dataset.wavelength_unit,
                                data=extractedSpectra,
                                data_unit=dataset.data_unit,
-                               time=dataset._time,
+                               time=dataset.time.data.value[0, 0, :],
                                time_unit=dataset.time_unit,
-                               time_bjd=dataset._time_bjd,
+                               time_bjd=dataset.time_bjd.data.value[0, 0, :],
                                time_bjd_unit=dataset.time_bjd_unit,
                                uncertainty=uncertaintyExtractedSpectra,
                                target_name=dataset.target_name,
@@ -915,7 +917,8 @@ def _determine_relative_source_shift(reference_image, image,
     im = convolve(im, kernel, boundary='extend')
 
     # subpixel precision by oversampling image by upsampleFactor
-    shift, error, diffphase = \
+    # returns shift, error and phase difference
+    shift, _, _ = \
         register_translation(ref_im, im, upsample_factor=upsampleFactor,
                              space=space)
     relativeImageShiftY = -shift[0]
@@ -995,7 +998,7 @@ def _determine_relative_rotation_and_scale(reference_image, referenceROI,
     tparams = register_translation(warped_fft_ref_im, warped_fft_im,
                                    upsample_factor=upsampleFactor,
                                    space='real')
-    shifts, error, phasediff = tparams
+    shifts = tparams[0]
     # calculate rotation
     # note, only look for angles between +- 90 degrees,
     # remove anu flip of 180 degrees due to search
@@ -1060,9 +1063,9 @@ def _pad_region_of_interest_to_square(image, ROI=None):
     padded_image : '2-D ndarray' of 'float'
     '''
     if ROI is not None:
-        label_im, nb_labels = ndimage.label(ROI)
+        label_im, _ = ndimage.label(ROI)
     elif isinstance(image, np.ma.core.MaskedArray):
-        label_im, nb_labels = ndimage.label(image.mask)
+        label_im, _ = ndimage.label(image.mask)
     else:
         raise AttributeError("For image 0 padding either use MaskedArray as \
                               input or provide ROI. Aborting 0 padding")
@@ -1341,7 +1344,7 @@ def joblib_loop(dataCube, ROICube=None, upsampleFactor=111,
                                   'positional shift between integrations'))
         for block in grouper(ITR, batch_size):
             MPITR = MP(dfunc(i) for i in block)
-            for k, relativeSourcePosition in enumerate(MPITR):
+            for (k, relativeSourcePosition) in enumerate(MPITR):
                 yield relativeSourcePosition
             progress_bar.update(k+1)
     progress_bar.close()
@@ -1409,9 +1412,11 @@ def register_telescope_movement(cleanedDataset, ROICube=None,  nreferences=6,
     if (mainReference < 0) | (mainReference > nreferences):
         raise(ValueError("Wrong mainReference value"))
 
-    determinePositionIterator = joblib_loop(dataUse,
-                                            ROICube=ROICube,
-                                            nreference=nreferences)
+    determinePositionIterator = \
+        joblib_loop(dataUse, ROICube=ROICube,
+                    upsampleFactor=upsampleFactor,
+                    AngleOversampling=AngleOversampling,
+                    nreference=nreferences)
     iteratorResults = [position for position in determinePositionIterator]
 
     referenceIndex = np.linspace(0, ntime-1, nreferences, dtype=int)
@@ -1558,6 +1563,7 @@ def determine_center_of_light_posision(cleanData, ROI=None, verbose=False,
         ax.set_title('Integrated Signal')
         ax.set_xlabel('Pixel Position Dispersion Direction')
         ax.set_ylabel('Integrated Signal')
+        fig.subplots_adjust(bottom=0.025, left=0.025, top=0.975, right=0.975)
         plt.show()
 
     return total_light[idx_use], idx, COL[idx_use], ytrace, xtrace
@@ -1725,7 +1731,7 @@ def correct_wavelength_for_source_movent(datasetIn, spectral_movement,
     dataset_out.isMovementCorrected = True
 
     if verbose:
-        nwave, nspacial = dataset_out.data.shape[0:2]
+        nwave = dataset_out.data.shape[0]
         wnew = np.ma.median(dataset_out.wavelength[nwave//2:nwave//2+4,
                                                    :, :], axis=1)
         wold = np.ma.median(datasetIn.wavelength[nwave//2:nwave//2+4, :, :],
@@ -1981,15 +1987,17 @@ def rebin_to_common_wavelength_grid(dataset, referenceIndex, nrebin=None,
     rebinnedWavelength = np.tile(referenceWavelength,
                                  (rebinnedSpectra.shape[-1], 1)).T
 
+    ndim = dataset.data.ndim
+    selection = tuple((ndim-1)*[0]+[Ellipsis])
     rebinnedDataset = \
         SpectralDataTimeSeries(wavelength=rebinnedWavelength,
                                wavelength_unit=dataset.wavelength_unit,
                                data=rebinnedSpectra,
                                data_unit=dataset.data_unit,
-                               time=dataset._time,
+                               time=dataset.time.data.value[selection],
                                time_unit=dataset.time_unit,
                                uncertainty=rebinnedUncertainty,
-                               time_bjd=dataset._time_bjd,
+                               time_bjd=dataset.time_bjd.data.value[selection],
                                time_bjd_unit=dataset.time_bjd_unit,
                                isExtractedSpectra=dataset.isExtractedSpectra,
                                isRebinned=True,
@@ -2219,14 +2227,14 @@ def sigma_clip_data_cosmic(data, sigma):
 
     Returns
     -------
-    sigma_clip_mask : `ndarray`
+    sigmaClipMask : `ndarray` of 'bool'
         Updated mask for input data with bad data points flagged `(=1)`
     """
     # time axis always the last axis in data,
     # or the first in the transposed array
-    filtered_data = sigma_clip(data.T, sigma=sigma, axis=0)
-    sigma_clip_mask = filtered_data.mask.T
-    return sigma_clip_mask
+    filtereData = sigma_clip(data.T, sigma=sigma, axis=0)
+    sigmaClipMask = filtereData.mask.T
+    return sigmaClipMask
 
 
 def sigma_clip_data(datasetIn, sigma, nfilter):
@@ -2255,16 +2263,16 @@ def sigma_clip_data(datasetIn, sigma, nfilter):
         nfilter += 1
 
     # mask cosmic hits
-    temp_data = datasetIn.return_masked_array("data")
-    sigma_cliped_mask = sigma_clip_data_cosmic(temp_data, sigma)
+    data = datasetIn.return_masked_array("data")
+    sigmaClipedMask = sigma_clip_data_cosmic(data, sigma)
     # update mask
-    updated_mask = np.ma.mask_or(datasetIn.mask, sigma_cliped_mask,
+    sigmaClipedMask = np.ma.mask_or(datasetIn.mask, sigmaClipedMask,
                                  shrink=False)
-    datasetIn.mask = updated_mask
+    datasetIn.mask = sigmaClipedMask
 
     dim = datasetIn.data.shape
     ndim = datasetIn.data.ndim
-    mask = datasetIn.mask.copy()
+    newMask = datasetIn.mask.copy()
 
     for il in range(0+(nfilter-1)//2, dim[0]-(nfilter-1)//2):
         filter_index = \
@@ -2272,22 +2280,23 @@ def sigma_clip_data(datasetIn, sigma, nfilter):
             [slice(None)]*(ndim-1)
         filter_index = tuple(filter_index)
         # reformat to masked array without quantity
-        temp_data = datasetIn.return_masked_array("data")
+        data = datasetIn.return_masked_array("data")
         # median along time axis
-        temp_data = np.ma.median(temp_data[filter_index].T, axis=0)
+        data = np.ma.median(data[filter_index].T, axis=0)
         # filter in box in the wavelength direction
-        temp_data = sigma_clip(temp_data, sigma=sigma, axis=ndim-2)
+        data = sigma_clip(data, sigma=sigma, axis=ndim-2)
         # specra:  tiling=(dim[1], 1)
         # spectral images:  tiling=(dim[2], 1, 1)
         # spectral data cubes: tiling=(dim[3], 1, 1, 1)
         tiling = dim[ndim-1:] + tuple(np.ones(ndim-1).astype(int))
-        mask_new = np.tile(temp_data.mask, tiling)
+        mask = np.tile(data.mask, tiling)
         # add to mask
-        mask[filter_index] = np.ma.mask_or(mask[filter_index], mask_new.T,
-                                           shrink=False)
+        newMask[filter_index] = np.ma.mask_or(newMask[filter_index], mask.T,
+                                              shrink=False)
+    newMask = np.ma.mask_or(datasetIn.mask, newMask)
+
     # update mask and set flag
-    updated_mask = np.ma.mask_or(datasetIn.mask, mask)
-    datasetIn.mask = updated_mask
+    datasetIn.mask = newMask
     datasetIn.isSigmaCliped = True
     return datasetIn
 
@@ -2359,14 +2368,16 @@ def create_cleaned_dataset(datasetIn, ROI, kernel, stdvKernelTime):
         cleanedUncertainty = \
             RS2.inverse_transform(cleanedUncertainty.T).T
 
+    selection = tuple((ndim-1)*[0]+[Ellipsis])
+
     cleanedDataset = \
-        SpectralDataTimeSeries(wavelength=datasetIn._wavelength,
+        SpectralDataTimeSeries(wavelength=datasetIn.wavelength,
                                wavelength_unit=datasetIn.wavelength_unit,
                                data=cleanedData,
                                data_unit=datasetIn.data_unit,
-                               time=datasetIn._time,
+                               time=datasetIn.time.data.value[selection],
                                time_unit=datasetIn.time_unit,
-                               time_bjd=datasetIn._time_bjd,
+                               time_bjd=datasetIn.time_bjd.data.value[selection],
                                time_bjd_unit=datasetIn.time_bjd_unit,
                                uncertainty=cleanedUncertainty,
                                target_name=datasetIn.target_name,

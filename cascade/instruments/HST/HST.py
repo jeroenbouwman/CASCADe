@@ -39,7 +39,7 @@ from astropy.wcs import WCS
 from astropy.stats import sigma_clipped_stats
 from astropy.convolution import Gaussian2DKernel, interpolate_replace_nans
 from astropy.convolution import Gaussian1DKernel
-from astropy.stats import sigma_clipped_stats
+# from astropy.stats import sigma_clipped_stats
 from photutils import IRAFStarFinder
 import pandas as pd
 from scipy.optimize import nnls
@@ -381,6 +381,8 @@ class HSTWFC3(InstrumentBase):
         mask = np.ma.make_mask_none(spectral_data.shape)
         position = np.zeros((nintegrations))
         time = np.zeros((nintegrations))
+        scan_direction = np.zeros((nintegrations))
+        sample_number = np.zeros((nintegrations))
         for im, spectral_data_file in enumerate(tqdm(data_files,
                                                      dynamic_ncols=True)):
             # WARNING fits data is single precision!!
@@ -405,6 +407,16 @@ class HSTWFC3(InstrumentBase):
                 exptime = fits.getval(spectral_data_file, "EXPTIME", ext=0)
                 expstart = fits.getval(spectral_data_file, "EXPSTART", ext=0)
                 time[im] = expstart + 0.5*(exptime/(24.0*3600.0))
+            try:
+                scan_direction[im] = fits.getval(spectral_data_file, "SCANDIR",
+                                                 ext=0)
+            except KeyError:
+                pass
+            try:
+                sample_number[im] = fits.getval(spectral_data_file, "SAMPLENR",
+                                                ext=0)
+            except KeyError:
+                pass
 
         idx = np.argsort(time)
         time = time[idx]

@@ -36,6 +36,7 @@ class InstanceDescriptorMixin(object):
     Mixin to be able to add descriptor to the instance of the class
     and not the class itself
     """
+
     def __getattribute__(self, name):
         value = object.__getattribute__(self, name)
         if hasattr(value, '__get__'):
@@ -58,29 +59,30 @@ class UnitDesc(object):
     A descriptor for adding auxilary measurements,
     setting the property for the unit atribute
     """
+
     def __init__(self, keyname):
         self.default = None
         self.values = WeakKeyDictionary()
         self.keyname = keyname
 
     def __get__(self, instance, owner):
-        return getattr(instance, "_"+self.keyname, self.default)
+        return getattr(instance, "_" + self.keyname, self.default)
 
     def __set__(self, instance, value):
-        if hasattr(instance, "_"+self.keyname[:-5]):
-            unit = getattr(instance, "_"+self.keyname, self.default)
-            data = getattr(instance, "_"+self.keyname[:-5], np.array(0.0))
+        if hasattr(instance, "_" + self.keyname[:-5]):
+            unit = getattr(instance, "_" + self.keyname, self.default)
+            data = getattr(instance, "_" + self.keyname[:-5], np.array(0.0))
             if (unit is not None) and (value is not None):
                 if data.shape == ():
-                    setattr(instance, "_"+self.keyname[:-5],
+                    setattr(instance, "_" + self.keyname[:-5],
                             ((np.array([data]) * unit).to(value)).value)
                 else:
-                    setattr(instance, "_"+self.keyname[:-5],
+                    setattr(instance, "_" + self.keyname[:-5],
                             ((data * unit).to(value)).value)
-        setattr(instance, "_"+self.keyname, value)
+        setattr(instance, "_" + self.keyname, value)
 
     def __delete__(self, instance):
-        delattr(instance, "_"+self.keyname)
+        delattr(instance, "_" + self.keyname)
         del self.values[instance]
 
 
@@ -88,19 +90,20 @@ class FlagDesc(object):
     """
     A descriptor for adding logical flags
     """
+
     def __init__(self, keyname):
         self.default = None
         self.values = WeakKeyDictionary()
         self.keyname = keyname
 
     def __get__(self, instance, owner):
-        return getattr(instance, "_"+self.keyname, None)
+        return getattr(instance, "_" + self.keyname, None)
 
     def __set__(self, instance, value):
-        setattr(instance, "_"+self.keyname, value)
+        setattr(instance, "_" + self.keyname, value)
 
     def __delete__(self, instance):
-        delattr(instance, "_"+self.keyname)
+        delattr(instance, "_" + self.keyname)
         del self.values[instance]
 
 
@@ -108,19 +111,20 @@ class AuxilaryInfoDesc(object):
     """
     A descriptor for adding Auxilary information to the dataset
     """
+
     def __init__(self, keyname):
         self.default = None
         self.values = WeakKeyDictionary()
         self.keyname = keyname
 
     def __get__(self, instance, owner):
-        return getattr(instance, "_"+self.keyname, None)
+        return getattr(instance, "_" + self.keyname, None)
 
     def __set__(self, instance, value):
-        setattr(instance, "_"+self.keyname, value)
+        setattr(instance, "_" + self.keyname, value)
 
     def __delete__(self, instance):
-        delattr(instance, "_"+self.keyname)
+        delattr(instance, "_" + self.keyname)
         del self.values[instance]
 
 
@@ -129,19 +133,20 @@ class MeasurementDesc(object):
     A descriptor for adding auxilary measurements,
     setting the properties for the the measurement and unit
     """
+
     def __init__(self, keyname):
         self.default = float("NaN")
         self.values = WeakKeyDictionary()
         self.keyname = keyname
 
     def __get__(self, instance, owner):
-        unit = getattr(instance, "_"+self.keyname+"_unit", None)
+        unit = getattr(instance, "_" + self.keyname + "_unit", None)
         if unit is not None:
             unit_out = unit
         else:
             unit_out = u.dimensionless_unscaled
         mask = getattr(instance, "_mask")
-        value = getattr(instance, "_"+self.keyname, self.default)
+        value = getattr(instance, "_" + self.keyname, self.default)
         if (mask.shape == ()) or (mask.shape == value.shape):
             value_out = value
         else:
@@ -150,25 +155,25 @@ class MeasurementDesc(object):
                 tuple(np.ones(ntile).astype(int))
             value_out = np.tile(value, tiling)
 
-        return np.ma.array(value_out*unit_out, mask=mask)
+        return np.ma.array(value_out * unit_out, mask=mask)
 
     def __set__(self, instance, value):
         if isinstance(value, u.Quantity):
-            unit = getattr(instance, "_"+self.keyname+"_unit", None)
+            unit = getattr(instance, "_" + self.keyname + "_unit", None)
             if unit is not None:
-                setattr(instance, "_"+self.keyname,
+                setattr(instance, "_" + self.keyname,
                         np.array(((value).to(unit)).value))
             else:
-                setattr(instance, "_"+self.keyname, np.array(value.value))
-                setattr(instance, "_"+self.keyname+"_unit", value.unit)
+                setattr(instance, "_" + self.keyname, np.array(value.value))
+                setattr(instance, "_" + self.keyname + "_unit", value.unit)
         else:
             if np.array(value).shape != ():
-                setattr(instance, "_"+self.keyname, np.array(value))
+                setattr(instance, "_" + self.keyname, np.array(value))
             else:
-                setattr(instance, "_"+self.keyname, np.array([value]))
+                setattr(instance, "_" + self.keyname, np.array([value]))
 
     def __delete__(self, instance):
-        delattr(instance, "_"+self.keyname)
+        delattr(instance, "_" + self.keyname)
         del self.values[instance]
 
 
@@ -224,6 +229,7 @@ class SpectralData(InstanceDescriptorMixin):
     >>> print(sd.data, sd.wavelength)
 
     """
+
     def __init__(self, wavelength=float("NaN"), wavelength_unit=None,
                  data=float("NaN"), data_unit=None, uncertainty=float("NaN"),
                  mask=False, **kwargs):
@@ -240,17 +246,18 @@ class SpectralData(InstanceDescriptorMixin):
             # check for unit argument
             if "_unit" in key:
                 setattr(self, key, UnitDesc(key))
-                setattr(self, "_"+key, value)
+                setattr(self, "_" + key, value)
         for key, value in kwargs.items():
             # set auxilary data
             if "_unit" not in key:
                 # check if not boolean
                 if not isinstance(value, type(True)):
                     if not any(isinstance(t, np.str) for t in value):
-                        if not hasattr(self, "_"+key+"_unit"):
+                        if not hasattr(self, "_" + key + "_unit"):
                             # if unit is not explicitly given, set property
-                            setattr(self, key+"_unit", UnitDesc(key+"_unit"))
-                            setattr(self, "_"+key+"_unit", None)
+                            setattr(self, key + "_unit",
+                                    UnitDesc(key + "_unit"))
+                            setattr(self, "_" + key + "_unit", None)
                         setattr(self, key, MeasurementDesc(key))
                         setattr(self, key, value)
                     else:
@@ -273,8 +280,8 @@ class SpectralData(InstanceDescriptorMixin):
             unit_out = self._wavelength_unit
         else:
             unit_out = u.dimensionless_unscaled
-        if (self.mask.shape == ()) or (self.mask.shape ==
-                                       self._wavelength.shape):
+        if (self.mask.shape == ()) or \
+           (self.mask.shape == self._wavelength.shape):
             wavelength_out = self._wavelength
         else:
             ntile = len(self._wavelength.shape)
@@ -324,14 +331,12 @@ class SpectralData(InstanceDescriptorMixin):
             if (self._wavelength_unit is not None) and (value is not None):
                 if self._wavelength.shape == ():
                     self._wavelength = \
-                        ((np.array([self._wavelength]) *
-                          self._wavelength_unit).
-                            to(value, equivalencies=u.spectral())).value
+                        ((np.array([self._wavelength]) * self._wavelength_unit).
+                         to(value, equivalencies=u.spectral())).value
                 else:
                     self._wavelength = \
-                        ((self._wavelength *
-                          self._wavelength_unit).
-                            to(value, equivalencies=u.spectral())).value
+                        ((self._wavelength * self._wavelength_unit).
+                         to(value, equivalencies=u.spectral())).value
         self._wavelength_unit = value
 
     @property
@@ -429,16 +434,19 @@ class SpectralData(InstanceDescriptorMixin):
         if hasattr(self, '_data'):
             if (value is not None) and (self._data_unit is not None):
                 if self._data.shape == ():
-                    self._data = ((np.array([self._data]) *
-                                   self._data_unit).to(value)).value
+                    self._data = \
+                        ((np.array([self._data]) * self._data_unit).
+                         to(value)).value
                 else:
-                    self._data = ((self._data*self._data_unit).to(value)).value
+                    self._data = \
+                        ((self._data * self._data_unit).to(value)).value
                 if self._uncertainty.shape == ():
-                    self._uncertainty = ((np.array([self._uncertainty]) *
-                                          self._data_unit).to(value)).value
+                    self._uncertainty = \
+                        ((np.array([self._uncertainty]) * self._data_unit).
+                         to(value)).value
                 else:
-                    self._uncertainty = ((self._uncertainty *
-                                          self._data_unit).to(value)).value
+                    self._uncertainty = \
+                        ((self._uncertainty * self._data_unit).to(value)).value
         self._data_unit = value
 
     @property
@@ -468,8 +476,8 @@ class SpectralData(InstanceDescriptorMixin):
             else:
                 return np.ma.array(self._data, mask=self.mask)
         elif attr == 'wavelength':
-            if (self.mask.shape == ()) or (self.mask.shape ==
-                                           self._wavelength.shape):
+            if (self.mask.shape == ()) or \
+               (self.mask.shape == self._wavelength.shape):
                 wavelength_out = self._wavelength
             else:
                 ntile = len(self._wavelength.shape)
@@ -541,6 +549,7 @@ class SpectralDataTimeSeries(SpectralData):
                                      time=time)
 
     """
+
     def __init__(self, wavelength=float("NaN"), wavelength_unit=None,
                  data=np.array([[float("NaN")]]), data_unit=None,
                  uncertainty=np.array([[float("NaN")]]), mask=False,
@@ -607,16 +616,33 @@ class SpectralDataTimeSeries(SpectralData):
         if hasattr(self, '_time'):
             if (value is not None) and (self._time_unit is not None):
                 if self._time.shape == ():
-                    self._time = ((np.array([self._time]) *
-                                   self._time_unit).to(value)).value
+                    self._time = \
+                        ((np.array([self._time]) * self._time_unit).
+                         to(value)).value
                 else:
-                    self._time = ((self._time*self._time_unit).to(value)).value
+                    self._time = \
+                        ((self._time * self._time_unit).to(value)).value
         self._time_unit = value
 
     def return_masked_array(self, attr):
         if attr == 'time':
-            if (self.mask.shape == ()) or (self.mask.shape ==
-                                           self._time.shape):
+            if (self.mask.shape == ()) or \
+               (self.mask.shape == self._time.shape):
+                time_out = self._time
+            else:
+                ntile = len(self._time.shape)
+                if ntile != 1:
+                    raise ValueError("Unkwon time structure")
+                tiling = (self._data.shape[:-1]) + \
+                    tuple(np.ones(ntile).astype(int))
+                time_out = np.tile(self._time, tiling)
+            if time_out.shape == ():
+                return np.ma.array(np.array([time_out]), mask=self.mask)
+            else:
+                return np.ma.array(time_out, mask=self.mask)
+        if attr == 'time_bjd':
+            if (self.mask.shape == ()) or \
+               (self.mask.shape == self._time.shape):
                 time_out = self._time
             else:
                 ntile = len(self._time.shape)
@@ -631,8 +657,8 @@ class SpectralDataTimeSeries(SpectralData):
                 return np.ma.array(time_out, mask=self.mask)
         elif attr == 'position':
             if hasattr(self, 'position'):
-                if (self.mask.shape == ()) or (self.mask.shape ==
-                                               self._position.shape):
+                if (self.mask.shape == ()) or \
+                   (self.mask.shape == self._position.shape):
                     position_out = self._position
                 else:
                     ntile = len(self._position.shape)

@@ -37,15 +37,7 @@ from types import SimpleNamespace
 import warnings
 import numpy as np
 from scipy import interpolate
-# from scipy.linalg import pinv2
-# from scipy.ndimage import binary_dilation
 import astropy.units as u
-# from astropy.convolution import interpolate_replace_nans
-# from astropy.convolution import Gaussian1DKernel
-# from astropy.convolution import convolve as ap_convolve
-# from astropy.convolution import Kernel as apKernel
-# from skimage.feature import register_translation
-# from astropy.stats import sigma_clip
 from astropy.stats import akaike_info_criterion
 from astropy.table import MaskedColumn, Table
 from astropy.visualization import quantity_support
@@ -64,7 +56,6 @@ from ..exoplanet_tools import (convert_spectrum_to_brighness_temperature,
 from ..initialize import (cascade_configuration, configurator,
                           default_initialization_path)
 from ..instruments import Observation
-# from ..data_model import SpectralDataTimeSeries
 from ..utilities import write_timeseries_to_fits
 from ..spectral_extraction import define_image_regions_to_be_filtered
 from ..spectral_extraction import iterative_bad_pixel_flagging
@@ -131,8 +122,10 @@ class TSOSuite:
     @property
     def __valid_commands(self):
         """
-        Dictionary with all the valid commands which can be parsed to the
-        instance of the TSO object.
+        All valid pipeline commands.
+
+        This function returns a dictionary with all the valid commands
+        which can be parsed to the instance of the TSO object.
         """
         return {"initialize": self.initialize_tso, "reset": self.reset_tso,
                 "load_data": self.load_data,
@@ -152,7 +145,9 @@ class TSOSuite:
 
     def execute(self, command, *init_files, path=None):
         """
-        Check if command is valid and excecute if True
+        Excecute the pipeline commands.
+
+        This function checks if a command is valid and excecute it if True.
 
         Parameters
         ----------
@@ -172,8 +167,10 @@ class TSOSuite:
 
         Examples
         --------
+        Example how to run the command to reset a tso object:
 
         >>> tso.execute('reset')
+
         """
         if command not in self.__valid_commands:
             raise ValueError("Command not recognized, "
@@ -188,7 +185,9 @@ class TSOSuite:
 
     def initialize_tso(self, *init_files, path=None):
         """
-        Initializes the TSO object by reading in a single or
+        Initialize the tso obect.
+
+        This function initializess the TSO object by reading in a single or
         multiple .ini files
 
         Parameters
@@ -211,8 +210,10 @@ class TSOSuite:
 
         Examples
         --------
+        To initialize a tso object excecute the following command:
 
         >>> tso.execute("initialize", init_flle_name)
+
         """
         if path is None:
             path = default_initialization_path
@@ -234,13 +235,17 @@ class TSOSuite:
 
         Examples
         --------
+        To reset the tso object excecute the following commend:
 
         >>> tso.execute("reset")
+
         """
         self.cascade_parameters.reset()
 
     def load_data(self):
         """
+        Load the observations into the tso object.
+
         Load the transit time series observations from file, for the
         object, observatory, instrument and file location specified in the
         loaded initialization files
@@ -260,6 +265,8 @@ class TSOSuite:
 
     def subtract_background(self):
         """
+        Subtract the background from the observations.
+
         Subtract median background determined from data or background model
         from the science observations.
 
@@ -496,9 +503,10 @@ class TSOSuite:
 
     def determine_source_movement(self):
         """
+        Deternine the relative movement during the timeseries observation.
+
         This function determines the position of the source in the slit
         over time and the spectral trace.
-
         If the spectral trace and position are not already set,
         this task determines the telescope movement and position.
         First the absolute cross-dispersion position and
@@ -855,6 +863,8 @@ class TSOSuite:
 
     def set_extraction_mask(self):
         """
+        Set the spectral extraction mask.
+
         Set mask which defines the area of interest within which
         a transit signal will be determined. The mask is set along the
         spectral trace with a fixed width in pixels specified by the
@@ -1052,7 +1062,7 @@ class TSOSuite:
                                  "Aborting extraction of 1d spectra.")
         try:
             assert (datasetIn.isMovementCorrected is True), \
-               ("Data not movement correced. Aborting spectral extraction")
+                ("Data not movement correced. Aborting spectral extraction")
         except AttributeError:
             raise AttributeError("Unclear if data is movement corrected as "
                                  "isMovementCorrected flag is not set."
@@ -1109,7 +1119,7 @@ class TSOSuite:
         # create extraction profile
         extractionProfile = create_extraction_profile(filteredDataset)
 
-        roiCube = np.tile(ROI.T, (dim[-1],) + (1,)*(ndim-1)).T
+        roiCube = np.tile(ROI.T, (dim[-1],) + (1,) * (ndim - 1)).T
         roiCube = roiCube | extractionMask
 
         # extract the 1D spectra using both optimal extration as well as
@@ -1154,17 +1164,29 @@ class TSOSuite:
         # add position info to data set
         nwave, _ = rebinnedOptimallyExtractedDataset.data.shape
         rebinnedOptimallyExtractedDataset.position = \
-            np.tile(spectralMovement['crossDispersionShift'], (nwave, 1))*u.pix
+            np.tile(spectralMovement['crossDispersionShift'],
+                    (nwave, 1)) * u.pix
         rebinnedOptimallyExtractedDataset.position_unit = u.pix
         rebinnedOptimallyExtractedDataset.median_position = \
             medianCrossDispersionPosition
+        if observationDataType == 'SPECTRAL_CUBE':
+            rebinnedOptimallyExtractedDataset.scanDirection = \
+                datasetIn.scanDirection
+            rebinnedOptimallyExtractedDataset.sampleNumber = \
+                datasetIn.sampleNumber
 
         nwave, _ = rebinnedApertureExtractedDataset.data.shape
         rebinnedApertureExtractedDataset.position = \
-            np.tile(spectralMovement['crossDispersionShift'], (nwave, 1))*u.pix
+            np.tile(spectralMovement['crossDispersionShift'],
+                    (nwave, 1)) * u.pix
         rebinnedApertureExtractedDataset.position_unit = u.pix
         rebinnedApertureExtractedDataset.median_position = \
             medianCrossDispersionPosition
+        if observationDataType == 'SPECTRAL_CUBE':
+            rebinnedApertureExtractedDataset.scanDirection = \
+                datasetIn.scanDirection
+            rebinnedApertureExtractedDataset.sampleNumber = \
+                datasetIn.sampleNumber
 
         try:
             datasetParametersDict = self.observation.dataset_parameters
@@ -1178,7 +1200,7 @@ class TSOSuite:
                 os.path.join(datasetParametersDict['obs_path'],
                              datasetParametersDict['inst_inst_name'],
                              datasetParametersDict['obs_target_name'])
-            if observationDataType == 'SPECTRAL_DATA_CUBE':
+            if observationDataType == 'SPECTRAL_CUBE':
                 savePathData = os.path.join(savePathData, 'SPECTRA_SUR/')
             else:
                 savePathData = os.path.join(savePathData, 'SPECTRA/')
@@ -1198,6 +1220,8 @@ class TSOSuite:
 
     def define_eclipse_model(self):
         """
+        Define the transit or eclipse model.
+
         This function defines the light curve model used to analize the
         transit or eclipse. We define both the actual trasit/eclipse signal
         as wel as an calibration signal.
@@ -1427,7 +1451,7 @@ class TSOSuite:
                           regressor_selection, nrebin, clip=False,
                           clip_pctl_time=0.00, clip_pctl_regressors=0.00):
         """
-        Return the design matrix based on the data set itself
+        Return the design matrix based on the data set itself.
 
         Parameters
         ----------
@@ -1492,7 +1516,7 @@ class TSOSuite:
     @staticmethod
     def reshape_data(data_in):
         """
-        Reshape the time series data to a uniform dimentional shape
+        Reshape the time series data to a uniform dimentional shape.
 
         Parameters
         ----------
@@ -1532,6 +1556,8 @@ class TSOSuite:
                                    clip_pctl_time=0.00,
                                    clip_pctl_regressors=0.00):
         """
+        Return all design matrici for regression model.
+
         Setup the regression matrix based on the sub set of the data slected
         to be used as calibrators.
 

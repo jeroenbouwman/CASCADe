@@ -40,7 +40,7 @@ __all__ = ['write_timeseries_to_fits', 'find', 'get_data_from_fits',
 
 def write_timeseries_to_fits(data, path, additional_file_string=None):
     """
-    Write spectral timeseries data object to fits files
+    Write spectral timeseries data object to fits files.
 
     Parameters
     ----------
@@ -66,7 +66,8 @@ def write_timeseries_to_fits(data, path, additional_file_string=None):
             fileBase = "image_cube"
         if not isinstance(additional_file_string, type(None)):
             fileBase = fileBase + '_' + str(additional_file_string).strip(' ')
-        dataFiles = [fileBase+"_{0:0=3d}.fits".format(it) for it in range(ntime)]
+        dataFiles = [fileBase+"_{0:0=3d}.fits".format(it)
+                     for it in range(ntime)]
 
     if ndim == 2:
         for itime, fileName in enumerate(dataFiles):
@@ -85,6 +86,14 @@ def write_timeseries_to_fits(data, path, additional_file_string=None):
             try:
                 hdr['TIME_BJD'] = np.ma.mean(data.time_bjd[idx, itime]).value
                 hdr['TBJDUNIT'] = data.time_bjd_unit.to_string()
+            except AttributeError:
+                pass
+            try:
+                hdr['SCANDIR'] = data.scanDirection[itime]
+            except AttributeError:
+                pass
+            try:
+                hdr['SAMPLENR'] = data.sampleNumber[itime]
             except AttributeError:
                 pass
             try:
@@ -107,7 +116,8 @@ def write_timeseries_to_fits(data, path, additional_file_string=None):
                                  array=data.data.data.value[idx, itime]),
                      fits.Column(name='FERROR', format='D',
                                  unit=data.data_unit.to_string(),
-                                 array=data.uncertainty.data.value[idx, itime]),
+                                 array=data.uncertainty.data.value[idx,
+                                                                   itime]),
                      fits.Column(name='MASK', format='L',
                                  array=data.mask[idx, itime])
                      ])
@@ -121,7 +131,7 @@ def write_timeseries_to_fits(data, path, additional_file_string=None):
 
 def find(pattern, path):
     """
-    Return  a list of all data files
+    Return  a list of all data files.
 
     Parameters
     ----------
@@ -145,6 +155,8 @@ def find(pattern, path):
 
 def get_data_from_fits(data_files, data_list, auxilary_list):
     """
+    Read observations from fits.
+
     This function reads in a list of fits files containing the
     spectral time series data and auxilary information like position and time.
 
@@ -191,7 +203,8 @@ def get_data_from_fits(data_files, data_list, auxilary_list):
                 try:
                     try:
                         value['data'].append(data_table[key].value *
-                                      u.Unit(data_table[key].unit.to_string()))
+                                             u.Unit(data_table[key].
+                                                    unit.to_string()))
                     except AttributeError:
                         value['data'].append(data_table[key])
                     value['flag'] = True
@@ -201,7 +214,6 @@ def get_data_from_fits(data_files, data_list, auxilary_list):
 
 
 def spectres(new_spec_wavs, old_spec_wavs, spec_fluxes, spec_errs=None):
-
     """
     SpectRes: A fast spectral resampling function.
     Copyright (C) 2017  A. C. Carnall

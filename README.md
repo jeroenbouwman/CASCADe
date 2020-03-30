@@ -32,98 +32,98 @@ to run the examples.
 The basic structure of the CASCADe pipeline is as follows:
 To run the code, first import the cascade module
 ```python
-import cascade
+    import cascade
 ```
 
 Then, create transit spectroscopy object
 ```python
-tso = cascade.TSO.TSOSuite()
+    tso = cascade.TSO.TSOSuite()
 ```
 
 To reset all previous divined or initialized parameters
 ```python
-tso.execute("reset")
+    tso.execute("reset")
 ```
 
 Initialize the TSO object using .ini files which define the data, system and causal noise model parameters 
 needed to load all data, create a calibration model and to extract the planetary signal
 ```python
-path = cascade.initialize.default_initialization_path
-tso = cascade.TSO.TSOSuite("initialize", "cascade_cpm.ini",
-                           "cascade_object.ini",
-                           "cascade_data.ini", path=path_to_ini_files)
+    path = cascade.initialize.default_initialization_path
+    tso = cascade.TSO.TSOSuite("initialize", "cascade_cpm.ini",
+                               "cascade_object.ini",
+                               "cascade_data.ini", path=path_to_ini_files)
 ```
 
 Load the observational data. In case of spectral images, any background data or background model
 will also be loaded at this step.
 ```python
-tso.execute("load_data")
+    tso.execute("load_data")
 ```
 
 Subtract the background from the science data. In case no background needs to be subtracted, 
 a flag can be set in the configuration files and this step will be ignored.
 ```python
-tso.execute("subtract_background")
+    tso.execute("subtract_background")
 ```
 
 Filter the input data to flag bad pixels and create a cleaned dataset.
 ```python
-   tso.execute("filter_dataset")
+    tso.execute("filter_dataset")
 ```
 
 Determine the relative position, rotation and scale change of the source spectrum from the input spectroscopic data set.
 ```python
-   tso.execute("determine_source_movement")
+    tso.execute("determine_source_movement")
 ```
 
 Correct the wavelength assaciated with the detector pixels for telescope movements.
 ```python
-   tso.execute("correct_wavelengths")
+    tso.execute("correct_wavelengths")
 ```
 
 Set the extraction area within which the signal of the exoplanet will be determined
 ```python
-   tso.execute("set_extraction_mask")
+    tso.execute("set_extraction_mask")
 ```
 
 Extract the spectrum of the Star + planet using both optimal as well as aperture extraction.
 ```python
-   tso.execute("extract_1d_spectra")
+    tso.execute("extract_1d_spectra")
 ```
 
 Setup the matrix of regressors used to model the noise
 ```python
-tso.execute("select_regressors")
+    tso.execute("select_regressors")
 ```
 
 Define the eclipse model
 ```python
-tso.execute("define_eclipse_model")
+    tso.execute("define_eclipse_model")
 ```
 
 Derive the calibrated time series and fit for the planetary signal
 ```python
-tso.execute("calibrate_timeseries")
+    tso.execute("calibrate_timeseries")
 ```
 
 Extract the planetary signal
 ```python
-tso.execute("extract_spectrum")
+    tso.execute("extract_spectrum")
 ```
 
 Correct the extracted planetary signal for non uniform subtraction of average eclipse/transit signal
 ```python
-tso.execute("correct_extracted_spectrum")
+    tso.execute("correct_extracted_spectrum")
 ```
 
 Save the planetary signal
 ```python
-tso.execute("save_results")
+    tso.execute("save_results")
 ```
 
 Plot results (planetary spectrum, residual etc.)
 ```python
-tso.execute("plot_results")
+    tso.execute("plot_results")
 ```
 
 ## Documentation
