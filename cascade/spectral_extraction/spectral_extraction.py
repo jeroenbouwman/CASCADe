@@ -19,7 +19,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright (C) 2018, 2019  Jeroen Bouwman
+# Copyright (C) 2018, 2019, 2020  Jeroen Bouwman
 """
 This Module defines spectral extraction functionality used in cascade
 """
@@ -58,6 +58,8 @@ from sklearn.preprocessing import RobustScaler
 import ray
 
 from ..data_model import SpectralDataTimeSeries
+from ..data_model import MeasurementDesc
+from ..data_model import AuxilaryInfoDesc
 
 __all__ = ['directional_filters', 'create_edge_mask',
            'determine_optimal_filter', 'define_image_regions_to_be_filtered',
@@ -87,12 +89,14 @@ def _round_up_to_odd_integer(value):
 
 class Banana(Gaussian2D):
     """
-    Modification of astrpy gaussian2D to get banana distribution
+    Modification of astrpy gaussian2D to get banana distribution.
+
     Notes
     -----
     https://tiao.io/post/building-probability-distributions-
     with-tensorflow-probability-bijector-api/
     """
+
     amplitude = Parameter(default=1)
     x_mean = Parameter(default=0)
     y_mean = Parameter(default=0)
@@ -119,8 +123,7 @@ class Banana(Gaussian2D):
     @staticmethod
     def evaluate(x_in, y_in, amplitude, x_mean, y_mean, x_stddev, y_stddev,
                  theta, power, sign):
-        """Two dimensional Gaussian function"""
-
+        """Two dimensional Gaussian function."""
         x = x_in
         y = y_in - sign*(np.abs(x_in)**power + 0.0)
         cost2 = np.cos(theta) ** 2
@@ -139,8 +142,9 @@ class Banana(Gaussian2D):
 
 class Banana2DKernel(Kernel2D):
     """
-    Modification of astropy Gaussian2DKernel to get a babana shaped kernel
+    Modification of astropy Gaussian2DKernel to get a babana shaped kernel.
     """
+
     _separable = True
     _is_bool = False
 
@@ -155,6 +159,8 @@ class Banana2DKernel(Kernel2D):
 
 def _define_covariance_matrix(x_stddev=None, y_stddev=None, theta=None):
     """
+    Define covariance matrix.
+
     Define 2D covariance matrix based on standard deviation in x and y and
     rotation angle
     """
@@ -173,12 +179,13 @@ def _define_covariance_matrix(x_stddev=None, y_stddev=None, theta=None):
 
 def directional_filters(return_valid_angle_range=False):
     """
-    Directional filter kernels for smoothing or pixel replacement. These
-    filters can be used in a Nagao&Matsuyama like edge preserving smoothing
-    approach and are apropriate for dispersed spectra with a vertical
-    dispersion direction. If the angle from vertical of the spectral trace of
-    the dispersed light exceeds +- max(angle) radians, additional larger values
-    need to be added to the angles list.
+    Directional filters for smoothing and filtering.
+
+    These filters can be used in a Nagao&Matsuyama like edge preserving
+    smoothing approach and are apropriate for dispersed spectra with a
+    vertical dispersion direction. If the angle from vertical of the
+    spectral trace of the dispersed light exceeds +- max(angle) radians,
+    additional larger values need to be added to the angles list.
 
     Parameters
     ----------
@@ -196,9 +203,8 @@ def directional_filters(return_valid_angle_range=False):
 
     Notes
     -----
-    Wenn adding kernels, make sure the maximum is in the central pixel
+    When adding kernels, make sure the maximum is in the central pixel
     """
-
     # note that the angels are in radians
     angles = [np.radians(0.0), np.radians(-1.5), np.radians(1.5),
               np.radians(-3.0), np.radians(3.0), np.radians(-4.5),
@@ -223,7 +229,7 @@ def directional_filters(return_valid_angle_range=False):
     Filters = np.zeros((x_kernel_size, y_kernel_size, len(angles)))
 
     for ik, (omega, xstd, ystd, p, s) in enumerate(zip(angles, x_stddev,
-                                                   y_stddev, power, sign)):
+                                                       y_stddev, power, sign)):
         sigma = _define_covariance_matrix(xstd, ystd, omega)
         kernel = Banana2DKernel(sigma, x_size=x_kernel_size,
                                 y_size=y_kernel_size, power=p, sign=s,
@@ -236,6 +242,8 @@ def directional_filters(return_valid_angle_range=False):
 
 def create_edge_mask(kernel, roi_mask):
     """
+    Create an edge mask.
+
     Helper function for the optimal extraction task. This function
     creates an edge mask to mask all pixels for which the convolution
     kernel extends beyond the region of interest.
@@ -263,7 +271,9 @@ def create_edge_mask(kernel, roi_mask):
 
 
 def define_image_regions_to_be_filtered(ROI, filterShape):
-    '''
+    """
+    Define image regions to be filtered.
+
     This function defines all pixels and corresponding sub-regions in the
     data cube to be be filtered.
 
@@ -280,7 +290,7 @@ def define_image_regions_to_be_filtered(ROI, filterShape):
     enumerated_sub_regions : 'list'
         enumerated definition of all regions in the spectral image cube and
         corresponding regions of the direction filter.
-    '''
+    """
     # find all images indices of the pixels of interest which are not flagged
     # in the region of interest
     y, x = np.where(ROI == False)
@@ -321,7 +331,9 @@ def define_image_regions_to_be_filtered(ROI, filterShape):
 
 def determine_optimal_filter(ImageCube, Filters, ROIcube, selector):
     """
-    Determine the optimal Filter for the image cube using a procedure similat
+    Determine optimal fileter.
+
+    Determine the optimal Filter for the image cube using a procedure similar
     to Nagao & Matsuyama edge preserving filtering.
 
     Parameters
@@ -351,7 +363,6 @@ def determine_optimal_filter(ImageCube, Filters, ROIcube, selector):
         Variance for each sub image in the sub image cube defined by the
         selector using the optimal Filter.
     """
-
     selectorNumber = selector[0]
     SubFilters = Filters[selector[1][1]]
     SubImageCube = ImageCube[selector[1][0]].data
@@ -400,8 +411,27 @@ def chunks(lst, n):
 @ray.remote
 def split_work(ImageCube, Filters, ROIcube, selector):
     """
+    Split work.
+
     Ray wrapper to be able to devide data in chunks which
     can be filetered in parallel.
+
+    Parameters
+    ----------
+    ImageCube : TYPE
+        DESCRIPTION.
+    Filters : TYPE
+        DESCRIPTION.
+    ROIcube : TYPE
+        DESCRIPTION.
+    selector : TYPE
+        DESCRIPTION.
+
+    Returns
+    -------
+    list
+        DESCRIPTION.
+
     """
     return [determine_optimal_filter(ImageCube, Filters, ROIcube, x)
             for x in selector]
@@ -409,7 +439,9 @@ def split_work(ImageCube, Filters, ROIcube, selector):
 
 def filter_image_cube(data_in, Filters, ROIcube, enumeratedSubRegions,
                       useMultiProcesses=True, ReturnCleanedData=True):
-    '''
+    """
+    Filter image cube.
+
     This routine filters in input data clube using an optimal choise of a
     directional filter and returns the filtered (smoothed) data. Optionally it
     also returns a cleaned dataset, where the masked data is replaced by the
@@ -443,8 +475,7 @@ def filter_image_cube(data_in, Filters, ROIcube, enumeratedSubRegions,
         The variance of the filtered data set.
     cleanedData : 'MaskedArray' of 'float'
         The cleaned data set.
-    '''
-
+    """
     optimalFilterIndex = np.ma.zeros(data_in.shape, dtype='int')
     optimalFilterIndex.mask = ROIcube
     filteredImage = np.ma.zeros(data_in.shape)
@@ -502,7 +533,9 @@ def iterative_bad_pixel_flagging(dataset, ROIcube, Filters,
                                  maxNumberOfIterations=12,
                                  fractionalAcceptanceLimit=0.005,
                                  useMultiProcesses=True):
-    '''
+    """
+    Flag bad pixels.
+
     This routine flags the bad pixels found in the input dataset and creates
     a cleaned dataset.
 
@@ -547,7 +580,7 @@ def iterative_bad_pixel_flagging(dataset, ROIcube, Filters,
     -----
     In the current version no double progress bar is used as in some IDE's
     double progress bars do not work properly.
-    '''
+    """
     acceptanceLimit = int(len(enumeratedSubRegions)*fractionalAcceptanceLimit)
     initialData = dataset.return_masked_array('data').copy()
 
@@ -648,7 +681,9 @@ def iterative_bad_pixel_flagging(dataset, ROIcube, Filters,
 
 
 def create_extraction_profile(fiteredSpectralDataset, ROI=None):
-    '''
+    """
+    Create an extraction profile.
+
     Parameters
     ----------
     fiteredSpectralDataset : 'SpectralDataTimeSeries'
@@ -658,8 +693,7 @@ def create_extraction_profile(fiteredSpectralDataset, ROI=None):
     Returns
     -------
     spectralExtractionProfile : 'MaskedArray'
-    '''
-
+    """
     fiteredSpectralData = fiteredSpectralDataset.return_masked_array('data')
     if ROI is None:
         dataUse = fiteredSpectralData
@@ -674,7 +708,9 @@ def create_extraction_profile(fiteredSpectralDataset, ROI=None):
 
 def extract_spectrum(dataset, ROICube, extractionProfile=None, optimal=False,
                      verbose=False, verboseSaveFile=None):
-    '''
+    """
+    Extract 1D spectra.
+
     This routine extracts the spectrum both optimally as well as using an
     aperture.
 
@@ -699,7 +735,7 @@ def extract_spectrum(dataset, ROICube, extractionProfile=None, optimal=False,
     Raises
     ------
     ValueError
-    '''
+    """
     data = dataset.return_masked_array('data').copy()
     variance = (dataset.return_masked_array('uncertainty').copy())**2
     wavelength = dataset.return_masked_array('wavelength').copy()
@@ -755,13 +791,12 @@ def extract_spectrum(dataset, ROICube, extractionProfile=None, optimal=False,
         sns.set_context("talk", font_scale=1.5, rc={"lines.linewidth": 2.5})
         sns.set_style("white", {"xtick.bottom": True, "ytick.left": True})
         fig, ax0 = plt.subplots(figsize=(6, 6), nrows=1, ncols=1)
-        ax0.plot(extractedSpectra[2:5].T)
+        ax0.plot(extractedSpectra[1:8].T)
         ax0.set_title('Extracted 1D spectral timeseries')
         ax0.set_xlabel('Integration #')
         ax0.set_ylabel('Flux [{}]'.format(dataset.data_unit))
         fig.subplots_adjust(hspace=0.3)
         fig.subplots_adjust(wspace=0.45)
-        fig.subplots_adjust(bottom=0.025, left=0.025, top=0.975, right=0.975)
         plt.show()
         if verboseSaveFile is not None:
             fig.savefig(verboseSaveFile, bbox_inches='tight')
@@ -774,8 +809,7 @@ def determine_relative_source_position(spectralImageCube, ROICube,
                                        upsampleFactor=111,
                                        AngleOversampling=2):
     """
-    Determine the shift of the spectra (source) relative to the first
-    integration.
+    Determine the shift of the spectra relative to the first integration.
 
     Parameters
     ----------
@@ -876,7 +910,9 @@ def determine_relative_source_position(spectralImageCube, ROICube,
 def _determine_relative_source_shift(reference_image, image,
                                      referenceROI=None, ROI=None,
                                      upsampleFactor=111, space='real'):
-    '''
+    """
+    Determine the relative shift of the spectral images.
+
     This routine determine the relative shift between a reference spectral
     image and another spectral image.
 
@@ -906,7 +942,7 @@ def _determine_relative_source_shift(reference_image, image,
         be at row 0. Note that this shift is defined such that shifting a
         spectral image by this amound will place the trace at the exact same
         position as that of the reference image.
-    '''
+    """
     ref_im = _pad_region_of_interest_to_square(reference_image, referenceROI)
     im = _pad_region_of_interest_to_square(image, ROI)
 
@@ -930,7 +966,9 @@ def _determine_relative_rotation_and_scale(reference_image, referenceROI,
                                            image, ROI,
                                            upsampleFactor=111,
                                            AngleOversampling=2):
-    '''
+    """
+    Determine rotation and scalng changes.
+
     This routine determines the relative rotation and scale change between
     an reference spectral image and another spectral image.
 
@@ -959,7 +997,7 @@ def _determine_relative_rotation_and_scale(reference_image, referenceROI,
         as the reference spectral image
     relative_scaling
         Relative image scaling
-    '''
+    """
     AngleOversampling = int(AngleOversampling)
     nAngles = 360
     NeededImageSize = 2*AngleOversampling*nAngles
@@ -1018,7 +1056,9 @@ def _determine_relative_rotation_and_scale(reference_image, referenceROI,
 
 
 def _derotate_image(image, angle, ROI=None, order=3):
-    '''
+    """
+    Derotate image.
+
     Parameters
     ----------
     image : '2-D ndarray' of 'float'
@@ -1035,7 +1075,7 @@ def _derotate_image(image, angle, ROI=None, order=3):
     -------
     derotatedImage : '2-D ndarray' of 'float'
         The zero padded and derotated image.
-    '''
+    """
     h, w = image.shape
     NeededImageSize = np.int(np.sqrt(h**2 + w**2))
 
@@ -1047,7 +1087,9 @@ def _derotate_image(image, angle, ROI=None, order=3):
 
 
 def _pad_region_of_interest_to_square(image, ROI=None):
-    '''
+    """
+    Pad ROI to square.
+
     Zero pad the extracted Region Of Interest of a larger image such that the
     resulting image is squared.
 
@@ -1061,7 +1103,7 @@ def _pad_region_of_interest_to_square(image, ROI=None):
     Returns
     -------
     padded_image : '2-D ndarray' of 'float'
-    '''
+    """
     if ROI is not None:
         label_im, _ = ndimage.label(ROI)
     elif isinstance(image, np.ma.core.MaskedArray):
@@ -1092,8 +1134,8 @@ def _pad_region_of_interest_to_square(image, ROI=None):
 
 
 def _pad_to_size(image, h, w):
-    '''
-    Zero pad the input image to an image of hight h and width w
+    """
+    Zero pad the input image to an image of hight h and width w.
 
     Parameters
     ----------
@@ -1107,7 +1149,7 @@ def _pad_to_size(image, h, w):
     Returns
     -------
     padded_image : '2-D ndarray' of 'float'
-    '''
+    """
     padded_image = image.copy()
     if isinstance(padded_image, np.ma.core.MaskedArray):
         padded_image.set_fill_value(0.0)
@@ -1123,7 +1165,7 @@ def _pad_to_size(image, h, w):
 
 def _log_polar_mapping(output_coords, k_angle, k_radius, center):
     """
-    Inverse mapping function to convert from cartesion to polar coordinates
+    Inverse mapping function to convert from cartesion to polar coordinates.
 
     Parameters
     ----------
@@ -1155,7 +1197,7 @@ def _log_polar_mapping(output_coords, k_angle, k_radius, center):
 
 def _linear_polar_mapping(output_coords, k_angle, k_radius, center):
     """
-    Inverse mapping function to convert from cartesion to polar coordinates
+    Inverse mapping function to convert from cartesion to polar coordinates.
 
     Parameters
     ----------
@@ -1216,10 +1258,12 @@ def warp_polar(image, center=None, *, radius=None, AngleOversampling=1,
         arrays are accepted.
     **kwargs : keyword arguments
         Passed to `transform.warp`.
+
     Returns
     -------
     warped : ndarray
         The polar or log-polar warped image.
+
     Examples
     --------
     Perform a basic polar warp on a grayscale image:
@@ -1302,7 +1346,24 @@ def highpass(shape):
 
 
 def grouper(iterable, n, fillvalue=None):
-    '''Collect data into fixed-length chunks or blocks'''
+    """
+    Collect data into fixed-length chunks or blocks.
+
+    Parameters
+    ----------
+    iterable : TYPE
+        DESCRIPTION.
+    n : TYPE
+        DESCRIPTION.
+    fillvalue : TYPE, optional
+        DESCRIPTION. The default is None.
+
+    Returns
+    -------
+    TYPE
+        DESCRIPTION.
+
+    """
     # grouper('ABCDEFG', 3, 'x') --> ABC DEF Gxx
     args = [iter(iterable)] * n
     return zip_longest(fillvalue=fillvalue, *args)
@@ -1310,7 +1371,9 @@ def grouper(iterable, n, fillvalue=None):
 
 def joblib_loop(dataCube, ROICube=None, upsampleFactor=111,
                 AngleOversampling=2, nreference=6):
-    '''
+    """
+    Loop using joblib.
+
     Performs parallel loop for different reference integrations to determine
     the relative source movement on the detector.
 
@@ -1328,7 +1391,7 @@ def joblib_loop(dataCube, ROICube=None, upsampleFactor=111,
     Returns
     -------
     relativeSourcePosition
-    '''
+    """
     ntime = dataCube.shape[-1]
     func = partial(determine_relative_source_position, dataCube,
                    ROICube,
@@ -1354,7 +1417,9 @@ def register_telescope_movement(cleanedDataset, ROICube=None,  nreferences=6,
                                 mainReference=4, upsampleFactor=111,
                                 AngleOversampling=2, verbose=False,
                                 verboseSaveFile=None):
-    '''
+    """
+    Register the telescope movement.
+
     Parameters
     ----------
     cleanedDataset : 'SpectralDataTimeSeries'
@@ -1392,7 +1457,7 @@ def register_telescope_movement(cleanedDataset, ROICube=None,  nreferences=6,
     ValueError, TypeError
         Errors are raised if certain data is not present of from the wrong
         type.
-    '''
+    """
     try:
         if cleanedDataset.isCleanedData is False:
             raise ValueError
@@ -1476,7 +1541,6 @@ def register_telescope_movement(cleanedDataset, ROICube=None,  nreferences=6,
         ax3.set_ylabel('Shift [pixles]')
         fig.subplots_adjust(hspace=0.3)
         fig.subplots_adjust(wspace=0.45)
-        fig.subplots_adjust(bottom=0.025, left=0.025, top=0.975, right=0.975)
         plt.show()
         if verboseSaveFile is not None:
             fig.savefig(verboseSaveFile, bbox_inches='tight')
@@ -1492,7 +1556,9 @@ def register_telescope_movement(cleanedDataset, ROICube=None,  nreferences=6,
 
 def determine_center_of_light_posision(cleanData, ROI=None, verbose=False,
                                        quantileCut=0.5, orderTrace=2):
-    '''
+    """
+    Determine the center of light position.
+
     This routine determines the center of light position (cross-dispersion)
     of the dispersed light. The center of light  is defined in a similar
     way as the center of mass.  This routine also fits a polynomial to the
@@ -1524,7 +1590,7 @@ def determine_center_of_light_posision(cleanData, ROI=None, verbose=False,
     xtrace : 'ndarray'
         Spectral trace position in fraction of pixels in the cross dispersion
         direction
-    '''
+    """
     if isinstance(cleanData, np.ma.core.MaskedArray):
         data_use = cleanData.data
         if ROI is not None:
@@ -1563,7 +1629,6 @@ def determine_center_of_light_posision(cleanData, ROI=None, verbose=False,
         ax.set_title('Integrated Signal')
         ax.set_xlabel('Pixel Position Dispersion Direction')
         ax.set_ylabel('Integrated Signal')
-        fig.subplots_adjust(bottom=0.025, left=0.025, top=0.975, right=0.975)
         plt.show()
 
     return total_light[idx_use], idx, COL[idx_use], ytrace, xtrace
@@ -1575,7 +1640,9 @@ def determine_absolute_cross_dispersion_position(cleanedDataset, initialTrace,
                                                  verboseSaveFile=None,
                                                  quantileCut=0.5,
                                                  orderTrace=2):
-    '''
+    """
+    Determine the initial cross dispersion position.
+
     This routine updates the initial spectral trace for positional shifts in
     the cross dispersion direction for the first exposure of the the time
     series observation.
@@ -1605,8 +1672,7 @@ def determine_absolute_cross_dispersion_position(cleanedDataset, initialTrace,
     initialCorssDispersionShift : 'float'
         Shift between initial guess for spectral trace position and
         fitted trace position of the first spectral image.
-    '''
-
+    """
     cleanedData = cleanedDataset.return_masked_array('data')
 
     newShiftedTrace = copy.copy(initialTrace)
@@ -1663,7 +1729,9 @@ def determine_absolute_cross_dispersion_position(cleanedDataset, initialTrace,
 
 def correct_wavelength_for_source_movent(datasetIn, spectral_movement,
                                          verbose=False, verboseSaveFile=None):
-    '''
+    """
+    Correct wavelengths for source movement.
+
     This routine corrects the wavelength cube attached to the spectral
     image data cube for source (telescope) movements
 
@@ -1694,13 +1762,12 @@ def correct_wavelength_for_source_movent(datasetIn, spectral_movement,
     these angles and shifts the position would be identical to the reference
     image. The correction of the wavelength using the reference spectral image
     is hence in the oposite direction.
-    '''
+    """
     dataset_out = copy.deepcopy(datasetIn)
 
-    correctedWavelength = dataset_out.wavelength.data.value.copy()
-    correctedWavelength = np.ma.masked_invalid(correctedWavelength)
-    correctedWavelength.set_fill_value(0.0)
-    correctedWavelength = correctedWavelength.filled()
+    correctedWavelength = dataset_out.return_masked_array('wavelength').copy()
+    # no need for mask here as wavekength should be difined for all pixels
+    correctedWavelength =  correctedWavelength.data
 
     ntime = correctedWavelength.shape[-1]
     for it in range(ntime):
@@ -1719,22 +1786,23 @@ def correct_wavelength_for_source_movent(datasetIn, spectral_movement,
                                             tform_combined, order=3,
                                             cval=np.nan)
 
+    # mask those regions of the images which are on the edge and migth
+    # not be present at all times.
     correctedWavelength = np.ma.masked_invalid(correctedWavelength)
     ncols = correctedWavelength.shape[1]
     for ic in range(ncols):
         correctedWavelength[:, ic, :] = \
             np.ma.mask_rows(correctedWavelength[:, ic, :])
-
+    # replace old wavelengths and update mask.
     dataset_out._wavelength = correctedWavelength.data
     dataset_out.mask = np.logical_or(dataset_out.mask,
                                      correctedWavelength.mask)
     dataset_out.isMovementCorrected = True
 
     if verbose:
-        nwave = dataset_out.data.shape[0]
-        wnew = np.ma.median(dataset_out.wavelength[nwave//2:nwave//2+4,
+        wnew = np.ma.median(dataset_out.wavelength[1:8,
                                                    :, :], axis=1)
-        wold = np.ma.median(datasetIn.wavelength[nwave//2:nwave//2+4, :, :],
+        wold = np.ma.median(datasetIn.wavelength[1:8, :, :],
                             axis=1)
         sns.set_context("talk", font_scale=1.5, rc={"lines.linewidth": 2.5})
         sns.set_style("white", {"xtick.bottom": True, "ytick.left": True})
@@ -1754,8 +1822,8 @@ def correct_wavelength_for_source_movent(datasetIn, spectral_movement,
                "float32(float32, float32, float32, float32)",
               "float64(float64, float64, float64, float64)"])
 def overlap(min1, max1, min2, max2):
-    '''
-    Determine the overlap between two intervals
+    """
+    Determine the overlap between two intervals.
 
     Parameters
     ----------
@@ -1772,13 +1840,13 @@ def overlap(min1, max1, min2, max2):
     -------
     overlap : 'float'
         overlapping range
-    '''
+    """
     return max(0, min(max1, max2) - max(min1, min2))
 
 
 @nb.jit(nopython=True, cache=True)
 def define_limits(wave):
-    '''
+    """
     Define the band for each spectroscopic wavelength.
 
     Parameters
@@ -1792,7 +1860,7 @@ def define_limits(wave):
         lower band limits
     ur : 'ndarray'
         upper band limits
-    '''
+    """
     wd = np.empty(wave.shape, dtype=wave.dtype)
     wd[1:] = np.diff(wave)*0.5
     wd[0] = wd[1]
@@ -1804,7 +1872,7 @@ def define_limits(wave):
 
 @nb.jit(nopython=True, cache=True)
 def define_limits2(wave):
-    '''
+    """
     Define the band for each spectroscopic wavelength.
 
     Parameters
@@ -1818,7 +1886,7 @@ def define_limits2(wave):
         lower band limits
     ur : 'ndarray'
         upper band limits
-    '''
+    """
     nwave, ntime = wave.shape
     ur = np.empty((nwave, ntime), dtype=wave.dtype)
     lr = np.empty((nwave, ntime), dtype=wave.dtype)
@@ -1832,7 +1900,9 @@ def define_limits2(wave):
 
 
 def _define_band_limits(wave):
-    '''
+    """
+    Define the limits of the rebin intervals.
+
     Parameters
     ----------
     wave : 'ndarray' of 'float'
@@ -1849,8 +1919,7 @@ def _define_band_limits(wave):
         When the input wavelength array has more than 2 dimensions
     ValueError
         When the wavelength is not defined for each data point
-    '''
-
+    """
     if isinstance(wave, np.ma.core.MaskedArray):
         waveUse = wave.data
     else:
@@ -1892,7 +1961,9 @@ def define_weights2(lr0, ur0, lr, ur):
 
 
 def _define_rebin_weights(lr0, ur0, lr, ur):
-    '''
+    """
+    Define the weights used in spectral rebin.
+
     Define the summation weights (i.e. the fractions of the original intervals
     used in the new interval after rebinning)
 
@@ -1915,7 +1986,7 @@ def _define_rebin_weights(lr0, ur0, lr, ur):
     ------
     TypeError
        When the input wavelength array has more than 2 dimensions.
-    '''
+    """
     ndim = lr.ndim
     if ndim == 1:
         return define_weights(lr0, ur0, lr, ur)
@@ -1926,18 +1997,25 @@ def _define_rebin_weights(lr0, ur0, lr, ur):
 
 
 def _rebin_spectra(spectra, errors, weights):
-    '''
+    """
+    Rebin spectra.
+
     Parameters
     ----------
-    spectra
-    errors
-    weights
+    spectra : 'ndarray'
+        Input spectral data values
+    errors: 'ndarray'
+        Input error on spectral data values
+    weights: 'ndarray'
+        rebin weights
 
     Returns
     -------
-    newSpectra
-    newErrors
-    '''
+    newSpectra: 'ndarray'
+        Output spectra
+    newErrors: 'ndarray'
+        Output error
+    """
     norm = np.sum(weights, axis=1)
     newSpectra = np.sum(weights*spectra, axis=1)/norm
     newErrors = np.sqrt(np.sum(weights**2*errors**2, axis=1)/norm**2)
@@ -1946,8 +2024,8 @@ def _rebin_spectra(spectra, errors, weights):
 
 def rebin_to_common_wavelength_grid(dataset, referenceIndex, nrebin=None,
                                     verbose=False, verboseSaveFile=None):
-    '''
-    Rebin the spectra to single wavelength per row
+    """
+    Rebin the spectra to single wavelength per row.
 
     Parameters
     ----------
@@ -1967,13 +2045,18 @@ def rebin_to_common_wavelength_grid(dataset, referenceIndex, nrebin=None,
     -------
     rebinnedDataset : 'SpectralDataTimeSeries'
         Output to common wavelength grid rebinned dataset
-    '''
+    """
+    if not isinstance(dataset, SpectralDataTimeSeries):
+        raise TypeError("the input data to rebin_to_common_wavelength_grid "
+                        "function needs to be a SpectralDataTimeSeries. "
+                        "Aborting rebin to a common wavelength grid.")
+    # all data with wavelength dependency + time
     spectra = dataset.return_masked_array('data')
     uncertainty = dataset.return_masked_array('uncertainty')
     wavelength = dataset.return_masked_array('wavelength')
+    time = dataset.return_masked_array('time')
 
     lr, ur = _define_band_limits(wavelength)
-# BUG FIX
     referenceWavelength = np.sort(np.array(wavelength[1:-1, referenceIndex]))
     if nrebin is not None:
         referenceWavelength = \
@@ -1989,21 +2072,30 @@ def rebin_to_common_wavelength_grid(dataset, referenceIndex, nrebin=None,
 
     ndim = dataset.data.ndim
     selection = tuple((ndim-1)*[0]+[Ellipsis])
-    rebinnedDataset = \
-        SpectralDataTimeSeries(wavelength=rebinnedWavelength,
-                               wavelength_unit=dataset.wavelength_unit,
-                               data=rebinnedSpectra,
-                               data_unit=dataset.data_unit,
-                               time=dataset.time.data.value[selection],
-                               time_unit=dataset.time_unit,
-                               uncertainty=rebinnedUncertainty,
-                               time_bjd=dataset.time_bjd.data.value[selection],
-                               time_bjd_unit=dataset.time_bjd_unit,
-                               isExtractedSpectra=dataset.isExtractedSpectra,
-                               isRebinned=True,
-                               target_name=dataset.target_name,
-                               dataProduct=dataset.dataProduct,
-                               dataFiles=dataset.dataFiles)
+
+    dictTimeSeries = {}
+
+    dictTimeSeries['data'] = rebinnedSpectra
+    dictTimeSeries['data_unit'] = dataset.data_unit
+    dictTimeSeries['uncertainty'] = rebinnedUncertainty
+    dictTimeSeries['wavelength'] = rebinnedWavelength
+    dictTimeSeries['wavelength_unit'] = dataset.wavelength_unit
+    dictTimeSeries['time'] = time[selection]
+    dictTimeSeries['time_unit'] = dataset.time_unit
+    dictTimeSeries['isRebinned'] = True
+
+    # get everything else apart from data, wavelength, time and uncertainty
+    for key in vars(dataset).keys():
+        if key[0] != "_":
+            if isinstance(vars(dataset)[key], MeasurementDesc):
+                measurement = getattr(dataset, key)
+                dictTimeSeries[key] = measurement[selection]
+            else:
+                # print('can be added withour rebin')
+                dictTimeSeries[key] = getattr(dataset, key)
+
+    rebinnedDataset = SpectralDataTimeSeries(**dictTimeSeries)
+
     if verbose:
         sns.set_context("talk", font_scale=1.5, rc={"lines.linewidth": 2.5})
         sns.set_style("white", {"xtick.bottom": True, "ytick.left": True})
@@ -2021,7 +2113,6 @@ def rebin_to_common_wavelength_grid(dataset, referenceIndex, nrebin=None,
         ax1.set_title('Rebinned Signal')
         fig.subplots_adjust(hspace=0.3)
         fig.subplots_adjust(wspace=0.45)
-        fig.subplots_adjust(bottom=0.025, left=0.025, top=0.975, right=0.975)
         plt.show()
         if verboseSaveFile is not None:
             fig.savefig(verboseSaveFile, bbox_inches='tight')
@@ -2030,6 +2121,8 @@ def rebin_to_common_wavelength_grid(dataset, referenceIndex, nrebin=None,
 
 def combine_scan_samples(datasetIn, nreads, verbose=False):
     """
+    Combine all (scan) samples.
+
     This routine creates a new SpectralDataTimeSeries of integration averaged
     spectra from time series data per sample-up-the-ramp.
 
@@ -2051,7 +2144,13 @@ def combine_scan_samples(datasetIn, nreads, verbose=False):
     ------
     AttributeError
     """
+    if not isinstance(datasetIn, SpectralDataTimeSeries):
+        raise TypeError("the input data to combine_scan_sample function needs "
+                        "to be a SpectralDataTimeSeries. Aborting combining "
+                        "scan samples.")
+
     dataIn = datasetIn.return_masked_array('data').copy()
+    dataInShape = dataIn.shape
     errorIn = datasetIn.return_masked_array('uncertainty').copy()
     dataUnit = datasetIn.data_unit
     waveIn = datasetIn.return_masked_array('wavelength').copy()
@@ -2060,75 +2159,6 @@ def combine_scan_samples(datasetIn, nreads, verbose=False):
     timeUnit = datasetIn.time_unit
 
     dictTimeSeries = {}
-
-    try:
-        targetName = datasetIn.target_name
-        dictTimeSeries['target_name'] = targetName
-    except AttributeError:
-        pass
-    try:
-        dataProduct = datasetIn.dataProduct
-        dictTimeSeries['dataProduct'] = dataProduct
-    except AttributeError:
-        pass
-    try:
-        isExtractedSpectra = datasetIn.isExtractedSpectra
-        dictTimeSeries['isExtractedSpectra'] = isExtractedSpectra
-    except AttributeError:
-        pass
-    try:
-        isNodded = datasetIn.isNodded
-        dictTimeSeries['isNodded'] = isNodded
-    except AttributeError:
-        pass
-    try:
-        isBackgroundSubtracted = datasetIn.isBackgroundSubtracted
-        dictTimeSeries['isBackgroundSubtracted'] = isBackgroundSubtracted
-    except AttributeError:
-        pass
-    try:
-        isRampFitted = datasetIn.isRampFitted
-        dictTimeSeries['isRampFitted'] = isRampFitted
-    except AttributeError:
-        pass
-    try:
-        isRebinned = datasetIn.isRebinned
-        dictTimeSeries['isRebinned'] = isRebinned
-    except AttributeError:
-        pass
-
-    try:
-        dataFiles = datasetIn.dataFiles
-        hasDataFiles = True
-    except AttributeError:
-        hasDataFiles = False
-    try:
-        positionIn = datasetIn.return_masked_array('position').copy()
-        hasPosition = True
-    except AttributeError:
-        hasPosition = False
-    try:
-        timeBJDIn = datasetIn.return_masked_array('time_bjd').copy()
-        timeBJDUnit = datasetIn.time_bjd_unit
-        hasTimeBJD = True
-    except AttributeError:
-        hasTimeBJD = False
-    try:
-        median_position = datasetIn.median_position
-        median_position_unit = datasetIn.median_position_unit
-        hasMedianPosition = True
-    except AttributeError:
-        hasMedianPosition = False
-    try:
-        scanDirection = datasetIn.scanDirection
-        hasScanDirection = True
-    except AttributeError:
-        hasScanDirection = False
-    try:
-        sampleNumber = datasetIn.sampleNumber
-        hasSampleNumber = True
-    except AttributeError:
-        hasSampleNumber = False
 
     def reshape_integration(data, shape, nreads):
         reshapedData = \
@@ -2139,10 +2169,8 @@ def combine_scan_samples(datasetIn, nreads, verbose=False):
 
     def reshape_auxilary(data, shape, nreads):
         reshapedData = \
-            np.ma.mean(np.ma.reshape(data, (shape[1]//nreads,
-                                            nreads)),
-                       axis=-1)
-        return reshapedData
+            np.mean(np.reshape(data, (shape[1]//nreads, nreads)), axis=-1)
+        return list(reshapedData)
 
     def reshape_error(error, shape, nreads):
         reshapedError = \
@@ -2152,50 +2180,67 @@ def combine_scan_samples(datasetIn, nreads, verbose=False):
                        axis=-1))/nreads
         return reshapedError
 
-    combinedData = reshape_integration(dataIn, dataIn.shape, nreads)
+    def reshape_list_of_strings(data, nreads):
+        reshapedData = data[::nreads]
+        base = [j for i in reshapedData
+                for j in i.split("_") if 'sample' in j]
+        if len(base) != 0:
+            reshapedData = \
+                [i.replace(base[j], "RESAMPLED{:04d}".format(j))
+                 for j, i in enumerate(reshapedData)]
+        return reshapedData
+
+    combinedData = reshape_integration(dataIn, dataInShape, nreads)
     dictTimeSeries['data'] = combinedData
     dictTimeSeries['data_unit'] = dataUnit
-    combinedError = reshape_error(errorIn, dataIn.shape, nreads)
+    combinedError = reshape_error(errorIn, dataInShape, nreads)
     dictTimeSeries['uncertainty'] = combinedError
-    combinedWavelength = reshape_integration(waveIn, dataIn.shape, nreads)
+    combinedWavelength = reshape_integration(waveIn, dataInShape, nreads)
     dictTimeSeries['wavelength'] = combinedWavelength
     dictTimeSeries['wavelength_unit'] = wavelengthUnit
-    combinedTime = reshape_integration(timeIn, dataIn.shape, nreads)
+    combinedTime = reshape_integration(timeIn, dataInShape, nreads)
     dictTimeSeries['time'] = combinedTime
     dictTimeSeries['time_unit'] = timeUnit
 
-    if hasPosition:
-        rebinnedPosition = \
-            reshape_integration(positionIn, dataIn.shape, nreads)
-        dictTimeSeries['position'] = rebinnedPosition
-    if hasTimeBJD:
-        rebinnedTimeBJD =\
-            reshape_integration(timeBJDIn, dataIn.shape, nreads)
-        dictTimeSeries['time_bjd'] = rebinnedTimeBJD
-        dictTimeSeries['time_bjd_unit'] = timeBJDUnit
-    if hasDataFiles:
-        rebinnedDatafiles = dataFiles[::nreads]
-        base = [i for i in rebinnedDatafiles[0].split('_') if 'sample' in i][0]
-        rebinnedDatafiles = \
-            [i.replace(base, "RESAMPLED") for i in rebinnedDatafiles]
-        dictTimeSeries['dataFiles'] = rebinnedDatafiles
-    if hasScanDirection:
-        rebinnedScanDirection = reshape_auxilary(scanDirection,
-                                                 dataIn.shape, nreads)
-    if hasSampleNumber:
-        rebinnedSampleNumber = reshape_auxilary(sampleNumber,
-                                                dataIn.shape, nreads)
+    # get everything appart from data, wavelength, time and uncertainty
+    for key in vars(datasetIn).keys():
+        if key[0] != "_":
+            if isinstance(vars(datasetIn)[key], MeasurementDesc):
+                measurement = getattr(datasetIn, key)
+                # will be rebinned
+                dictTimeSeries[key] = \
+                    reshape_integration(measurement, dataInShape, nreads)
+            elif isinstance(vars(datasetIn)[key], AuxilaryInfoDesc):
+                aux = getattr(datasetIn, key)
+                if isinstance(aux, list):
+                    # list
+                    if (len(aux) == dataInShape[-1]) & \
+                      (isinstance(aux[0], str)):
+                        # list of str needs to be rebinned
+                        dictTimeSeries[key] = \
+                            reshape_list_of_strings(aux, nreads)
+                    elif len(aux) == dataInShape[-1]:
+                        dictTimeSeries[key] = \
+                            reshape_auxilary(aux, dataInShape, nreads)
+                    else:
+                        dictTimeSeries[key] = aux
+                elif isinstance(aux, np.ndarray):
+                    if (len(aux) == dataInShape[-1]):
+                        # no list, no number
+                        dictTimeSeries[key] = \
+                            reshape_auxilary(aux, dataInShape, nreads)
+                    else:
+                        # no list but not an array
+                        dictTimeSeries[key] = aux
+                else:
+                    # other aux, no rebin
+                    dictTimeSeries[key] = aux
+            else:
+                # print('can be added withour rebin')
+                dictTimeSeries[key] = getattr(datasetIn, key)
 
     combinedDataset = \
         SpectralDataTimeSeries(**dictTimeSeries)
-
-    if hasMedianPosition:
-        SpectralDataTimeSeries.median_position = median_position
-        SpectralDataTimeSeries.median_position_unit = median_position_unit
-    if hasScanDirection:
-        SpectralDataTimeSeries.scanDirection = rebinnedScanDirection
-    if hasSampleNumber:
-        SpectralDataTimeSeries.sampleNumber = rebinnedSampleNumber
 
     if verbose:
         sns.set_context("talk", font_scale=1.5, rc={"lines.linewidth": 2.5})
@@ -2219,7 +2264,7 @@ def sigma_clip_data_cosmic(data, sigma):
     Sigma clip of time series data cube allong the time axis.
 
     Parameters
-    ---------
+    ----------
     data : `ndarray`
         Input data to be cliped, last axis of data to be assumed the time
     sigma : `float`
@@ -2267,7 +2312,7 @@ def sigma_clip_data(datasetIn, sigma, nfilter):
     sigmaClipedMask = sigma_clip_data_cosmic(data, sigma)
     # update mask
     sigmaClipedMask = np.ma.mask_or(datasetIn.mask, sigmaClipedMask,
-                                 shrink=False)
+                                    shrink=False)
     datasetIn.mask = sigmaClipedMask
 
     dim = datasetIn.data.shape
@@ -2317,13 +2362,12 @@ def create_cleaned_dataset(datasetIn, ROI, kernel, stdvKernelTime):
         Standeard devistion in time direction used in convolution.
 
     Returns
-    ---------_
+    -------
     cleanedDataset : `SpectralDataTimeSeries`
         A cleaned version of the spectral timeseries data of the transiting
         exoplanet system
 
     """
-
     dataToBeCleaned = datasetIn.return_masked_array('data')
     uncertaintyToBeCleaned = datasetIn.return_masked_array('uncertainty')
     dataToBeCleaned.set_fill_value(np.nan)
@@ -2370,19 +2414,19 @@ def create_cleaned_dataset(datasetIn, ROI, kernel, stdvKernelTime):
 
     selection = tuple((ndim-1)*[0]+[Ellipsis])
 
-    cleanedDataset = \
-        SpectralDataTimeSeries(wavelength=datasetIn.wavelength,
-                               wavelength_unit=datasetIn.wavelength_unit,
-                               data=cleanedData,
-                               data_unit=datasetIn.data_unit,
-                               time=datasetIn.time.data.value[selection],
-                               time_unit=datasetIn.time_unit,
-                               time_bjd=datasetIn.time_bjd.data.value[selection],
-                               time_bjd_unit=datasetIn.time_bjd_unit,
-                               uncertainty=cleanedUncertainty,
-                               target_name=datasetIn.target_name,
-                               dataProduct=datasetIn.dataProduct,
-                               dataFiles=datasetIn.dataFiles,
-                               isCleanedData=True)
+    cleanedDataset = SpectralDataTimeSeries(
+        wavelength=datasetIn.wavelength,
+        wavelength_unit=datasetIn.wavelength_unit,
+        data=cleanedData,
+        data_unit=datasetIn.data_unit,
+        time=datasetIn.time.data.value[selection],
+        time_unit=datasetIn.time_unit,
+        time_bjd=datasetIn.time_bjd.data.value[selection],
+        time_bjd_unit=datasetIn.time_bjd_unit,
+        uncertainty=cleanedUncertainty,
+        target_name=datasetIn.target_name,
+        dataProduct=datasetIn.dataProduct,
+        dataFiles=datasetIn.dataFiles,
+        isCleanedData=True)
 
     return cleanedDataset

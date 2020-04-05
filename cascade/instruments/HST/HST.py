@@ -410,13 +410,15 @@ class HSTWFC3(InstrumentBase):
             try:
                 scan_direction[im] = fits.getval(spectral_data_file, "SCANDIR",
                                                  ext=0)
+                hasScanDir = True
             except KeyError:
-                pass
+                hasScanDir = False
             try:
                 sample_number[im] = fits.getval(spectral_data_file, "SAMPLENR",
                                                 ext=0)
+                hasSampleNumber = True
             except KeyError:
-                pass
+                hasSampleNumber = False
 
         idx = np.argsort(time)
         time = time[idx]
@@ -509,6 +511,10 @@ class HSTWFC3(InstrumentBase):
         if hasMedPos:
             SpectralTimeSeries.median_position = medPos
             SpectralTimeSeries.median_position_unit = u.Unit(medPosUnit)
+        if hasScanDir:
+            SpectralTimeSeries.scan_direction = list(scan_direction)
+        if hasSampleNumber:
+            SpectralTimeSeries.sample_number = list(sample_number)
 
         self._define_convolution_kernel()
 
@@ -937,8 +943,8 @@ class HSTWFC3(InstrumentBase):
                                    target_name=target_name,
                                    dataProduct=self.par['obs_data_product'],
                                    dataFiles=spectral_data_files_out)
-        SpectralTimeSeries.sampleNumber = spectral_sample_number
-        SpectralTimeSeries.scanDirection = spectral_scan_directon
+        SpectralTimeSeries.sample_number = list(spectral_sample_number)
+        SpectralTimeSeries.scan_direction = list(spectral_scan_directon)
 
         if is_background and self.par['obs_uses_backgr_model']:
             self._get_background_cal_data()

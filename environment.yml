@@ -12,7 +12,7 @@ dependencies:
   - scipy=1.4.1
   - matplotlib=3.1.3
   - seaborn
-  - astropy=4.0
+  - astropy=4.0.1
   - jplephem=2.14
   - photutils
   - astroquery
@@ -33,6 +33,7 @@ dependencies:
   - psutil
   - setproctitle
   - grpcio
+  - joblib
   - pip:
     - ray==0.8.3      
     - batman-package==2.4.6

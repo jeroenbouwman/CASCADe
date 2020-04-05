@@ -25,10 +25,12 @@
 This Module defines some utility functions used in cascade
 """
 
-import numpy as np
 import os
+import glob
 import fnmatch
 import copy
+import warnings
+import numpy as np
 from astropy.io import fits
 from astropy.table import QTable
 import astropy.units as u
@@ -38,7 +40,8 @@ __all__ = ['write_timeseries_to_fits', 'find', 'get_data_from_fits',
            'spectres']
 
 
-def write_timeseries_to_fits(data, path, additional_file_string=None):
+def write_timeseries_to_fits(data, path, additional_file_string=None,
+                             delete_old_files=False):
     """
     Write spectral timeseries data object to fits files.
 
@@ -52,6 +55,21 @@ def write_timeseries_to_fits(data, path, additional_file_string=None):
     additional_file_string : 'str' (optional)
         Additional information to be added to the file name.
     """
+    os.makedirs(path, exist_ok=True)
+    if delete_old_files:
+        try:
+            dataProduct = data.dataProduct
+        except AttributeError:
+            warnings.warn("No dataProduct defined. Removing all fits files "
+                          "in target directory before writing spectra.")
+            dataProduct = ""
+        files = glob.glob(os.path.join(path, '*'+dataProduct+'.fits'))
+        for f in files:
+            try:
+                os.remove(f)
+            except OSError as e:
+                print("Error: %s : %s" % (f, e.strerror))
+
     ndim = data.data.ndim
     ntime = data.data.shape[-1]
     try:
@@ -89,11 +107,11 @@ def write_timeseries_to_fits(data, path, additional_file_string=None):
             except AttributeError:
                 pass
             try:
-                hdr['SCANDIR'] = data.scanDirection[itime]
+                hdr['SCANDIR'] = data.scan_direction[itime]
             except AttributeError:
                 pass
             try:
-                hdr['SAMPLENR'] = data.sampleNumber[itime]
+                hdr['SAMPLENR'] = data.sample_number[itime]
             except AttributeError:
                 pass
             try:

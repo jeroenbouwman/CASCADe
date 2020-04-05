@@ -20,7 +20,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright (C) 2018  Jeroen Bouwman
+# Copyright (C) 2018, 2020  Jeroen Bouwman
 
 """
 The TSO module is the main module of the CASCADe package.
@@ -796,13 +796,13 @@ class TSOSuite:
                 verboseSaveFile = \
                     'correct_wavelength_for_source_movent' + \
                     '_flagged_data.png'
-                verboseSaveFile = os.path.join(savePathVerbose,
-                                               verboseSaveFile)
+                verboseSaveFile = \
+                    os.path.join(savePathVerbose, verboseSaveFile)
                 datasetIn = correct_wavelength_for_source_movent(
-                        datasetIn,
-                        spectralMovement,
-                        verbose=verbose,
-                        verboseSaveFile=verboseSaveFile)
+                    datasetIn,
+                    spectralMovement,
+                    verbose=verbose,
+                    verboseSaveFile=verboseSaveFile)
                 self.observation.dataset = datasetIn
             else:
                 warnings.warn("Data already corrected for telescope "
@@ -824,8 +824,8 @@ class TSOSuite:
                     verboseSaveFile = \
                         'correct_wavelength_for_source_movent' + \
                         '_cleaned_data.png'
-                    verboseSaveFile = os.path.join(savePathVerbose,
-                                                   verboseSaveFile)
+                    verboseSaveFile = \
+                        os.path.join(savePathVerbose, verboseSaveFile)
                     cleanedDataset = \
                         correct_wavelength_for_source_movent(
                             cleanedDataset,
@@ -1162,31 +1162,52 @@ class TSOSuite:
                                             verboseSaveFile=verboseSaveFile)
 
         # add position info to data set
-        nwave, _ = rebinnedOptimallyExtractedDataset.data.shape
-        rebinnedOptimallyExtractedDataset.position = \
-            np.tile(spectralMovement['crossDispersionShift'],
-                    (nwave, 1)) * u.pix
-        rebinnedOptimallyExtractedDataset.position_unit = u.pix
-        rebinnedOptimallyExtractedDataset.median_position = \
-            medianCrossDispersionPosition
+        rebinnedOptimallyExtractedDataset.add_measurement(
+            position=spectralMovement['crossDispersionShift'],
+            position_unit=u.pix)
+        rebinnedOptimallyExtractedDataset.add_auxilary(
+            median_position=medianCrossDispersionPosition)
         if observationDataType == 'SPECTRAL_CUBE':
-            rebinnedOptimallyExtractedDataset.scanDirection = \
-                datasetIn.scanDirection
-            rebinnedOptimallyExtractedDataset.sampleNumber = \
-                datasetIn.sampleNumber
+            rebinnedOptimallyExtractedDataset.add_auxilary(
+                scan_direction=datasetIn.scan_direction)
+            rebinnedOptimallyExtractedDataset.add_auxilary(
+                sample_number=datasetIn.sample_number)
 
-        nwave, _ = rebinnedApertureExtractedDataset.data.shape
-        rebinnedApertureExtractedDataset.position = \
-            np.tile(spectralMovement['crossDispersionShift'],
-                    (nwave, 1)) * u.pix
-        rebinnedApertureExtractedDataset.position_unit = u.pix
-        rebinnedApertureExtractedDataset.median_position = \
-            medianCrossDispersionPosition
+        rebinnedApertureExtractedDataset.add_measurement(
+            position=spectralMovement['crossDispersionShift'],
+            position_unit=u.pix)
+        rebinnedApertureExtractedDataset.add_auxilary(
+            median_position=medianCrossDispersionPosition)
         if observationDataType == 'SPECTRAL_CUBE':
-            rebinnedApertureExtractedDataset.scanDirection = \
-                datasetIn.scanDirection
-            rebinnedApertureExtractedDataset.sampleNumber = \
-                datasetIn.sampleNumber
+            rebinnedApertureExtractedDataset.add_auxilary(
+                scan_direction=datasetIn.scan_direction)
+            rebinnedApertureExtractedDataset.add_auxilary(
+                sample_number=datasetIn.sample_number)
+
+        from cascade.spectral_extraction import combine_scan_samples
+        if observationDataType == 'SPECTRAL_CUBE':
+            nscanSamples = \
+                np.max(rebinnedOptimallyExtractedDataset.sample_number) + 1
+            ntime = dim[-1]
+            try:
+                nrebinScanSamples = \
+                    int(self.cascade_parameters.processing_nrebin_samples)
+            except AttributeError:
+                nrebinScanSamples = nscanSamples
+            possibleNCombine = \
+                np.arange(1, (ntime)+1)[ntime % np.arange(1, (ntime)+1) == 0]
+            idx = np.argmin(np.abs(possibleNCombine - nrebinScanSamples))
+            if nrebinScanSamples != possibleNCombine[idx]:
+                nrebinScanSamples = possibleNCombine[idx]
+                warnings.warn("Value of processing_nrebin_samples not "
+                              "possible. Changing it to "
+                              "{}".format(nrebinScanSamples))
+            combinedRebinnedOptimallyExtractedDataset = \
+                combine_scan_samples(rebinnedOptimallyExtractedDataset,
+                                     nrebinScanSamples, verbose=verbose)
+            combinedRebinnedApertureExtractedDataset = \
+                combine_scan_samples(rebinnedApertureExtractedDataset,
+                                     nrebinScanSamples, verbose=verbose)
 
         try:
             datasetParametersDict = self.observation.dataset_parameters
@@ -1201,22 +1222,41 @@ class TSOSuite:
                              datasetParametersDict['inst_inst_name'],
                              datasetParametersDict['obs_target_name'])
             if observationDataType == 'SPECTRAL_CUBE':
-                savePathData = os.path.join(savePathData, 'SPECTRA_SUR/')
+                savePathDataCubes = os.path.join(savePathData, 'SPECTRA_SUR/')
+                write_timeseries_to_fits(rebinnedOptimallyExtractedDataset,
+                                         savePathDataCubes,
+                                         delete_old_files=True)
+                write_timeseries_to_fits(rebinnedApertureExtractedDataset,
+                                         savePathDataCubes,
+                                         delete_old_files=True)
+                savePathData = os.path.join(savePathData, 'SPECTRA/')
+                write_timeseries_to_fits(
+                    combinedRebinnedOptimallyExtractedDataset,
+                    savePathData,
+                    delete_old_files=True)
+                write_timeseries_to_fits(
+                    combinedRebinnedApertureExtractedDataset,
+                    savePathData,
+                    delete_old_files=True)
             else:
                 savePathData = os.path.join(savePathData, 'SPECTRA/')
-            os.makedirs(savePathData, exist_ok=True)
-            write_timeseries_to_fits(rebinnedOptimallyExtractedDataset,
-                                     savePathData)
-            write_timeseries_to_fits(rebinnedApertureExtractedDataset,
-                                     savePathData)
+                write_timeseries_to_fits(rebinnedOptimallyExtractedDataset,
+                                         savePathData, delete_old_files=True)
+                write_timeseries_to_fits(rebinnedApertureExtractedDataset,
+                                         savePathData, delete_old_files=True)
 
         self.cpm.extraction_profile = extractionProfile
         self.cpm.extraction_profile_mask = roiCube
-
-        self.observation.dataset_optimal_extracted = \
-            rebinnedOptimallyExtractedDataset
-        self.observation.dataset_aperture_extracted = \
-            rebinnedApertureExtractedDataset
+        if observationDataType == 'SPECTRAL_CUBE':
+            self.observation.dataset_optimal_extracted = \
+                combinedRebinnedOptimallyExtractedDataset
+            self.observation.dataset_aperture_extracted = \
+                combinedRebinnedApertureExtractedDataset
+        else:
+            self.observation.dataset_optimal_extracted = \
+                rebinnedOptimallyExtractedDataset
+            self.observation.dataset_aperture_extracted = \
+                rebinnedApertureExtractedDataset
 
     def define_eclipse_model(self):
         """
