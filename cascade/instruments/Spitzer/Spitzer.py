@@ -19,7 +19,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright (C) 2018, 2019  Jeroen Bouwman
+# Copyright (C) 2018, 2019, 2020  Jeroen Bouwman
 """
 Spitzer Observatory and Instruments specific module of the CASCADe package
 """
@@ -42,6 +42,7 @@ from skimage.morphology import square
 from tqdm import tqdm
 
 from ...initialize import cascade_configuration
+from ...initialize import cascade_default_data_path
 from ...data_model import SpectralDataTimeSeries
 from ...utilities import find, get_data_from_fits
 from ..InstrumentsBaseClasses import ObservatoryBase, InstrumentBase
@@ -169,7 +170,12 @@ class SpitzerIRS(InstrumentBase):
         obs_mode = cascade_configuration.observations_mode
         obs_data = cascade_configuration.observations_data
         obs_path = cascade_configuration.observations_path
+        if not os.path.isabs(obs_path):
+            obs_path = os.path.join(cascade_default_data_path, obs_path)
         obs_cal_path = cascade_configuration.observations_cal_path
+        if not os.path.isabs(obs_cal_path):
+            obs_cal_path = os.path.join(cascade_default_data_path,
+                                        obs_cal_path)
         obs_cal_version = cascade_configuration.observations_cal_version
         obs_data_product = cascade_configuration.observations_data_product
         obs_id = cascade_configuration.observations_id

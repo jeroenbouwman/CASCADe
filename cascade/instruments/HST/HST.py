@@ -37,15 +37,15 @@ from astropy.time import Time
 from astropy import coordinates as coord
 from astropy.wcs import WCS
 from astropy.stats import sigma_clipped_stats
-from astropy.convolution import Gaussian2DKernel, interpolate_replace_nans
+from astropy.convolution import Gaussian2DKernel
 from astropy.convolution import Gaussian1DKernel
 from photutils import IRAFStarFinder
 import pandas as pd
 from scipy.optimize import nnls
-from skimage.feature import register_translation
 from tqdm import tqdm
 
 from ...initialize import cascade_configuration
+from ...initialize import cascade_default_data_path
 from ...data_model import SpectralDataTimeSeries
 from ...utilities import find
 from ..InstrumentsBaseClasses import ObservatoryBase, InstrumentBase
@@ -241,7 +241,12 @@ class HSTWFC3(InstrumentBase):
         obs_mode = cascade_configuration.observations_mode
         obs_data = cascade_configuration.observations_data
         obs_path = cascade_configuration.observations_path
+        if not os.path.isabs(obs_path):
+            obs_path = os.path.join(cascade_default_data_path, obs_path)
         obs_cal_path = cascade_configuration.observations_cal_path
+        if not os.path.isabs(obs_cal_path):
+            obs_cal_path = os.path.join(cascade_default_data_path,
+                                        obs_cal_path)
         obs_id = cascade_configuration.observations_id
         obs_cal_version = cascade_configuration.observations_cal_version
         obs_data_product = cascade_configuration.observations_data_product
@@ -665,7 +670,6 @@ class HSTWFC3(InstrumentBase):
         if np.min(cal_phase) > 0.5:
             cal_phase = cal_phase - 1.0
 
-        # self._determine_relative_source_position(spectral_image_cube, mask)
         self._define_convolution_kernel()
         self._determine_source_position_from_cal_image(
                 calibration_image_cube, calibration_data_files)
@@ -1298,65 +1302,11 @@ class HSTWFC3(InstrumentBase):
                                    isNodded=False)
         return SpectralTimeSeries
 
-    def _determine_relative_source_position(self, spectral_image_cube, mask):
-        """
-        Determine relative pointing movement.
-
-        Determine the shift of the spectra (source) relative to the first
-        integration. Note that it is important for this to work properly
-        to have identified bad pixels and to correct the values using an edge
-        preserving correction, i.e. an correction which takes into account
-        the dispersion direction and psf size (relative to pixel size)
-
-        Parameters
-        ----------
-        spectral_image_cube : `ndarray`
-            Input spectral image data cube.
-        mask : `ndarray` of `int`
-            Bad pixel and region of interest mask. Values of 1 indicate
-            flagged data.
-
-        Attributes
-        ----------
-        relative_source_shift
-            relative x and y position as a function of time.
-
-        """
-        nintegrations, mpix, npix = spectral_image_cube.shape
-
-        image_cube_use = np.ma.array(spectral_image_cube, mask=mask)
-        np.ma.set_fill_value(image_cube_use, float("NaN"))
-        kernel = Gaussian2DKernel(x_stddev=3.0, y_stddev=0.2, theta=0.0)
-        image0 = image_cube_use[0, :, :]
-        cleaned_image0 = interpolate_replace_nans(image0.filled(),
-                                                  kernel, boundary='extend')
-
-        yshift = np.zeros((nintegrations))
-        xshift = np.zeros((nintegrations))
-        for it in range(nintegrations):
-            cleaned_shifted_image = \
-                interpolate_replace_nans(image_cube_use[it, :, :].filled(),
-                                         kernel, boundary='extend')
-            # subpixel precision by oversmpling pixel by a factor of 100
-            shift, error, diffphase = \
-                register_translation(cleaned_image0,
-                                     cleaned_shifted_image, 150)
-            yshift[it] = shift[0]
-            xshift[it] = shift[1]
-        relative_source_shift = \
-            collections.OrderedDict(cross_disp_shift=yshift,
-                                    disp_shift=xshift)
-        try:
-            self.wfc3_cal
-        except AttributeError:
-            self.wfc3_cal = SimpleNamespace()
-        finally:
-            self.wfc3_cal.relative_source_shift = relative_source_shift
-        return
-
     def _determine_source_position_from_cal_image(self, calibration_image_cube,
                                                   calibration_data_files):
         """
+        Determine the source position from the target aquicition image.
+
         Determines the source position on the detector of the target source in
         the calibration image takes prior to the spectroscopic observations.
 
@@ -1593,6 +1543,8 @@ class HSTWFC3(InstrumentBase):
 
     def _get_subarray_size(self, calibration_data, spectral_data):
         """
+        Get the size of the used WFC3 subarray.
+
         This function determines the size of the used subarray.
 
         Parameters
@@ -1624,7 +1576,10 @@ class HSTWFC3(InstrumentBase):
 
     def _get_wavelength_calibration(self):
         """
-        The functions returns the wavelength calibration.
+        Return the WFC3 wavelength calibration.
+
+        Using the source position determined from the aquisition image this
+        function returns the wavelength solution for the spectra.
 
         Returns
         -------
@@ -1650,13 +1605,14 @@ class HSTWFC3(InstrumentBase):
         subarray_sizes = self.wfc3_cal.subarray_sizes
 
         wave_cal = \
-            self._WFC3Dispersion(xc, yc, DYDX, DLDP,
-                                 xref=reference_pixels["XREF_IMAGE"][0],
-                                 yref=reference_pixels["YREF_IMAGE"][0],
-                                 xref_grism=reference_pixels["XREF_GRISM"][0],
-                                 yref_grism=reference_pixels["YREF_GRISM"][0],
-                                 subarray=subarray_sizes['cal_image_size'],
-                                 subarray_grism=subarray_sizes['science_image_size'])
+            self._WFC3Dispersion(
+                xc, yc, DYDX, DLDP,
+                xref=reference_pixels["XREF_IMAGE"][0],
+                yref=reference_pixels["YREF_IMAGE"][0],
+                xref_grism=reference_pixels["XREF_GRISM"][0],
+                yref_grism=reference_pixels["YREF_GRISM"][0],
+                subarray=subarray_sizes['cal_image_size'],
+                subarray_grism=subarray_sizes['science_image_size'])
         return wave_cal
 
     def get_spectral_trace(self):

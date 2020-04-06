@@ -2,7 +2,7 @@ import unittest
 import os
 from cascade.initialize import cascade_configuration
 from cascade.initialize import generate_default_initialization
-from cascade.initialize import default_initialization_path
+from cascade.initialize import cascade_default_initialization_path
 from cascade.initialize import configurator
 from cascade.TSO import TSOSuite
 
@@ -10,7 +10,7 @@ from cascade.TSO import TSOSuite
 class TestInitialize(unittest.TestCase):
     def setUp(self):
         self.tso = TSOSuite()
-        self.path = default_initialization_path
+        self.path = cascade_default_initialization_path
 
     def tearDown(self):
         del self.tso
@@ -20,7 +20,6 @@ class TestInitialize(unittest.TestCase):
         # generate default initialization file and check if filr is generated
         generate_default_initialization()
         self.assertTrue(os.path.exists(self.path+"cascade_default.ini"))
-        print(self.path)
         # initialize cascade unsing the default ini file and check if
         # initilization is successful. Also check if the instance of the
         # configurator is identical to that of the calss instance (singleton)

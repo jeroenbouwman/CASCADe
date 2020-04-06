@@ -32,7 +32,7 @@ class TestCpmModel(unittest.TestCase):
                                   reg_par=regularization_pararameters)
         for i, (result, error) in enumerate(zip(P, Perr)):
             self.assertAlmostEqual(result, self.answer[i], places=None,
-                                   msg=None, delta=100*error)
+                                   msg=None, delta=1.e4*error)
         self.assertLess(opt_reg_par, regularization_pararameters["lam1"])
         self.assertGreater(opt_reg_par, regularization_pararameters["lam0"])
 

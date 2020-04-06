@@ -19,18 +19,9 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright (C) 2018, 2019  Jeroen Bouwman
+# Copyright (C) 2018, 2019, 2020  Jeroen Bouwman
 
 import cascade
-import os
-
-try:
-    default_cascade_dir = os.environ['CASCADE_HOME']
-except KeyError:
-    default_cascade_dir = os.environ['HOME']
-
-# path to init files defining observations and pipeline settings
-init_path = os.path.join(default_cascade_dir, "CASCADe/examples/init_files/")
 
 # create transit spectoscopy object
 tso = cascade.TSO.TSOSuite()
@@ -40,13 +31,15 @@ tso = cascade.TSO.TSOSuite()
 tso.execute("reset")
 
 # initialize TSO object
-# The files used in this example are for spectral data of the transit of 
+# The files used in this example are for spectral data of the transit of
 # WASP 19 b observed with the WFC3 isntument of HST.
 # Before running the code, make sure that the paths specified in the .ini
-# files are correctly set.
+# files are correctly set. If the initialization files are not in the standard
+# directory where CASCADe expect these file to be, an additional path keyword
+# can be set wiht the command below.
 tso.execute("initialize", "cascade_WASP19b_transit_spectra_cpm.ini",
             "cascade_WASP19b_object.ini",
-            "cascade_WASP19b_transit_spectra_COE_data.ini", path=init_path)
+            "cascade_WASP19b_transit_spectra_COE_data.ini")
 
 # load the spectral data
 tso.execute("load_data")

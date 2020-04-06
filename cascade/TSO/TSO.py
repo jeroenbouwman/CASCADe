@@ -51,10 +51,11 @@ from skimage.morphology import binary_dilation
 
 from ..cpm_model import solve_linear_equation
 from ..data_model import SpectralData
-from ..exoplanet_tools import (convert_spectrum_to_brighness_temperature,
-                               lightcuve)
-from ..initialize import (cascade_configuration, configurator,
-                          default_initialization_path)
+from ..exoplanet_tools import convert_spectrum_to_brighness_temperature
+from ..exoplanet_tools import lightcuve
+from ..initialize import (cascade_configuration, configurator)
+from ..initialize import cascade_default_initialization_path
+from ..initialize import cascade_default_save_path
 from ..instruments import Observation
 from ..utilities import write_timeseries_to_fits
 from ..spectral_extraction import define_image_regions_to_be_filtered
@@ -102,7 +103,7 @@ class TSOSuite:
 
     def __init__(self, *init_files, path=None):
         if path is None:
-            path = default_initialization_path
+            path = cascade_default_initialization_path
         if len(init_files) != 0:
             init_files_path = []
             for file in init_files:
@@ -216,7 +217,7 @@ class TSOSuite:
 
         """
         if path is None:
-            path = default_initialization_path
+            path = cascade_default_initialization_path
         if len(init_files) != 0:
             init_files_path = []
             for file in init_files:
@@ -560,6 +561,9 @@ class TSOSuite:
             verbose = False
         try:
             savePathVerbose = self.cascade_parameters.cascade_save_path
+            if not os.path.isabs(savePathVerbose):
+                savePathVerbose = os.path.join(cascade_default_save_path,
+                                               savePathVerbose)
             os.makedirs(savePathVerbose, exist_ok=True)
         except AttributeError:
             warnings.warn("No save path defined to save verbose output "
@@ -757,6 +761,9 @@ class TSOSuite:
             verbose = False
         try:
             savePathVerbose = self.cascade_parameters.cascade_save_path
+            if not os.path.isabs(savePathVerbose):
+                savePathVerbose = os.path.join(cascade_default_save_path,
+                                               savePathVerbose)
             os.makedirs(savePathVerbose, exist_ok=True)
         except AttributeError:
             warnings.warn("No save path defined to save verbose output "
@@ -1110,6 +1117,9 @@ class TSOSuite:
                                  "Aborting extraction of 1d spectra.")
         try:
             savePathVerbose = self.cascade_parameters.cascade_save_path
+            if not os.path.isabs(savePathVerbose):
+                savePathVerbose = os.path.join(cascade_default_save_path,
+                                               savePathVerbose)
             os.makedirs(savePathVerbose, exist_ok=True)
         except AttributeError:
             warnings.warn("No save path defined to save verbose output "
@@ -2595,24 +2605,27 @@ class TSOSuite:
         try:
             transittype = self.model.transittype
         except AttributeError:
-            raise AttributeError("Type of observaton unknown. \
-                                 Aborting saving results")
+            print("Type of observaton unknown. Aborting saving results")
+            raise
         try:
             results = self.exoplanet_spectrum
         except AttributeError:
-            raise AttributeError("No results defined \
-                                 Aborting saving results")
+            print("No results defined. Aborting saving results")
+            raise
         try:
             save_path = self.cascade_parameters.cascade_save_path
+            if not os.path.isabs(save_path):
+                save_path = os.path.join(cascade_default_save_path, save_path)
             os.makedirs(save_path, exist_ok=True)
         except AttributeError:
-            raise AttributeError("No save path defined\
-                                 Aborting saving results")
+            print("No save path defined. Aborting saving results")
+            raise
         try:
             observations_id = self.cascade_parameters.observations_id
         except AttributeError:
-            raise AttributeError("No uniq id defined for observation \
-                                 Aborting saving results")
+            print("No uniq id defined for observation. "
+                  "Aborting saving results")
+            raise
 
         t = Table()
         col = MaskedColumn(data=results.spectrum.wavelength,
@@ -2694,6 +2707,8 @@ class TSOSuite:
                                  Aborting plotting results")
         try:
             save_path = self.cascade_parameters.cascade_save_path
+            if not os.path.isabs(save_path):
+                save_path = os.path.join(cascade_default_save_path, save_path)
             os.makedirs(save_path, exist_ok=True)
         except AttributeError:
             raise AttributeError("No save path defined\

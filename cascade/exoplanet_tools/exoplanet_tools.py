@@ -37,7 +37,8 @@ import gc
 import string
 import astropy.units as u
 from astropy import constants as const
-from astropy.modeling.blackbody import blackbody_nu
+#from astropy.modeling.blackbody import blackbody_nu
+from astropy.modeling.models import BlackBody
 from astropy.coordinates import SkyCoord
 from astropy.coordinates.name_resolve import NameResolveError
 from astropy.utils.data import conf
@@ -51,6 +52,7 @@ import difflib
 import batman
 
 from ..initialize import cascade_configuration
+from ..initialize import cascade_default_data_path
 from ..data_model import SpectralData
 
 __all__ = ['Vmag', 'Kmag', 'Rho_jup', 'Rho_jup', 'KmagToJy', 'JytoKmag',
@@ -480,7 +482,9 @@ def Planck(wavelength: u.micron, temperature: u.K):
     ...     plt.show()
 
     """
-    return blackbody_nu(wavelength, temperature)
+    
+    bb = BlackBody(temperature=temperature)
+    return bb(wavelength)
 
 
 @u.quantity_input
@@ -754,7 +758,8 @@ def get_calalog(catalog_name, update=True):
     Parameters
     ----------
     catalog_name : 'str'
-        name of catalog to use
+        name of catalog to use, can either be 'TEPCAT', 
+        'EXOPLANETS.ORG' or 'NASAEXOPLANETARCHIVE'
     update : 'bool'
         Boolian indicating if local calalog file will be updated
 
@@ -765,7 +770,7 @@ def get_calalog(catalog_name, update=True):
     """
     valid_catalogs = ['TEPCAT', 'EXOPLANETS.ORG', 'NASAEXOPLANETARCHIVE']
 # BUG
-    path = os.environ['HOME'] + "/CASCADeData/"
+    path = os.path.join(cascade_default_data_path, "exoplanet_data/")
     os.makedirs(path, exist_ok=True)
 
     if catalog_name == 'TEPCAT':
@@ -820,8 +825,8 @@ def get_calalog(catalog_name, update=True):
             try:
                 download_results = urllib.request.urlretrieve(url, path+file)
             except urllib.error.URLError:
-                raise urllib.error.URLError('Network connection not working,' +
-                                            ' check settings')
+                print('Network connection not working, check settings')
+                raise
             files_downloaded.append(download_results[0])
         else:
             if not os.path.isfile(path+file):

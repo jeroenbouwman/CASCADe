@@ -22,15 +22,38 @@
 #
 # Copyright (C) 2018  Jeroen Bouwman
 """
+CASCADe initialization module.
+
 This Module defines the functionality to generate and read .ini files which
 are used to initialize CASCADe.
+
+CASCADEe used the following environment variables:
+    CASCADE_PATH
+        Default directory for CASCADe.
+    CASCADE_OBSERVATIONS
+        Default path to the input observational data and calibration files.
+    CASCADE_SAVE_PATH
+        Default path to where CASCADe saves output.
+    CASCADE_INITIALIZATION_FILE_PATH:
+        Default directory for CASCADe initialization files.
+
+Attributes:
+-----------
+cascade_default_path : 'str'
+    CASCADe default path
+cascade_default_data_path : 'str'
+    Default path to the input observational data and calibration files.
+cascade_default_save_path : 'str'
+    Default path to where CASCADe saves output.
+cascade_default_initialization_path : 'str'
+    Default directory for CASCADe initialization files.
 
 Examples
 --------
 An example how the initilize module is used:
 
     >>> import cascade
-    >>> default_path = cascade.initialize.default_initialization_path
+    >>> default_path = cascade.initialize.cascade_default_initialization_path
     >>> success = cascade.initialize.generate_default_initialization()
 
     >>> tso = cascade.TSO.TSOSuite()
@@ -47,30 +70,61 @@ An example how the initilize module is used:
     >>> print(tso.cascade_parameters.isInitialized)
 
 """
-import configparser
-import os
 
-__all__ = ['default_initialization_path',
+import os
+import configparser
+import warnings
+
+from cascade import __path__
+
+__all__ = ['cascade_default_path',
+           'cascade_default_data_path',
+           'cascade_default_save_path',
+           'cascade_default_initialization_path',
            'generate_default_initialization',
            'configurator',
            'cascade_configuration']
 
 try:
-    default_cascade_dir = os.environ['CASCADE_HOME']
+    cascade_default_path = os.environ['CASCADE_PATH']
 except KeyError:
-    default_cascade_dir = os.environ['HOME']
-default_initialization_path = os.path.join(default_cascade_dir, "CASCADeInit/")
-"""
-Default directory for CASCADe initialization files
-"""
+    cascade_default_path = \
+        os.path.dirname(__path__[0])
+    warnings.warn("CASCADE_PATH environment variable not set.")
+
+try:
+    cascade_default_data_path = \
+        os.environ['CASCADE_OBSERVATIONS']
+except KeyError:
+    cascade_default_data_path = \
+        os.path.join(cascade_default_path, "data/")
+    warnings.warn("CASCADE_OBSERVATIONS environment variable not set.")
+
+try:
+    cascade_default_save_path = os.environ['CASCADE_SAVE_PATH']
+except KeyError:
+    cascade_default_save_path = \
+        os.path.join(cascade_default_path, "examples/results/")
+    warnings.warn("CASCADE_SAVE_PATH environment variable not set.")
+
+try:
+    cascade_default_initialization_path = \
+        os.environ['CASCADE_INITIALIZATION_FILE_PATH']
+except KeyError:
+    cascade_default_initialization_path = \
+        os.path.join(cascade_default_path, "examples/init_files/")
+    warnings.warn("CASCADE_INITIALIZATION_FILE_PATH environment variable "
+                  "not set.")
 
 
 def generate_default_initialization(observatory='HST', data='SPECTRUM',
                                     mode='STARING', observation='TRANSIT'):
     """
+    Generate default initialization files.
+
     Convenience function to generate an example .ini file for CASCADe
     initialization. The file will be saved in the default directory defined by
-    default_initialization_path. Returns True if successfully runned.
+    cascade_default_initialization_path. Returns True if successfully runned.
 
     Parameters
     ----------
@@ -87,7 +141,7 @@ def generate_default_initialization(observatory='HST', data='SPECTRUM',
 
     Returns
     -------
-    None
+    True
     """
     __valid_observing_strategy = {'STARING', 'NODDED', 'SCANNING'}
     __valid_data = {'SPECTRUM', 'SPECTRAL_IMAGE', 'SPECTRAL_DETECTOR_CUBE'}
@@ -136,12 +190,12 @@ def generate_default_initialization(observatory='HST', data='SPECTRUM',
             data_product = 'lnz'
             hasBackground = 'True'
 
-    path = default_initialization_path
+    path = cascade_default_initialization_path
     os.makedirs(path, exist_ok=True)
 
     config = configparser.ConfigParser()
 
-    config['CASCADE'] = {'cascade_save_path': default_cascade_dir,
+    config['CASCADE'] = {'cascade_save_path': 'HD189733b_'+observation+'/',
                          'cascade_useMultiProcesses': 'True',
                          'cascade_verbose': 'True',
                          'cascade_save_verbose': 'True'}
@@ -195,19 +249,20 @@ def generate_default_initialization(observatory='HST', data='SPECTRUM',
                                 'instrument': 'IRS',
                                 'instrument_mode': 'SL',
                                 'instrument_order': '1'}
-        config['OBSERVATIONS'] = {'observations_type': observation,
-                                  'observations_mode': mode,
-                                  'observations_data': data,
-                                  'observations_path': default_cascade_dir,
-                                  'observations_target_name': 'HD189733b',
-                                  'observations_cal_path': default_cascade_dir,
-                                  'observations_id': '',
-                                  'observations_cal_version': 'S18.18.0',
-                                  'observations_data_product': data_product,
-                                  'observations_has_background': hasBackground,
-                                  'observations_background_id': '',
-                                  'observations_background_name': 'HD189733b',
-                                  'observations_median_signal': '0.04'}
+        config['OBSERVATIONS'] = \
+            {'observations_type': observation,
+             'observations_mode': mode,
+             'observations_data': data,
+             'observations_path': 'data/SPITZER/',
+             'observations_target_name': 'HD189733b',
+             'observations_cal_path': 'calibration/SPITZER/',
+             'observations_id': '',
+             'observations_cal_version': 'S18.18.0',
+             'observations_data_product': data_product,
+             'observations_has_background': hasBackground,
+             'observations_background_id': '',
+             'observations_background_name': 'HD189733b',
+             'observations_median_signal': '0.04'}
     elif observatory == 'HST':
         config['INSTRUMENT'] = {'instrument_observatory': observatory,
                                 'instrument': 'WFC3',
@@ -216,25 +271,26 @@ def generate_default_initialization(observatory='HST', data='SPECTRUM',
                                 'instrument_cal_filter': 'F139M',
                                 'instrument_cal_aperture': 'IRSUB512',
                                 'instrument_beam': 'A'}
-        config['OBSERVATIONS'] = {'observations_type': observation,
-                                  'observations_mode': mode,
-                                  'observations_data': data,
-                                  'observations_path': default_cascade_dir,
-                                  'observations_target_name': 'HD189733b',
-                                  'observations_cal_path': default_cascade_dir,
-                                  'observations_id': '',
-                                  'observations_cal_version': '4.32',
-                                  'observations_data_product': data_product,
-                                  'observations_has_background': hasBackground,
-                                  'observations_uses_background_model': 'True',
-                                  'observations_median_signal': '0.01'}
+        config['OBSERVATIONS'] = \
+            {'observations_type': observation,
+             'observations_mode': mode,
+             'observations_data': data,
+             'observations_path': 'data/HST/',
+             'observations_target_name': 'HD189733b',
+             'observations_cal_path': 'calibration/HST/',
+             'observations_id': '',
+             'observations_cal_version': '4.32',
+             'observations_data_product': data_product,
+             'observations_has_background': hasBackground,
+             'observations_uses_background_model': 'True',
+             'observations_median_signal': '0.01'}
     else:
         config['INSTRUMENT'] = {'instrument_observatory': observatory,
                                 'instrument': 'GenericSpectrograph'}
         config['OBSERVATIONS'] = {'observations_type': observation,
                                   'observations_mode': 'STARING',
                                   'observations_data': 'SPECTRUM',
-                                  'observations_path': default_cascade_dir,
+                                  'observations_path': 'data/Generic',
                                   'observations_target_name': 'HD189733b',
                                   'observations_id': '',
                                   'observations_has_background': 'False',
@@ -263,7 +319,7 @@ def generate_default_initialization(observatory='HST', data='SPECTRUM',
 
 def read_ini_files(*files):
     """
-    This function reads *.ini files using the configparser package
+    Read *.ini files using the configparser package.
 
     Parameters
     ----------
@@ -285,9 +341,8 @@ def read_ini_files(*files):
 
 
 class _Singleton(type):
-    """
-    This class defines a Singleton
-    """
+    """Class defining a Singleton."""
+
     _instances = {}
 
     def __call__(cls, *args, **kwargs):
@@ -305,6 +360,7 @@ class configurator(object, metaclass=_Singleton):
     This class defined the configuration singleton which will provide
     all parameters needed to run the CASCADe to all modules of the code.
     """
+
     def __init__(self, *file_names):
         if len(file_names) != 0:
             parser = read_ini_files(*file_names)

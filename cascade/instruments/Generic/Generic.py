@@ -32,6 +32,7 @@ import astropy.units as u
 from astropy.convolution import Gaussian1DKernel
 
 from ...initialize import cascade_configuration
+from ...initialize import cascade_default_data_path
 from ...data_model import SpectralDataTimeSeries
 from ...utilities import find, get_data_from_fits
 from ..InstrumentsBaseClasses import ObservatoryBase, InstrumentBase
@@ -173,6 +174,8 @@ class GenericSpectrograph(InstrumentBase):
         obs_mode = cascade_configuration.observations_mode
         obs_data = cascade_configuration.observations_data
         obs_path = cascade_configuration.observations_path
+        if not os.path.isabs(obs_path):
+            obs_path = os.path.join(cascade_default_data_path, obs_path)
         obs_id = cascade_configuration.observations_id
         obs_target_name = cascade_configuration.observations_target_name
         obs_has_backgr = ast.literal_eval(cascade_configuration.

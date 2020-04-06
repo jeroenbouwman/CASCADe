@@ -4,12 +4,16 @@ import numpy as np
 import astropy.units as u
 from astropy.table.table import Table
 import collections
+from urllib.error import URLError
+from socket import gaierror
+import warnings
 import cascade
 from cascade.exoplanet_tools import parse_database
 from cascade.exoplanet_tools import extract_exoplanet_data
 from cascade.exoplanet_tools import convert_spectrum_to_brighness_temperature
 from cascade.exoplanet_tools import lightcuve
-from cascade.initialize import default_initialization_path
+from cascade.initialize import cascade_default_initialization_path
+from cascade.initialize import cascade_default_data_path
 from cascade.initialize import generate_default_initialization
 from cascade.initialize import configurator
 
@@ -25,13 +29,16 @@ class TestExoplanetsTools(unittest.TestCase):
         self.mask = np.array([False, False])
         self.test_bt = np.array([1780.54871058, 1143.99801537])
         self.test_bt_unit = u.K
-        self.path = os.environ['HOME']
-        self.catalog_name = ['EXOPLANETS.ORG']
-        self.catalog_dir = ["exoplanets.org"]
-        self.catalog_file_name = ["exoplanets.csv"]
-        self.test_system_name = 'HD 189733 b'
+        self.path = cascade_default_data_path
+        self.catalog_name = ['EXOPLANETS.ORG', "TEPCAT",
+                             "NASAEXOPLANETARCHIVE"]
+        self.catalog_dir = ["exoplanets.org", "tepcat",
+                            "NASAEXOPLANETARCHIVE"]
+        self.catalog_file_name = ["exoplanets.csv", "allplanets.csv",
+                                  "nasaexoplanetarchive.csv"]
+        self.test_system_name = ['HD 189733 b', 'HD_189733', 'HD 189733 b']
         self.test_search_radius = 1.0*u.arcminute
-        self.path_init_files = default_initialization_path
+        self.path_init_files = cascade_default_initialization_path
 
     def tearDown(self):
         del self.wave
@@ -73,13 +80,20 @@ class TestExoplanetsTools(unittest.TestCase):
                                    self.test_bt[i], places=3)
 
         # exoplanet catalog tests
-        for name, directory, file_name in zip(self.catalog_name,
-                                              self.catalog_dir,
-                                              self.catalog_file_name):
+        for (system_name, name,
+             directory, file_name) in zip(self.test_system_name,
+                                          self.catalog_name,
+                                          self.catalog_dir,
+                                          self.catalog_file_name):
             # test downloading catalog
-            catalog = parse_database(name, update=True)
+            try:
+                catalog = parse_database(name, update=True)
+            except (URLError, gaierror) as e:
+                warnings.warn("{} not reachable, "
+                              "skipping archive in test".format(name))
+                continue           
             self.assertTrue(os.path.exists(os.path.join(self.path,
-                                                        "CASCADeData",
+                                                        "exoplanet_data",
                                                         directory,
                                                         file_name)))
             self.assertIsInstance(catalog, list)
@@ -87,11 +101,11 @@ class TestExoplanetsTools(unittest.TestCase):
             self.assertTrue(len(catalog[0]) > 1)
             # test extracting data record for single system
             data_record = \
-                extract_exoplanet_data(catalog, self.test_system_name,
+                extract_exoplanet_data(catalog, system_name,
                                        search_radius=self.test_search_radius)
             self.assertIsInstance(catalog, list)
             self.assertIsInstance(catalog[0], Table)
-            self.assertTrue(data_record[0]['NAME'][0] == self.test_system_name)
+            self.assertTrue(data_record[0]['NAME'][0] == system_name)
 
         # test lightcurve model using parameters from default ini file
         generate_default_initialization()
