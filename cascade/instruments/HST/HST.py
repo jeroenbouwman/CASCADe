@@ -39,7 +39,6 @@ from astropy.wcs import WCS
 from astropy.stats import sigma_clipped_stats
 from astropy.convolution import Gaussian2DKernel, interpolate_replace_nans
 from astropy.convolution import Gaussian1DKernel
-# from astropy.stats import sigma_clipped_stats
 from photutils import IRAFStarFinder
 import pandas as pd
 from scipy.optimize import nnls
@@ -488,7 +487,7 @@ class HSTWFC3(InstrumentBase):
                                    target_name=target_name,
                                    dataProduct=self.par['obs_data_product'],
                                    dataFiles=data_files)
-# TEST
+
         # make sure that the date units are as "standard" as posible
         data_unit = (1.0*SpectralTimeSeries.data_unit).decompose().unit
         SpectralTimeSeries.data_unit = data_unit
@@ -1071,6 +1070,8 @@ class HSTWFC3(InstrumentBase):
 
     def _get_background_cal_data(self):
         """
+        Get all calibration data for background fit.
+
         Get the calibration data from which the background in the science
         images can be determined.
 
@@ -1116,17 +1117,18 @@ class HSTWFC3(InstrumentBase):
         try:
             zodi = fits.getdata(calibration_file_name_zodi, ext=0)
         except FileNotFoundError:
-            raise FileNotFoundError("Calibration file {} for the \
-                                contribution of the zodi to the \
-                                background not found. \
-                                Aborting".format(calibration_file_name_zodi))
+            print("Calibration file {} for the "
+                  "contribution of the zodi to the "
+                  "background not found. "
+                  "Aborting".format(calibration_file_name_zodi))
+            raise
         try:
             helium = fits.getdata(calibration_file_name_helium, ext=0)
         except FileNotFoundError:
-            raise FileNotFoundError("Calibration file {} for the \
-                                contribution of the helium excess to the \
-                                background not found. \
-                                Aborting".format(calibration_file_name_helium))
+            print("Calibration file {} for the contribution of the helium "
+                  "excess to the background not found. "
+                  "Aborting".format(calibration_file_name_helium))
+            raise
         if self.par['inst_filter'] == 'G141':
             calibration_file_name_scattered = \
                 os.path.join(self.par['obs_cal_path'],
@@ -1136,29 +1138,27 @@ class HSTWFC3(InstrumentBase):
                 scattered = fits.getdata(calibration_file_name_scattered,
                                          ext=0)
             except FileNotFoundError:
-                raise FileNotFoundError("Calibration file {} for the \
-                                        contribution of the excess excess \
-                                        scattered light to the \
-                                        background not found. \
-                                        Aborting".
-                                        format(calibration_file_name_helium))
+                print("Calibration file {} for the contribution of the "
+                      "excess scattered light to the background not found. "
+                      "Aborting".format(calibration_file_name_scattered))
+                raise
         else:
             scattered = None
         try:
             flatfield = fits.getdata(calibration_file_name_flatfield,
                                      ext=0)[:-10, :-10]
         except FileNotFoundError:
-            raise FileNotFoundError("Flatfield calibration file {} not \
-                            found. \
-                            Aborting".format(calibration_file_name_flatfield))
+            print("Flatfield calibration file {} not found. "
+                  "Aborting".format(calibration_file_name_flatfield))
+            raise
         try:
             grism_flatfield = \
                 fits.getdata(calibration_file_name_grism_flatfield,
                              ext=0)[:-10, :-10]
         except FileNotFoundError:
-            raise FileNotFoundError("Flatfield calibration file {} not \
-                            found. \
-                            Aborting".format(calibration_file_name_flatfield))
+            print("Flatfield calibration file {} not found. "
+                  "Aborting".format(calibration_file_name_grism_flatfield))
+            raise
 
         zodi = zodi*flatfield/grism_flatfield
         helium = helium*flatfield/grism_flatfield
@@ -1167,8 +1167,9 @@ class HSTWFC3(InstrumentBase):
         try:
             self.wfc3_cal.subarray_sizes
         except AttributeError:
-            raise AttributeError("Necessary calibration data not yet defined. \
-                                 Aborting loading background calibration file")
+            print("Necessary WFC3 subarray sizes not yet defined. "
+                  "Aborting loading background calibration files")
+            raise
         subarray = self.wfc3_cal.subarray_sizes['science_image_size']
         if subarray < 1014:
             i0 = (1014 - subarray) // 2
@@ -1183,6 +1184,8 @@ class HSTWFC3(InstrumentBase):
 
     def _fit_background(self, science_data_in):
         """
+        Fit background.
+
         Determes the background in the HST Grism data using a model for the
         background to the spectral timeseries data
 

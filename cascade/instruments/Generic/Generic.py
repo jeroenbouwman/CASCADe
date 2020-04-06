@@ -181,6 +181,10 @@ class GenericSpectrograph(InstrumentBase):
             obs_backgr_id = cascade_configuration.observations_background_id
             obs_backgr_target_name = \
                 cascade_configuration.observations_background_name
+        try:
+            obs_data_product = cascade_configuration.observations_data_product
+        except AttributeError:
+            obs_data_product = ""
 
         if not (obs_data in self.__valid_data):
             raise ValueError("Data type not recognized, \
@@ -200,6 +204,7 @@ class GenericSpectrograph(InstrumentBase):
                                       obs_data=obs_data,
                                       obs_path=obs_path,
                                       obs_id=obs_id,
+                                      obs_data_product=obs_data_product,
                                       obs_target_name=obs_target_name,
                                       obs_has_backgr=obs_has_backgr)
         if obs_has_backgr:
@@ -209,6 +214,8 @@ class GenericSpectrograph(InstrumentBase):
 
     def get_spectra(self, is_background=False):
         """
+        Read the input spectra.
+
         This function combines all functionallity to read fits files
         containing the (uncalibrated) spectral timeseries, including
         orbital phase and wavelength information
@@ -309,7 +316,12 @@ class GenericSpectrograph(InstrumentBase):
                                    position=position,
                                    isRampFitted=True,
                                    isNodded=False,
+                                   target_name=target_name,
+                                   dataProduct=self.par['obs_data_product'],
                                    dataFiles=data_files)
+
+        SpectralTimeSeries.period = self.par['obj_period']
+        SpectralTimeSeries.ephemeris = self.par['obj_ephemeris']
 
         self._define_convolution_kernel()
 

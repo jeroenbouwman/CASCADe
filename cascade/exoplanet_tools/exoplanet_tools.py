@@ -20,7 +20,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright (C) 2018  Jeroen Bouwman
+# Copyright (C) 2018, 2019  Jeroen Bouwman
 """
 This Module defines the functionality to get catalog data on the targeted
 exoplanet and define the model ligth curve for the system.
@@ -764,6 +764,7 @@ def get_calalog(catalog_name, update=True):
         list of downloaded catalog files
     """
     valid_catalogs = ['TEPCAT', 'EXOPLANETS.ORG', 'NASAEXOPLANETARCHIVE']
+# BUG
     path = os.environ['HOME'] + "/CASCADeData/"
     os.makedirs(path, exist_ok=True)
 
@@ -806,7 +807,6 @@ def get_calalog(catalog_name, update=True):
         _tab_multi = "table=exomultpars"
         _query_multi = _query.replace("pl_", "mpl_").replace("st_", "mst_")
 
-#        exoplanet_database_url = [_url + _tab + _query]
         # use multi par catalogue as standard dous not always include T0
         exoplanet_database_url = [_url + _tab_multi + _query_multi]
         data_files_save = ["nasaexoplanetarchive.csv"]
@@ -834,7 +834,7 @@ def get_calalog(catalog_name, update=True):
 
 def parse_database(catalog_name, update=True):
     """
-    Read CSV files containing exoplanet catalog data
+    Read CSV files containing exoplanet catalog data.
 
     Parameters
     ----------
@@ -894,7 +894,6 @@ def parse_database(catalog_name, update=True):
                 table_temp2["NAME"].data[iname].strip()
         table_list.append(table_temp2)
 
-    # c = SkyCoord('00 42 30 +41 12 00',unit=(u.hourangle,u.deg),epoch="J2000")
     if len(table_list) == 2:
         table_temp = join(table_list[0], table_list[1], join_type='left',
                           keys='NAME')
@@ -943,7 +942,7 @@ def parse_database(catalog_name, update=True):
 def extract_exoplanet_data(data_list, target_name_or_position, coord_unit=None,
                            coordinate_frame='icrs', search_radius=5*u.arcsec):
     """
-    Extract the data record for a single target
+    Extract the data record for a single target.
 
     Parameters
     ----------
@@ -1071,8 +1070,9 @@ def extract_exoplanet_data(data_list, target_name_or_position, coord_unit=None,
             if np.sum(catalogmsk) > 1:
                 targets_in_search_area = data_use[catalogmsk]["NAME"].data
                 unique_targets = \
-                  np.unique([i.strip()[:-1] if i[-1] in planet_designation_list
-                             else i.strip() for i in targets_in_search_area])
+                    np.unique([i.strip()[:-1]
+                               if i[-1] in planet_designation_list
+                               else i.strip() for i in targets_in_search_area])
                 if unique_targets.size != 1:
                     raise ValueError("Multiple targets found: {}. Please "
                                      "reduce the search radius of {}".
@@ -1109,13 +1109,14 @@ def extract_exoplanet_data(data_list, target_name_or_position, coord_unit=None,
                 table_temp_multi = Table(masked=True)
                 for cn in new_table.keys():
                     idx = [i for i,
-                           x in enumerate(table_selection.mask[cn].data) if not x]
+                           x in enumerate(table_selection.mask[cn].data)
+                           if not x]
                     if len(idx) == 0:
                         idx = [0]
                     table_temp_multi[cn] = table_selection[cn][idx[0]:idx[0]+1]
                 table_temp_multi.add_index("NAME")
                 new_table = table_temp_multi.copy()
-# Bug fix due to mem leak astropy table
+                # Bug fix due to mem leak astropy table
                 del(table_temp_multi)
                 del(idx_good_period)
                 del(table_selection)
@@ -1276,12 +1277,6 @@ class batman_model:
         # model
         m = batman.TransitModel(params, tmodel,
                                 transittype=InputParameter['transittype'])
-
-        # normalize the lightcurve to zero outside of the eclipse/transit
-#        if InputParameter['transittype'] == 'secondary':
-#            lcmodel = m.light_curve(params) - (1 + params.fp)
-#        else:
-#            lcmodel = (m.light_curve(params) - 1) / params.rp**2
 
         lcmodel = \
             -1.0 * (m.light_curve(params) - np.max(m.light_curve(params))) / \
