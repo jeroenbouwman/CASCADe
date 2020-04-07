@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# This file is part of the CASCADe package which has been 
+# This file is part of the CASCADe package which has been
 # developed within the ExoplANETS-A H2020 program.
 #
 # See the COPYRIGHT file at the top-level directory of this distribution
@@ -22,6 +22,9 @@
 # Copyright (C) 2018, 2019, 2020  Jeroen Bouwman, MPIA
 
 import cascade
+# to ignore (switch off) all warnings uncomment the following:
+# import os
+# os.environ["CASCADE_WARNINGS"] = 'off'
 
 # create transit spectoscopy object
 tso = cascade.TSO.TSOSuite()

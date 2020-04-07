@@ -22,6 +22,9 @@
 # Copyright (C) 2018, 2019, 2020  Jeroen Bouwman
 
 import cascade
+# to ignore (switch off) all warnings uncomment the following:
+# import os
+# os.environ["CASCADE_WARNINGS"] = 'off'
 
 # create transit spectoscopy object
 tso = cascade.TSO.TSOSuite()

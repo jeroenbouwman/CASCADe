@@ -86,6 +86,17 @@ __all__ = ['cascade_default_path',
            'cascade_configuration']
 
 try:
+    cascade_warnings = os.environ['CASCADE_WARNINGS']
+    if cascade_warnings.strip().lower() == "off":
+        warnings.simplefilter("ignore")
+    else:
+        warnings.simplefilter("default")
+except KeyError:
+    cascade_warnings = 'on'
+    warnings.simplefilter("default")
+    warnings.warn("CASCADE_WARNINGS environment variable not set.")
+
+try:
     cascade_default_path = os.environ['CASCADE_PATH']
 except KeyError:
     cascade_default_path = \
