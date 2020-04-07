@@ -20,11 +20,35 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 # Copyright (C) 2018, 2019, 2020  Jeroen Bouwman
+"""
+This script demonstrates the basic functionality to load spectral images and
+extract a time series of 1D spectra.
 
-import cascade
+In this example for the trznsiting planet WASP 19 b, we load HST/WFC3 data
+taken in staring mode. After reading the fits data files, using the target
+acquisition image, the initial position of the target on the detector is
+determined, and based on that the wavelength solution and spectral trace is
+calculated. Next we subtract the background, filter the data using directional
+filters to determine and flag bad-pixel and create a cleaned and smoothed
+dataset. We then proceed to determine the relative movement (including
+rotation and scaling changes) of the telescope and based on these relative
+movements we correct the wavelength for each time step. Finally the 1D spectra
+extracted both in an optimal way (using an extraction profile based on the
+cleaned and smoothed data) as well as using an extraction aperture
+The extracted spectra are written by default in the the
+data/HST/WFC3/WASP19b/SPECTRA/ directory of the CASCADe package.
+This directory is populated by default. If you which to compared your 
+results with the pre-calculated spectra, copy the content of this directory
+before running this script. Diagnostic output images can be found in the
+examples/results/WASP19b_transit_using_spectral_images directory.
+
+For more details please visit https://jbouwman.gitlab.io/CASCADe/
+"""
 # to ignore (switch off) all warnings uncomment the following:
 # import os
 # os.environ["CASCADE_WARNINGS"] = 'off'
+
+import cascade
 
 # create transit spectoscopy object
 tso = cascade.TSO.TSOSuite()

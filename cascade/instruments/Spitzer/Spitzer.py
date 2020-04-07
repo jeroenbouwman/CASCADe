@@ -52,6 +52,8 @@ __all__ = ['Spitzer', 'SpitzerIRS']
 
 class Spitzer(ObservatoryBase):
     """
+    Class defining the Spitzer observatory.
+
     This observatory class defines the instuments and data handling for the
     spectropgraphs of the Spitzer Space telescope
     """
@@ -83,23 +85,29 @@ class Spitzer(ObservatoryBase):
 
     @property
     def name(self):
+        """Name of the observatory."""
         return "SPITZER"
 
     @property
     def location(self):
+        """Location of the observatory."""
         return "SPACE"
 
     @property
     def NAIF_ID(self):
+        """NAIF_ID of the observatory."""
         return -79
 
     @property
     def observatory_instruments(self):
+        """All implemented instruments of the observatory."""
         return{"IRS"}
 
 
 class SpitzerIRS(InstrumentBase):
     """
+    Class defining the IRS instrument.
+
     This instrument class defines the properties of the IRS instrument of
     the Spitzer Space Telescope.
     For the instrument and observations the following valid options are
@@ -112,6 +120,7 @@ class SpitzerIRS(InstrumentBase):
        - data type : {'SPECTRUM', 'SPECTRAL_IMAGE', 'SPECTRAL_DETECTOR_CUBE'}
 
     """
+
     __valid_arrays = {'SL', 'LL'}
     __valid_orders = {'1', '2'}
     __valid_data = {'SPECTRUM', 'SPECTRAL_IMAGE', 'SPECTRAL_DETECTOR_CUBE'}
@@ -900,9 +909,7 @@ class SpitzerIRS(InstrumentBase):
         return SpectralTimeSeries
 
     def get_spectral_trace(self):
-        """
-        Get spectral trace.
-        """
+        """Get spectral trace."""
         dim = self.data.data.shape
         wavelength_unit = self.data.wavelength_unit
 
@@ -1004,9 +1011,9 @@ class SpitzerIRS(InstrumentBase):
                                           corrected_spatial_pos.value),
                                          method='cubic') * wavelength_unit
 
-        spectral_trace = \
-            collections.OrderedDict(wavelength_pixel=wave_pixel_grid,
-                                    positional_pixel=corrected_spatial_pos[::-1],
-                                    wavelength=corrected_wavelengths[::-1])
+        spectral_trace = collections.OrderedDict(
+            wavelength_pixel=wave_pixel_grid,
+            positional_pixel=corrected_spatial_pos[::-1],
+            wavelength=corrected_wavelengths[::-1])
 
         return spectral_trace

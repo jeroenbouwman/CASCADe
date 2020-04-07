@@ -22,6 +22,8 @@
 #
 # Copyright (C) 2018, 2019  Jeroen Bouwman
 """
+Exoplanet Tools Module.
+
 This Module defines the functionality to get catalog data on the targeted
 exoplanet and define the model ligth curve for the system.
 It also difines some usefull functionality for exoplanet atmosphere analysis.
@@ -37,7 +39,6 @@ import gc
 import string
 import astropy.units as u
 from astropy import constants as const
-#from astropy.modeling.blackbody import blackbody_nu
 from astropy.modeling.models import BlackBody
 from astropy.coordinates import SkyCoord
 from astropy.coordinates.name_resolve import NameResolveError
@@ -55,9 +56,9 @@ from ..initialize import cascade_configuration
 from ..initialize import cascade_default_data_path
 from ..data_model import SpectralData
 
-__all__ = ['Vmag', 'Kmag', 'Rho_jup', 'Rho_jup', 'KmagToJy', 'JytoKmag',
-           'SurfaceGravity', 'ScaleHeight', 'TransitDepth', 'Planck',
-           'EquilibriumTemperature', 'get_calalog', 'parse_database',
+__all__ = ['Vmag', 'Kmag', 'Rho_jup', 'Rho_jup', 'kmag_to_jy', 'jy_to_kmag',
+           'surface_gravity', 'scale_height', 'transit_depth', 'planck',
+           'equilibrium_temperature', 'get_calalog', 'parse_database',
            'convert_spectrum_to_brighness_temperature', 'combine_spectra',
            'extract_exoplanet_data', 'lightcuve', 'batman_model',
            'masked_array_input', 'eclipse_to_transit', 'transit_to_eclipse']
@@ -312,12 +313,9 @@ exoplanets_table_units = collections.OrderedDict(
     TTLOWER=u.day)
 
 
-# decorator function to check and handel masked Quantities
-# such as:  masked_quantity = np.ma.array([1,2,3,4]*u.micron,
-# mask=[True, False, True, False])
 def masked_array_input(func):
     """
-    Decorator function to check and handel masked Quantities
+    Decorate function to check and handel masked Quantities.
 
     If one of the input arguments is wavelength or flux, the array can be
     a masked Quantity, masking out only 'bad' data. This decorator checks for
@@ -363,9 +361,9 @@ def masked_array_input(func):
 
 
 @u.quantity_input
-def KmagToJy(magnitude: Kmag, system='Johnson'):
+def kmag_to_jy(magnitude: Kmag, system='Johnson'):
     """
-    Convert Kband Magnitudes to Jy
+    Convert Kband Magnitudes to Jy.
 
     Parameters
     ----------
@@ -405,9 +403,9 @@ def KmagToJy(magnitude: Kmag, system='Johnson'):
 
 
 @u.quantity_input
-def JytoKmag(flux: u.Jy, system='Johnson'):
+def jy_to_kmag(flux: u.Jy, system='Johnson'):
     """
-    Convert flux in Jy to Kband Magnitudes
+    Convert flux in Jy to Kband Magnitudes.
 
     Parameters
     ----------
@@ -448,9 +446,9 @@ def JytoKmag(flux: u.Jy, system='Johnson'):
 
 @masked_array_input
 @u.quantity_input
-def Planck(wavelength: u.micron, temperature: u.K):
+def planck(wavelength: u.micron, temperature: u.K):
     """
-    This function calculates the emisison from a Black Body.
+    Return Black Body emission.
 
     Parameters
     ----------
@@ -466,7 +464,6 @@ def Planck(wavelength: u.micron, temperature: u.K):
 
     Examples
     --------
-
     >>> import cascade
     >>> import matplotlib.pyplot as plt
     >>> import numpy as np
@@ -482,15 +479,14 @@ def Planck(wavelength: u.micron, temperature: u.K):
     ...     plt.show()
 
     """
-    
     bb = BlackBody(temperature=temperature)
     return bb(wavelength)
 
 
 @u.quantity_input
-def SurfaceGravity(MassPlanet: u.M_jupiter, RadiusPlanet: u.R_jupiter):
+def surface_gravity(MassPlanet: u.M_jupiter, RadiusPlanet: u.R_jupiter):
     """
-    Calculates surface gravity of planet
+    Calculate the surface gravity of planet.
 
     Parameters
     ----------
@@ -509,10 +505,10 @@ def SurfaceGravity(MassPlanet: u.M_jupiter, RadiusPlanet: u.R_jupiter):
 
 
 @u.quantity_input
-def ScaleHeight(MeanMolecularMass: u.u, SurfaceGravity: u.m*u.s**-2,
-                Temperature: u.K):
+def scale_height(MeanMolecularMass: u.u, SurfaceGravity: u.m*u.s**-2,
+                 Temperature: u.K):
     """
-    Calculate the scaleheigth of the planet
+    Calculate the scaleheigth of the planet.
 
     Parameters
     ----------
@@ -534,8 +530,10 @@ def ScaleHeight(MeanMolecularMass: u.u, SurfaceGravity: u.m*u.s**-2,
 
 
 @u.quantity_input
-def TransitDepth(RadiusPlanet: u.R_jup, RadiusStar: u.R_sun):
+def transit_depth(RadiusPlanet: u.R_jup, RadiusStar: u.R_sun):
     """
+    Transit depth estimate.
+
     Calculates the depth of the planetary transit assuming one can
     neglect the emision from the night side of the planet.
 
@@ -556,10 +554,10 @@ def TransitDepth(RadiusPlanet: u.R_jup, RadiusStar: u.R_sun):
 
 
 @u.quantity_input
-def EquilibriumTemperature(StellarTemperature: u.K, StellarRadius: u.R_sun,
-                           SemiMajorAxis: u.AU, Albedo=0.3, epsilon=0.7):
+def equilibrium_temperature(StellarTemperature: u.K, StellarRadius: u.R_sun,
+                            SemiMajorAxis: u.AU, Albedo=0.3, epsilon=0.7):
     """
-    Calculate the Equlibrium Temperature of the Planet
+    Calculate the Equlibrium Temperature of the Planet.
 
     Parameters
     ----------
@@ -594,8 +592,7 @@ def convert_spectrum_to_brighness_temperature(wavelength: u.micron,
                                               RadiusPlanet: u.R_jupiter,
                                               error: u.percent = None):
     """
-    Function to convert the secondary eclipse spectrum to brightness
-    temperature.
+    Convert the secondary eclipse spectrum to brightness temperature.
 
     Parameters
     ----------
@@ -621,10 +618,10 @@ def convert_spectrum_to_brighness_temperature(wavelength: u.micron,
     """
     planet_temperature_grid = np.array([100.0 + 100.0*np.arange(38)]) * u.K
 
-    contrast_grid = Planck(np.tile(wavelength,
+    contrast_grid = planck(np.tile(wavelength,
                                    (len(planet_temperature_grid), 1)).T,
                            planet_temperature_grid).T / \
-        Planck(wavelength, StellarTemperature)
+        planck(wavelength, StellarTemperature)
 
     scaling = ((RadiusPlanet/StellarRadius).decompose())**2
     contrast_grid = (contrast_grid*scaling).to(contrast.unit)
@@ -652,7 +649,7 @@ def convert_spectrum_to_brighness_temperature(wavelength: u.micron,
 
 def eclipse_to_transit(eclipse):
     """
-    Converts eclipse spectrum to transit spectrum
+    Convert eclipse spectrum to transit spectrum.
 
     Parameters
     ----------
@@ -670,7 +667,7 @@ def eclipse_to_transit(eclipse):
 
 def transit_to_eclipse(transit):
     """
-    Converts transit spectrum to eclipse spectrum
+    Convert transit spectrum to eclipse spectrum.
 
     Parameters
     ----------
@@ -688,6 +685,8 @@ def transit_to_eclipse(transit):
 
 def combine_spectra(identifier_list=[], path=""):
     """
+    Combine multiple spectra.
+
     Convienience function to combine multiple extracted spectra
     of the same source by calculating a weighted averige.
 
@@ -703,7 +702,6 @@ def combine_spectra(identifier_list=[], path=""):
     combined_spectrum : 'array_like'
         The combined spectrum based on the spectra specified in the input list
     """
-
     spectrum = []
     error = []
     wave = []
@@ -717,8 +715,6 @@ def combine_spectra(identifier_list=[], path=""):
         unit_wave = u.Unit(tbl['Wavelength'].unit)
         mask.append(~np.isfinite(tbl['Flux'].value))
 
-#    unit_spectrum = u.Unit(spectrum[0].unit)
-#    unit_wave = u.Unit(wave[0].unit)
     mask = np.array(mask)
     spectrum = np.array(spectrum)
     error = np.array(error)
@@ -753,12 +749,12 @@ def combine_spectra(identifier_list=[], path=""):
 
 def get_calalog(catalog_name, update=True):
     """
-    Get exoplanet catalog data
+    Get exoplanet catalog data.
 
     Parameters
     ----------
     catalog_name : 'str'
-        name of catalog to use, can either be 'TEPCAT', 
+        name of catalog to use, can either be 'TEPCAT',
         'EXOPLANETS.ORG' or 'NASAEXOPLANETARCHIVE'
     update : 'bool'
         Boolian indicating if local calalog file will be updated
@@ -769,7 +765,6 @@ def get_calalog(catalog_name, update=True):
         list of downloaded catalog files
     """
     valid_catalogs = ['TEPCAT', 'EXOPLANETS.ORG', 'NASAEXOPLANETARCHIVE']
-# BUG
     path = os.path.join(cascade_default_data_path, "exoplanet_data/")
     os.makedirs(path, exist_ok=True)
 
@@ -791,7 +786,7 @@ def get_calalog(catalog_name, update=True):
         os.makedirs(path, exist_ok=True)
         _url = ("https://exoplanetarchive.ipac.caltech.edu/"
                 "cgi-bin/nstedAPI/nph-nstedAPI?")
-        _tab = "table=exoplanets"
+#        _tab = "table=exoplanets"
         _query = ("&select=pl_name,ra,dec,"
                   "pl_tranmid,pl_tranmiderr1,pl_tranmiderr2,"
                   "pl_orbper,pl_orbpererr1,pl_orbpererr2,"
@@ -1142,12 +1137,14 @@ def extract_exoplanet_data(data_list, target_name_or_position, coord_unit=None,
 
 class lightcuve:
     """
-    Class defining lightcurve model used to model the observed
+    Class defining lightcurve model.
+
+    This class defines the light curve model used to model the observed
     transit/eclipse observations.
     Current valid lightcurve models: batman
 
     Attributes
-    ---------
+    ----------
     lc : 'array_like'
         The lightcurve model
     par : 'ordered_dict'
@@ -1191,6 +1188,7 @@ class lightcuve:
     >>> plt.show()
 
     """
+
     valid_models = {'batman'}
 
     def __init__(self):
@@ -1232,9 +1230,9 @@ class batman_model:
 
     def __init__(self):
         if ast.literal_eval(cascade_configuration.catalog_use_catalog):
-            self.par = self.ReturnParFromDB()
+            self.par = self.return_par_from_db()
         else:
-            self.par = self.ReturnParFromIni()
+            self.par = self.return_par_from_ini()
         self.lc = self.define_batman_model(self.par)
 
     @staticmethod
@@ -1288,8 +1286,10 @@ class batman_model:
             np.min(m.light_curve(params) - np.max(m.light_curve(params)))
         return tmodel, lcmodel
 
-    def ReturnParFromIni(self):
+    def return_par_from_ini(self):
         """
+        Get parametrers from initializaton file.
+
         Get relevant parameters for lightcurve model from CASCADe
         intitialization files
 
@@ -1338,8 +1338,10 @@ class batman_model:
                                       phase_range=phase_range)
         return par
 
-    def ReturnParFromDB(self):
+    def return_par_from_db(self):
         """
+        Return system parameters for exoplanet database.
+
         Get relevant parameters for lightcurve model from exoplanet database
         specified in CASCADe initialization file
 

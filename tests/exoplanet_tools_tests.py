@@ -57,7 +57,7 @@ class TestExoplanetsTools(unittest.TestCase):
 
     def test_basic_cascade(self):
         # test BB function
-        BBflux = cascade.exoplanet_tools.Planck(self.wave, self.BBTemp)
+        BBflux = cascade.exoplanet_tools.planck(self.wave, self.BBTemp)
         self.assertTrue(BBflux.unit == self.test_flux_unit)
 
         # test brightness temperature
@@ -88,10 +88,10 @@ class TestExoplanetsTools(unittest.TestCase):
             # test downloading catalog
             try:
                 catalog = parse_database(name, update=True)
-            except (URLError, gaierror) as e:
+            except (URLError, gaierror):
                 warnings.warn("{} not reachable, "
                               "skipping archive in test".format(name))
-                continue           
+                continue
             self.assertTrue(os.path.exists(os.path.join(self.path,
                                                         "exoplanet_data",
                                                         directory,
