@@ -29,15 +29,18 @@ The conda cascade environment can then be activated with the following command:
 source activate cascade
 ```
 
-One can now install all necessary packages for CASCADe within this environment either with conda install or
-pip install. The CASCADe package itself can be downloaded from gitlab.
+One can now install all necessary packages for CASCADe within this environment
+either with conda install or pip install. The CASCADe package itself can be
+downloaded from gitlab.
 
 
 Getting CASCADe from gitlab
 ---------------------------
-The CASCADe code can be found at gitlab and can be downloaded with git. Note that the gitlab repository
-is private and to download the code, one needs to create a gitlab account after which the account can be 
-added to the list of users which have acces to the repository. 
+
+The CASCADe code can be found at gitlab and can be downloaded with git. Note
+that the gitlab repository is private and to download the code, one needs to
+create a gitlab account after which the account can be added to the list of
+users which have acces to the repository. 
 
 The CASCADe repository path is, depending if the HTTPS or SSH protocol is used:
 
@@ -51,25 +54,59 @@ of the following commands:
 Clone via HTTPS:
 
 ```bash
-git clone https://gitlab.com/jbouwman/CASCADe
+git clone https://gitlab.com/jbouwman/CASCADe.git
 ```
 
 Clone via SSH:
 
 ```bash
-git clone git@gitlab.com:jbouwman/CASCADe 
+git clone git@gitlab.com:jbouwman/CASCADe.git
 ```
 
-Both commands will download a copy of the files in a
-folder named after the project's name. You can then navigate to the directory and start working
-on it locally. In case one is using Anaconda make sure the environment is activated before installing CASCADe.
+Both commands will download a copy of the files in a folder named after the
+project's name. You can then navigate to the directory and start working on it
+locally. In case one is using Anaconda make sure the cascade environment is
+activated before using our package
+
+
+Installing all necessary packages within an Anaconda environment
+-----------------------------------------------------------------
+
+In the CASCADe main package directory an environment.yml can be found. You can
+use this yml file to create or update the cascade Anaconda environment. If you
+not already had created an cascade environment execute the following command:
+    
+```bash
+conda env create -f environment.yml
+```
+
+Incase you already have an cascade environment, you can update the necessary 
+packages with the following command (also use this after updating CASCADe
+itself):
+
+```bash
+conda env update -f environment.yml
+```
+
+Make sure the CASCADe package is in your path. You can either set a PYTHONPATH
+environment variable pointing to the location of the CASCADe package on your
+system, or when using anaconda with the following command:
+
+```bash
+conda develop <path_to_the_CASCADe_package_on_your_system>/CASCADe
+```
 
 Updating the CASCADe code
 -------------------------
 
-The insalled CASCADe code can be kept up to date by regularly checking for updates. The latest version can be
-pulled from gitlab with the command:
+The insalled CASCADe code can be kept up to date by regularly checking for
+updates. The latest version can be pulled from gitlab with the command:
 
 ```bash
 git pull master
+```
+The latest development version can be pulled from:
+
+```bash
+git pull development
 ```
