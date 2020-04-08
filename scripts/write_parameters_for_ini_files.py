@@ -4,25 +4,34 @@ from typing import Any, Union
 
 import pandas as pd
 import numpy as np
+import math
 
 
-def remove_space(objet_names):
-    new_name = np.asarray(objet_names)
+def replace_nan_values(values_to_check, values_to_replace):
+    new_values = np.asarray(values_to_check)
+    for i in range(new_values.size):
+        if values_to_check[i] == math.nan:
+            new_values[i] = values_to_replace[i]
+    return new_values
+
+
+def remove_space(object_names):
+    new_name = np.asarray(object_names)
     for i in range(new_name.size):
-        new_name[i] = (''.join(objet_names[i].split(' ')))
+        new_name[i] = (''.join(object_names[i].split(' ')))
     return new_name
 
 
-def remove_binary_name(list_name):
-    new_name = np.asarray(list_name)
+def remove_binary_name(object_names):
+    new_name = np.asarray(object_names)
     for i in range(new_name.size):
         new_name[i] = new_name[i].replace(' (AB) ', '')
         new_name[i] = new_name[i].replace(' A ', '')
     return new_name
 
 
-def remove_duplicate(list_name):
-    new_name = np.asarray(list_name)
+def remove_duplicate(object_names):
+    new_name = np.asarray(object_names)
     new_name = np.unique(new_name)
     return new_name
 
@@ -50,7 +59,8 @@ planet_physical_parameters = pd.read_csv(planet_physical_parameters_path + plane
 
 # planet parameters
 planet_name = planet_physical_parameters['NamePlanet']  # Name of the planet
-planet_radius = planet_physical_parameters['RadiusPlanet_EU']  # Radius of the planet [Rjupiter]
+# Radius of the planet [Rjupiter] from either Exoplanet.eu or Exeter Librairy
+planet_radius = replace_nan_values(planet_physical_parameters['RadiusPlanet_EU'], planet_physical_parameters['Rpl_Ex'])
 semi_major_axis = planet_physical_parameters['semi_major_axis_EU']  # Semi major axis [au]
 inclination = planet_physical_parameters['inclination_EU']  # Orbital inclination [degrees]
 eccentricity = planet_physical_parameters['eccentricity_EU']  # Orbital eccentricity []
@@ -62,7 +72,8 @@ ephemeris = planet_physical_parameters['tzero_tr_EU']  # primary transit [JD]
 # star parameters
 star_name = planet_physical_parameters['star_name']  # Name of the star
 alternative_star_name = planet_physical_parameters['AltName']  # Alternative Name of the star
-star_radius = planet_physical_parameters['star_Radius_EU']  # Radius of the star [Rsun]
+# Radius of the planet [Rjupiter] from either Exoplanet.eu or Exeter Librairy
+star_radius = replace_nan_values(planet_physical_parameters['star_Radius_EU'], planet_physical_parameters['Rstar_Ex'])
 star_temperature = planet_physical_parameters['star_Teff_EU']  # Star temperature [K]
 star_metallicity = planet_physical_parameters['star_Metallicity_EU']  # Star metallicity [dex]
 star_logg = planet_physical_parameters['loggstar_Ex']  # Star surface gravity [dex(cm/s2)]
