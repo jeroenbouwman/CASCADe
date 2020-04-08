@@ -26,6 +26,9 @@
 # os.environ["CASCADE_WARNINGS"] = 'off'
 
 import cascade
+import time
+
+start_time = time.time()
 
 # create transit spectoscopy object
 tso = cascade.TSO.TSOSuite()
@@ -91,3 +94,7 @@ tso.execute("save_results")
 
 # plot planetary signal
 tso.execute("plot_results")
+
+elapsed_time = time.time() - start_time
+print ('elapsed time:', elapsed_time)
+

@@ -49,6 +49,9 @@ For more details please visit https://jbouwman.gitlab.io/CASCADe/
 # os.environ["CASCADE_WARNINGS"] = 'off'
 
 import cascade
+import time
+
+start_time = time.time()
 
 # create transit spectoscopy object
 tso = cascade.TSO.TSOSuite()
@@ -91,3 +94,7 @@ tso.execute("set_extraction_mask")
 # extract the 1D spectra of target.
 # In case of 1D spectra (already extracted) this step will be ignored
 tso.execute("extract_1d_spectra")
+
+elapsed_time = time.time() - start_time
+print ('elapsed time:', elapsed_time)
+
