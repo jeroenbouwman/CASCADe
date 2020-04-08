@@ -72,7 +72,7 @@ ephemeris = planet_physical_parameters['tzero_tr_EU']  # primary transit [JD]
 # star parameters
 star_name = planet_physical_parameters['star_name']  # Name of the star
 alternative_star_name = planet_physical_parameters['AltName']  # Alternative Name of the star
-# Radius of the planet [Rjupiter] from either Exoplanet.eu or Exeter Librairy
+# Radius of the star [Rsun] from either Exoplanet.eu or Exeter Librairy
 star_radius = replace_nan_values(planet_physical_parameters['star_Radius_EU'], planet_physical_parameters['Rstar_Ex'])
 star_temperature = planet_physical_parameters['star_Teff_EU']  # Star temperature [K]
 star_metallicity = planet_physical_parameters['star_Metallicity_EU']  # Star metallicity [dex]
@@ -122,7 +122,13 @@ for planet_HST_WFC3 in list_planets_HST_WFC3:
                 output_file.write('catalog_name = EXOPLANET.EU\n')
                 output_file.write('catalog_update = True\n')
 
+            if  np.isnan(planet_radius[whole_planets]) or  np.isnan(star_radius[whole_planets]) or \
+                np.isnan(star_temperature[whole_planets]) or np.isnan(semi_major_axis[whole_planets]) or \
+                np.isnan(inclination[whole_planets]) or np.isnan(eccentricity[whole_planets]) or \
+                np.isnan(omega[whole_planets]) or np.isnan(ephemeris[whole_planets]) :
+                    print('Warning: missing some fundamental parameters for the planet %s' % planet_name[whole_planets])
+
             break
 
     if whole_planets == len(planet_name)-1:
-        print('planet %s observed by HST with no parameters' % planet_HST_WFC3)
+        print('Warning: planet %s observed by HST with no parameters' % planet_HST_WFC3)
