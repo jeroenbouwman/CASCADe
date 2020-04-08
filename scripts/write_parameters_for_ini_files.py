@@ -4,7 +4,6 @@ from typing import Any, Union
 
 import pandas as pd
 import numpy as np
-import math
 
 
 def replace_nan_values(values_to_check, values_to_replace):
@@ -36,7 +35,7 @@ def remove_duplicate(object_names):
     return new_name
 
 
-def alternative_planet_name(list_planet, list_star):
+def get_alternative_planet_name(list_planet, list_star):
     new_planet_name = np.asarray(list_star)
     for i in range(new_planet_name.size):
         planet_letter = list_planet[i][-1]
@@ -45,7 +44,7 @@ def alternative_planet_name(list_planet, list_star):
 
 
 # Initialisation
-verbose = True
+verbose = False
 list_planets_HST_WFC3_path = ''
 list_planets_HST_WFC3_filename = 'catalogue_angelos_planets_hst_wfc3.txt'
 planet_physical_parameters_path = ''
@@ -90,18 +89,15 @@ list_planets_HST_WFC3 = remove_space(list_planets_HST_WFC3)
 
 alternative_star_name = remove_binary_name(alternative_star_name)
 alternative_star_name = remove_space(alternative_star_name)
-
-
-# Planet observed by HST
-# HST_observation = np.where(mission == 'H')[0]
+alternative_planet_name = get_alternative_planet_name(planet_name, alternative_star_name)
 
 
 # Write object ini files
 for planet_HST_WFC3 in list_planets_HST_WFC3:
     for whole_planets in range(planet_name.size):
-        if planet_HST_WFC3 == planet_name[whole_planets]:
-            object_ini_files_name = 'cascade_' + planet_HST_WFC3 + '_object.ini'
+        if planet_HST_WFC3 == planet_name[whole_planets] or planet_HST_WFC3 == alternative_planet_name[whole_planets]:
 
+            object_ini_files_name = 'cascade_' + planet_HST_WFC3 + '_object.ini'
             with open(object_ini_files_path + object_ini_files_name, "w") as output_file:
                 output_file.write('[OBJECT]\n')
                 output_file.write('object_name = %s\n' % planet_name[whole_planets])
@@ -123,13 +119,13 @@ for planet_HST_WFC3 in list_planets_HST_WFC3:
                 output_file.write('catalog_name = EXOPLANET.EU\n')
                 output_file.write('catalog_update = True\n')
 
-            if  verbose and (np.isnan(planet_radius[whole_planets]) or  np.isnan(star_radius[whole_planets]) or \
-                np.isnan(star_temperature[whole_planets]) or np.isnan(semi_major_axis[whole_planets]) or \
-                np.isnan(inclination[whole_planets]) or np.isnan(eccentricity[whole_planets]) or \
-                np.isnan(omega[whole_planets]) or np.isnan(ephemeris[whole_planets])) :
-                    print('Warning: missing some fundamental parameters for the planet %s' % planet_name[whole_planets])
+            if verbose and (np.isnan(planet_radius[whole_planets]) or np.isnan(star_radius[whole_planets]) or
+               np.isnan(star_temperature[whole_planets]) or np.isnan(semi_major_axis[whole_planets]) or
+               np.isnan(inclination[whole_planets]) or np.isnan(eccentricity[whole_planets]) or
+               np.isnan(omega[whole_planets]) or np.isnan(ephemeris[whole_planets])):
+                print('Warning: missing some fundamental parameters for the planet %s' % planet_name[whole_planets])
 
             break
 
-    if verbose and (whole_planets == len(planet_name)-1):
+    if True and (whole_planets == planet_name.size-1):
         print('Warning: planet %s observed by HST with no parameters' % planet_HST_WFC3)
