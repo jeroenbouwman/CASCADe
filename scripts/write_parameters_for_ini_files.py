@@ -10,7 +10,7 @@ import math
 def replace_nan_values(values_to_check, values_to_replace):
     new_values = np.asarray(values_to_check)
     for i in range(new_values.size):
-        if values_to_check[i] == math.nan:
+        if np.isnan(values_to_check[i]):
             new_values[i] = values_to_replace[i]
     return new_values
 
@@ -45,6 +45,7 @@ def alternative_planet_name(list_planet, list_star):
 
 
 # Initialisation
+verbose = True
 list_planets_HST_WFC3_path = ''
 list_planets_HST_WFC3_filename = 'catalogue_angelos_planets_hst_wfc3.txt'
 planet_physical_parameters_path = ''
@@ -122,13 +123,13 @@ for planet_HST_WFC3 in list_planets_HST_WFC3:
                 output_file.write('catalog_name = EXOPLANET.EU\n')
                 output_file.write('catalog_update = True\n')
 
-            if  np.isnan(planet_radius[whole_planets]) or  np.isnan(star_radius[whole_planets]) or \
+            if  verbose and (np.isnan(planet_radius[whole_planets]) or  np.isnan(star_radius[whole_planets]) or \
                 np.isnan(star_temperature[whole_planets]) or np.isnan(semi_major_axis[whole_planets]) or \
                 np.isnan(inclination[whole_planets]) or np.isnan(eccentricity[whole_planets]) or \
-                np.isnan(omega[whole_planets]) or np.isnan(ephemeris[whole_planets]) :
+                np.isnan(omega[whole_planets]) or np.isnan(ephemeris[whole_planets])) :
                     print('Warning: missing some fundamental parameters for the planet %s' % planet_name[whole_planets])
 
             break
 
-    if whole_planets == len(planet_name)-1:
+    if verbose and (whole_planets == len(planet_name)-1):
         print('Warning: planet %s observed by HST with no parameters' % planet_HST_WFC3)
