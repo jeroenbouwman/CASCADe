@@ -28,6 +28,8 @@ This Module defines the functionality to generate and read .ini files which
 are used to initialize CASCADe.
 
 CASCADEe used the following environment variables:
+    CASCADE_WARNINGS
+        Switch to show or not show warnings. Can either be 'on' or 'off'
     CASCADE_PATH
         Default directory for CASCADe.
     CASCADE_OBSERVATIONS
@@ -77,7 +79,8 @@ import warnings
 
 from cascade import __path__
 
-__all__ = ['cascade_default_path',
+__all__ = ['cascade_warnings',
+           'cascade_default_path',
            'cascade_default_data_path',
            'cascade_default_save_path',
            'cascade_default_initialization_path',

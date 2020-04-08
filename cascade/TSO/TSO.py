@@ -2949,6 +2949,7 @@ class TSOSuite:
                           calibration_correction.data_unit))
             ax.set_xlabel('Wavelength [{}]'.format(results.
                           calibration_correction.wavelength_unit))
+            plt.ioff()
             plt.show()
             fig.savefig(save_path+observations_id +
                         '_calibration_correction.png', bbox_inches='tight')

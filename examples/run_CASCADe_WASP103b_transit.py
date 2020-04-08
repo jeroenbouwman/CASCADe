@@ -22,8 +22,12 @@
 # Copyright (C) 2018, 2019, 2020  Jeroen Bouwman, MPIA
 
 # to ignore (switch off) all warnings uncomment the following:
-# import os
-# os.environ["CASCADE_WARNINGS"] = 'off'
+import os
+os.environ["CASCADE_WARNINGS"] = 'off'
+
+# To make sure no plot windows are opened if run in batch mode, use:
+import matplotlib
+matplotlib.use('AGG')
 
 import cascade
 import time
