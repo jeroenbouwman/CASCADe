@@ -49,9 +49,9 @@ def print_parameter_missing(planet_name, planet_radius, star_radius, star_temper
                         'inclination', 'eccentricity', 'omega', 'ephemeris'])
     values = np.asarray([planet_radius, star_radius, star_temperature, semi_major_axis, inclination,
                          eccentricity, omega, ephemeris])
-    where_nan = np.argwhere(np.isnan(values))
-    if where_nan.size > 0:
-        print("Warning: for the planet %s, the parameter '%s' are missing" % (planet_name, names[where_nan][0][0]))
+    where_nan = np.isnan(values)
+    if True in where_nan:
+        print("Warning: for the planet %s, the parameters %s are missing" % (planet_name, names[where_nan]))
 
 
 # Initialisation
@@ -132,13 +132,14 @@ for planet_HST_WFC3 in list_planets_HST_WFC3:
                 output_file.write('catalog_name = EXOPLANET.EU\n')
                 output_file.write('catalog_update = True\n')
 
-            print_parameter_missing(planet_name[whole_planets], planet_radius[whole_planets],
-                                    star_radius[whole_planets], star_temperature[whole_planets],
-                                    semi_major_axis[whole_planets], inclination[whole_planets],
-                                    eccentricity[whole_planets], omega[whole_planets], ephemeris[whole_planets])
+            if verbose:
+                print_parameter_missing(planet_name[whole_planets], planet_radius[whole_planets],
+                                        star_radius[whole_planets], star_temperature[whole_planets],
+                                        semi_major_axis[whole_planets], inclination[whole_planets],
+                                        eccentricity[whole_planets], omega[whole_planets], ephemeris[whole_planets])
 
             match = True
             break
 
-    if verbose and match == False:
+    if verbose and not match:
         print('Warning: Planet %s observed by HST with no parameters' % planet_HST_WFC3)
