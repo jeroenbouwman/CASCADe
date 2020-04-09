@@ -44,7 +44,7 @@ def get_alternative_planet_name(list_planet, list_star):
 
 
 # Initialisation
-verbose = False
+verbose = True
 list_planets_HST_WFC3_path = ''
 list_planets_HST_WFC3_filename = 'catalogue_angelos_planets_hst_wfc3.txt'
 planet_physical_parameters_path = ''
@@ -94,7 +94,9 @@ alternative_planet_name = get_alternative_planet_name(planet_name, alternative_s
 
 # Write object ini files
 for planet_HST_WFC3 in list_planets_HST_WFC3:
+
     for whole_planets in range(planet_name.size):
+        match = False
         if planet_HST_WFC3 == planet_name[whole_planets] or planet_HST_WFC3 == alternative_planet_name[whole_planets]:
 
             object_ini_files_name = 'cascade_' + planet_HST_WFC3 + '_object.ini'
@@ -123,9 +125,10 @@ for planet_HST_WFC3 in list_planets_HST_WFC3:
                np.isnan(star_temperature[whole_planets]) or np.isnan(semi_major_axis[whole_planets]) or
                np.isnan(inclination[whole_planets]) or np.isnan(eccentricity[whole_planets]) or
                np.isnan(omega[whole_planets]) or np.isnan(ephemeris[whole_planets])):
-                print('Warning: missing some fundamental parameters for the planet %s' % planet_name[whole_planets])
+                print('Warning: Missing some fundamental parameters for the planet %s' % planet_name[whole_planets])
 
+            match = True
             break
 
-    if True and (whole_planets == planet_name.size-1):
-        print('Warning: planet %s observed by HST with no parameters' % planet_HST_WFC3)
+    if verbose and match == False:
+        print('Warning: Planet %s observed by HST with no parameters' % planet_HST_WFC3)
