@@ -43,6 +43,17 @@ def get_alternative_planet_name(list_planet, list_star):
     return new_planet_name
 
 
+def print_parameter_missing(planet_name, planet_radius, star_radius, star_temperature, semi_major_axis, inclination,
+                            eccentricity, omega, ephemeris):
+    names = np.asarray(['planet radius', 'star radius', 'star temperature', 'semi major axis',
+                        'inclination', 'eccentricity', 'omega', 'ephemeris'])
+    values = np.asarray([planet_radius, star_radius, star_temperature, semi_major_axis, inclination,
+                         eccentricity, omega, ephemeris])
+    where_nan = np.argwhere(np.isnan(values))
+    if where_nan.size > 0:
+        print("Warning: for the planet %s, the parameter '%s' are missing" % (planet_name, names[where_nan][0][0]))
+
+
 # Initialisation
 verbose = True
 list_planets_HST_WFC3_path = ''
@@ -121,11 +132,10 @@ for planet_HST_WFC3 in list_planets_HST_WFC3:
                 output_file.write('catalog_name = EXOPLANET.EU\n')
                 output_file.write('catalog_update = True\n')
 
-            if verbose and (np.isnan(planet_radius[whole_planets]) or np.isnan(star_radius[whole_planets]) or
-               np.isnan(star_temperature[whole_planets]) or np.isnan(semi_major_axis[whole_planets]) or
-               np.isnan(inclination[whole_planets]) or np.isnan(eccentricity[whole_planets]) or
-               np.isnan(omega[whole_planets]) or np.isnan(ephemeris[whole_planets])):
-                print('Warning: Missing some fundamental parameters for the planet %s' % planet_name[whole_planets])
+            print_parameter_missing(planet_name[whole_planets], planet_radius[whole_planets],
+                                    star_radius[whole_planets], star_temperature[whole_planets],
+                                    semi_major_axis[whole_planets], inclination[whole_planets],
+                                    eccentricity[whole_planets], omega[whole_planets], ephemeris[whole_planets])
 
             match = True
             break
