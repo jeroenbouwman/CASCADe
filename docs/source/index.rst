@@ -41,7 +41,10 @@ CASCADe documentation
    :maxdepth: 1
 
    install
+   environment
+   initialization
    howto
+   examples
    cascade
 
 Indices and tables

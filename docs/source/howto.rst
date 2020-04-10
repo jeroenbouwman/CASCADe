@@ -1,5 +1,13 @@
-Using Cascade
-=============
+
+.. role:: blue
+
+.. raw:: html
+
+    <style> .blue {color:#1f618d} </style>
+    <style> .red {color:red} </style>
+
+Using :blue:`CASCADe`
+=====================
 
 to run the code, first load all needed modules:
 
@@ -19,7 +27,7 @@ To reset all previous defined or initialized parameters
 
    tso.execute("reset")
 
-Initialize the TSO object using ini files which define the data, model parameters and behavior of the causal pixel model implemented in CASCADe.
+Initialize the TSO object using ini files which define the data, model parameters and behavior of the causal pixel model implemented in :blue:`CASCADe`.
 
 .. code-block:: python
 
