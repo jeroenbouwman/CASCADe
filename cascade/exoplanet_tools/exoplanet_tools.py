@@ -1116,7 +1116,7 @@ def extract_exoplanet_data(data_list, target_name_or_position, coord_unit=None,
             if np.sum(catalogmsk) > 1:
                 targets_in_search_area = data_use[catalogmsk]["NAME"].data
                 unique_targets = \
-                    np.unique([i.strip()[:-1]
+                    np.unique([i[:-1].strip()
                                if i[-1] in planet_designation_list
                                else i.strip() for i in targets_in_search_area])
                 if unique_targets.size != 1:
