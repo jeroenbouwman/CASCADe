@@ -88,6 +88,14 @@ __all__ = ['cascade_warnings',
            'configurator',
            'cascade_configuration']
 
+__valid_environment_variables__ = ['CASCADE_WARNINGS',
+                                   'CASCADE_PATH',
+                                   'CASCADE_OBSERVATIONS',
+                                   'CASCADE_SAVE_PATH',
+                                   'CASCADE_INITIALIZATION_FILE_PATH']
+
+__flag_not_set__ = False
+
 try:
     cascade_warnings = os.environ['CASCADE_WARNINGS']
     if cascade_warnings.strip().lower() == "off":
@@ -96,15 +104,17 @@ try:
         warnings.simplefilter("default")
 except KeyError:
     cascade_warnings = 'on'
+    os.environ['CASCADE_WARNINGS'] = cascade_warnings
     warnings.simplefilter("default")
-    warnings.warn("CASCADE_WARNINGS environment variable not set.")
+    __flag_not_set__ = True
 
 try:
     cascade_default_path = os.environ['CASCADE_PATH']
 except KeyError:
     cascade_default_path = \
         os.path.dirname(__path__[0])
-    warnings.warn("CASCADE_PATH environment variable not set.")
+    os.environ['CASCADE_PATH'] = cascade_default_path
+    __flag_not_set__ = True
 
 try:
     cascade_default_data_path = \
@@ -112,14 +122,16 @@ try:
 except KeyError:
     cascade_default_data_path = \
         os.path.join(cascade_default_path, "data/")
-    warnings.warn("CASCADE_OBSERVATIONS environment variable not set.")
+    os.environ['CASCADE_OBSERVATIONS'] = cascade_default_data_path
+    __flag_not_set__ = True
 
 try:
     cascade_default_save_path = os.environ['CASCADE_SAVE_PATH']
 except KeyError:
     cascade_default_save_path = \
         os.path.join(cascade_default_path, "examples/results/")
-    warnings.warn("CASCADE_SAVE_PATH environment variable not set.")
+    os.environ['CASCADE_SAVE_PATH'] = cascade_default_save_path
+    __flag_not_set__ = True
 
 try:
     cascade_default_initialization_path = \
@@ -127,8 +139,14 @@ try:
 except KeyError:
     cascade_default_initialization_path = \
         os.path.join(cascade_default_path, "examples/init_files/")
-    warnings.warn("CASCADE_INITIALIZATION_FILE_PATH environment variable "
-                  "not set.")
+    os.environ['CASCADE_INITIALIZATION_FILE_PATH'] = \
+        cascade_default_initialization_path
+    __flag_not_set__ = True
+
+if __flag_not_set__:
+    warnings.warn("One of the following environment variables: {} has not "
+                  "been set. Using default "
+                  "values".format(__valid_environment_variables__))
 
 
 def generate_default_initialization(observatory='HST', data='SPECTRUM',
@@ -371,6 +389,8 @@ class _Singleton(type):
 
 class configurator(object, metaclass=_Singleton):
     """
+    configurator class.
+
     This class defined the configuration singleton which will provide
     all parameters needed to run the CASCADe to all modules of the code.
     """
@@ -388,6 +408,8 @@ class configurator(object, metaclass=_Singleton):
 
     def reset(self):
         """
+        Reset configurator.
+
         If called, this function will remove all initialized parameters.
         """
         _dict_keys = list(self.__dict__.keys())

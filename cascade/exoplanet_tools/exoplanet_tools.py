@@ -312,6 +312,31 @@ exoplanets_table_units = collections.OrderedDict(
     TTUPPER=u.day,
     TTLOWER=u.day)
 
+exoplanets_a_table_units = collections.OrderedDict(
+    NAME=u.dimensionless_unscaled,
+    STARNAME=u.dimensionless_unscaled,
+    ALTNAME=u.dimensionless_unscaled,
+    RA=u.deg,
+    DEC=u.deg,
+    R=const.R_jup,
+    PER=u.day,
+    A=u.AU,
+    ECC=u.dimensionless_unscaled,
+    I=u.deg,
+    OM=u.deg,
+    TT=u.day,
+    LOGG=u.dex(u.cm/u.s**2),
+    KS=Kmag,
+    FE=u.dex,
+    RSTAR=const.R_sun,
+    TEFF=u.Kelvin,
+    TEFF_EX=u.Kelvin,
+    FE_EX=u.dex,
+    RSTAR_EX=const.R_sun,
+    LOGG_EX=u.dex(u.cm/u.s**2),
+    A_EX=u.AU,
+    R_EX=const.R_jup)
+
 
 def masked_array_input(func):
     """
@@ -764,7 +789,8 @@ def get_calalog(catalog_name, update=True):
     files_downloaded : 'list' of 'str'
         list of downloaded catalog files
     """
-    valid_catalogs = ['TEPCAT', 'EXOPLANETS.ORG', 'NASAEXOPLANETARCHIVE']
+    valid_catalogs = ['TEPCAT', 'EXOPLANETS.ORG', 'NASAEXOPLANETARCHIVE',
+                      'EXOPLANETS_A']
     path = os.path.join(cascade_default_data_path, "exoplanet_data/")
     os.makedirs(path, exist_ok=True)
 
@@ -810,6 +836,18 @@ def get_calalog(catalog_name, update=True):
         # use multi par catalogue as standard dous not always include T0
         exoplanet_database_url = [_url + _tab_multi + _query_multi]
         data_files_save = ["nasaexoplanetarchive.csv"]
+    elif catalog_name == 'EXOPLANETS_A':
+        path = path+"EXOPLANETS_A/"
+        os.makedirs(path, exist_ok=True)
+        _url = ("http://svo2.cab.inta-csic.es/vocats/v2/exostars/cs.php?")
+        _query = ("RA=180.000000&DEC=0.000000&"
+                  "SR=180.000000&VERB=1&"
+                  "objlist=-1&"
+                  "fldlist=-1,3,4,5,8,9,18,21,24,27,30,36,45,71,82,86,92,"
+                  "99,106,107,109,110,111,113&"
+                  "nocoor=1&format=ascii")
+        exoplanet_database_url = [_url + _query]
+        data_files_save = ["exoplanets_a.csv"]
     else:
         raise ValueError('Catalog name not recognized. ' +
                          'Use one of the following: {}'.format(valid_catalogs))
@@ -860,7 +898,8 @@ def parse_database(catalog_name, update=True):
     ValueError
         Raises error if the input catalog is nor recognized
     """
-    valid_catalogs = ['TEPCAT', 'EXOPLANETS.ORG', 'NASAEXOPLANETARCHIVE']
+    valid_catalogs = ['TEPCAT', 'EXOPLANETS.ORG', 'NASAEXOPLANETARCHIVE',
+                      'EXOPLANETS_A']
 
     input_csv_files = get_calalog(catalog_name, update=update)
 
@@ -871,15 +910,21 @@ def parse_database(catalog_name, update=True):
         table_unit_list = [exoplanets_table_units]
     elif catalog_name == "NASAEXOPLANETARCHIVE":
         table_unit_list = [nasaexoplanetarchive_table_units]
+    elif catalog_name == "EXOPLANETS_A":
+        table_unit_list = [exoplanets_a_table_units]
     else:
         raise ValueError('Catalog name not recognized. ' +
                          'Use one of the following: {}'.format(valid_catalogs))
     for ilist, input_csv_file in enumerate(input_csv_files):
         csv_file = pandas.read_csv(input_csv_file, low_memory=False,
-                                   keep_default_na=False, na_values=['', -1.0])
+                                   keep_default_na=False, comment='#',
+                                   skip_blank_lines=True,
+                                   na_values=['', -1.0])
         table_temp = Table(masked=True).from_pandas(csv_file)
-        if ((catalog_name == "TEPCAT") |
-           (catalog_name == "NASAEXOPLANETARCHIVE")):
+#        if ((catalog_name == "TEPCAT") |
+#           (catalog_name == "NASAEXOPLANETARCHIVE")):
+        if catalog_name in ["TEPCAT", "NASAEXOPLANETARCHIVE",
+                            "EXOPLANETS_A"]:
             for icol, colname in enumerate(table_temp.colnames):
                 table_temp.rename_column(colname,
                                          list(table_unit_list[ilist].
@@ -889,6 +934,7 @@ def parse_database(catalog_name, update=True):
             table_temp2.add_column(table_temp[colname])
             table_temp2[colname].unit = table_unit_list[ilist][colname]
         table_temp2.add_index("NAME")
+        table_temp2 = table_temp2[~table_temp2["NAME"].mask]
         for iname in range(len(table_temp2["NAME"])):
             table_temp2["NAME"].data[iname] = \
                 table_temp2["NAME"].data[iname].strip()

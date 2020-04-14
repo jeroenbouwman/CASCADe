@@ -31,12 +31,14 @@ class TestExoplanetsTools(unittest.TestCase):
         self.test_bt_unit = u.K
         self.path = cascade_default_data_path
         self.catalog_name = ['EXOPLANETS.ORG', "TEPCAT",
-                             "NASAEXOPLANETARCHIVE"]
+                             "NASAEXOPLANETARCHIVE", "EXOPLANETS_A"]
         self.catalog_dir = ["exoplanets.org", "tepcat",
-                            "NASAEXOPLANETARCHIVE"]
+                            "NASAEXOPLANETARCHIVE", "EXOPLANETS_A"]
         self.catalog_file_name = ["exoplanets.csv", "allplanets.csv",
-                                  "nasaexoplanetarchive.csv"]
-        self.test_system_name = ['HD 189733 b', 'HD_189733', 'HD 189733 b']
+                                  "nasaexoplanetarchive.csv",
+                                  "exoplanets_a.csv"]
+        self.test_system_name = ['HD 189733 b', 'HD_189733', 'HD 189733 b',
+                                 'HD 189733 b']
         self.test_search_radius = 1.0*u.arcminute
         self.path_init_files = cascade_default_initialization_path
 
