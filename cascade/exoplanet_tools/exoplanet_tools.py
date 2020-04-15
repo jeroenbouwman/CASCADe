@@ -211,7 +211,7 @@ tepcat_table_units = collections.OrderedDict(
     RHOSTAR=Rho_sun,
     RHOSTARUPPER=Rho_sun,
     RHOSTARLOWER=Rho_sun,
-    PER=u.day,
+    PER_1=u.day,
     ECC=u.dimensionless_unscaled,
     ECCUPPER=u.dimensionless_unscaled,
     ECCLOWER=u.dimensionless_unscaled,
@@ -249,8 +249,8 @@ tepcat_observables_table_units = collections.OrderedDict(
     KMAG=Kmag,
     T14=u.day,
     DEPTH=u.percent,
-    T0=u.day,
-    T0ERROR=u.day,
+    TT=u.day,
+    TTERROR=u.day,
     PER=u.day,
     PERERROR=u.day,
     EPHEMERUS_REFERENCE=u.dimensionless_unscaled)
@@ -921,8 +921,6 @@ def parse_database(catalog_name, update=True):
                                    skip_blank_lines=True,
                                    na_values=['', -1.0])
         table_temp = Table(masked=True).from_pandas(csv_file)
-#        if ((catalog_name == "TEPCAT") |
-#           (catalog_name == "NASAEXOPLANETARCHIVE")):
         if catalog_name in ["TEPCAT", "NASAEXOPLANETARCHIVE",
                             "EXOPLANETS_A"]:
             for icol, colname in enumerate(table_temp.colnames):
