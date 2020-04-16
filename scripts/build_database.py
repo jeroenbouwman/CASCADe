@@ -1,9 +1,11 @@
-# from urllib.request import urlretrieve
+from urllib.request import urlretrieve
 import pickle
 import os
 import astropy.units as u
 import numpy as np
 from astropy.table import MaskedColumn
+import shutil
+from astropy.io import fits
 
 os.environ["CASCADE_WARNINGS"] = 'off'
 
@@ -31,7 +33,8 @@ primary_cat = catalog_name3
 
 path = os.path.join(cascade_default_data_path,
                     "data/HST/archive_data/")
-hst_data = pickle.load(open(path+'WFC3_files.pickle', 'rb'))
+with open(path+'WFC3_files.pickle', 'rb') as f:
+    hst_data = pickle.load(f)
 
 
 def remove_space(object_names):
@@ -163,11 +166,43 @@ def return_system_parameters(name, catalogs, observables, observables_units,
     values = tuple(values)
     return values
 
+temp_dir_path = os.path.join(cascade_default_data_path,
+                             "data/HST/mastDownload/")
+
+fits_keywords = ['TARGNAME', 'RA_TARG', 'DEC_TARG', 'PROPOSID',
+                 'TELESCOP', 'INSTRUME', 'FILTER', 'APERTURE',
+                 'EXPTIME', 
+                 'SCAN_TYP', 'SCAN_RAT', 'SCAN_LEN']
+
+
+def long_substr(data):
+    """
+    Find longest common substring.
+
+    Parameters
+    ----------
+    data : TYPE
+        DESCRIPTION.
+
+    Returns
+    -------
+    substr : TYPE
+        DESCRIPTION.
+
+    """
+    substr = ''
+    if len(data) > 1 and len(data[0]) > 0:
+        for i in range(len(data[0])):
+            for j in range(len(data[0])-i+1):
+                if j > len(substr) and all(data[0][i:i+j] in x for x in data):
+                    substr = data[0][i:i+j]
+    return substr
+
 
 # loop over all entries in HST observations catalog
 for visit in hst_data:
     name = hst_data[visit]['planet']
-    print(name)
+    print("Target: {}, Visit: {}".format(name, visit))
     try:
         results = return_system_parameters(name, cat_dict, observables,
                                            observables_units, primary_cat)
@@ -181,7 +216,91 @@ for visit in hst_data:
           "Kmag: {} \n log g: {} \n FE: {} \n"
           " ".format(*results))
 
+    if hst_data[visit]['observation'] == 'transit':
+        observation_type = 'TRANSIT'
+    elif hst_data[visit]['observation'] == 'eclipse':
+        observation_type = 'ECLIPSE'
+    else:
+        observation_type = 'PROBLEM'
 
+    print("Observation type: {} \n".format(observation_type))
+    if observation_type == 'PROBLEM':
+        continue
+
+    data_files = hst_data[visit]['observations_id_ima'].split(',')
+    cal_data_files = hst_data[visit]['calibrations_id'].split(',')
+    obsid = [file.split('_')[0] for file in data_files]
+    cal_obsid = [file.split('_')[0] for file in cal_data_files]
+
+    common_id = long_substr(obsid)
+    print("Common ID: {} \n".format(common_id))
+
+    os.makedirs(temp_dir_path, exist_ok=True)
+    urlretrieve('https://mast.stsci.edu/portal/Download/file/HST/product/{0}'.
+                format(data_files[0]), os.path.join(temp_dir_path,
+                                                    data_files[0]))
+    header_info = {}
+    with fits.open(os.path.join(temp_dir_path, data_files[0])) as hdul:
+        for keyword in fits_keywords:
+            header_info[keyword] = hdul['PRIMARY'].header[keyword]
+    obs_info = [header_info[key] for key in fits_keywords]
+
+    print("FITS Header Info data: \n "
+          "Target: {} \n "
+          "RA {} \n "
+          "DEC {} \n "
+          "Proposal ID {} \n "
+          "Telescope: {} \n "
+          "Instrument: {} \n "
+          "Filter: {} \n "
+          "Aperture {} \n "
+          "Exposure time: {} \n "
+          "Scan type: {} \n "
+          "Scan rate: {} \n "
+          "Scan length: {} \n"
+          " ".format(*tuple(obs_info)))
+
+    if header_info['SCAN_TYP'] == 'N':
+        observations_mode = 'STARING'
+        observations_data = 'SPECTRAL_IMAGE'
+        observations_data_product = 'flt'
+    else:
+        observations_mode = 'SCANNING'
+        observations_data = 'SPECTRAL_CUBE'
+        observations_data_product = 'ima'
+
+    print("Mode: {} \n"
+          "Data: {} \n"
+          "Data product: {} \n"
+          " ".format(observations_mode, observations_data,
+                     observations_data_product))
+
+    urlretrieve('https://mast.stsci.edu/portal/Download/file/HST/product/{0}'.
+                format(cal_data_files[0]), os.path.join(temp_dir_path,
+                                                        cal_data_files[0]))
+    header_info = {}
+    with fits.open(os.path.join(temp_dir_path, cal_data_files[0])) as hdul:
+        for keyword in fits_keywords:
+            header_info[keyword] = hdul['PRIMARY'].header[keyword]
+    cal_info = [header_info[key] for key in fits_keywords]
+    print("FITS Header Info aquisition image data: \n "
+          "Target: {} \n "
+          "RA {} \n "
+          "DEC {} \n "
+          "Proposal ID {} \n "
+          "Telescope: {} \n "
+          "Instrument: {} \n "
+          "Filter: {} \n "
+          "Aperture {} \n "
+          "Exposure time: {} \n "
+          "Scan type: {} \n "
+          "Scan rate: {} \n "
+          "Scan length: {} \n"
+          " ".format(*tuple(cal_info)))
+
+    shutil.rmtree(os.path.join(temp_dir_path))
+
+                  
 # for visit in hst_data:
 #     name = hst_data[visit]['planet']
 #     print(name)
