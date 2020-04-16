@@ -1,6 +1,25 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-from typing import Any, Union
+"""
+===============
+write_parameters_for_ini_files.py
+===============
+
+Write the Object Ini Files containing all parameters of the stars and exoplanets needed to run CASCADe
+
+It needs at least 2 catalogs: one with the list of the planets observed by HST (WFC3),
+and one with the physical parameters of the stars and exoplanets.
+
+Usage:
+TODO
+
+Args:
+TODO
+
+Author:
+  Raphael Peralta <raphael.peralta@cea.fr>
+Year: 2020
+"""
 
 import pandas as pd
 import numpy as np
@@ -55,6 +74,7 @@ def print_parameter_missing(planet_name, planet_radius, star_radius, star_temper
         print("Warning: for the planet %s, the parameter %s is missing" % (planet_name, names[where_nan]))
     if names[where_nan].size > 1:
         print("Warning: for the planet %s, the parameters %s are missing" % (planet_name, names[where_nan]))
+
 
 # Initialisation
 verbose = True
