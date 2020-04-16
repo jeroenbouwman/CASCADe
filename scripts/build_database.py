@@ -2,7 +2,6 @@
 import pickle
 import os
 import astropy.units as u
-from astropy import constants as const
 import numpy as np
 from astropy.table import MaskedColumn
 
@@ -14,25 +13,74 @@ from cascade.exoplanet_tools import parse_database
 from cascade.exoplanet_tools import extract_exoplanet_data
 
 # catalog_name = "EXOPLANETS_A"
-catalog_name = "NASAEXOPLANETARCHIVE"
-catalog1 = parse_database(catalog_name, update=True)
-catalog_name = "TEPCAT"
-catalog2 = parse_database(catalog_name, update=True)
+catalog_name1 = "NASAEXOPLANETARCHIVE"
+catalog1 = parse_database(catalog_name1, update=True)
+catalog_name2 = "TEPCAT"
+catalog2 = parse_database(catalog_name2, update=True)
+catalog_name3 = "EXOPLANETS_A"
+catalog3 = parse_database(catalog_name3, update=True)
+catalog_name4 = "EXOPLANETS.ORG"
+catalog4 = parse_database(catalog_name3, update=True)
 
-cat_dict = {"NASAEXOPLANETARCHIVE": catalog1,
-            "TEPCAT":  catalog2}
-primary_cat = "NASAEXOPLANETARCHIVE"
+cat_dict = {catalog_name1: catalog1,
+            catalog_name2: catalog2,
+            catalog_name3: catalog3,
+            catalog_name4: catalog4}
+primary_cat = catalog_name3
 
 
 path = os.path.join(cascade_default_data_path,
                     "data/HST/archive_data/")
 hst_data = pickle.load(open(path+'WFC3_files.pickle', 'rb'))
 
+
+def remove_space(object_names):
+    """
+    Remove spaces.
+
+    Parameters
+    ----------
+    object_names : TYPE
+        DESCRIPTION.
+
+    Returns
+    -------
+    new_name : TYPE
+        DESCRIPTION.
+
+    """
+    new_name = np.asarray(object_names)
+    for i in range(new_name.size):
+        new_name[i] = (''.join(object_names[i].split(' ')))
+    return new_name
+
+
+def remove_duplicate(object_names):
+    """
+    Remove duplicates.
+
+    Parameters
+    ----------
+    object_names : TYPE
+        DESCRIPTION.
+
+    Returns
+    -------
+    new_name : TYPE
+        DESCRIPTION.
+
+    """
+    new_name = np.asarray(object_names)
+    new_name = np.unique(new_name)
+    return new_name
+
+
 all_observed_planets = [i['planet'] for i in hst_data.values()]
+all_observed_planets = remove_duplicate(all_observed_planets)
 
 observables = ['RSTAR', 'TEFF', 'R', 'TT', 'PER', 'ECC', 'A', 'OM',
                'I', 'KMAG', 'LOGG', 'FE']
-observables_units = [const.R_sun, u.K, const.R_jup, u.day, u.day,
+observables_units = [u.Rsun, u.K, u.Rjup, u.day, u.day,
                      u.dimensionless_unscaled, u.AU, u.deg, u.deg,
                      Kmag, u.dex(u.cm/u.s**2), u.dex]
 
@@ -72,16 +120,16 @@ def return_system_parameters(name, catalogs, observables, observables_units,
             dr = extract_exoplanet_data(catalogs[cat],
                                         name, search_radius=2*u.arcsec)
             no_match = False
-        except ValueError as e:
+        except (ValueError, KeyError) as e:
             print("No match in {}".format(cat))
             print(e)
             no_match = True
-            dr = []
+            dr = [{}]
         search_results[cat] = {'no_match': no_match, 'record': dr}
-
+    # check if system is found in any catalog
     if np.all([i['no_match'] for i in search_results.values()]):
         raise ValueError("Planet not found")
-
+    # does the primary found the target?  if not pick another
     if not search_results[primary_cat]['no_match']:
         dr = search_results[primary_cat]['record'][0].copy()
     else:
@@ -90,6 +138,7 @@ def return_system_parameters(name, catalogs, observables, observables_units,
                 if not search_results[cat]['no_match']:
                     dr = search_results[cat]['record'][0].copy()
                     break
+    # check for missing observable
     for observable, unit in zip(observables, observables_units):
         if observable not in dr.keys():
             dr[observable] = MaskedColumn(data=[0.0], mask=True, unit=unit)
@@ -98,11 +147,24 @@ def return_system_parameters(name, catalogs, observables, observables_units,
                     dr[observable] = \
                         search_results[cat]['record'][0][observable]
                     break
-    values = tuple([dr[key].filled(0.0)[0] * dr[key].unit
-                    for key in observables])
+    # check for missing values
+    for observable in observables:
+        if dr[observable].mask[0]:
+            for cat in search_results:
+                if observable in search_results[cat]['record'][0].keys():
+                    if not search_results[cat]['record'][0][observable].mask[0]:
+                        dr[observable] = \
+                             search_results[cat]['record'][0][observable]
+                        break
+    # Make sure the units are those we use as standard units.
+    values = [dr[key].filled(0.0)[0] * dr[key].unit for key in observables]
+    for i, (value, unit) in enumerate(zip(values, observables_units)):
+        values[i] = value.to(unit)
+    values = tuple(values)
     return values
 
 
+# loop over all entries in HST observations catalog
 for visit in hst_data:
     name = hst_data[visit]['planet']
     print(name)
