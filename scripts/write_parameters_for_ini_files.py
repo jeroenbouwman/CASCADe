@@ -72,11 +72,11 @@ planet_physical_parameters = pd.read_csv(planet_physical_parameters_path + plane
 planet_name = planet_physical_parameters['NamePlanet']  # Name of the planet
 # Radius of the planet [Rjupiter] from either Exoplanet.eu or Exeter Librairy
 planet_radius = replace_nan_values(planet_physical_parameters['RadiusPlanet_EU'], planet_physical_parameters['Rpl_Ex'])
-semi_major_axis = planet_physical_parameters['semi_major_axis_EU']  # Semi major axis [au]
+semi_major_axis = planet_physical_parameters['semi_major_axis_EU']  # Orbit semi major axis [au]
 inclination = planet_physical_parameters['inclination_EU']  # Orbital inclination [degrees]
 eccentricity = planet_physical_parameters['eccentricity_EU']  # Orbital eccentricity []
 omega = planet_physical_parameters['omega_EU']  # longitude of the ascendent node [degrees]
-rotation = planet_physical_parameters['Period_rotation']  # Rotation period of the star [days]
+orbital_period = planet_physical_parameters['orbital_period_EU']  # Orbital period [days]
 kmag = planet_physical_parameters['magK_EU']  # Magnitude in the K filter [magnitude]
 ephemeris = planet_physical_parameters['tzero_tr_EU']  # primary transit [JD]
 
@@ -121,7 +121,7 @@ for planet_HST_WFC3 in list_planets_HST_WFC3:
                 output_file.write('object_inclination = %s deg\n' % inclination[whole_planets])
                 output_file.write('object_eccentricity = %s\n' % eccentricity[whole_planets])
                 output_file.write('object_omega = %s deg\n' % omega[whole_planets])
-                output_file.write('object_period = %s d\n' % rotation[whole_planets])
+                output_file.write('object_period = %s d\n' % orbital_period[whole_planets])
                 output_file.write('object_ephemeris = %s d\n' % ephemeris[whole_planets])
                 output_file.write('object_kmag = %s Kmag\n' % kmag[whole_planets])
                 output_file.write('object_metallicity_host_star = %s dex\n' % star_metallicity[whole_planets])
