@@ -10,31 +10,10 @@ from astropy.io import fits
 os.environ["CASCADE_WARNINGS"] = 'off'
 
 from cascade.exoplanet_tools import Kmag
+from cascade import __path__
 from cascade.initialize import cascade_default_data_path
 from cascade.exoplanet_tools import parse_database
 from cascade.exoplanet_tools import extract_exoplanet_data
-
-# catalog_name = "EXOPLANETS_A"
-catalog_name1 = "NASAEXOPLANETARCHIVE"
-catalog1 = parse_database(catalog_name1, update=True)
-catalog_name2 = "TEPCAT"
-catalog2 = parse_database(catalog_name2, update=True)
-catalog_name3 = "EXOPLANETS_A"
-catalog3 = parse_database(catalog_name3, update=True)
-catalog_name4 = "EXOPLANETS.ORG"
-catalog4 = parse_database(catalog_name3, update=True)
-
-cat_dict = {catalog_name1: catalog1,
-            catalog_name2: catalog2,
-            catalog_name3: catalog3,
-            catalog_name4: catalog4}
-primary_cat = catalog_name3
-
-
-path = os.path.join(cascade_default_data_path,
-                    "data/HST/archive_data/")
-with open(path+'WFC3_files.pickle', 'rb') as f:
-    hst_data = pickle.load(f)
 
 
 def remove_space(object_names):
@@ -76,16 +55,6 @@ def remove_duplicate(object_names):
     new_name = np.asarray(object_names)
     new_name = np.unique(new_name)
     return new_name
-
-
-all_observed_planets = [i['planet'] for i in hst_data.values()]
-all_observed_planets = remove_duplicate(all_observed_planets)
-
-observables = ['RSTAR', 'TEFF', 'R', 'TT', 'PER', 'ECC', 'A', 'OM',
-               'I', 'KMAG', 'LOGG', 'FE']
-observables_units = [u.Rsun, u.K, u.Rjup, u.day, u.day,
-                     u.dimensionless_unscaled, u.AU, u.deg, u.deg,
-                     Kmag, u.dex(u.cm/u.s**2), u.dex]
 
 
 def return_system_parameters(name, catalogs, observables, observables_units,
@@ -166,14 +135,6 @@ def return_system_parameters(name, catalogs, observables, observables_units,
     values = tuple(values)
     return values
 
-temp_dir_path = os.path.join(cascade_default_data_path,
-                             "data/HST/mastDownload/")
-
-fits_keywords = ['TARGNAME', 'RA_TARG', 'DEC_TARG', 'PROPOSID',
-                 'TELESCOP', 'INSTRUME', 'FILTER', 'APERTURE',
-                 'EXPTIME', 
-                 'SCAN_TYP', 'SCAN_RAT', 'SCAN_LEN']
-
 
 def long_substr(data):
     """
@@ -199,13 +160,64 @@ def long_substr(data):
     return substr
 
 
+def return_exoplanet_catalogs():
+    """
+    Create dictionary with all exoplanet catalog data.
+
+    Returns
+    -------
+    catalog_dict : 'dict'
+        DESCRIPTION.
+
+    """
+    all_catalogs = ['TEPCAT', 'EXOPLANETS.ORG', 'NASAEXOPLANETARCHIVE',
+                    'EXOPLANETS_A']
+    catalog_dict = {}
+    for cat in all_catalogs:
+        catalog_dict[cat] = parse_database(cat, update=True)
+    return catalog_dict
+
+
+PRIMARY_CATALOG = "NASAEXOPLANETARCHIVE"
+
+OBSERVABLES = ['RSTAR', 'TEFF', 'R', 'TT', 'PER', 'ECC', 'A', 'OM',
+               'I', 'KMAG', 'LOGG', 'FE']
+
+OBSERVABLES_UNITS = [u.Rsun, u.K, u.Rjup, u.day, u.day,
+                     u.dimensionless_unscaled, u.AU, u.deg, u.deg,
+                     Kmag, u.dex(u.cm/u.s**2), u.dex]
+
+FITS_KEYWORDS = ['TARGNAME', 'RA_TARG', 'DEC_TARG', 'PROPOSID',
+                 'TELESCOP', 'INSTRUME', 'FILTER', 'APERTURE',
+                 'EXPTIME', 'SCAN_TYP', 'SCAN_RAT', 'SCAN_LEN']
+
+URL_DATA_ARCHIVE = \
+    'https://mast.stsci.edu/portal/Download/file/HST/product/{0}'
+
+HST_CATALOG_FILE = os.path.join(os.path.dirname(__path__[0]),
+                                "data/data/HST/archive_data/",
+                                "WFC3_files.pickle")
+
+cat_dict = return_exoplanet_catalogs()
+
+with open(HST_CATALOG_FILE, 'rb') as f:
+    hst_data = pickle.load(f)
+
+all_observed_planets = [record['planet'] for record in hst_data.values()]
+all_observed_planets = remove_duplicate(all_observed_planets)
+
+
+temp_dir_path = os.path.join(cascade_default_data_path,
+                             "data/HST/mastDownload/")
+
 # loop over all entries in HST observations catalog
 for visit in hst_data:
     name = hst_data[visit]['planet']
     print("Target: {}, Visit: {}".format(name, visit))
     try:
-        results = return_system_parameters(name, cat_dict, observables,
-                                           observables_units, primary_cat)
+        system_parameters = \
+            return_system_parameters(name, cat_dict, OBSERVABLES,
+                                     OBSERVABLES_UNITS, PRIMARY_CATALOG)
     except ValueError as e:
         print(e)
         continue
@@ -214,7 +226,7 @@ for visit in hst_data:
           "Eccentricity: {} \n Semi Major Axis: {} \n "
           "Omega: {} \n Inclination: {} \n "
           "Kmag: {} \n log g: {} \n FE: {} \n"
-          " ".format(*results))
+          " ".format(*system_parameters))
 
     if hst_data[visit]['observation'] == 'transit':
         observation_type = 'TRANSIT'
@@ -236,14 +248,13 @@ for visit in hst_data:
     print("Common ID: {} \n".format(common_id))
 
     os.makedirs(temp_dir_path, exist_ok=True)
-    urlretrieve('https://mast.stsci.edu/portal/Download/file/HST/product/{0}'.
-                format(data_files[0]), os.path.join(temp_dir_path,
-                                                    data_files[0]))
+    urlretrieve(URL_DATA_ARCHIVE.format(data_files[0]),
+                os.path.join(temp_dir_path, data_files[0]))
     header_info = {}
     with fits.open(os.path.join(temp_dir_path, data_files[0])) as hdul:
-        for keyword in fits_keywords:
+        for keyword in FITS_KEYWORDS:
             header_info[keyword] = hdul['PRIMARY'].header[keyword]
-    obs_info = [header_info[key] for key in fits_keywords]
+    obs_info = [header_info[key] for key in FITS_KEYWORDS]
 
     print("FITS Header Info data: \n "
           "Target: {} \n "
@@ -275,14 +286,13 @@ for visit in hst_data:
           " ".format(observations_mode, observations_data,
                      observations_data_product))
 
-    urlretrieve('https://mast.stsci.edu/portal/Download/file/HST/product/{0}'.
-                format(cal_data_files[0]), os.path.join(temp_dir_path,
-                                                        cal_data_files[0]))
+    urlretrieve(URL_DATA_ARCHIVE.format(cal_data_files[0]),
+                os.path.join(temp_dir_path, cal_data_files[0]))
     header_info = {}
     with fits.open(os.path.join(temp_dir_path, cal_data_files[0])) as hdul:
-        for keyword in fits_keywords:
+        for keyword in FITS_KEYWORDS:
             header_info[keyword] = hdul['PRIMARY'].header[keyword]
-    cal_info = [header_info[key] for key in fits_keywords]
+    cal_info = [header_info[key] for key in FITS_KEYWORDS]
     print("FITS Header Info aquisition image data: \n "
           "Target: {} \n "
           "RA {} \n "
@@ -299,55 +309,6 @@ for visit in hst_data:
           " ".format(*tuple(cal_info)))
 
     shutil.rmtree(os.path.join(temp_dir_path))
-
-                  
-# for visit in hst_data:
-#     name = hst_data[visit]['planet']
-#     print(name)
-#     try:
-#         dr1 = extract_exoplanet_data(catalog1, name, search_radius=2*u.arcsec)
-#         no_match1 = False
-#     except ValueError as e:
-#         print("No match in NASAEXOPLANETARCHIVE")
-#         print(e)
-#         no_match1 = True
-#     try:
-#         dr2 = extract_exoplanet_data(catalog2, name, search_radius=2*u.arcsec)
-#         no_match2 = False
-#     except ValueError as e:
-#         print("No match in TEPCAT")
-#         print(e)
-#         no_match2 = True
-#     if not no_match1:
-#         dr = dr1
-#     elif not no_match2:
-#         dr = dr2
-#     else:
-#         continue
-#     if not no_match2:
-#         dr[0]['KMAG'] = dr2[0]['KMAG']
-#     else:
-#         dr[0]['KMAG'] = MaskedColumn(data=[0.0], mask=True, unit=Kmag)
-#     print(" Rstar: {} \n Teff: {} \n Rplanet: {} \n "
-#           "Ephemeris: {} \n Period: {} \n "
-#           "Eccentricity: {} \n Semi Major Axis: {} \n "
-#           "Omega: {} \n Inclination: {} \n "
-#           "Kmag: {} \n log g: {} \n FE: {} \n"
-#           " ".format(*tuple([dr[0][key].filled(0.0)[0] * dr[0][key].unit
-#                             for key in observables])))
-
-        
-    # with fits.open(image_file) as hdul:
-    #     instrument_fiter = hdul['PRIMARY'].header['FILTER']
-    #     nsamp = hdul['PRIMARY'].header['NSAMP']
-    #     scanAng = hdul['PRIMARY'].header['SCAN_ANG']
-    #     paV3 = hdul['PRIMARY'].header['PA_V3']
-    #     isSparse = 'SPARS' in hdul['PRIMARY'].header['SAMP_SEQ']
-    #     instrument_beam
-    #     inst_aperture
-    #     scanspeed
-    #     instrument
-    #     obs_cal_version
 
 # for visit in data:
 #     print('\n', visit)
