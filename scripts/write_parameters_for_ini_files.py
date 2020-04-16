@@ -4,6 +4,7 @@ from typing import Any, Union
 
 import pandas as pd
 import numpy as np
+import pickle
 
 
 def replace_nan_values(values_to_check, values_to_replace):
@@ -50,23 +51,27 @@ def print_parameter_missing(planet_name, planet_radius, star_radius, star_temper
     values = np.asarray([planet_radius, star_radius, star_temperature, semi_major_axis, inclination,
                          eccentricity, omega, ephemeris])
     where_nan = np.isnan(values)
-    if True in where_nan:
+    if names[where_nan].size == 1:
+        print("Warning: for the planet %s, the parameter %s is missing" % (planet_name, names[where_nan]))
+    if names[where_nan].size > 1:
         print("Warning: for the planet %s, the parameters %s are missing" % (planet_name, names[where_nan]))
-
 
 # Initialisation
 verbose = True
-list_planets_HST_WFC3_path = ''
-list_planets_HST_WFC3_filename = 'catalogue_angelos_planets_hst_wfc3.txt'
-planet_physical_parameters_path = ''
-planet_physical_parameters_filename = 'catalogue_simon_planets_parameters.csv'
+list_planets_hst_wfc3_path = '../data/data/HST/archive_data/'
+list_planets_hst_wfc3_filename = 'WFC3_files.pickle'
+planet_physical_parameters_path = '../data/exoplanet_data/EXOPLANETS_A/'
+planet_physical_parameters_filename = 'exoplanets_a_full.csv'
 object_ini_files_path = 'object_init_files/'
 
 
 # Data reading
-list_planets_HST_WFC3 = np.loadtxt(list_planets_HST_WFC3_path + list_planets_HST_WFC3_filename, dtype=np.str)
+hst_data = pickle.load(open(list_planets_hst_wfc3_path+list_planets_hst_wfc3_filename, 'rb'))
 planet_physical_parameters = pd.read_csv(planet_physical_parameters_path + planet_physical_parameters_filename)
 
+
+# list of planets observed by HST WFC3
+list_planets_hst_wfc3 = [i['planet'] for i in hst_data.values()]
 
 # planet parameters
 planet_name = planet_physical_parameters['NamePlanet']  # Name of the planet
@@ -94,9 +99,9 @@ star_logg = planet_physical_parameters['loggstar_Ex']  # Star surface gravity [d
 planet_name = remove_binary_name(planet_name)
 planet_name = remove_space(planet_name)
 
-list_planets_HST_WFC3 = remove_duplicate(list_planets_HST_WFC3)
-list_planets_HST_WFC3 = remove_binary_name(list_planets_HST_WFC3)
-list_planets_HST_WFC3 = remove_space(list_planets_HST_WFC3)
+list_planets_hst_wfc3 = remove_duplicate(list_planets_hst_wfc3)
+list_planets_hst_wfc3 = remove_binary_name(list_planets_hst_wfc3)
+list_planets_hst_wfc3 = remove_space(list_planets_hst_wfc3)
 
 alternative_star_name = remove_binary_name(alternative_star_name)
 alternative_star_name = remove_space(alternative_star_name)
@@ -104,7 +109,7 @@ alternative_planet_name = get_alternative_planet_name(planet_name, alternative_s
 
 
 # Write object ini files
-for planet_HST_WFC3 in list_planets_HST_WFC3:
+for planet_HST_WFC3 in list_planets_hst_wfc3:
 
     for whole_planets in range(planet_name.size):
         match = False
