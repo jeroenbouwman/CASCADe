@@ -71,9 +71,8 @@ tso.execute("reset")
 # files are correctly set. If the initialization files are not in the standard
 # directory where CASCADe expect these file to be, an additional path keyword
 # can be set wiht the command below.
-tso.execute("initialize", "cascade_WASP19b_transit_spectral_images_cpm.ini",
-            "cascade_WASP19b_object.ini",
-            "cascade_WASP19b_transit_spectral_images_data.ini")
+tso.execute("initialize", "cascade_WASP19b_transit_extract_spectra.ini",
+            "cascade_WASP19b_object.ini")
 
 # load the spectral data
 tso.execute("load_data")
@@ -100,5 +99,4 @@ tso.execute("set_extraction_mask")
 tso.execute("extract_1d_spectra")
 
 elapsed_time = time.time() - start_time
-print ('elapsed time:', elapsed_time)
-
+print('elapsed time:', elapsed_time)

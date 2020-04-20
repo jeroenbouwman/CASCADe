@@ -43,14 +43,14 @@ tso.execute("reset")
 
 # initialize TSO object
 # The files used in this example are for spectral data of the transit of
-# WASP 19 b observed with the WFC3 isntument of HST.
+# WASP 103 b observed with the GMOS instrument on Gemini. 
+# The spectra have been published in Lendl et al 2017, A&A 606.
 # Before running the code, make sure that the paths specified in the .ini
 # files are correctly set. If the initialization files are not in the standard
 # directory where CASCADe expect these file to be, an additional path keyword
 # can be set wiht the command below.
-tso.execute("initialize", "cascade_WASP103b_transit_spectra_cpm.ini",
-            "cascade_WASP103b_object.ini",
-            "cascade_WASP103b_transit_spectra_data.ini")
+tso.execute("initialize", "cascade_WASP103b_transit.ini",
+            "cascade_WASP103b_object.ini")
 
 # load the spectral data
 tso.execute("load_data")
@@ -66,15 +66,8 @@ tso.execute("filter_dataset")
 # determine position of source from dataset in time
 tso.execute("determine_source_movement")
 
-# correct wavelengths fo telescope movements
-tso.execute("correct_wavelengths")
-
 # set the extraction area
 tso.execute("set_extraction_mask")
-
-# extract the 1D spectra of target.
-# In case of 1D spectra (already extracted) this step will be ignored
-tso.execute("extract_1d_spectra")
 
 # setup regressors
 tso.execute("select_regressors")

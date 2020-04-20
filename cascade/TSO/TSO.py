@@ -1406,30 +1406,30 @@ class TSOSuite:
             spectral_trace = self.cpm.spectral_trace
             median_position = self.cpm.median_position
         except AttributeError:
-            raise AttributeError("No spectral trace or source position \
-                                 found. Aborting setting regressors")
+            raise AttributeError("No spectral trace or source position "
+                                 "found. Aborting setting regressors")
         try:
             data_in = self.observation.dataset
         except AttributeError:
-            raise AttributeError("No Valid data found. \
-                                 Aborting setting regressors")
+            raise AttributeError("No Valid data found. "
+                                 "Aborting setting regressors")
         try:
             ExtractionMask = self.cpm.extraction_mask
         except AttributeError:
-            raise AttributeError("No extraction mask found. \
-                                 Aborting setting regressors")
+            raise AttributeError("No extraction mask found. "
+                                 "Aborting setting regressors")
         try:
             DeltaPix = int(self.cascade_parameters.cpm_deltapix)
         except AttributeError:
-            raise AttributeError("The exclusion region is not defined. \
-                                 Check the initialiation of the TSO object. \
-                                 Aborting setting regressors")
+            raise AttributeError("The exclusion region is not defined. "
+                                 "Check the initialiation of the TSO object. "
+                                 "Aborting setting regressors")
         try:
             nrebin = int(self.cascade_parameters.cpm_nrebin)
         except AttributeError:
-            raise AttributeError("The rebin factor regressors is not defined. \
-                                 Check the initialiation of the TSO object. \
-                                 Aborting setting regressors")
+            raise AttributeError("The rebin factor regressors is not defined. "
+                                 "Check the initialiation of the TSO object. "
+                                 "Aborting setting regressors")
         try:
             cpm_use_pca = ast.literal_eval(self.cascade_parameters.cpm_use_pca)
         except AttributeError:

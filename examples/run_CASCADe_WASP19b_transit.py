@@ -48,9 +48,8 @@ tso.execute("reset")
 # files are correctly set. If the initialization files are not in the standard
 # directory where CASCADe expect these file to be, an additional path keyword
 # can be set wiht the command below.
-tso.execute("initialize", "cascade_WASP19b_transit_spectra_cpm.ini",
-            "cascade_WASP19b_object.ini",
-            "cascade_WASP19b_transit_spectra_COE_data.ini")
+tso.execute("initialize", "cascade_WASP19b_transit.ini",
+            "cascade_WASP19b_object.ini")
 
 # load the spectral data
 tso.execute("load_data")
@@ -67,15 +66,8 @@ tso.execute("filter_dataset")
 # In case of 1D spectra, positional data given in the fits header will be used.
 tso.execute("determine_source_movement")
 
-# correct wavelengths fo telescope movements
-tso.execute("correct_wavelengths")
-
 # set the extraction area
 tso.execute("set_extraction_mask")
-
-# extract timeseries of 1D spectra of the target
-# in case the input data is already 1D spectra
-tso.execute("extract_1d_spectra")
 
 # setup regressors
 tso.execute("select_regressors")
@@ -100,5 +92,4 @@ tso.execute("save_results")
 tso.execute("plot_results")
 
 elapsed_time = time.time() - start_time
-print ('elapsed time:', elapsed_time)
-
+print('elapsed time:', elapsed_time)

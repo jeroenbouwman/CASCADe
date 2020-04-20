@@ -6,12 +6,21 @@ import numpy as np
 from astropy.table import MaskedColumn
 import shutil
 from astropy.io import fits
+import configparser
+from tqdm import tqdm
 
 os.environ["CASCADE_WARNINGS"] = 'off'
+
+home_dir = os.environ["HOME"]
+os.environ['CASCADE_OBSERVATIONS'] = \
+    os.path.join(home_dir, 'cascasde_test_hst_data')
+os.environ['CASCADE_INITIALIZATION_FILE_PATH'] = \
+    os.path.join(home_dir, 'cascade_test_ini_files')
 
 from cascade.exoplanet_tools import Kmag
 from cascade import __path__
 from cascade.initialize import cascade_default_data_path
+from cascade.initialize import cascade_default_initialization_path
 from cascade.exoplanet_tools import parse_database
 from cascade.exoplanet_tools import extract_exoplanet_data
 
@@ -178,18 +187,41 @@ def return_exoplanet_catalogs():
     return catalog_dict
 
 
+def add_configuration(config, section_name, parameter_dict):
+    """
+    Add definitions to the configuration file.
+
+    Parameters
+    ----------
+    config : 'configparser'
+        DESCRIPTION.
+    section_name : 'str'
+        DESCRIPTION
+    obs_dict : 'dict'
+        DESCRIPTION.
+
+    Returns
+    -------
+    None
+    """
+    configurations = {}
+    for key, value in parameter_dict.items():
+        configurations[key] = value
+        config[section_name] = configurations
+
+
 PRIMARY_CATALOG = "NASAEXOPLANETARCHIVE"
 
-OBSERVABLES = ['RSTAR', 'TEFF', 'R', 'TT', 'PER', 'ECC', 'A', 'OM',
-               'I', 'KMAG', 'LOGG', 'FE']
+OBSERVABLES = ['TT', 'PER', 'R', 'A', 'I', 'ECC', 'OM',
+               'RSTAR', 'TEFF', 'KMAG', 'LOGG', 'FE']
 
-OBSERVABLES_UNITS = [u.Rsun, u.K, u.Rjup, u.day, u.day,
-                     u.dimensionless_unscaled, u.AU, u.deg, u.deg,
-                     Kmag, u.dex(u.cm/u.s**2), u.dex]
+OBSERVABLES_UNITS = [u.day, u.day, u.Rjup, u.AU, u.deg,
+                     u.dimensionless_unscaled, u.deg,
+                     u.Rsun, u.K, Kmag, u.dex(u.cm/u.s**2), u.dex]
 
 FITS_KEYWORDS = ['TARGNAME', 'RA_TARG', 'DEC_TARG', 'PROPOSID',
                  'TELESCOP', 'INSTRUME', 'FILTER', 'APERTURE',
-                 'EXPTIME', 'SCAN_TYP', 'SCAN_RAT', 'SCAN_LEN']
+                 'NSAMP', 'EXPTIME', 'SCAN_TYP', 'SCAN_RAT', 'SCAN_LEN']
 
 URL_DATA_ARCHIVE = \
     'https://mast.stsci.edu/portal/Download/file/HST/product/{0}'
@@ -208,8 +240,20 @@ all_observed_planets = remove_duplicate(all_observed_planets)
 
 
 temp_dir_path = os.path.join(cascade_default_data_path,
-                             "data/HST/mastDownload/")
+                             "mastDownload/")
 
+
+observations_definition_dict = {}
+instrument_definition_dict = {}
+cascade_definitions_dict = {}
+processing_definitions_dict = {}
+object_definition_dict = {}
+catalog_definition_dict = {}
+config = configparser.ConfigParser()
+config_object = configparser.ConfigParser()
+
+
+hst_data = {'14260.16': hst_data['14260.16'].copy()}
 # loop over all entries in HST observations catalog
 for visit in hst_data:
     name = hst_data[visit]['planet']
@@ -221,23 +265,43 @@ for visit in hst_data:
     except ValueError as e:
         print(e)
         continue
-    print(" Rstar: {} \n Teff: {} \n Rplanet: {} \n "
-          "Ephemeris: {} \n Period: {} \n "
-          "Eccentricity: {} \n Semi Major Axis: {} \n "
-          "Omega: {} \n Inclination: {} \n "
-          "Kmag: {} \n log g: {} \n FE: {} \n"
-          " ".format(*system_parameters))
+    object_dict = {}
+    for key, value in zip(OBSERVABLES, system_parameters):
+        object_dict[key] = value
+
+    object_definition_dict['object_name'] = name
+    object_definition_dict['object_ephemeris'] = object_dict['TT']
+    object_definition_dict['object_period'] = object_dict['PER']
+    object_definition_dict['object_radius'] = object_dict['R']
+    object_definition_dict['object_semi_major_axis'] = object_dict['A']
+    object_definition_dict['object_inclination'] = object_dict['I']
+    object_definition_dict['object_eccentricity'] = object_dict['ECC']
+    object_definition_dict['object_omega'] = object_dict['OM']
+    object_definition_dict['object_radius_host_star'] = object_dict['RSTAR']
+    object_definition_dict['object_temperature_host_star'] = \
+        object_dict['TEFF']
+    object_definition_dict['object_kmag'] = object_dict['KMAG']
+    object_definition_dict['object_metallicity_host_star'] = object_dict['FE']
+    object_definition_dict['object_logg_host_star'] = object_dict['LOGG']
+    add_configuration(config_object, 'OBJECT', object_definition_dict)
+
+    catalog_definition_dict['catalog_use_catalog'] = 'False'
+    catalog_definition_dict['catalog_name'] = PRIMARY_CATALOG
+    catalog_definition_dict['catalog_update'] = 'True'
+    add_configuration(config_object, 'CATALOG', catalog_definition_dict)
 
     if hst_data[visit]['observation'] == 'transit':
-        observation_type = 'TRANSIT'
+        observations_type = 'TRANSIT'
     elif hst_data[visit]['observation'] == 'eclipse':
-        observation_type = 'ECLIPSE'
+        observations_type = 'ECLIPSE'
     else:
-        observation_type = 'PROBLEM'
+        observations_type = 'PROBLEM'
 
-    print("Observation type: {} \n".format(observation_type))
-    if observation_type == 'PROBLEM':
+    if observations_type == 'PROBLEM':
+        print('Scipping problem: {}'.format(hst_data[visit]['observation']))
         continue
+    else:
+        observations_definition_dict['observations_type'] = observations_type
 
     data_files = hst_data[visit]['observations_id_ima'].split(',')
     cal_data_files = hst_data[visit]['calibrations_id'].split(',')
@@ -245,8 +309,9 @@ for visit in hst_data:
     cal_obsid = [file.split('_')[0] for file in cal_data_files]
 
     common_id = long_substr(obsid)
-    print("Common ID: {} \n".format(common_id))
+    # print("Common ID: {} \n".format(common_id))
 
+    # check spectral images
     os.makedirs(temp_dir_path, exist_ok=True)
     urlretrieve(URL_DATA_ARCHIVE.format(data_files[0]),
                 os.path.join(temp_dir_path, data_files[0]))
@@ -254,78 +319,132 @@ for visit in hst_data:
     with fits.open(os.path.join(temp_dir_path, data_files[0])) as hdul:
         for keyword in FITS_KEYWORDS:
             header_info[keyword] = hdul['PRIMARY'].header[keyword]
-    obs_info = [header_info[key] for key in FITS_KEYWORDS]
-
-    print("FITS Header Info data: \n "
-          "Target: {} \n "
-          "RA {} \n "
-          "DEC {} \n "
-          "Proposal ID {} \n "
-          "Telescope: {} \n "
-          "Instrument: {} \n "
-          "Filter: {} \n "
-          "Aperture {} \n "
-          "Exposure time: {} \n "
-          "Scan type: {} \n "
-          "Scan rate: {} \n "
-          "Scan length: {} \n"
-          " ".format(*tuple(obs_info)))
 
     if header_info['SCAN_TYP'] == 'N':
         observations_mode = 'STARING'
         observations_data = 'SPECTRAL_IMAGE'
         observations_data_product = 'flt'
+        processing_nextraction = '7'
     else:
         observations_mode = 'SCANNING'
         observations_data = 'SPECTRAL_CUBE'
         observations_data_product = 'ima'
+        pixel_sze = 0.121
+        number_of_samples = int(header_info['NSAMP'])-2
+        scan_length = float(header_info['SCAN_LEN'])
+        nextraction = int(scan_length/pixel_sze) // number_of_samples + 7
+        if nextraction % 2 == 0:  # even
+            nextraction += 1
+        processing_nextraction = str(nextraction)
 
-    print("Mode: {} \n"
-          "Data: {} \n"
-          "Data product: {} \n"
-          " ".format(observations_mode, observations_data,
-                     observations_data_product))
+    cascade_definitions_dict['cascade_save_path'] = name+'_'+common_id
+    cascade_definitions_dict['cascade_useMultiProcesses'] = 'True'
+    cascade_definitions_dict['cascade_verbose'] = 'True'
+    cascade_definitions_dict['cascade_save_verbose'] = 'True'
+    add_configuration(config, 'CASCADE', cascade_definitions_dict)
 
+    processing_definitions_dict['processing_sigma_filtering'] = '3.5'
+    processing_definitions_dict['processing_max_number_of_iterations_filtering'] = '15'
+    processing_definitions_dict['processing_fractional_acceptance_limit_filtering'] = '0.005'
+    processing_definitions_dict['processing_quantile_cut_movement'] = '0.1'
+    processing_definitions_dict['processing_order_trace_movement'] = '1'
+    processing_definitions_dict['processing_nreferences_movement'] = '6'
+    processing_definitions_dict['processing_main_reference_movement'] = '4'
+    processing_definitions_dict['processing_upsample_factor_movement'] = '111'
+    processing_definitions_dict['processing_angle_oversampling_movement'] = '2'
+    processing_definitions_dict['processing_nextraction'] = \
+        processing_nextraction
+    processing_definitions_dict['processing_rebin_factor_extract1d'] = '1.05'
+    add_configuration(config, 'PROCESSING', processing_definitions_dict)
+
+    observations_definition_dict['observations_mode'] = observations_mode
+    observations_definition_dict['observations_data'] = observations_data
+    observations_definition_dict['observations_path'] = 'data/HST/'
+    observations_definition_dict['observations_target_name'] = \
+        name+'_'+common_id
+    observations_definition_dict['observations_cal_path'] = 'calibration/HST/'
+    observations_definition_dict['observations_id'] = common_id
+    observations_definition_dict['observations_cal_version'] = '4.32'
+    observations_definition_dict['observations_data_product'] = \
+        observations_data_product
+    observations_definition_dict['observations_has_background'] = 'True'
+    observations_definition_dict['observations_uses_background_model'] = 'True'
+    observations_definition_dict['observations_median_signal'] = '0.01'
+    add_configuration(config, 'OBSERVATIONS', observations_definition_dict)
+
+    # check aquisition images
     urlretrieve(URL_DATA_ARCHIVE.format(cal_data_files[0]),
                 os.path.join(temp_dir_path, cal_data_files[0]))
-    header_info = {}
+    cal_header_info = {}
     with fits.open(os.path.join(temp_dir_path, cal_data_files[0])) as hdul:
         for keyword in FITS_KEYWORDS:
-            header_info[keyword] = hdul['PRIMARY'].header[keyword]
-    cal_info = [header_info[key] for key in FITS_KEYWORDS]
-    print("FITS Header Info aquisition image data: \n "
-          "Target: {} \n "
-          "RA {} \n "
-          "DEC {} \n "
-          "Proposal ID {} \n "
-          "Telescope: {} \n "
-          "Instrument: {} \n "
-          "Filter: {} \n "
-          "Aperture {} \n "
-          "Exposure time: {} \n "
-          "Scan type: {} \n "
-          "Scan rate: {} \n "
-          "Scan length: {} \n"
-          " ".format(*tuple(cal_info)))
+            cal_header_info[keyword] = hdul['PRIMARY'].header[keyword]
+
+    instrument_definition_dict['instrument_observatory'] = \
+        header_info['TELESCOP']
+    instrument_definition_dict['instrument'] = header_info['INSTRUME']
+    instrument_definition_dict['instrument_filter'] = header_info['FILTER']
+    instrument_definition_dict['instrument_aperture'] = header_info['APERTURE']
+    instrument_definition_dict['instrument_cal_filter'] = \
+        cal_header_info['FILTER']
+    instrument_definition_dict['instrument_cal_aperture'] = \
+        cal_header_info['APERTURE']
+    instrument_definition_dict['instrument_beam'] = 'A'
+    add_configuration(config, 'INSTRUMENTS', instrument_definition_dict)
 
     shutil.rmtree(os.path.join(temp_dir_path))
 
-# for visit in data:
-#     print('\n', visit)
-#     if not os.path.isdir(visit):
-#         os.mkdir(visit)
+    # print and save configuration files
+    for section_name in config_object.sections():
+        print('[{}]'.format(section_name))
+        for parameter, value in config_object.items(section_name):
+            print('%s = %s' % (parameter, value))
+        print()
+    for section_name in config.sections():
+        print('[{}]'.format(section_name))
+        for parameter, value in config.items(section_name):
+            print('%s = %s' % (parameter, value))
+        print()
+    configuration_save_path = \
+        os.path.join(cascade_default_initialization_path,
+                     instrument_definition_dict['instrument_observatory'],
+                     instrument_definition_dict['instrument'],
+                     name+'_'+common_id)
+    os.makedirs(configuration_save_path, exist_ok=True)
+    configuration_datafile_name = \
+        "cascade_"+name+'_'+common_id+"_extract_spectra.ini"
+    with open(os.path.join(configuration_save_path,
+                           configuration_datafile_name), 'w') as configfile:
+        config.write(configfile)
+    configuration_objectfile_name = \
+        "cascade_"+name+'_'+common_id+"_object.ini"
+    with open(os.path.join(configuration_save_path,
+                           configuration_objectfile_name), 'w') as configfile:
+        config_object.write(configfile)
 
-#     for file in data[visit]['calibrations_id'].split(','):
-#         print(file)
-#         urlretrieve('https://mast.stsci.edu/portal/Download/file/HST/product/{0}'.format(file),
-#                     os.path.join(visit, file))
-
-#     for file in data[visit]['observations_id_raw'].split(','):
-#         print(file)
-#         urlretrieve('https://mast.stsci.edu/portal/Download/file/HST/product/{0}'.format(file),
-#                     os.path.join(visit, file))
-
-#     for file in data[visit]['observations_id_ima'].split(','):
-#         print(file)
-#         urlretrieve('https://mast.stsci.edu/portal/Download/file/HST/product/{0}'.format(file),
-#                     os.path.join(visit, file))
+    # download all data
+    data_save_path = \
+        os.path.join(cascade_default_data_path,
+                     instrument_definition_dict['instrument_observatory'],
+                     instrument_definition_dict['instrument'],
+                     name+'_'+common_id, "SPECTRAL_IMAGES")
+    os.makedirs(data_save_path, exist_ok=True)
+    if observations_definition_dict['observations_mode'] == 'SCANNING':
+        data_files_to_download = data_files.copy()
+    else:
+        data_files_to_download = \
+            [file.replace('_ima', '_flt') for file in data_files]
+    for datafile in tqdm(data_files_to_download, dynamic_ncols=True):
+        urlretrieve(URL_DATA_ARCHIVE.format(datafile),
+                    os.path.join(data_save_path, datafile))
+    data_files_to_download = cal_data_files.copy()
+    for datafile in tqdm(data_files_to_download, dynamic_ncols=True):
+        urlretrieve(URL_DATA_ARCHIVE.format(datafile),
+                    os.path.join(data_save_path, datafile))
+    if observations_definition_dict['observations_mode'] == 'SCANNING':
+        data_files_to_download = \
+            [file.replace('_flt', '_ima') for file in cal_data_files]
+        for datafile in tqdm(data_files_to_download, dynamic_ncols=True):
+            urlretrieve(URL_DATA_ARCHIVE.format(datafile),
+                        os.path.join(data_save_path, datafile))
+    break
