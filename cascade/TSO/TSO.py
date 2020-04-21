@@ -221,11 +221,12 @@ class TSOSuite:
         if len(init_files) != 0:
             init_files_path = []
             for file in init_files:
-                init_files_path.append(path+file)
-                if not os.path.isfile(path+file):
-                    raise FileNotFoundError('ini file {} does not \
-                                            excist. Aborting \
-                                            initialization'.format(path+file))
+                init_files_path.append(os.path.join(path, file))
+                if not os.path.isfile(os.path.join(path, file)):
+                    raise FileNotFoundError("ini file {} does not excist. "
+                                            "Aborting initialization "
+                                            "".format(os.path.join(path, file))
+                                            )
             self.cascade_parameters = configurator(*init_files_path)
         else:
             self.cascade_parameters = cascade_configuration
@@ -1358,7 +1359,7 @@ class TSOSuite:
             idx_end = idx_start + max_cal_points_after//2
             selection2 = [slice(None)]*(ndim-1) + \
                 [slice(idx_start, idx_end)]
-            lcmodel_cal[selection2] = -1.0
+            lcmodel_cal[tuple(selection2)] = -1.0
 
         if isNodded:
             ntime = lcmodel_obs.shape[-1]
@@ -1899,6 +1900,7 @@ class TSOSuite:
             do_iter_bad_regressor = True
             while (iter_bad_reg <= max_iter_bad_reg) and do_iter_bad_regressor:
                 for regressor_selection in tqdm(regressor_list,
+                                                desc="Calibrating timeseries",
                                                 dynamic_ncols=True):
                     (il, ir), (idx_cal, trace) = regressor_selection
                     regressor_matrix = \

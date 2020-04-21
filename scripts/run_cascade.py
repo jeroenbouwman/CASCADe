@@ -57,7 +57,7 @@ def log(string, color, font="slant", figlet=False):
 @click.option('--no_warnings', '-nw', is_flag=True)
 def run_cascade(initfiles, path, show_plots, no_warnings):
     """
-    Handle the input.
+    Run CASCADe.
 
     Parameters
     ----------
@@ -65,6 +65,8 @@ def run_cascade(initfiles, path, show_plots, no_warnings):
         DESCRIPTION.
     path : TYPE
         DESCRIPTION.
+    show_plots : 'bool'
+    no_warnings: 'bool'
 
     Returns
     -------
@@ -73,24 +75,22 @@ def run_cascade(initfiles, path, show_plots, no_warnings):
     """
     if no_warnings:
         os.environ["CASCADE_WARNINGS"] = 'off'
+    if path is not None:
+        os.environ["CASCADE_INITIALIZATION_FILE_PATH"] = path
     if not show_plots:
         matplotlib.use('AGG')
     import cascade
-    from cascade.initialize import cascade_default_initialization_path
-    if path is None:
-        path = cascade_default_initialization_path
 
     log('CASCADe', color="blue", figlet=True)
     log("Using the follwing ini files: {}".format(initfiles), "green")
-    log("from:  {}".format(path), "green")
-#    click.echo(initfiles)
-#    click.echo(path)
+    log("from:  {}".format(os.environ["CASCADE_INITIALIZATION_FILE_PATH"]),
+        "green")
 
     start_time = time.time()
 
     tso = cascade.TSO.TSOSuite()
     tso.execute("reset")
-    tso.execute("initialize", *initfiles, path=path)
+    tso.execute("initialize", *initfiles)
 
     if tso.cascade_parameters.observations_data == "SPECTRUM":
         for command in COMMAND_LIST_CALIBRATION:

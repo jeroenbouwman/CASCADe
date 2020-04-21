@@ -388,6 +388,7 @@ class HSTWFC3(InstrumentBase):
         scan_direction = np.zeros((nintegrations))
         sample_number = np.zeros((nintegrations))
         for im, spectral_data_file in enumerate(tqdm(data_files,
+                                                     desc="Loading Spectra",
                                                      dynamic_ncols=True)):
             # WARNING fits data is single precision!!
             spectrum = fits.getdata(spectral_data_file, ext=1)
@@ -577,7 +578,9 @@ class HSTWFC3(InstrumentBase):
         cal_time = []
         spectral_data_files = []
         calibration_data_files = []
-        for im, image_file in enumerate(tqdm(data_files, dynamic_ncols=True)):
+        for im, image_file in enumerate(tqdm(data_files,
+                                             desc="Loading Spectral Images",
+                                             dynamic_ncols=True)):
             with fits.open(image_file) as hdul:
                 instrument_fiter = hdul['PRIMARY'].header['FILTER']
                 exptime = hdul['PRIMARY'].header['EXPTIME']
@@ -762,7 +765,9 @@ class HSTWFC3(InstrumentBase):
         spectral_data_files_out = []
         spectral_sample_number = []
         spectral_scan_directon = []
-        for im, image_file in enumerate(tqdm(data_files, dynamic_ncols=True)):
+        for im, image_file in enumerate(tqdm(data_files,
+                                             desc="Loading Spectral Cubes",
+                                             dynamic_ncols=True)):
             with fits.open(image_file) as hdul:
                 instrument_fiter = hdul['PRIMARY'].header['FILTER']
                 if instrument_fiter != self.par["inst_filter"]:
@@ -1014,6 +1019,8 @@ class HSTWFC3(InstrumentBase):
 
     def _define_convolution_kernel(self):
         """
+        Define convolution kernel.
+
         Define the instrument specific convolution kernel which will be used
         in the correction procedure of bad pixels.
         """
@@ -1032,6 +1039,8 @@ class HSTWFC3(InstrumentBase):
 
     def _define_region_of_interest(self):
         """
+        Define ROI.
+
         Defines region on detector which containes the intended target star.
         """
         if self.par["inst_beam"] == 'A':
@@ -1361,7 +1370,7 @@ class HSTWFC3(InstrumentBase):
 
     def _read_grism_configuration_files(self):
         """
-        Gets the relevant data from WFC3 configuration files.
+        Get the relevant data from the WFC3 configuration files.
 
         Attributes
         ----------
