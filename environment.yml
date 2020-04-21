@@ -34,6 +34,8 @@ dependencies:
   - setproctitle
   - grpcio
   - joblib
+  - pyfiglet
+  - termcolor
   - pip:
     - ray==0.8.4
     - batman-package==2.4.6

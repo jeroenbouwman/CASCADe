@@ -15,7 +15,7 @@ config = {
 	                 'scikit-learn', 'matplotlib', 'tqdm', 'seaborn',
                          'pytest', 'scikit-image', 'sphinx', 'alabaster',
                          'networkx', 'cython', 'astroquery', 'numba', 'ray', 
-                         'joblib'],
+                         'joblib', 'pyfiglet', 'termcolor'],
     'packages': ['cascade'],
     'scripts': [],
     'name': 'CASCADe'

@@ -226,9 +226,9 @@ def generate_default_initialization(observatory='HST', data='SPECTRUM',
     os.makedirs(path, exist_ok=True)
 
     config = configparser.ConfigParser()
-
+    config.optionxform = str
     config['CASCADE'] = {'cascade_save_path': 'HD189733b_'+observation+'/',
-                         'cascade_useMultiProcesses': 'True',
+                         'cascade_use_multi_processes': 'True',
                          'cascade_verbose': 'True',
                          'cascade_save_verbose': 'True'}
 

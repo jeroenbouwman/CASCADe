@@ -368,7 +368,7 @@ class TSOSuite:
 
           - cascade_parameters.processing_max_number_of_iterations_filtering
           - cascade_parameters.processing_fractional_acceptance_limit_filtering
-          - cascade_parameters.cascade_useMultiProcesses
+          - cascade_parameters.cascade_use_multi_processes
 
         Returns
         -------
@@ -459,7 +459,7 @@ class TSOSuite:
             try:
                 useMultiProcesses = \
                     bool(self.cascade_parameters.
-                         cascade_useMultiProcesses)
+                         cascade_use_multi_processes)
             except AttributeError:
                 raise AttributeError("UseMultiProcesses flag not set. "
                                      "Aborting filtering of data.")

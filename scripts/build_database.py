@@ -251,9 +251,11 @@ object_definition_dict = {}
 catalog_definition_dict = {}
 config = configparser.ConfigParser()
 config_object = configparser.ConfigParser()
+config.optionxform = str
+config_object.optionxform = str
 
-
-hst_data = {'14260.16': hst_data['14260.16'].copy()}
+#hst_data = {'14260.16': hst_data['14260.16'].copy()}
+hst_data = {'15135.02': hst_data['15135.02'].copy()}
 # loop over all entries in HST observations catalog
 for visit in hst_data:
     name = hst_data[visit]['planet']
@@ -338,7 +340,7 @@ for visit in hst_data:
         processing_nextraction = str(nextraction)
 
     cascade_definitions_dict['cascade_save_path'] = name+'_'+common_id
-    cascade_definitions_dict['cascade_useMultiProcesses'] = 'True'
+    cascade_definitions_dict['cascade_use_multi_processes'] = 'True'
     cascade_definitions_dict['cascade_verbose'] = 'True'
     cascade_definitions_dict['cascade_save_verbose'] = 'True'
     add_configuration(config, 'CASCADE', cascade_definitions_dict)
