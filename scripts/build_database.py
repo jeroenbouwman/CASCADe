@@ -14,7 +14,8 @@
 #  not compulsory:
 #    CASCADE_WARNINGS
 #    DATABASE_VISITS
-#     e.g. export DATABASE_VISITS=12181.12
+#     e.g. export DATABASE_VISITS=12181.14 ==> transit
+#         12181.12 ==> eclipse
 #
 # NEEDED INPUTS
 #   HST_CATALOG_FILE is needed, it is in a subdirectory
@@ -24,7 +25,10 @@
 #   TODO :
 #        use configspec.ini and discard a lot of junk code, create_xxx_ini
 #        why observations_cal_version can not be read from the FITS header ?
-#        add another ini form computint the transit depth
+#
+#   R Gastaud 22 April 2020
+#        add another ini form computing the transit depth
+#        with cascade_transit_spec.ini, but need to be improved
 
 from urllib.request import urlretrieve
 import pickle
@@ -39,10 +43,14 @@ from tqdm import tqdm
 ##  add by RG to check with requirement.yml : time and configobj
 import time
 from configobj import ConfigObj
+from cascade import __path__  # to read cascade_transit_spec.in
+from validate import Validator
 
 ############ to be customized ########
 os.environ["CASCADE_WARNINGS"] = 'off'
-home_dir = os.environ["HOME"]
+
+###  we set the environnement variables before the script
+# home_dir = os.environ["HOME"]
 #os.environ['CASCADE_OBSERVATIONS'] = \
 #    os.path.join(home_dir, 'cascasde_test_hst_data')
 #### cascade_default_data_path is CASCADE_OBSERVATIONS
@@ -50,6 +58,8 @@ home_dir = os.environ["HOME"]
 #os.environ['CASCADE_INITIALIZATION_FILE_PATH'] = \
 #    os.path.join(home_dir, 'cascade_test_ini_files')
 #### cascade_default_initialization_path is CASCADE_INITIALIZATION_FILE_PATH
+
+scripts_dir = os.path.join(os.path.dirname(__path__[0]), 'scripts')
 
 ## for debugging
 try:
@@ -524,12 +534,37 @@ for visit in visits:
     config_spectra['CASCADE'] = cascade_definition_dict
     config_spectra['PROCESSING'] = processing_definition_dict
     config_spectra['OBSERVATIONS'] = observations_definition_dict
-    config_spectra['INSTRUMENTS'] = instrument_definition_dict
+    config_spectra['INSTRUMENT'] = instrument_definition_dict
     configuration_spectrafile_name = \
         "cascade_"+name+'_'+common_id+"_extract_spectra.ini"
     config_spectra.filename = os.path.join(configuration_save_path, configuration_spectrafile_name )
     print("***************** write ",config_spectra.filename )
     config_spectra.write()
+
+    # config_transit
+    config_transit = ConfigObj(configspec=os.path.join(scripts_dir,'cascade_transit_spec.ini'))
+    from validate import Validator
+    validator = Validator()
+    result = config_transit.validate(validator)
+    # configspec does not like multiple values ??
+    config_transit['MODEL']['model_limb_darkening_coeff'] = [0.189, 0.246]
+    config_transit['CASCADE'] = cascade_definition_dict
+    #
+    #   R Gastaud 22 April 2020 badly written, to be rewritten
+    del observations_definition_dict['observations_uses_background_model']
+    observations_definition_dict['observations_data_product']='COE'
+    observations_definition_dict['observations_data']='SPECTRUM'
+    observations_definition_dict['observations_has_background']=False
+    observations_definition_dict['observations_median_signal']=0.02
+    config_transit['OBSERVATIONS'] = observations_definition_dict
+    #
+    config_transit['INSTRUMENT'] = instrument_definition_dict
+    configuration_transitfile_name = \
+    "cascade_"+name+'_'+common_id+"_transit.ini"
+
+    config_transit.filename = os.path.join(configuration_save_path, configuration_transitfile_name )
+    print("***************** write ",config_transit.filename )
+    config_transit.write()
 
     # download all data
     data_save_path = \
