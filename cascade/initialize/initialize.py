@@ -138,7 +138,12 @@ if not os.path.isdir(os.path.join(cascade_default_data_path,
                                                'exoplanet_data/'),
                                   os.path.join(cascade_default_data_path,
                                                'exoplanet_data/'))
-
+if not os.path.isdir(os.path.join(cascade_default_data_path,
+                                  'archive_databases/')):
+    destination = shutil.copytree(os.path.join(__cascade_data_path,
+                                               'archive_databases/'),
+                                  os.path.join(cascade_default_data_path,
+                                               'archive_databases/'))
 try:
     cascade_default_save_path = os.environ['CASCADE_SAVE_PATH']
 except KeyError:
