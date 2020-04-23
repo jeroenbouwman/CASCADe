@@ -76,6 +76,7 @@ An example how the initilize module is used:
 import os
 import configparser
 import warnings
+import shutil
 
 from cascade import __path__
 
@@ -96,6 +97,9 @@ __valid_environment_variables__ = ['CASCADE_WARNINGS',
 
 __flag_not_set__ = False
 
+__cascade_path = os.path.dirname(__path__[0])
+__cascade_data_path = os.path.join(__cascade_path, "data/")
+
 try:
     cascade_warnings = os.environ['CASCADE_WARNINGS']
     if cascade_warnings.strip().lower() == "off":
@@ -115,7 +119,6 @@ except KeyError:
         os.path.dirname(__path__[0])
     os.environ['CASCADE_PATH'] = cascade_default_path
     __flag_not_set__ = True
-
 try:
     cascade_default_data_path = \
         os.environ['CASCADE_OBSERVATIONS']
@@ -124,6 +127,17 @@ except KeyError:
         os.path.join(cascade_default_path, "data/")
     os.environ['CASCADE_OBSERVATIONS'] = cascade_default_data_path
     __flag_not_set__ = True
+if not os.path.isdir(os.path.join(cascade_default_data_path, 'calibration/')):
+    destination = shutil.copytree(os.path.join(__cascade_data_path,
+                                               'calibration/'),
+                                  os.path.join(cascade_default_data_path,
+                                               'calibration/'))
+if not os.path.isdir(os.path.join(cascade_default_data_path,
+                                  'exoplanet_data/')):
+    destination = shutil.copytree(os.path.join(__cascade_data_path,
+                                               'exoplanet_data/'),
+                                  os.path.join(cascade_default_data_path,
+                                               'exoplanet_data/'))
 
 try:
     cascade_default_save_path = os.environ['CASCADE_SAVE_PATH']
