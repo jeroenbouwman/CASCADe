@@ -395,7 +395,6 @@ start_time = time.time()
 PRIMARY_CATALOG = "NASAEXOPLANETARCHIVE"
 
 
-
 OBSERVABLES = ['TT', 'PER', 'R',
                'A', 'I', 'ECC',
                'OM', 'RSTAR', 'TEFF',
@@ -419,7 +418,7 @@ URL_DATA_ARCHIVE = \
     'https://mast.stsci.edu/portal/Download/file/HST/product/{0}'
 
 HST_CATALOG_FILE = os.path.join(cascade_default_data_path,
-                                "data/HST/archive_data/",
+                                "data/archive_databases/HST/WFC3/",
                                 "WFC3_files.pickle")
 
 cat_dict = return_exoplanet_catalogs()
