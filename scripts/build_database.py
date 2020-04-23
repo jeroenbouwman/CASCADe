@@ -9,7 +9,7 @@
 #  bugs added by R Gastaud, CEA Saclay, 22 April 2020
 #
 #  Before calling the script, define environnement variables :
-#    CASCADE_OBSERVATIONS
+#    CASCADE_DATA_PATH  # former CASCADE_OBSERVATIONS
 #    CASCADE_INITIALIZATION_FILE_PATH
 #  not compulsory:
 #    CASCADE_WARNINGS
@@ -19,8 +19,8 @@
 #
 # NEEDED INPUTS
 #   HST_CATALOG_FILE is needed, it is in a subdirectory
-#     of CASCADE_OBSERVATIONS/cascade_default_data_path
-#  cascade_default_data_path/"data/HST/archive_data/WFC3_files.pickle"
+#     of CASCADE_DATA_PATH/cascade_default_data_path
+#  cascade_default_data_path/"data/archive_databases/HST/WFC3/WFC3_files.pickle"
 #
 #   TODO :
 #        use configspec.ini and discard a lot of junk code, create_xxx_ini
@@ -51,9 +51,9 @@ os.environ["CASCADE_WARNINGS"] = 'off'
 
 ###  we set the environnement variables before the script
 # home_dir = os.environ["HOME"]
-#os.environ['CASCADE_OBSERVATIONS'] = \
+#os.environ['CASCADE_DATA_PATH'] = \
 #    os.path.join(home_dir, 'cascasde_test_hst_data')
-#### cascade_default_data_path is CASCADE_OBSERVATIONS
+#### cascade_default_data_path is CASCADE_DATA_PATH
 
 #os.environ['CASCADE_INITIALIZATION_FILE_PATH'] = \
 #    os.path.join(home_dir, 'cascade_test_ini_files')
@@ -73,7 +73,7 @@ except KeyError:
 from cascade.exoplanet_tools import Kmag
 
 from cascade.initialize import cascade_default_data_path
-# read os.environ['CASCADE_OBSERVATIONS']
+# read os.environ['CASCADE_DATA_PATH']
 
 from cascade.initialize import cascade_default_initialization_path
 # read os.environ['CASCADE_INITIALIZATION_FILE_PATH']
@@ -280,8 +280,6 @@ def read_fits_header(temp_dir_path, file_name, verbose=True):
     """
     ###  fetch the data
     fits_file = os.path.join(temp_dir_path, file_name)
-    import pdb
-    #pdb.set_trace()
     
     urlretrieve(URL_DATA_ARCHIVE.format(file_name), fits_file)
     
@@ -373,10 +371,12 @@ def create_observations_ini(observation_type, name, common_id, observations_mode
     observations_definition_dict['observations_type'] = observations_type
     observations_definition_dict['observations_mode'] = observations_mode
     observations_definition_dict['observations_data'] = observations_data
-    observations_definition_dict['observations_path'] = os.path.join('data', instrument_observatory)
+    observations_definition_dict['observations_path'] = 'data'
+    # bug 37, previous 'os.path.join('data', instrument_observatory)
     observations_definition_dict['observations_target_name'] = \
         name+'_'+common_id
-    observations_definition_dict['observations_cal_path'] = os.path.join('calibration', instrument_observatory)
+    observations_definition_dict['observations_cal_path'] =  'calibration'
+    # bug 37, previous os.path.join('calibration', instrument_observatory)
     observations_definition_dict['observations_id'] = common_id
     observations_definition_dict['observations_cal_version'] = cal_version
     observations_definition_dict['observations_data_product'] = \
@@ -404,6 +404,7 @@ start_time = time.time()
 PRIMARY_CATALOG = "NASAEXOPLANETARCHIVE"
 
 
+
 OBSERVABLES = ['TT', 'PER', 'R',
                'A', 'I', 'ECC',
                'OM', 'RSTAR', 'TEFF',
@@ -426,6 +427,7 @@ FITS_KEYWORDS = ['TARGNAME', 'RA_TARG', 'DEC_TARG', 'PROPOSID',
 URL_DATA_ARCHIVE = \
     'https://mast.stsci.edu/portal/Download/file/HST/product/{0}'
 
+### beware HST, WFC3 hardcoded
 HST_CATALOG_FILE = os.path.join(cascade_default_data_path,
                                 "data/archive_databases/HST/WFC3/",
                                 "WFC3_files.pickle")
@@ -556,11 +558,8 @@ for visit in visits:
 
     # config_transit
     config_transit = ConfigObj(configspec=os.path.join(scripts_dir,'cascade_transit_spec.ini'))
-    from validate import Validator
     validator = Validator()
-    result = config_transit.validate(validator)
-    # configspec does not like multiple values ??
-    config_transit['MODEL']['model_limb_darkening_coeff'] = [0.189, 0.246]
+    result = config_transit.validate(validator, copy=True)
     config_transit['CASCADE'] = cascade_definition_dict
     #
     #   R Gastaud 22 April 2020 badly written, to be rewritten
