@@ -316,34 +316,71 @@ class TSOSuite:
             warnings.warn('observations_uses_background_model parameter \
                           not defined, assuming it to be False')
             obs_uses_backgr_model = False
+        try:
+            verbose = bool(self.cascade_parameters.cascade_verbose)
+        except AttributeError:
+            warnings.warn("Verbose flag not set, assuming it to be False.")
+            verbose = False
+        try:
+            savePathVerbose = self.cascade_parameters.cascade_save_path
+            if not os.path.isabs(savePathVerbose):
+                savePathVerbose = os.path.join(cascade_default_save_path,
+                                               savePathVerbose)
+            os.makedirs(savePathVerbose, exist_ok=True)
+        except AttributeError:
+            warnings.warn("No save path defined to save verbose output "
+                          "No verbose plots will be saved")
+            savePathVerbose = None
 
         if obs_uses_backgr_model:
             self.observation.dataset.data = self.observation.dataset.data -\
                 background.data
             self.observation.dataset.isBackgroundSubtracted = True
-            return
+        else:
+            # mask cosmic hits
+            input_background_data = np.ma.array(background.data.data.value,
+                                                mask=background.mask)
+            sigma_cliped_mask = \
+                sigma_clip_data_cosmic(input_background_data, sigma)
+            # update mask
+            updated_mask = np.ma.mask_or(background.mask, sigma_cliped_mask)
+            background.mask = updated_mask
+            # calculate median (over time) background
+            median_background = np.ma.median(background.data,
+                                             axis=background.data.ndim-1)
+            # tile to format of science data
+            tiling = (tuple([(background.data.shape)[-1]]) +
+                      tuple(np.ones(background.data.ndim-1).astype(int)))
+            median_background = np.tile(median_background.T, tiling).T
+            # subtract background
+            self.observation.dataset.data = self.observation.dataset.data -\
+                median_background
+            self.observation.dataset.isBackgroundSubtracted = True
 
-        # mask cosmic hits
-        input_background_data = np.ma.array(background.data.data.value,
-                                            mask=background.mask)
-        sigma_cliped_mask = \
-            sigma_clip_data_cosmic(input_background_data, sigma)
-        # update mask
-        updated_mask = np.ma.mask_or(background.mask, sigma_cliped_mask)
-        background.mask = updated_mask
-        # calculate median (over time) background
-        median_background = np.ma.median(background.data,
-                                         axis=background.data.ndim-1)
-        # tile to format of science data
-        tiling = (tuple([(background.data.shape)[-1]]) +
-                  tuple(np.ones(background.data.ndim-1).astype(int)))
-        median_background = np.tile(median_background.T, tiling).T
-
-        # subtract background
-        # update TSOtimeseries object with background subtracted data
-        self.observation.dataset.data = self.observation.dataset.data -\
-            median_background
-        self.observation.dataset.isBackgroundSubtracted = True
+        if verbose:
+            spec_data = self.observation.dataset.return_masked_array('data')
+            roi = self.observation.instrument_calibration.roi
+            total_data = np.ma.array(np.ma.sum(spec_data, axis=-1),
+                                     mask=roi)
+            sns.set_context("talk", font_scale=1.5,
+                            rc={"lines.linewidth": 2.5})
+            sns.set_style("white", {"xtick.bottom": True, "ytick.left": True})
+            fig, ax = plt.subplots(figsize=(10, 10))
+            if total_data.ndim == 2:
+                ax.imshow(total_data)
+                ax.set_ylabel('Pixel Position Dispersion Direction')
+                ax.set_xlabel('Pixel Position Corss-Dispersion Direction')
+            else:
+                ax.plt(total_data)
+                ax.set_xlabel('Pixel Position Dispersion Direction')
+                ax.set_ylabel('Total Signal')
+            ax.set_title('Background subtracted data.')
+            plt.show()
+            if savePathVerbose is not None:
+                verboseSaveFile = ('background_subtracted_spectral_data.png')
+                verboseSaveFile = os.path.join(savePathVerbose,
+                                               verboseSaveFile)
+                fig.savefig(verboseSaveFile, bbox_inches='tight')
 
     def filter_dataset(self):
         """

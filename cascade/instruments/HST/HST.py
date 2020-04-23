@@ -607,7 +607,7 @@ class HSTWFC3(InstrumentBase):
                 spectral_image_dq_cube.append(spectral_image_dq.copy())
                 spectral_data_files.append(image_file)
                 time.append(expstart + 0.5*(exptime/(24.0*3600.0)))
-                spectral_image_exposure_time.append(exptime.copy())
+                spectral_image_exposure_time.append(exptime)
 
         if len(spectral_image_cube) == 0:
             raise ValueError("No science data found for the \
@@ -641,7 +641,7 @@ class HSTWFC3(InstrumentBase):
 
         # check for spurious longer exosures.
         median_exposure_time = np.median(spectral_image_exposure_time)
-        idx_remove = (spectral_image_exposure_time+0.1) > median_exposure_time
+        idx_remove = (spectral_image_exposure_time-0.01) > median_exposure_time
         spectral_image_exposure_time = \
             spectral_image_exposure_time[~idx_remove]
         time = time[~idx_remove]
@@ -697,6 +697,13 @@ class HSTWFC3(InstrumentBase):
             cal_phase = cal_phase - 1.0
 
         self._define_convolution_kernel()
+# BUG FIX
+        offset_x = [0.0]
+        offset_y = [0.0]
+        cal_offset_x = [0.0]
+        cal_offset_y = [0]
+        self._determine_position_offset(offset_x, offset_y,
+                                        cal_offset_x, cal_offset_y)
         self._determine_source_position_from_cal_image(
                 calibration_image_cube, calibration_data_files)
         self._read_grism_configuration_files()
@@ -994,11 +1001,11 @@ class HSTWFC3(InstrumentBase):
 
         # self._determine_relative_source_position(spectral_image_cube, mask)
         self._define_convolution_kernel()
-        self._determine_crossdispersion_offset(spectral_scan_offset1,
-                                               spectral_scan_offset2,
-                                               cal_offset1, cal_offset2,
-                                               spectral_scan_length,
-                                               spectral_scan_directon)
+        self._determine_scan_offset(spectral_scan_offset1,
+                                    spectral_scan_offset2,
+                                    cal_offset1, cal_offset2,
+                                    spectral_scan_length,
+                                    spectral_scan_directon)
         self._determine_source_position_from_cal_image(
                 calibration_image_cube, calibration_data_files)
         self._read_grism_configuration_files()
@@ -1038,9 +1045,37 @@ class HSTWFC3(InstrumentBase):
             SpectralTimeSeries = self._fit_background(SpectralTimeSeries)
         return SpectralTimeSeries
 
-    def _determine_crossdispersion_offset(self, scan_offset_x, scan_offset_y,
-                                          cal_offset_x, cal_offset_y,
-                                          scan_length, scan_directions):
+    def _determine_position_offset(self, scan_offset_x, scan_offset_y,
+                                    cal_offset_x, cal_offset_y):
+        """
+        Determine the scan offset.
+
+        Parameters
+        ----------
+        scan_offset_x : TYPE
+            DESCRIPTION.
+        scan_offset_y : TYPE
+            DESCRIPTION.
+
+        Returns
+        -------
+        None.
+
+        """
+        xc_offset = (-np.mean(cal_offset_x))/0.135
+        yc_offset = (np.mean(scan_offset_y)-np.mean(cal_offset_y))/0.121
+        try:
+            self.wfc3_cal
+        except AttributeError:
+            self.wfc3_cal = SimpleNamespace()
+        finally:
+            self.wfc3_cal.xc_offset = xc_offset
+            self.wfc3_cal.yc_offset = yc_offset
+        return
+
+    def _determine_scan_offset(self, scan_offset_x, scan_offset_y,
+                               cal_offset_x, cal_offset_y,
+                               scan_length, scan_directions):
         """
         Determine the scan offset.
 
