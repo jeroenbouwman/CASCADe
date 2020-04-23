@@ -51,49 +51,61 @@ def log(string, color, font="slant", figlet=False):
 
 
 @click.command()
-@click.argument('initfiles', nargs=-1)
-@click.option('--init_path', '-ip', nargs=1, type=click.STRING)
-@click.option('--data_path', '-dp', nargs=1, type=click.STRING)
-@click.option('--save_path', '-sp', nargs=1, type=click.STRING)
-@click.option('--show_plots', '-plt', is_flag=True)
-@click.option('--no_warnings', '-nw', is_flag=True)
+@click.argument('initfiles',
+                nargs=-1,
+                )
+@click.option('--init_path',
+              '-ip',
+              nargs=1,
+              type=click.STRING,
+              help='Path to the directory containing the configuration files.'
+                   'If not specified, the value set by the environment '
+                   'variable CASCADE_INITIALIZATION_FILE_PATH is used or if '
+                   'neither is set it defaults to the CASCADe default value '
+                   'of the CASCADe distribution.',
+              )
+@click.option('--data_path',
+              '-dp',
+              nargs=1,
+              type=click.STRING,
+              help='Path to the data (observations, calibration files, '
+                   'exoplanet catalogs, archive databases) needed by CASCADe '
+                   'to function. If not set, the value set by the environment '
+                   'variable CASCADE_DATA_PATH is used or if neither is set '
+                   'it defaults to the CASCADe default value of the CASCADe '
+                   'distribution.',
+              )
+@click.option('--save_path',
+              '-sp',
+              nargs=1,
+              type=click.STRING,
+              help='Path to the directory where CASCADe saves results '
+                   '(plots, extracted planetary spectra). If not specified, '
+                   'the value set by the environment variable '
+                   'CASCADE_SAVE_PATH is used, or if neither is set it '
+                   'defaults to the CASCADe default value of the CASCADe '
+                   'distribution.',
+              )
+@click.option('--show_plots',
+              '-plt',
+              is_flag=True,
+              help='If True plot windows are opened. Default is False.',
+              )
+@click.option('--no_warnings',
+              '-nw',
+              is_flag=True,
+              help='If set no warning messages are printed to stdev. '
+                   'Default is True',
+              )
 def run_cascade(initfiles, init_path, data_path, save_path, show_plots,
                 no_warnings):
     """
     Run CASCADe.
-    
-    This function enables the user to run CASCADe from the command line. 
 
-    Parameters
-    ----------
-    initfiles : 'str'
-        The names of the configuration files used to define the data and 
-        CASCADe behaviour. Can be one or multiple file names.
-    init_path : 'str'
-        Path to the directory containing the configuration files. If not
-        specified, the value set by the environment variable
-        CASCADE_INITIALIZATION_FILE_PATH is used or if neither is set it
-        defaults to the CASCADe default value of the CASCADe distribution.
-    data_path : 'str'
-        Path to the data (observations, calibration files, exoplanet catalogs,
-        archive databases) needed by CASCADe to function. If not set, the
-         the value set by the environment variable
-        CASCADE_DATA_PATH is used or if neither is set it
-        defaults to the CASCADe default value of the CASCADe distribution.
-    save_path : 'str'
-        path to the directory where CASCADe saves it's results (plots,
-        extracted planetary spectra). If not specified, the value set by
-        the environment variable CASCADE_SAVE_PATH is used, or if neither
-        is set it defaults to the CASCADe default value of the CASCADe
-        distribution.
-    show_plots : 'bool'
-        If True plot windows are opened. Default is False.
-    no_warnings : 'bool'
-        If set no warning messages are printed to stdev. Default is True
+    This function enables the user to run CASCADe from the command line.
 
-    Returns
-    -------
-    None.
+    INITFILES : The names of the configuration files used to define the data
+                and CASCADe behaviour. Can be one or multiple file names.
 
     """
     if no_warnings:
