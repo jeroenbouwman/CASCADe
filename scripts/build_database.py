@@ -297,10 +297,19 @@ def read_fits_header(temp_dir_path, file_name, verbose=True):
         observations_mode = 'STARING'
         observations_data = 'SPECTRAL_IMAGE'
         observations_data_product = 'flt'
+        processing_nextraction = '7'
     else:
         observations_mode = 'SCANNING'
         observations_data = 'SPECTRAL_CUBE'
         observations_data_product = 'ima'
+        pixel_size = 0.121
+        number_of_samples = int(header_info['NSAMP'])-2
+        scan_length = float(header_info['SCAN_LEN'])
+        nextraction = int(scan_length/pixel_size) // number_of_samples + 7
+        if nextraction % 2 == 0:  # even
+            nextraction += 1
+        processing_nextraction = str(nextraction)
+
 
     #  display information
     if (verbose):
@@ -325,7 +334,7 @@ def read_fits_header(temp_dir_path, file_name, verbose=True):
             "Data product: {} \n"
             " ".format(observations_mode, observations_data,
                            observations_data_product))
-    return header_info, observations_mode, observations_data,observations_data_product
+    return header_info, observations_mode, observations_data,observations_data_product, processing_nextraction
 
 def create_cascade_ini(name, common_id):
     cascade_definitions_dict = {}
@@ -480,16 +489,21 @@ for visit in visits:
     ######  read fits files spectral images  ######
     os.makedirs(temp_dir_path, exist_ok=True)
     # first data file
-    header, observations_mode, observations_data,observations_data_product = read_fits_header(temp_dir_path, data_files[0])
+    header, observations_mode, observations_data,observations_data_product, processing_nextraction = \
+            read_fits_header(temp_dir_path, data_files[0])
+
     # first calibration file
-    header_cal, observations_mode, observations_data,observations_data_product = read_fits_header(temp_dir_path, cal_data_files[0])
+    header_cal, observations_mode, observations_data,observations_data_product, processing_nextraction =\
+        read_fits_header(temp_dir_path, cal_data_files[0])
 
 #  does not work, BUGGG : G141.F139M.V3.5.0(Oct-09-2018).conf  does not exist
     observations_cal_version = header_cal['CAL_VER']
     observations_cal_version = '4.32'  # replace '3.5.0(Oct-09-2018)'
     ##
     ######  create configuration OBSERVATIONS section  ######
-    observations_definition_dict = create_observations_ini(observations_type, name, common_id, observations_mode, observations_data, observations_cal_version, observations_data_product, header['TELESCOP'])
+    observations_definition_dict = \
+        create_observations_ini(observations_type, name, common_id, observations_mode, observations_data, observations_cal_version,\
+                                observations_data_product, header['TELESCOP'])
 
     ##
     ######  create configuration INSTRUMENT section  ######
@@ -501,7 +515,7 @@ for visit in visits:
 
     ##
     ######  create configuration PROCESSING section  ######
-    processing_nextraction = '7'
+    ####  bugg processing_nextraction = '7'
     processing_definition_dict = create_processing_ini(processing_nextraction)
 
     # some house cleaning
