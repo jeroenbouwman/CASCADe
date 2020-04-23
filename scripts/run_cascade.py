@@ -52,9 +52,10 @@ def log(string, color, font="slant", figlet=False):
 
 @click.command()
 @click.argument('initfiles', nargs=-1)
-@click.option('--path', '-p', nargs=1, type=click.STRING)
+@click.option('--init_path', '-ip', nargs=1, type=click.STRING)
 @click.option('--data_path', '-dp', nargs=1, type=click.STRING)
-@click.option('--show_plots', '-sp', is_flag=True)
+@click.option('--save_path', '-sp', nargs=1, type=click.STRING)
+@click.option('--show_plots', '-plt', is_flag=True)
 @click.option('--no_warnings', '-nw', is_flag=True)
 def run_cascade(initfiles, path, data_path, show_plots, no_warnings):
     """
@@ -81,17 +82,23 @@ def run_cascade(initfiles, path, data_path, show_plots, no_warnings):
     if path is not None:
         os.environ["CASCADE_INITIALIZATION_FILE_PATH"] = path
     if data_path is not None:
-        os.environ["CASCADE_OBSERVATIONS"] = data_path
+        os.environ["CASCADE_DATA_PATH"] = data_path
+    if save_path is not None:
+        os.environ["CASCADE_SAVE_PATH"] = save_path
     if not show_plots:
         matplotlib.use('AGG')
     import cascade
 
     log('CASCADe', color="blue", figlet=True)
-    log("Using the follwing ini files: {}".format(initfiles), "green")
+    log("Using the following ini files: {}".format(initfiles), "green")
     log("from:  {}".format(os.environ["CASCADE_INITIALIZATION_FILE_PATH"]),
         "green")
-    log("The data directory is: {}".format(os.environ["CASCADE_OBSERVATIONS"]),
+    log("The data directory is: {}".format(os.environ["CASCADE_DATA_PATH"]),
         "green")
+     log("The save directory is: {}".format(os.environ["CASCADE_SAVE_PATH"]),
+        "green")
+     log("Note that the speciefied directories will ignored if an absolute "
+         "path is spesified in the initialization files", "green")
 
     start_time = time.time()
 
