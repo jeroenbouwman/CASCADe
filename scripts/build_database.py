@@ -17,11 +17,10 @@
 #     e.g. export DATABASE_VISITS=12181.14 ==> transit
 #         12181.12 ==> eclipse
 #
-# NEEDED INPUTS
-#   HST_CATALOG_FILE is needed, it is in a subdirectory
-#     of CASCADE_DATA_PATH/cascade_default_data_path
-#  cascade_default_data_path/"data/archive_databases/HST/WFC3/WFC3_files.pickle"
-#
+# BEWARE
+#   HST_CATALOG_FILE and the calibration files are copied from the git repository to:
+#        cascade_default_data_path"/archive_databases/HST/WFC3/WFC3_files.pickle
+#        cascade_default_data_path"/calibration/HST/WFC3"
 #   TODO :
 #        use configspec.ini and discard a lot of junk code, create_xxx_ini
 #        why observations_cal_version can not be read from the FITS header ?
@@ -429,8 +428,7 @@ URL_DATA_ARCHIVE = \
 
 ### beware HST, WFC3 hardcoded
 HST_CATALOG_FILE = os.path.join(cascade_default_data_path,
-                                "data/archive_databases/HST/WFC3/",
-                                "WFC3_files.pickle")
+                "archive_databases","HST/WFC3/","WFC3_files.pickle")
 
 cat_dict = return_exoplanet_catalogs()
 
@@ -579,10 +577,15 @@ for visit in visits:
     config_transit.write()
 
     # download all data
+    # see configuration_save_path
     data_save_path = \
-        os.path.join(cascade_default_data_path, observations_definition_dict['observations_path'],
+        os.path.join(cascade_default_data_path,
+                     observations_definition_dict['observations_path'], # should be relative, "data/"
+                     instrument_definition_dict['instrument_observatory'],
                      instrument_definition_dict['instrument'],
-                     name+'_'+common_id, "SPECTRAL_IMAGES")
+                     name+'_'+common_id,
+                     'SPECTRAL_IMAGES')
+
     os.makedirs(data_save_path, exist_ok=True)
     if observations_definition_dict['observations_mode'] == 'SCANNING':
         data_files_to_download = data_files.copy()
