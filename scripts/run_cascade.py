@@ -6,6 +6,7 @@ Created on Tue Apr 21 13:55:08 2020
 @author: Jeroen Bouwman
 """
 import os
+import sys
 import click
 import time
 import matplotlib
@@ -62,7 +63,9 @@ def log(string, color, font="slant", figlet=False):
                    'If not specified, the value set by the environment '
                    'variable CASCADE_INITIALIZATION_FILE_PATH is used or if '
                    'neither is set it defaults to the CASCADe default value '
-                   'of the CASCADe distribution.',
+                   'of the CASCADe distribution. This path setting can be '
+                   'relative to the absolute path given by the '
+                   'CASCADE_INITIALIZATION_FILE_PATH environment variable.',
               )
 @click.option('--data_path',
               '-dp',
@@ -93,9 +96,9 @@ def log(string, color, font="slant", figlet=False):
               )
 @click.option('--no_warnings',
               '-nw',
-              is_flag=True,
+              is_flag=False,
               help='If set no warning messages are printed to stdev. '
-                   'Default is True',
+                   'Default is False',
               )
 def run_cascade(initfiles, init_path, data_path, save_path, show_plots,
                 no_warnings):
@@ -110,8 +113,21 @@ def run_cascade(initfiles, init_path, data_path, save_path, show_plots,
     """
     if no_warnings:
         os.environ["CASCADE_WARNINGS"] = 'off'
+    else:
+        os.environ["CASCADE_WARNINGS"] = 'on'
     if init_path is not None:
-        os.environ["CASCADE_INITIALIZATION_FILE_PATH"] = init_path
+        if os.path.isabs(init_path):
+            os.environ["CASCADE_INITIALIZATION_FILE_PATH"] = init_path
+        else:
+            try:
+                base_ini_path = os.environ["CASCADE_INITIALIZATION_FILE_PATH"]
+                os.environ["CASCADE_INITIALIZATION_FILE_PATH"] = \
+                    os.path.join(base_ini_path, init_path)
+            except KeyError:
+                log("Relative init_path given without setting the "
+                    "CASCADE_INITIALIZATION_FILE_PATH environment variable "
+                    "Stooping script", "red")
+                sys.exit()
     if data_path is not None:
         os.environ["CASCADE_DATA_PATH"] = data_path
     if save_path is not None:

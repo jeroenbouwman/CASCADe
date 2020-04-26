@@ -275,6 +275,7 @@ class SpitzerIRS(InstrumentBase):
             target_name = self.par['obs_target_name']
 
         path_to_files = os.path.join(self.par['obs_path'],
+                                     self.par['inst_obs_name'],
                                      self.par['inst_inst_name'],
                                      target_name,
                                      'SPECTRA/')
@@ -413,6 +414,7 @@ class SpitzerIRS(InstrumentBase):
             obsid = self.par['obs_id']
             target_name = self.par['obs_target_name']
         path_to_files = os.path.join(self.par['obs_path'],
+                                     self.par['inst_obs_name'],
                                      self.par['inst_inst_name'],
                                      target_name,
                                      'SPECTRAL_IMAGES/')

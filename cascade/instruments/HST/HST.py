@@ -1046,7 +1046,7 @@ class HSTWFC3(InstrumentBase):
         return SpectralTimeSeries
 
     def _determine_position_offset(self, scan_offset_x, scan_offset_y,
-                                    cal_offset_x, cal_offset_y):
+                                   cal_offset_x, cal_offset_y):
         """
         Determine the scan offset.
 
@@ -1620,6 +1620,8 @@ class HSTWFC3(InstrumentBase):
 
     def _read_reference_pixel_file(self):
         """
+        Get the reference pixel.
+
         Read the calibration file containig the definition
         of the reference pixel appropriate for a given sub array and or filer
 

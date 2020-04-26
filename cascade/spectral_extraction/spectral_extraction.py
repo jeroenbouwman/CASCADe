@@ -1767,7 +1767,7 @@ def correct_wavelength_for_source_movent(datasetIn, spectral_movement,
 
     correctedWavelength = dataset_out.return_masked_array('wavelength').copy()
     # no need for mask here as wavekength should be difined for all pixels
-    correctedWavelength =  correctedWavelength.data
+    correctedWavelength = correctedWavelength.data
 
     ntime = correctedWavelength.shape[-1]
     for it in range(ntime):
