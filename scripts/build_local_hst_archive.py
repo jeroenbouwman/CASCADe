@@ -101,8 +101,6 @@ def check_path_option(new_path, environent_variable, message):
                 sys.exit()
 
 
-# ####################### START ###########################
-
 @click.command()
 @click.option('--init_path',
               '-ip',
@@ -146,7 +144,8 @@ def check_path_option(new_path, environent_variable, message):
               is_flag=True,
               default=False,
               help='Return all exoplanet names in Archive file.',
-              mutually_exclusive=['list_catalog_id', 'visits'],
+              mutually_exclusive=['list_catalog_id', 'visits',
+                                  'all_visits_planet', 'download_all_data'],
               )
 @click.option('--list_catalog_id',
               '-lci', cls=MutuallyExclusiveOption,
@@ -154,7 +153,8 @@ def check_path_option(new_path, environent_variable, message):
               type=click.STRING,
               help='List the observation calatog id of the planet which '
                    'name is given as an argument',
-              mutually_exclusive=['list_all_planets', 'visits']
+              mutually_exclusive=['list_all_planets', 'visits',
+                                  'all_visits_planet', 'download_all_data']
               )
 @click.option('--visits',
               '-v', cls=MutuallyExclusiveOption,
@@ -163,7 +163,7 @@ def check_path_option(new_path, environent_variable, message):
                    "initialization files will be created and the archive "
                    "data will be downloaded",
               mutually_exclusive=['list_all_planets', 'list_catalog_id',
-                                  'all_visits_planet']
+                                  'all_visits_planet', 'download_all_data']
               )
 @click.option('--all_visits_planet',
               '-avp', cls=MutuallyExclusiveOption,
@@ -173,11 +173,20 @@ def check_path_option(new_path, environent_variable, message):
                    "which the initialization files will be created and the "
                    "archive data will be downloaded",
               mutually_exclusive=['list_all_planets', 'list_catalog_id',
-                                  'visits']
+                                  'visits', 'download_all_data']
+              )
+@click.option('-download_all_data',
+              '-dad', cls=MutuallyExclusiveOption,
+              is_flag=True,
+              default=False,
+              help='Download all the archived observations to local disk.',
+              mutually_exclusive=['list_all_planets', 'list_catalog_id',
+                                  'visits', 'all_visits_planet'],
               )
 def built_local_hst_archive(init_path, data_path, no_warnings, 
                             primary_exoplanet_catalog, list_all_planets,
-                            list_catalog_id, visits, all_visits_planet):
+                            list_catalog_id, visits, all_visits_planet,
+                            download_all_data):
     if no_warnings:
         os.environ["CASCADE_WARNINGS"] = 'off'
     else:
@@ -263,8 +272,19 @@ def built_local_hst_archive(init_path, data_path, no_warnings,
             "found: {}".format(all_visits_planet, visits),
             'green')
 
-    if (visits is None) & (all_visits_planet is None):
-        visits = hst_data_catalog.keys()
+    if (visits is None) & (all_visits_planet is None) & (not download_all_data):
+        log("Warning, neither visits and all_visits_planet are defined "
+            "either speciefy on of the other of use the --all_data option "
+            "to download the entire archive.", "red")
+        sys.exit()
+
+    if download_all_data:
+        if click.confirm("Selected --download_all_data option. Do you want "
+                         "to continue downloading the entier archive?"):
+            visits = hst_data_catalog.keys()
+        else:
+            log("Aborting downloading the entier archive", "red")
+            sys.exit()
 
     if len(visits) == 0:
         log("Warning, no vistis found, check search or path settings", "red")
