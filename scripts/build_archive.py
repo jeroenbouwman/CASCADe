@@ -486,3 +486,31 @@ def fill_config_parameters(config_dict, namespece_dict):
                   "configuration dictionary".format(key, values['allowed']))
             raise ValueError
     return config_dict
+
+
+class IniFileParser:
+    def __init__(self, configuration_file_list, initialization_file_template,
+                 namespace_dict, templates_path):
+        self.configuration_file_list = configuration_file_list
+        self.initialization_file_template = initialization_file_template
+        self.namespace_dict = namespace_dict
+        self.templates_path = templates_path
+        self.create_parser()
+
+    def create_parser(self):
+        full_configuration_dict = {}
+        for configuration_file in self.configuration_file_list:
+            config_dict = \
+                read_config_file(configuration_file, self.templates_path)
+            config_dict = \
+                fill_config_parameters(config_dict, self.namespace_dict)
+            full_configuration_dict.update(config_dict.copy())
+        init_file_parser = create_configuration(
+            self.initialization_file_template,
+            self.templates_path,
+            full_configuration_dict
+            )
+        self.init_file_parser = init_file_parser
+    
+    def return_parser(self):
+        return self.init_file_parser

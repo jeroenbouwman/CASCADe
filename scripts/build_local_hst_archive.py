@@ -175,7 +175,7 @@ def check_path_option(new_path, environent_variable, message):
               mutually_exclusive=['list_all_planets', 'list_catalog_id',
                                   'visits', 'download_all_data']
               )
-@click.option('-download_all_data',
+@click.option('--download_all_data',
               '-dad', cls=MutuallyExclusiveOption,
               is_flag=True,
               default=False,
@@ -183,10 +183,16 @@ def check_path_option(new_path, environent_variable, message):
               mutually_exclusive=['list_all_planets', 'list_catalog_id',
                                   'visits', 'all_visits_planet'],
               )
+@click.option('--create_ini_files_only',
+              '-cio',
+              is_flag=True,
+              help='If set only the ini files are created. '
+                   'Default is False'
+              )
 def built_local_hst_archive(init_path, data_path, no_warnings, 
                             primary_exoplanet_catalog, list_all_planets,
                             list_catalog_id, visits, all_visits_planet,
-                            download_all_data):
+                            download_all_data, create_ini_files_only):
     if no_warnings:
         os.environ["CASCADE_WARNINGS"] = 'off'
     else:
@@ -217,6 +223,7 @@ def built_local_hst_archive(init_path, data_path, no_warnings,
     from build_archive import return_header_info
     from build_archive import fill_config_parameters
     from build_archive import save_observations
+    from build_archive import IniFileParser
 
     log('CASCADe', color="blue", figlet=True)
     log("The initialization file directory is set to: "
@@ -272,7 +279,8 @@ def built_local_hst_archive(init_path, data_path, no_warnings,
             "found: {}".format(all_visits_planet, visits),
             'green')
 
-    if (visits is None) & (all_visits_planet is None) & (not download_all_data):
+    if (visits is None) & (all_visits_planet is None) & \
+            (not download_all_data):
         log("Warning, neither visits and all_visits_planet are defined "
             "either speciefy on of the other of use the --all_data option "
             "to download the entire archive.", "red")
@@ -298,7 +306,7 @@ def built_local_hst_archive(init_path, data_path, no_warnings,
         PLANET_NAME = hst_data_catalog[visit]['planet']
         log("Target: {}, Visit: {}".format(PLANET_NAME, visit), 'green')
 
-        # ########3####  some logic  ##############
+        # ############  some logic  ##############
         # ## Define the observation typpe and skips loop if problem ##
         if hst_data_catalog[visit]['observation'] == 'transit':
             OBS_TYPE = 'TRANSIT'
@@ -310,6 +318,14 @@ def built_local_hst_archive(init_path, data_path, no_warnings,
             log('Skipping : {}'.format(hst_data_catalog[visit]['observation']),
                 'red')
             continue
+        # get the data files from hst databes
+        data_files = hst_data_catalog[visit]['observations_id_ima'].split(',')
+        cal_data_files = hst_data_catalog[visit]['calibrations_id'].split(',')
+        data_file_id = [file.split('_')[0] for file in data_files]
+        cal_data_file_id = [file.split('_')[0] for file in cal_data_files]
+        # get or calculate all parameters needed for the observations and
+        # instrument sections in the .ini file
+        OBS_ID = long_substr(data_file_id)
 
         # ################ CREATE OBJECT.INI ##############################
         # read object.conf file
@@ -344,17 +360,7 @@ def built_local_hst_archive(init_path, data_path, no_warnings,
 
         # ################ CREATE EXTRACT_TIMESERIES.INI ####################
         create_timeseries_namespace_dict = {}
-        # get the data files from hst databes
-        data_files = hst_data_catalog[visit]['observations_id_ima'].split(',')
-        cal_data_files = hst_data_catalog[visit]['calibrations_id'].split(',')
-        data_file_id = [file.split('_')[0] for file in data_files]
-        cal_data_file_id = [file.split('_')[0] for file in cal_data_files]
-
-        # get or calculate all parameters needed for the observations and
-        # instrument sections in the .ini file
-        OBS_ID = long_substr(data_file_id)
-
-        # fill dictionary with parameters to be filled into tamplates
+        # fill dictionary with parameters to be filled into templates
         create_timeseries_namespace_dict['cascade_save_path'] = \
             PLANET_NAME+'_'+OBS_ID
         create_timeseries_namespace_dict['observations_type'] = OBS_TYPE
@@ -364,42 +370,18 @@ def built_local_hst_archive(init_path, data_path, no_warnings,
         create_timeseries_namespace_dict.update(
             **return_header_info(data_files[0], cal_data_files[0])
             )
-
-        # get the .conf files and fill with values.
-        cascade_config_dict = \
-            read_config_file(CASCADE_CONFIGURATION_FILE, TEMPLATES_DIR)
-        cascade_config_dict = \
-            fill_config_parameters(cascade_config_dict,
-                                   create_timeseries_namespace_dict)
-        processing_config_dict = \
-            read_config_file(PROCESSING_CONFIGURATION_FILE, TEMPLATES_DIR)
-        processing_config_dict = \
-            fill_config_parameters(processing_config_dict,
-                                   create_timeseries_namespace_dict)
-        instrument_config_dict = \
-            read_config_file(INSTRUMENT_CONFIGURATION_FILE, TEMPLATES_DIR)
-        instrument_config_dict = \
-            fill_config_parameters(instrument_config_dict,
-                                   create_timeseries_namespace_dict)
-        observations_config_dict = \
-            read_config_file(OBSERVATIONS_CONFIGURATION_FILE, TEMPLATES_DIR)
-        observations_config_dict = \
-            fill_config_parameters(observations_config_dict,
-                                   create_timeseries_namespace_dict)
-
-        # combine configuration
-        combined_extract_timeseries_initialization_file_dict = \
-            {**cascade_config_dict,
-             **processing_config_dict,
-             **instrument_config_dict,
-             **observations_config_dict
-             }
-        # create parser
-        extract_timeseries_parser = create_configuration(
-            EXTRACT_TIMESERIES_CONFIGURATION_TEMPLATE,
-            TEMPLATES_DIR,
-            combined_extract_timeseries_initialization_file_dict
-            )
+        # create list with the configuration files to use
+        configuration_file_list = [CASCADE_CONFIGURATION_FILE,
+                                   PROCESSING_CONFIGURATION_FILE,
+                                   INSTRUMENT_CONFIGURATION_FILE,
+                                   OBSERVATIONS_CONFIGURATION_FILE]
+        # create initialization file parser object
+        IFP = \
+            IniFileParser(configuration_file_list,
+                          EXTRACT_TIMESERIES_CONFIGURATION_TEMPLATE,
+                          create_timeseries_namespace_dict,
+                          TEMPLATES_DIR)
+        extract_timeseries_parser = IFP.return_parser()
         print_parser_content(extract_timeseries_parser)
 
         # ############### CREATE CALIBRATE_PLANET_SPECTRUM.INI ################
@@ -412,42 +394,20 @@ def built_local_hst_archive(init_path, data_path, no_warnings,
         cal_planet_spec_namespace_dict['observations_mode'] = 'STARING'
         cal_planet_spec_namespace_dict['observations_data'] = 'SPECTRUM'
 
-        # read the .conf and fill values
-        processing_config_dict = \
-            read_config_file(PROCESSING_CONFIGURATION_FILE, TEMPLATES_DIR)
-        processing_config_dict = \
-            fill_config_parameters(processing_config_dict,
-                                   cal_planet_spec_namespace_dict)
-        cpm_config_dict = \
-            read_config_file(CPM_CONFIGURATION_FILE, TEMPLATES_DIR)
-        cpm_config_dict = \
-            fill_config_parameters(cpm_config_dict,
-                                   cal_planet_spec_namespace_dict)
-        model_config_dict = \
-            read_config_file(MODEL_CONFIGURATION_FILE, TEMPLATES_DIR)
-        model_config_dict = \
-            fill_config_parameters(model_config_dict,
-                                   cal_planet_spec_namespace_dict)
-        observations_config_dict = \
-            read_config_file(OBSERVATIONS_CONFIGURATION_FILE, TEMPLATES_DIR)
-        observations_config_dict = \
-            fill_config_parameters(observations_config_dict,
-                                   cal_planet_spec_namespace_dict)
-        # combine configuration
-        combined_calibrate_planet_spectrum_initialization_file_dict = \
-            {**cascade_config_dict,
-             **processing_config_dict,
-             **cpm_config_dict,
-             **model_config_dict,
-             **instrument_config_dict,
-             **observations_config_dict
-             }
-        # create parser
-        calibrate_planet_spectrum_parser = create_configuration(
-                CALIBRATE_PLANET_SPECTRUM_CONFIGURATION_TEMPLATE,
-                TEMPLATES_DIR,
-                combined_calibrate_planet_spectrum_initialization_file_dict
-                )
+        # update which configureation files to use
+        configuration_file_list = [CASCADE_CONFIGURATION_FILE,
+                                   PROCESSING_CONFIGURATION_FILE,
+                                   CPM_CONFIGURATION_FILE,
+                                   MODEL_CONFIGURATION_FILE,
+                                   INSTRUMENT_CONFIGURATION_FILE,
+                                   OBSERVATIONS_CONFIGURATION_FILE]
+        # create initialization file parser object
+        IFP = \
+            IniFileParser(configuration_file_list,
+                          CALIBRATE_PLANET_SPECTRUM_CONFIGURATION_TEMPLATE,
+                          cal_planet_spec_namespace_dict,
+                          TEMPLATES_DIR)
+        calibrate_planet_spectrum_parser = IFP.return_parser()
         print_parser_content(calibrate_planet_spectrum_parser)
 
         # ############## Saving ini files ##################
@@ -488,8 +448,12 @@ def built_local_hst_archive(init_path, data_path, no_warnings,
             calibrate_planet_spectrum_parser.write(configfile)
 
         # # ################# GET ARCHIVE DATA ######################
-        save_observations(data_files, cal_data_files,
-                          extract_timeseries_parser)
+        if not create_ini_files_only:
+            save_observations(data_files, cal_data_files,
+                              extract_timeseries_parser)
+        else:
+            log("create_ini_files_only flag is True, not downloading data",
+                "red")
 
 
 if __name__ == '__main__':
