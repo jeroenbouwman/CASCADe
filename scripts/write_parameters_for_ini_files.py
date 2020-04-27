@@ -561,7 +561,7 @@ def write_diff(exoplanet_a, exoplanets_org, nea_catalog, tepcat):
 verbose = True
 
 #  planets observed by HST WFC3
-list_planets_hst_wfc3_path = '../data/data/HST/archive_data/'
+list_planets_hst_wfc3_path = '../data/archive_databases/HST/WFC3/'
 list_planets_hst_wfc3_filename = 'WFC3_files.pickle'
 object_ini_files_path = 'object_init_files/'
 
