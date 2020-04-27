@@ -210,6 +210,7 @@ def built_local_hst_archive(init_path, data_path, no_warnings,
                           "CASCADE_DATA_PATH environment "
                           "variable Stopping script")
 
+    import cascade
     from cascade.initialize import cascade_default_data_path
     from cascade.initialize import cascade_default_initialization_path
     from build_archive import return_exoplanet_catalogs
@@ -226,6 +227,8 @@ def built_local_hst_archive(init_path, data_path, no_warnings,
     from build_archive import IniFileParser
 
     log('CASCADe', color="blue", figlet=True)
+    log("version {}, Copyright (C) 2020 "
+        "EXOPANETS_A H2020 program".format(cascade.__version__), "blue")
     log("The initialization file directory is set to: "
         "{}".format(cascade_default_initialization_path), "green")
     log("The data directory is set to: "

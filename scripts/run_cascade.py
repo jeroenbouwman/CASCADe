@@ -137,6 +137,8 @@ def run_cascade(initfiles, init_path, data_path, save_path, show_plots,
     import cascade
 
     log('CASCADe', color="blue", figlet=True)
+    log("version {}, Copyright (C) 2020 "
+        "EXOPANETS_A H2020 program".format(cascade.__version__), "blue")
     log("Using the following ini files: {}".format(initfiles), "green")
     log("from:  {}".format(os.environ["CASCADE_INITIALIZATION_FILE_PATH"]),
         "green")
