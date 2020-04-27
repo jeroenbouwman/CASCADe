@@ -32,6 +32,8 @@ import sys
 import six
 from pyfiglet import figlet_format
 from click import Option, UsageError
+import time
+
 
 try:
     import colorama
@@ -295,7 +297,7 @@ def built_local_hst_archive(init_path, data_path, no_warnings,
             sys.exit()
 
     if len(visits) == 0:
-        log("Warning, no vistis found, check search or path settings", "red")
+        log("Warning, no visits found, check search or path settings", "red")
         sys.exit()
 
     # explanet data catalogs
@@ -457,4 +459,8 @@ def built_local_hst_archive(init_path, data_path, no_warnings,
 
 
 if __name__ == '__main__':
+    start_time = time.time()
     built_local_hst_archive()
+    elapsed_time = time.time() - start_time
+    print('elapsed_time =', elapsed_time)
+
