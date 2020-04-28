@@ -529,7 +529,7 @@ def check_folder(folder_path, create_directory, verbose=True):
         if create_directory:
             if verbose:
                 print("Creating the folder '{}'".format(folder_path))
-            os.makedirs(folder_path)
+            os.mkdir(folder_path)
 
 
 def write_diff(exoplanet_a, exoplanets_org, nea_catalog, tepcat):
@@ -619,7 +619,7 @@ name_catalogue_exoplanets_org = 'exoplanets.csv'
 url_catalogue_exoplanets_org = 'http://www.exoplanets.org/csv-files/exoplanets.csv'
 
 # Nasa Exoplanet Archive catalogue
-path_catalogue_nasa_exoplanet_archive = '../data/exoplanet_data/NASAEXOPLANETARCHIVE/'
+path_catalogue_nasa_exoplanet_archive = '../data/exoplanet_data/NASAEXOPLANETARCHIVE'
 name_catalogue_nasa_exoplanet_archive = 'nasaexoplanetarchive_full.csv'
 url_catalogue_nasa_exoplanet_archive = ''
 
