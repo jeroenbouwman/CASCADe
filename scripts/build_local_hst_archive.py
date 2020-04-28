@@ -236,7 +236,7 @@ def built_local_hst_archive(init_path, data_path, no_warnings,
 
     log('CASCADe', color="blue", figlet=True)
     log("version {}, Copyright (C) 2020 "
-        "EXOPANETS_A H2020 program".format(cascade.__version__), "blue")
+        "EXOPANETS_A H2020 Program".format(cascade.__version__), "blue")
     log("The initialization file directory is set to: "
         "{}".format(cascade_default_initialization_path), "green")
     log("The data directory is set to: "

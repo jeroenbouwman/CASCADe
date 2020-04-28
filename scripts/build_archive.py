@@ -26,12 +26,14 @@ Created on April 24 2020
 @author:Jeroen Bouwman, Rene Gastaud, Raphael Peralta, Fred Lahuis
 """
 import os
+# import sys
 import astropy.units as u
 import numpy as np
 from astropy.table import MaskedColumn
 import io
 import configparser
-from urllib.request import urlretrieve
+import requests
+# from urllib.request import urlretrieve
 import shutil
 from astropy.io import fits
 from tqdm import tqdm
@@ -353,15 +355,23 @@ def return_header_info(data_file, cal_data_file):
                                      "mastDownload/")
 
     os.makedirs(TEMP_DOWNLOAD_DIR, exist_ok=True)
-    urlretrieve(URL_DATA_ARCHIVE.format(data_file),
-                os.path.join(TEMP_DOWNLOAD_DIR, data_file))
+    df = requests.get(URL_DATA_ARCHIVE.format(data_file), stream=True)
+    with open(os.path.join(TEMP_DOWNLOAD_DIR, data_file), 'wb') as f:
+        for chunk in df.iter_content(chunk_size=1024):
+            f.write(chunk)
+    # urlretrieve(URL_DATA_ARCHIVE.format(data_file),
+    #             os.path.join(TEMP_DOWNLOAD_DIR, data_file))
     header_info = {}
     with fits.open(os.path.join(TEMP_DOWNLOAD_DIR, data_file)) as hdul:
         for keyword in FITS_KEYWORDS:
             header_info[keyword] = hdul['PRIMARY'].header[keyword]
 
-    urlretrieve(URL_DATA_ARCHIVE.format(cal_data_file),
-                os.path.join(TEMP_DOWNLOAD_DIR, cal_data_file))
+    df = requests.get(URL_DATA_ARCHIVE.format(cal_data_file), stream=True)
+    with open(os.path.join(TEMP_DOWNLOAD_DIR, cal_data_file), 'wb') as f:
+        for chunk in df.iter_content(chunk_size=1024):
+            f.write(chunk)
+    # urlretrieve(URL_DATA_ARCHIVE.format(cal_data_file),
+    #             os.path.join(TEMP_DOWNLOAD_DIR, cal_data_file))
     cal_header_info = {}
     with fits.open(os.path.join(TEMP_DOWNLOAD_DIR, cal_data_file)) as hdul:
         for keyword in FITS_KEYWORDS:
@@ -438,19 +448,34 @@ def save_observations(data_files, cal_data_files, parser):
     else:
         data_files_to_download = \
             [file.replace('_ima', '_flt') for file in data_files]
-    for datafile in tqdm(data_files_to_download, dynamic_ncols=True):
-        urlretrieve(URL_DATA_ARCHIVE.format(datafile),
-                    os.path.join(data_save_path, datafile))
+    for datafile in tqdm(data_files_to_download, dynamic_ncols=True,
+                         desc='Downloading Archive Data '):
+        df = requests.get(URL_DATA_ARCHIVE.format(datafile), stream=True)
+        with open(os.path.join(data_save_path, datafile), 'wb') as f:
+            for chunk in df.iter_content(chunk_size=1024):
+                f.write(chunk)
+        # urlretrieve(URL_DATA_ARCHIVE.format(datafile),
+        #             os.path.join(data_save_path, datafile))
     data_files_to_download = cal_data_files.copy()
-    for datafile in tqdm(data_files_to_download, dynamic_ncols=True):
-        urlretrieve(URL_DATA_ARCHIVE.format(datafile),
-                    os.path.join(data_save_path, datafile))
+    for datafile in tqdm(data_files_to_download, dynamic_ncols=True,
+                         desc='Downloading Aquisition Images '):
+        df = requests.get(URL_DATA_ARCHIVE.format(datafile), stream=True)
+        with open(os.path.join(data_save_path, datafile), 'wb') as f:
+            for chunk in df.iter_content(chunk_size=1024):
+                f.write(chunk)
+        # urlretrieve(URL_DATA_ARCHIVE.format(datafile),
+        #            os.path.join(data_save_path, datafile))
     if parser['OBSERVATIONS']['observations_mode'] == 'SCANNING':
         data_files_to_download = \
             [file.replace('_flt', '_ima') for file in cal_data_files]
-        for datafile in tqdm(data_files_to_download, dynamic_ncols=True):
-            urlretrieve(URL_DATA_ARCHIVE.format(datafile),
-                        os.path.join(data_save_path, datafile))
+        for datafile in tqdm(data_files_to_download, dynamic_ncols=True,
+                             desc='Downloading Aquisition Images '):
+            df = requests.get(URL_DATA_ARCHIVE.format(datafile), stream=True)
+            with open(os.path.join(data_save_path, datafile), 'wb') as f:
+                for chunk in df.iter_content(chunk_size=1024):
+                    f.write(chunk)
+            # urlretrieve(URL_DATA_ARCHIVE.format(datafile),
+            #             os.path.join(data_save_path, datafile))
 
 
 def fill_config_parameters(config_dict, namespece_dict):
@@ -489,6 +514,8 @@ def fill_config_parameters(config_dict, namespece_dict):
 
 
 class IniFileParser:
+    """Inititialization file parser class."""
+
     def __init__(self, configuration_file_list, initialization_file_template,
                  namespace_dict, templates_path):
         self.configuration_file_list = configuration_file_list
@@ -498,6 +525,14 @@ class IniFileParser:
         self.create_parser()
 
     def create_parser(self):
+        """
+        Create configuration parser.
+
+        Returns
+        -------
+        None.
+
+        """
         full_configuration_dict = {}
         for configuration_file in self.configuration_file_list:
             config_dict = \
@@ -511,6 +546,15 @@ class IniFileParser:
             full_configuration_dict
             )
         self.init_file_parser = init_file_parser
-    
+
     def return_parser(self):
+        """
+        Return configuration parser.
+
+        Returns
+        -------
+        TYPE
+            DESCRIPTION.
+
+        """
         return self.init_file_parser
