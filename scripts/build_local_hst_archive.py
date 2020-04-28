@@ -130,6 +130,7 @@ def check_path_option(new_path, environent_variable, message):
 @click.option('--no_warnings',
               '-nw',
               is_flag=True,
+              default=False,
               help='If set no warning messages are printed to stdev. '
                    'Default is False',
               )
