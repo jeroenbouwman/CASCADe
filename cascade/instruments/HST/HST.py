@@ -136,7 +136,8 @@ class HSTWFC3(InstrumentBase):
        - detector subarrays : {'IRSUB128', 'IRSUB256', 'IRSUB512', 'GRISM128',
          'GRISM256', 'GRISM512'}
        - spectroscopic filters : {'G141', 'G102'}
-       - imaging filters :  {'F139M', 'F132N', 'F167N', 'F126N', 'F130N'}
+       - imaging filters :  {'F139M', 'F132N', 'F167N', 'F126N', 'F130N',
+                             'F140W'}
        - data type : {'SPECTRUM', 'SPECTRAL_IMAGE', 'SPECTRAL_CUBE'}
        - observing strategy : {'STARING'}
        - data products : {'SPC', 'flt', 'COE'}
@@ -145,7 +146,8 @@ class HSTWFC3(InstrumentBase):
     __valid_sub_array = {'IRSUB128', 'IRSUB256', 'IRSUB512', 'GRISM128',
                          'GRISM256', 'GRISM512'}
     __valid_spectroscopic_filter = {'G141', 'G102'}
-    __valid_imaging_filter = {'F139M', 'F132N', 'F167N', 'F126N', 'F130N'}
+    __valid_imaging_filter = {'F139M', 'F132N', 'F167N', 'F126N', 'F130N',
+                              'F140W'}
     __valid_beams = {'A'}
     __valid_data = {'SPECTRUM', 'SPECTRAL_IMAGE', 'SPECTRAL_CUBE'}
     __valid_observing_strategy = {'STARING', 'SCANNING'}
