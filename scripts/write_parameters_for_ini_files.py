@@ -11,10 +11,10 @@ It needs at least 2 catalogs: one with the list of the planets observed by HST (
 and one with the physical parameters of the stars and exoplanets.
 
 Usage:
-TODO
+python write_parameters_for_ini_files.py
 
-Args:
-TODO
+Returns
+One object ini file per planet observed by HST
 
 Author:
   Raphael Peralta <raphael.peralta@cea.fr>
@@ -34,12 +34,14 @@ def replace_nan_values(values_to_check, values_to_replace):
 
     Parameters
     ----------
-    object_names : list of string of characters
+    values_to_check:
+        DESCRIPTION.
+    values_to_replace:
         DESCRIPTION.
 
     Returns
     -------
-    new_name : list of string of characters
+    new_values :
         DESCRIPTION.
 
     """
@@ -502,6 +504,34 @@ def merge_catalogue(catalogue_a, catalogue_b, verbose=False):
     return b_merge_a
 
 
+def check_folder(folder_path, create_directory, verbose=True):
+    """
+    Check if a folder exists.
+    If not, a warning appears (if verbose=True) and the folder is created (if create_directory=True)
+
+    Parameters
+    ----------
+    folder_path : string
+        path and name of the folder
+    create_directory : boolean
+        if True, the missing folder is created
+    verbose : boolean
+        if True, raise warnings if the folder do not exist and if it is created.
+
+    Returns
+    -------
+    None
+
+    """
+    if not(os.path.isdir(folder_path)):
+        if verbose:
+            print("Warning: the directory '{}' doesn't exist.".format(folder_path))
+        if create_directory:
+            if verbose:
+                print("Creating the folder '{}'".format(folder_path))
+            os.makedirs(folder_path)
+
+
 def write_diff(exoplanet_a, exoplanets_org, nea_catalog, tepcat):
 
     parameter = ['I', 'RPLANET', 'PER', 'TT', 'A']
@@ -561,12 +591,12 @@ def write_diff(exoplanet_a, exoplanets_org, nea_catalog, tepcat):
 verbose = True
 
 #  planets observed by HST WFC3
-list_planets_hst_wfc3_path = '../data/archive_databases/HST/WFC3/'
+list_planets_hst_wfc3_path = '../data/archive_databases/HST/WFC3'
 list_planets_hst_wfc3_filename = 'WFC3_files.pickle'
-object_ini_files_path = 'object_init_files/'
+object_ini_files_path = 'object_init_files'
 
 # Exoplanet.a catalogue
-path_catalogue_exoplanets_a = '../data/exoplanet_data/EXOPLANETS_A/'
+path_catalogue_exoplanets_a = '../data/exoplanet_data/EXOPLANETS_A'
 name_catalogue_exoplanets_a = 'exoplanets_a_full.csv'
 url_catalogue_exoplanets_a = 'http://svo2.cab.inta-csic.es/vocats/v2/exostars/cs.php?RA=180.000000&DEC=0.000000&S' \
                              'R=180.000000&VERB=1&objlist=-1,0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,' \
@@ -629,7 +659,7 @@ tepcat_observable_catalogue = get_catalogue(path_observable_tepcat,
 
 
 # data reading
-list_planets_hst_wfc3 = hst_data.drop_duplicates('PLANET')['PLANET'] # remove hst data duplicates
+list_planets_hst_wfc3 = hst_data.drop_duplicates('PLANET')['PLANET']  # remove hst data duplicates
 
 exo_a_merged_hst = reformat_exoplanets_a_data(exoplanet_a_catalogue)
 exoplanet_org_data = reformat_exoplanets_org_data(exoplanet_org_catalogue)
@@ -666,6 +696,8 @@ star_logg = exo_a_merged_hst['LOGG']  # Star surface gravity [dex(cm/s2)]
 
 
 # Write object ini files
+check_folder(object_ini_files_path, create_directory=True, verbose=verbose)
+
 for i in range(list_planets_hst_wfc3.size):
 
     object_ini_files_name = 'cascade_' + planet_name[i] + '_object.ini'
