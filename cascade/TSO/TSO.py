@@ -2654,6 +2654,8 @@ class TSOSuite:
 
     def correct_extracted_spectrum(self):
         """
+        Corrected extracted planet spectrum.
+
         Make correction for non-uniform subtraction of transit signal due to
         differences in the relative weighting of the regressors
 
@@ -2758,7 +2760,7 @@ class TSOSuite:
 
     def save_results(self):
         """
-        Save results
+        Save results.
 
         Raises
         ------
@@ -2792,9 +2794,20 @@ class TSOSuite:
         try:
             observations_id = self.cascade_parameters.observations_id
         except AttributeError:
+            print("No target name defined for observation. "
+                  "Aborting saving results")
+            raise
+        try:
+            observations_target_name = \
+                self.cascade_parameters.observations_target_name
+        except AttributeError:
             print("No uniq id defined for observation. "
                   "Aborting saving results")
             raise
+        if observations_id not in observations_target_name:
+            save_name_base = observations_target_name+'_'+observations_id
+        else:
+            save_name_base = observations_target_name
 
         t = Table()
         col = MaskedColumn(data=results.spectrum.wavelength,
@@ -2809,7 +2822,8 @@ class TSOSuite:
                            unit=results.spectrum.data_unit,
                            name='Error')
         t.add_column(col)
-        t.write(save_path+observations_id+'_exoplanet_spectra.fits',
+        t.write(os.path.join(save_path,
+                             save_name_base+'_exoplanet_spectra.fits'),
                 format='fits', overwrite=True)
 
         try:
@@ -2826,8 +2840,8 @@ class TSOSuite:
                                unit=results.corrected_spectrum.data_unit,
                                name='Error')
             t.add_column(col)
-            t.write(save_path+observations_id +
-                    '_corrected_exoplanet_spectra.fits',
+            t.write(os.path.join(save_path, save_name_base +
+                                 '_corrected_exoplanet_spectra.fits'),
                     format='fits', overwrite=True)
         except AttributeError:
             pass
@@ -2847,18 +2861,22 @@ class TSOSuite:
                                unit=results.brightness_temperature.data_unit,
                                name='Error')
             t.add_column(col)
-            t.write(save_path+observations_id +
-                    '_exoplanet_brightness_temperature.fits',
+            t.write(os.path.join(save_path, save_name_base +
+                                 '_exoplanet_brightness_temperature.fits'),
                     format='fits', overwrite=True)
 
     def plot_results(self):
         """
-        Plot the extracted planetary spectrum and scaled signal on the
-        detector.
+        Plot the planetary spectrum and fit residual.
 
         Raises
         ------
         AttributeError
+            DESCRIPTION.
+
+        Returns
+        -------
+        None.
 
         Examples
         --------
@@ -2887,6 +2905,17 @@ class TSOSuite:
         except AttributeError:
             raise AttributeError("No uniq id defined for observation \
                                  Aborting plotting results")
+        try:
+            observations_target_name = \
+                self.cascade_parameters.observations_target_name
+        except AttributeError:
+            print("No target name defined for observation. "
+                  "Aborting saving results")
+            raise
+        if observations_id not in observations_target_name:
+            save_name_base = observations_target_name+'_'+observations_id
+        else:
+            save_name_base = observations_target_name
         try:
             add_calibration_signal = \
                 ast.literal_eval(self.cascade_parameters.
@@ -2947,7 +2976,8 @@ class TSOSuite:
         ax.set_ylabel('Wavelength [{}]'.format(wavelength_unit))
         ax.set_title('Residual Image')
         plt.show()
-        fig.savefig(save_path+observations_id+'_residual_signal.png',
+        fig.savefig(os.path.join(save_path,
+                                 save_name_base+'_residual_signal.png'),
                     bbox_inches='tight')
 
         if results.weighted_image.shape[1] <= 1:
@@ -2975,7 +3005,8 @@ class TSOSuite:
             ax.set_xlabel('Pixel Number Spatial Direction')
             ax.set_ylabel('Pixel Number Wavelength Direction')
             plt.show()
-        fig.savefig(save_path+observations_id+'_weighted_signal.png',
+        fig.savefig(os.path.join(save_path,
+                                 save_name_base+'_weighted_signal.png'),
                     bbox_inches='tight')
 
         # BUG FIX as errorbar does not support quantaties.
@@ -3040,7 +3071,8 @@ class TSOSuite:
                   handleheight=1.5, labelspacing=0.05,
                   fontsize=13).set_zorder(11)
         plt.show()
-        fig.savefig(save_path+observations_id+'_exoplanet_spectra.png',
+        fig.savefig(os.path.join(save_path,
+                                 save_name_base+'_exoplanet_spectra.png'),
                     bbox_inches='tight')
 
         if transittype == 'secondary':
@@ -3084,8 +3116,9 @@ class TSOSuite:
             ax.set_xlabel('Wavelength [{}]'.format(results.
                           brightness_temperature.wavelength_unit))
             plt.show()
-            fig.savefig(save_path+observations_id +
-                        '_exoplanet_brightness_temperature.png',
+            fig.savefig(os.path.join(save_path,
+                                     save_name_base +
+                        '_exoplanet_brightness_temperature.png'),
                         bbox_inches='tight')
 
         if add_calibration_signal:
@@ -3142,6 +3175,6 @@ class TSOSuite:
                 ax.set_xlabel('Wavelength [{}]'.format(results.
                               calibration_correction.wavelength_unit))
                 plt.show()
-                fig.savefig(save_path+observations_id +
-                            '_calibration_SNR.png', bbox_inches='tight')
+                fig.savefig(os.path.join(save_path, save_name_base +
+                            '_calibration_SNR.png'), bbox_inches='tight')
         np.warnings.filterwarnings('default')

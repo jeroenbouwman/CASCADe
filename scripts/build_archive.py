@@ -506,9 +506,10 @@ def fill_config_parameters(config_dict, namespece_dict):
                 (values['allowed'][0] == 'NO_RESTRICTIONS')):
             config_dict[key] = new_value
         else:
-            print("The value of the {} parameter does not correspond "
+            print("The value {} of the {} parameter does not correspond "
                   "to any of the allowd values: {}. Aboritng creating of "
-                  "configuration dictionary".format(key, values['allowed']))
+                  "configuration dictionary".format(new_value, key,
+                                                    values['allowed']))
             raise ValueError
     return config_dict
 
