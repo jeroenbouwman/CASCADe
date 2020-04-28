@@ -33,9 +33,9 @@ for planet in $planets; do
   echo "logfile=$CASCADE_LOGS/run_cascade/extract_${planet}_$d.log"
   logfile=$CASCADE_LOGS/run_cascade/extract_${planet}_$d.log
   rm -f $logfile
-  echo "$CASCADE_PATH/scripts/run_cascade.py -nw $iof $ief -ip $ip &> $logfile"
+  echo "$CASCADE_PATH/scripts/run_cascade.py $iof $ief -ip $ip &> $logfile"
   SECONDS=0
-  $CASCADE_PATH/scripts/run_cascade.py -nw $iof $ief -ip $ip &> $logfile
+  $CASCADE_PATH/scripts/run_cascade.py $iof $ief -ip $ip &> $logfile
   echo ""
   echo "PROCESSING TIME $(echo "scale=1; $SECONDS / 60" | bc)  minutes" >> $logfile
   echo "PROCESSING TIME $(echo "scale=1; $SECONDS / 60" | bc)  minutes" 
@@ -43,18 +43,20 @@ for planet in $planets; do
   echo "TOTAL RUNGTIME $((($(date +%s)-$start)/3600)) hours" 
 
 # SPECTRA are placed in the wrong place, so moving it here untill this is fixed in run_cascade
-  echo "Move extracted spectra"
-  rm -r $CASCADE_DATA_PATH/data/HST/WFC3/${planet}/SPECTRA
-  mv $CASCADE_DATA_PATH/data/WFC3/${planet}/SPECTRA $CASCADE_DATA_PATH/data/HST/WFC3/${planet}/
-  rmdir $CASCADE_DATA_PATH/data/WFC3/${planet}
-  rmdir $CASCADE_DATA_PATH/data/WFC3
+  if [ -d "$CASCADE_DATA_PATH/data/HST/WFC3/${planet}/SPECTRA" ]; then
+    echo "Move extracted spectra"
+    rm -r $CASCADE_DATA_PATH/data/HST/WFC3/${planet}/SPECTRA
+    mv $CASCADE_DATA_PATH/data/WFC3/${planet}/SPECTRA $CASCADE_DATA_PATH/data/HST/WFC3/${planet}/
+    rmdir $CASCADE_DATA_PATH/data/WFC3/${planet}
+    rmdir $CASCADE_DATA_PATH/data/WFC3
+  fi
 
   echo "logfile=$CASCADE_LOGS/run_cascade/transit_${planet}_$d.log"
   logfile=$CASCADE_LOGS/run_cascade/transit_${planet}_$d.log
   rm -f $logfile
-  echo "$CASCADE_PATH/scripts/run_cascade.py -nw $iof $itf -ip $ip &> $logfile"
+  echo "$CASCADE_PATH/scripts/run_cascade.py $iof $itf -ip $ip &> $logfile"
   SECONDS=0
-  $CASCADE_PATH/scripts/run_cascade.py -nw $iof $itf -ip $ip &> $logfile
+  $CASCADE_PATH/scripts/run_cascade.py $iof $itf -ip $ip &> $logfile
   ends=`date +%s`
   echo ""
   echo "PROCESSING TIME $(echo "scale=1; $SECONDS / 60" | bc)  minutes" >> $logfile
@@ -65,6 +67,4 @@ for planet in $planets; do
   echo " "
 
 done
-
-rmdir $CASCADE_DATA_PATH/data/WFC3/
 
