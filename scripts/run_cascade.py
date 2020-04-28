@@ -163,7 +163,7 @@ def run_cascade(initfiles, init_path, data_path, save_path, show_plots,
                           "variable Stopping script")
 
     if save_path is not None:
-        check_path_option(save_path, "CASCADE_DATA_PATH",
+        check_path_option(save_path, "CASCADE_SAVE_PATH",
                           "Relative save_path given without setting the "
                           "CASCADE_SAVE_PATH environment "
                           "variable Stopping script")
