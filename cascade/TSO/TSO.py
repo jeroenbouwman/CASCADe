@@ -37,6 +37,7 @@ from types import SimpleNamespace
 import warnings
 import numpy as np
 from scipy import interpolate
+from scipy import ndimage
 import astropy.units as u
 from astropy.stats import akaike_info_criterion
 from astropy.table import MaskedColumn, Table
@@ -359,9 +360,25 @@ class TSOSuite:
 
         if verbose:
             spec_data = self.observation.dataset.return_masked_array('data')
+            time_data = self.observation.dataset.return_masked_array('time')
             roi = self.observation.instrument_calibration.roi
-            total_data = np.ma.array(np.ma.sum(spec_data, axis=-1),
-                                     mask=roi)
+
+            if spec_data.ndim == 3:
+                roi_cube = np.tile(roi.T, (time_data.shape[-1], 1, 1)).T
+                spec_data
+            else:
+                roi_cube = np.tile(roi.T, (time_data.shape[-1], 1)).T
+            data_with_roi = \
+                np.ma.array(spec_data,
+                            mask=np.ma.mask_or(spec_data.mask, roi_cube))
+            total_data = np.ma.sum(data_with_roi, axis=-1)
+            if spec_data.ndim == 3:
+                lightcurve = np.ma.sum(data_with_roi, axis=(0, 1))
+                time = time_data[0, 0, :]
+            else:
+                lightcurve = np.ma.sum(data_with_roi, axis=(0))
+                time = time_data[0, :]
+
             sns.set_context("talk", font_scale=1.5,
                             rc={"lines.linewidth": 2.5})
             sns.set_style("white", {"xtick.bottom": True, "ytick.left": True})
@@ -371,13 +388,24 @@ class TSOSuite:
                 ax.set_ylabel('Pixel Position Dispersion Direction')
                 ax.set_xlabel('Pixel Position Corss-Dispersion Direction')
             else:
-                ax.plt(total_data)
+                ax.plot(total_data)
                 ax.set_xlabel('Pixel Position Dispersion Direction')
                 ax.set_ylabel('Total Signal')
             ax.set_title('Background subtracted data.')
             plt.show()
             if savePathVerbose is not None:
                 verboseSaveFile = ('background_subtracted_spectral_data.png')
+                verboseSaveFile = os.path.join(savePathVerbose,
+                                               verboseSaveFile)
+                fig.savefig(verboseSaveFile, bbox_inches='tight')
+            fig, ax = plt.subplots(figsize=(10, 10))
+            ax.plot(time, lightcurve, '.')
+            ax.set_xlabel('Orbital phase')
+            ax.set_ylabel('Total Signal')
+            ax.set_title('Background subtracted data.')
+            plt.show()
+            if savePathVerbose is not None:
+                verboseSaveFile = 'background_subtracted_white_light_curve.png'
                 verboseSaveFile = os.path.join(savePathVerbose,
                                                verboseSaveFile)
                 fig.savefig(verboseSaveFile, bbox_inches='tight')
@@ -455,6 +483,21 @@ class TSOSuite:
         except AttributeError:
             raise AttributeError("No observation data type set. "
                                  "Aborting filtering of data.")
+        try:
+            verbose = bool(self.cascade_parameters.cascade_verbose)
+        except AttributeError:
+            warnings.warn("Verbose flag not set, assuming it to be False.")
+            verbose = False
+        try:
+            savePathVerbose = self.cascade_parameters.cascade_save_path
+            if not os.path.isabs(savePathVerbose):
+                savePathVerbose = os.path.join(cascade_default_save_path,
+                                               savePathVerbose)
+            os.makedirs(savePathVerbose, exist_ok=True)
+        except AttributeError:
+            warnings.warn("No save path defined to save verbose output "
+                          "No verbose plots will be saved")
+            savePathVerbose = None
         # in case of 2D timeseries data, one has a timeseries of
         # extracted 1D spectra and simpler filtering is applied.
         if observationDataType == 'SPECTRUM':
@@ -513,6 +556,23 @@ class TSOSuite:
                                        stdv_kernel_time)
 
             self.cpm.cleaned_dataset = cleanedDataset
+            if verbose:
+                lightcurve = \
+                    np.ma.sum(cleanedDataset.return_masked_array("data"),
+                              axis=0)
+                time = cleanedDataset.return_masked_array("time").data[0, :]
+                fig, ax = plt.subplots(figsize=(10, 10))
+                ax.plot(time, lightcurve, '.')
+                ax.set_xlabel('Orbital phase')
+                ax.set_ylabel('Total Signal')
+                ax.set_title('Cleaned data.')
+                plt.show()
+                if savePathVerbose is not None:
+                    verboseSaveFile = \
+                        'white_light_curve_cleaned_data_1d_spectra.png'
+                    verboseSaveFile = os.path.join(savePathVerbose,
+                                                   verboseSaveFile)
+                    fig.savefig(verboseSaveFile, bbox_inches='tight')
             return
 
         # expand ROI to cube
@@ -539,6 +599,57 @@ class TSOSuite:
         self.observation.dataset = datasetOut
         self.cpm.cleaned_dataset = cleanedDataset
         self.cpm.filtered_dataset = filteredDataset
+        if verbose:
+            optimal_filter_index = filteredDataset.optimalFilterIndex
+            label_im, nb_labels = \
+                ndimage.label(optimal_filter_index[..., 0].mask)
+            slice_y, slice_x = ndimage.find_objects(label_im != 1)[0]
+            im_use = optimal_filter_index[slice_y, slice_x, 0]
+            npad = np.abs(im_use.shape[0] - im_use.shape[1])//2
+            max_axis = np.argmax(im_use.shape)
+            min_axis = np.argmin(im_use.shape)
+            npad_max = im_use.shape[max_axis]-im_use.shape[min_axis] - npad*2
+            npad += npad_max
+            padding_min = (npad, npad)
+            padding_max = (0, npad_max)
+            if max_axis == 1:
+                padding = (padding_min, padding_max)
+            else:
+                padding = (padding_max, padding_min)
+            im_use = np.pad(im_use,
+                            padding, 'constant', constant_values=(-1))
+            mask = im_use < 0.0
+            im_use = np.ma.array(im_use, mask=mask)
+            fig, ax = plt.subplots(figsize=(7, 5))
+            p = ax.imshow(im_use,
+                          origin='lower',
+                          cmap='tab20',
+                          interpolation='none',
+                          aspect='auto')
+            fig.colorbar(p, ax=ax).set_label("Filter number")
+            plt.show()
+            if savePathVerbose is not None:
+                verboseSaveFile = \
+                    'spacial_filter_index_number_first_integration.png'
+                verboseSaveFile = os.path.join(savePathVerbose,
+                                               verboseSaveFile)
+                fig.savefig(verboseSaveFile, bbox_inches='tight')
+            lightcurve = \
+                np.ma.sum(cleanedDataset.return_masked_array("data"),
+                          axis=(0, 1))
+            time = cleanedDataset.return_masked_array("time").data[0, 0, :]
+            fig, ax = plt.subplots(figsize=(10, 10))
+            ax.plot(time, lightcurve, '.')
+            ax.set_xlabel('Orbital phase')
+            ax.set_ylabel('Total Signal')
+            ax.set_title('Cleaned data.')
+            plt.show()
+            if savePathVerbose is not None:
+                verboseSaveFile = \
+                    'white_light_curve_cleaned_spectral_images.png'
+                verboseSaveFile = os.path.join(savePathVerbose,
+                                               verboseSaveFile)
+                fig.savefig(verboseSaveFile, bbox_inches='tight')
 
     def determine_source_movement(self):
         """
@@ -1215,6 +1326,15 @@ class TSOSuite:
             position_unit=u.pix)
         rebinnedOptimallyExtractedDataset.add_auxilary(
             median_position=medianCrossDispersionPosition)
+        rebinnedOptimallyExtractedDataset.add_measurement(
+            dispersion_position=spectralMovement['dispersionShift'],
+            dispersion_position_unit=u.pix)
+        rebinnedOptimallyExtractedDataset.add_measurement(
+            angle=spectralMovement['relativeAngle'],
+            angle_unit=u.deg)
+        rebinnedOptimallyExtractedDataset.add_measurement(
+            scale=spectralMovement['relativeScale'],
+            scale_unit=u.dimensionless_unscaled)
         if observationDataType == 'SPECTRAL_CUBE':
             rebinnedOptimallyExtractedDataset.add_auxilary(
                 scan_direction=datasetIn.scan_direction)
@@ -1226,6 +1346,15 @@ class TSOSuite:
             position_unit=u.pix)
         rebinnedApertureExtractedDataset.add_auxilary(
             median_position=medianCrossDispersionPosition)
+        rebinnedApertureExtractedDataset.add_measurement(
+            dispersion_position=spectralMovement['dispersionShift'],
+            dispersion_position_unit=u.pix)
+        rebinnedApertureExtractedDataset.add_measurement(
+            angle=spectralMovement['relativeAngle'],
+            angle_unit=u.deg)
+        rebinnedApertureExtractedDataset.add_measurement(
+            scale=spectralMovement['relativeScale'],
+            scale_unit=u.dimensionless_unscaled)
         if observationDataType == 'SPECTRAL_CUBE':
             rebinnedApertureExtractedDataset.add_auxilary(
                 scan_direction=datasetIn.scan_direction)
@@ -1267,6 +1396,7 @@ class TSOSuite:
         else:
             savePathData = \
                 os.path.join(datasetParametersDict['obs_path'],
+                             datasetParametersDict['inst_obs_name'],
                              datasetParametersDict['inst_inst_name'],
                              datasetParametersDict['obs_target_name'])
             if observationDataType == 'SPECTRAL_CUBE':

@@ -1,9 +1,29 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+# This file is part of the CASCADe package which has been
+# developed within the ExoplANETS-A H2020 program.
+#
+# See the COPYRIGHT file at the top-level directory of this distribution
+# for details of code ownership.
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+# Copyright (C) 2020  Jeroen Bouwman
 """
-Created on Tue Apr 21 13:55:08 2020
+Created on April 21 2020
 
-@author: Jeroen Bouwman
+@author:Jeroen Bouwman, Rene Gastaud, Raphael Peralta, Fred Lahuis
 """
 import os
 import sys
@@ -49,6 +69,20 @@ def log(string, color, font="slant", figlet=False):
                 string, font=font), color))
     else:
         six.print_(string)
+
+
+def check_path_option(new_path, environent_variable, message):
+    if new_path is not None:
+        if os.path.isabs(new_path):
+            os.environ[environent_variable] = new_path
+        else:
+            try:
+                base_new_path = os.environ[environent_variable]
+                os.environ[environent_variable] = \
+                    os.path.join(base_new_path, new_path)
+            except KeyError:
+                log(message, "red")
+                sys.exit()
 
 
 @click.command()
@@ -115,23 +149,24 @@ def run_cascade(initfiles, init_path, data_path, save_path, show_plots,
         os.environ["CASCADE_WARNINGS"] = 'off'
     else:
         os.environ["CASCADE_WARNINGS"] = 'on'
+
     if init_path is not None:
-        if os.path.isabs(init_path):
-            os.environ["CASCADE_INITIALIZATION_FILE_PATH"] = init_path
-        else:
-            try:
-                base_ini_path = os.environ["CASCADE_INITIALIZATION_FILE_PATH"]
-                os.environ["CASCADE_INITIALIZATION_FILE_PATH"] = \
-                    os.path.join(base_ini_path, init_path)
-            except KeyError:
-                log("Relative init_path given without setting the "
-                    "CASCADE_INITIALIZATION_FILE_PATH environment variable "
-                    "Stooping script", "red")
-                sys.exit()
+        check_path_option(init_path, "CASCADE_INITIALIZATION_FILE_PATH",
+                          "Relative init_path given without setting the "
+                          "CASCADE_INITIALIZATION_FILE_PATH environment "
+                          "variable Stopping script")
+
     if data_path is not None:
-        os.environ["CASCADE_DATA_PATH"] = data_path
+        check_path_option(data_path, "CASCADE_DATA_PATH",
+                          "Relative data_path given without setting the "
+                          "CASCADE_DATA_PATH environment "
+                          "variable Stopping script")
+
     if save_path is not None:
-        os.environ["CASCADE_SAVE_PATH"] = save_path
+        check_path_option(save_path, "CASCADE_DATA_PATH",
+                          "Relative save_path given without setting the "
+                          "CASCADE_SAVE_PATH environment "
+                          "variable Stopping script")
     if not show_plots:
         matplotlib.use('AGG')
     import cascade
@@ -149,8 +184,6 @@ def run_cascade(initfiles, init_path, data_path, save_path, show_plots,
     log("Note that the speciefied directories will ignored if an absolute "
         "path is spesified in the initialization files", "green")
 
-    start_time = time.time()
-
     tso = cascade.TSO.TSOSuite()
     tso.execute("reset")
     tso.execute("initialize", *initfiles)
@@ -162,9 +195,9 @@ def run_cascade(initfiles, init_path, data_path, save_path, show_plots,
         for command in COMMAND_LIST_PROCESSING:
             tso.execute(command)
 
-    elapsed_time = time.time() - start_time
-    log('elapsed time: {}'.format(elapsed_time), "green")
-
 
 if __name__ == '__main__':
+    start_time = time.time()
     run_cascade()
+    elapsed_time = time.time() - start_time
+    log('elapsed time: {}'.format(elapsed_time), "green")

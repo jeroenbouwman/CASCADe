@@ -23,7 +23,7 @@
 """
 Created on April 24 2020
 
-@author:Jeroen Bouwman, Rene Gastaud, Raphael Peralta
+@author:Jeroen Bouwman, Rene Gastaud, Raphael Peralta, Fred Lahuis
 """
 import os
 import pickle
@@ -191,10 +191,16 @@ def check_path_option(new_path, environent_variable, message):
               help='If set only the ini files are created. '
                    'Default is False'
               )
-def built_local_hst_archive(init_path, data_path, no_warnings, 
+def built_local_hst_archive(init_path, data_path, no_warnings,
                             primary_exoplanet_catalog, list_all_planets,
                             list_catalog_id, visits, all_visits_planet,
                             download_all_data, create_ini_files_only):
+    """
+    Build local HST archive.
+
+    This function creates a local copy of exoplanet observations in the
+    MAST archive.
+    """
     if no_warnings:
         os.environ["CASCADE_WARNINGS"] = 'off'
     else:
@@ -208,7 +214,7 @@ def built_local_hst_archive(init_path, data_path, no_warnings,
 
     if data_path is not None:
         check_path_option(data_path, "CASCADE_DATA_PATH",
-                          "Relative init_path given without setting the "
+                          "Relative data_path given without setting the "
                           "CASCADE_DATA_PATH environment "
                           "variable Stopping script")
 
@@ -465,5 +471,5 @@ if __name__ == '__main__':
     start_time = time.time()
     built_local_hst_archive()
     elapsed_time = time.time() - start_time
-    print('elapsed_time =', elapsed_time)
+    log('elapsed time: {}'.format(elapsed_time), "green")
 

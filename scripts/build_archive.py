@@ -23,7 +23,7 @@
 """
 Created on April 24 2020
 
-@author:Jeroen Bouwman, Rene Gastaud, Raphael Peralta
+@author:Jeroen Bouwman, Rene Gastaud, Raphael Peralta, Fred Lahuis
 """
 import os
 import astropy.units as u

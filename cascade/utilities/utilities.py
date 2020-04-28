@@ -124,6 +124,22 @@ def write_timeseries_to_fits(data, path, additional_file_string=None,
                 hdr['MPUNIT'] = data.position_unit.to_string()
             except AttributeError:
                 pass
+            try:
+                hdr['DISP_POS'] = \
+                    np.ma.mean(data.dispersion_position[idx, itime]).value
+                hdr['DPUNIT'] = data.dispersion_position_unit.to_string()
+            except AttributeError:
+                pass
+            try:
+                hdr['SCALE'] = np.ma.mean(data.scale[idx, itime]).value
+                hdr['SUNIT'] = data.scale_unit.to_string()
+            except AttributeError:
+                pass
+            try:
+                hdr['ANGLE'] = np.ma.mean(data.angle[idx, itime]).value
+                hdr['AUNIT'] = data.angle_unit.to_string()
+            except AttributeError:
+                pass
             primary_hdu = fits.PrimaryHDU(header=hdr)
             hdu = fits.BinTableHDU.from_columns(
                     [fits.Column(name='LAMBDA', format='D',
