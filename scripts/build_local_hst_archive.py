@@ -473,4 +473,3 @@ if __name__ == '__main__':
     built_local_hst_archive()
     elapsed_time = time.time() - start_time
     log('elapsed time: {}'.format(elapsed_time), "green")
-
