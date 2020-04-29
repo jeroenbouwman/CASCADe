@@ -43,7 +43,7 @@ for planet in $planets; do
   echo "TOTAL RUNGTIME $((($(date +%s)-$start)/3600)) hours" 
 
 # SPECTRA are placed in the wrong place, so moving it here untill this is fixed in run_cascade
-  if [ -d "$CASCADE_DATA_PATH/data/HST/WFC3/${planet}/SPECTRA" ]; then
+  if [ -d "$CASCADE_DATA_PATH/data/WFC3/${planet}/SPECTRA" ]; then
     echo "Move extracted spectra"
     rm -r $CASCADE_DATA_PATH/data/HST/WFC3/${planet}/SPECTRA
     mv $CASCADE_DATA_PATH/data/WFC3/${planet}/SPECTRA $CASCADE_DATA_PATH/data/HST/WFC3/${planet}/
