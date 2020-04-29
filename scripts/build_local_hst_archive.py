@@ -192,10 +192,18 @@ def check_path_option(new_path, environent_variable, message):
               help='If set only the ini files are created. '
                    'Default is False'
               )
+@click.option('--skip_existing',
+              '-se',
+              is_flag=True,
+              default=False,
+              help='If set already downloaded data is skipped. '
+                   'Default is False'
+              )
 def built_local_hst_archive(init_path, data_path, no_warnings,
                             primary_exoplanet_catalog, list_all_planets,
                             list_catalog_id, visits, all_visits_planet,
-                            download_all_data, create_ini_files_only):
+                            download_all_data, create_ini_files_only,
+                            skip_existing):
     """
     Build local HST archive.
 
@@ -462,7 +470,8 @@ def built_local_hst_archive(init_path, data_path, no_warnings,
         # # ################# GET ARCHIVE DATA ######################
         if not create_ini_files_only:
             save_observations(data_files, cal_data_files,
-                              extract_timeseries_parser)
+                              extract_timeseries_parser,
+                              skip_existing=skip_existing)
         else:
             log("create_ini_files_only flag is True, not downloading data",
                 "red")

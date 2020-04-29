@@ -134,7 +134,7 @@ class HSTWFC3(InstrumentBase):
     available:
 
        - detector subarrays : {'IRSUB128', 'IRSUB256', 'IRSUB512', 'GRISM128',
-         'GRISM256', 'GRISM512'}
+         'GRISM256', 'GRISM512', 'GRISM1024'}
        - spectroscopic filters : {'G141', 'G102'}
        - imaging filters :  {'F139M', 'F132N', 'F167N', 'F126N', 'F130N',
                              'F140W'}
@@ -144,7 +144,7 @@ class HSTWFC3(InstrumentBase):
     """
 
     __valid_sub_array = {'IRSUB128', 'IRSUB256', 'IRSUB512', 'GRISM128',
-                         'GRISM256', 'GRISM512'}
+                         'GRISM256', 'GRISM512', 'GRISM1024'}
     __valid_spectroscopic_filter = {'G141', 'G102'}
     __valid_imaging_filter = {'F139M', 'F132N', 'F167N', 'F126N', 'F130N',
                               'F140W'}

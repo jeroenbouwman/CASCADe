@@ -87,7 +87,8 @@ __all__ = ['cascade_warnings',
            'cascade_default_initialization_path',
            'generate_default_initialization',
            'configurator',
-           'cascade_configuration']
+           'cascade_configuration',
+           'reset_data']
 
 __valid_environment_variables__ = ['CASCADE_WARNINGS',
                                    'CASCADE_PATH',
@@ -172,6 +173,43 @@ if __flag_not_set__:
     warnings.warn("One of the following environment variables: {} has not "
                   "been set. Using default "
                   "values".format(__valid_environment_variables__))
+
+
+def reset_data():
+    """
+    Reset all cascade data in non default directory tree.
+
+    Returns
+    -------
+    None.
+
+    """
+    new_path = os.path.join(cascade_default_data_path, 'calibration/')
+    if os.path.exists(new_path):
+        shutil.rmtree(new_path)
+    destination = shutil.copytree(os.path.join(__cascade_data_path,
+                                               'calibration/'), new_path)
+    print("Updated cascade data in directory: {}".format(destination))
+    new_path = os.path.join(cascade_default_data_path, 'exoplanet_data/')
+    if os.path.exists(new_path):
+        shutil.rmtree(new_path)
+    destination = shutil.copytree(os.path.join(__cascade_data_path,
+                                               'exoplanet_data/'), new_path)
+    print("Updated cascade data in directory: {}".format(destination))
+    new_path = os.path.join(cascade_default_data_path, 'archive_databases/')
+    if os.path.exists(new_path):
+        shutil.rmtree(new_path)
+    destination = shutil.copytree(os.path.join(__cascade_data_path,
+                                               'archive_databases/'), new_path)
+    print("Updated cascade data in directory: {}".format(destination))
+    new_path = os.path.join(cascade_default_data_path,
+                            'configuration_templates/')
+    if os.path.exists(new_path):
+        shutil.rmtree(new_path)
+    destination = \
+        shutil.copytree(os.path.join(__cascade_data_path,
+                                     'configuration_templates/'), new_path)
+    print("Updated cascade data in directory: {}".format(destination))
 
 
 def generate_default_initialization(observatory='HST', data='SPECTRUM',

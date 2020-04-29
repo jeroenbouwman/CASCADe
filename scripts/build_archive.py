@@ -412,7 +412,8 @@ def return_header_info(data_file, cal_data_file):
     return cascade_parameter_dict
 
 
-def save_observations(data_files, cal_data_files, parser):
+def save_observations(data_files, cal_data_files, parser,
+                      skip_existing=False):
     """
     Save HST archive data to disk.
 
@@ -424,6 +425,8 @@ def save_observations(data_files, cal_data_files, parser):
         DESCRIPTION.
     parser : TYPE
         DESCRIPTION.
+    skip_excisting : 'bool'
+        DESCRIPTION Default is False
 
     Returns
     -------
@@ -450,32 +453,33 @@ def save_observations(data_files, cal_data_files, parser):
             [file.replace('_ima', '_flt') for file in data_files]
     for datafile in tqdm(data_files_to_download, dynamic_ncols=True,
                          desc='Downloading Archive Data '):
-        df = requests.get(URL_DATA_ARCHIVE.format(datafile), stream=True)
-        with open(os.path.join(data_save_path, datafile), 'wb') as f:
-            for chunk in df.iter_content(chunk_size=1024):
-                f.write(chunk)
-        # urlretrieve(URL_DATA_ARCHIVE.format(datafile),
-        #             os.path.join(data_save_path, datafile))
+        if not skip_existing and not os.path.exists(
+                os.path.join(data_save_path, datafile)):
+            df = requests.get(URL_DATA_ARCHIVE.format(datafile), stream=True)
+            with open(os.path.join(data_save_path, datafile), 'wb') as f:
+                for chunk in df.iter_content(chunk_size=1024):
+                    f.write(chunk)
     data_files_to_download = cal_data_files.copy()
     for datafile in tqdm(data_files_to_download, dynamic_ncols=True,
                          desc='Downloading Aquisition Images '):
-        df = requests.get(URL_DATA_ARCHIVE.format(datafile), stream=True)
-        with open(os.path.join(data_save_path, datafile), 'wb') as f:
-            for chunk in df.iter_content(chunk_size=1024):
-                f.write(chunk)
-        # urlretrieve(URL_DATA_ARCHIVE.format(datafile),
-        #            os.path.join(data_save_path, datafile))
+        if not skip_existing and not os.path.exists(
+                os.path.join(data_save_path, datafile)):
+            df = requests.get(URL_DATA_ARCHIVE.format(datafile), stream=True)
+            with open(os.path.join(data_save_path, datafile), 'wb') as f:
+                for chunk in df.iter_content(chunk_size=1024):
+                    f.write(chunk)
     if parser['OBSERVATIONS']['observations_mode'] == 'SCANNING':
         data_files_to_download = \
             [file.replace('_flt', '_ima') for file in cal_data_files]
         for datafile in tqdm(data_files_to_download, dynamic_ncols=True,
                              desc='Downloading Aquisition Images '):
-            df = requests.get(URL_DATA_ARCHIVE.format(datafile), stream=True)
-            with open(os.path.join(data_save_path, datafile), 'wb') as f:
-                for chunk in df.iter_content(chunk_size=1024):
-                    f.write(chunk)
-            # urlretrieve(URL_DATA_ARCHIVE.format(datafile),
-            #             os.path.join(data_save_path, datafile))
+            if not skip_existing and not os.path.exists(
+                    os.path.join(data_save_path, datafile)):
+                df = requests.get(URL_DATA_ARCHIVE.format(datafile),
+                                  stream=True)
+                with open(os.path.join(data_save_path, datafile), 'wb') as f:
+                    for chunk in df.iter_content(chunk_size=1024):
+                        f.write(chunk)
 
 
 def fill_config_parameters(config_dict, namespece_dict):

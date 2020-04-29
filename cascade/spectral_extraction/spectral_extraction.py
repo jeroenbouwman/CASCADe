@@ -1039,7 +1039,7 @@ def _determine_relative_rotation_and_scale(reference_image, referenceROI,
     shifts = tparams[0]
     # calculate rotation
     # note, only look for angles between +- 90 degrees,
-    # remove anu flip of 180 degrees due to search
+    # remove any flip of 180 degrees due to search
     shiftr, shiftc = shifts[:2]
     shiftr = shiftr/AngleOversampling
     if shiftr > 90.0:
@@ -1800,9 +1800,11 @@ def correct_wavelength_for_source_movent(datasetIn, spectral_movement,
     dataset_out.isMovementCorrected = True
 
     if verbose:
-        wnew = np.ma.median(dataset_out.wavelength[1:8,
-                                                   :, :], axis=1)
-        wold = np.ma.median(datasetIn.wavelength[1:8, :, :],
+        wnew = dataset_out.return_masked_array('wavelength')
+        index_valid = np.ma.all(wnew[..., 0].mask, axis=1)
+        index_valid = ~index_valid.data
+        wnew = np.ma.median(wnew[index_valid, ...][1:8, ...], axis=1)
+        wold = np.ma.median(datasetIn.wavelength[index_valid, ...][1:8, ...],
                             axis=1)
         sns.set_context("talk", font_scale=1.5, rc={"lines.linewidth": 2.5})
         sns.set_style("white", {"xtick.bottom": True, "ytick.left": True})
@@ -2097,17 +2099,19 @@ def rebin_to_common_wavelength_grid(dataset, referenceIndex, nrebin=None,
     rebinnedDataset = SpectralDataTimeSeries(**dictTimeSeries)
 
     if verbose:
+        index_valid = np.ma.all(wavelength.mask, axis=1)
+        index_valid = ~index_valid.data
         sns.set_context("talk", font_scale=1.5, rc={"lines.linewidth": 2.5})
         sns.set_style("white", {"xtick.bottom": True, "ytick.left": True})
         fig, axes = plt.subplots(figsize=(10, 5), nrows=1, ncols=2)
         ax0, ax1 = axes.flatten()
         ax0.plot(rebinnedWavelength[1:6].T, zorder=5, lw=3)
-        ax0.plot(wavelength[2:7].T, color='gray', zorder=4)
+        ax0.plot(wavelength[index_valid, :][2:7].T, color='gray', zorder=4)
         ax0.set_ylabel('Wavelength [{}]'.format(dataset.wavelength_unit))
         ax0.set_xlabel('Integration #')
         ax0.set_title('Rebinned Wavelengths')
         ax1.plot(rebinnedSpectra[1:6].T, zorder=5, lw=3)
-        ax1.plot(spectra[2:7].T, color='gray', zorder=4)
+        ax1.plot(spectra[index_valid, :][2:7].T, color='gray', zorder=4)
         ax1.set_ylabel('Flux [{}]'.format(dataset.data_unit))
         ax1.set_xlabel('Integration #')
         ax1.set_title('Rebinned Signal')
