@@ -219,6 +219,8 @@ class TSOSuite:
         """
         if path is None:
             path = cascade_default_initialization_path
+        elif not os.path.isabs(path):
+            path = os.path.join(cascade_default_initialization_path, path)
         if len(init_files) != 0:
             init_files_path = []
             for file in init_files:

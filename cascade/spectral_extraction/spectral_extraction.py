@@ -496,7 +496,7 @@ def filter_image_cube(data_in, Filters, ROIcube, enumeratedSubRegions,
             filteredImageVariance[indices_poi[j[0]]] = j[3],
     else:
         ncpus = ray.cluster_resources()['CPU']
-        chunksize = int(np.min([512, len(enumeratedSubRegions)//ncpus]))
+        chunksize = int(np.min([256, len(enumeratedSubRegions)//ncpus]))
 
         data_id = ray.put(data_in)
         filters_id = ray.put(Filters)
