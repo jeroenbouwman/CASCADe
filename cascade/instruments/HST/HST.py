@@ -390,6 +390,9 @@ class HSTWFC3(InstrumentBase):
         wavelength_data = np.zeros((nwavelength, nintegrations))
         mask = np.ma.make_mask_none(spectral_data.shape)
         position = np.zeros((nintegrations))
+        dispersion_position = np.zeros((nintegrations))
+        angle = np.zeros((nintegrations))
+        scaling = np.zeros((nintegrations))
         time = np.zeros((nintegrations))
         scan_direction = np.zeros((nintegrations))
         sample_number = np.zeros((nintegrations))
@@ -405,6 +408,16 @@ class HSTWFC3(InstrumentBase):
                 mask[:, im] = spectrum['MASK']
             except KeyError:
                 pass
+            try:
+                dispersion_position[im] = fits.getval(spectral_data_file,
+                                                      "DISP_POS", ext=0)
+                angle[im] = fits.getval(spectral_data_file,
+                                        "ANGLE", ext=0)
+                scaling[im] = fits.getval(spectral_data_file,
+                                          "SCALE", ext=0)
+                hasOtherPos = True
+            except KeyError:
+                hasOtherPos = False
             try:
                 position[im] = fits.getval(spectral_data_file, "POSITION",
                                            ext=0)
@@ -439,6 +452,11 @@ class HSTWFC3(InstrumentBase):
         mask = mask[:, idx]
         data_files = [data_files[i] for i in idx]
         position = position[idx]
+        dispersion_position = dispersion_position[idx]
+        angle = angle[idx]
+        scaling = scaling[idx]
+        scan_direction = scan_direction[idx]
+        sample_number = sample_number[idx]
 
         try:
             medPos = fits.getval(data_files[0], "MEDPOS")
@@ -451,6 +469,13 @@ class HSTWFC3(InstrumentBase):
             hasPosUnit = True
         except KeyError:
             hasPosUnit = False
+        try:
+            dispPosUnit = fits.getval(data_files[0], "DPUNIT")
+            angleUnit = fits.getval(data_files[0], "AUNIT")
+            scaleUnit = fits.getval(data_files[0], "SUNIT")
+            hasOtherPosUnit = True
+        except KeyError:
+            hasOtherPosUnit = False
 
         if (not hasTimeBJD):
             # convert to BJD
@@ -522,6 +547,16 @@ class HSTWFC3(InstrumentBase):
         if hasMedPos:
             SpectralTimeSeries.median_position = medPos
             SpectralTimeSeries.median_position_unit = u.Unit(medPosUnit)
+        if hasOtherPosUnit & hasOtherPos:
+            SpectralTimeSeries.add_measurement(
+                disp_position=dispersion_position,
+                disp_position_unit=u.Unit(dispPosUnit))
+            SpectralTimeSeries.add_measurement(
+                angle=angle,
+                angle_unit=u.Unit(angleUnit))
+            SpectralTimeSeries.add_measurement(
+                scale=scaling,
+                scale_unit=u.Unit(scaleUnit))
         if hasScanDir:
             SpectralTimeSeries.scan_direction = list(scan_direction)
         if hasSampleNumber:

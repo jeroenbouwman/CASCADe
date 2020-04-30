@@ -351,8 +351,10 @@ def return_header_info(data_file, cal_data_file):
     URL_DATA_ARCHIVE = \
         'https://mast.stsci.edu/portal/Download/file/HST/product/{0}'
 
+    data_file_id = [file.split('_')[0] for file in [data_file, cal_data_file]]
+    data_file_id = long_substr(data_file_id)
     TEMP_DOWNLOAD_DIR = os.path.join(cascade_default_data_path,
-                                     "mastDownload/")
+                                     "mastDownload_"+data_file_id+"/")
 
     os.makedirs(TEMP_DOWNLOAD_DIR, exist_ok=True)
     df = requests.get(URL_DATA_ARCHIVE.format(data_file), stream=True)
