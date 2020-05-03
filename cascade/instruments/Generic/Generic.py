@@ -289,9 +289,7 @@ class GenericSpectrograph(InstrumentBase):
         else:
             phase = (time.value - self.par['obj_ephemeris']) / \
                 self.par['obj_period']
-            phase = phase - np.int(np.max(phase))
-            if np.max(phase) < 0.0:
-                phase = phase + 1.0
+        phase = phase - np.round(np.mean(phase)) # RG  issue 49
         if auxilary_dict['POSITION']['flag']:
             position = np.array(auxilary_dict['POSITION']['data'])
         else:
