@@ -26,6 +26,7 @@ Created on April 24 2020
 @author:Jeroen Bouwman, Rene Gastaud, Raphael Peralta, Fred Lahuis
 """
 import os
+import stat
 # import sys
 import astropy.units as u
 import numpy as np
@@ -39,6 +40,9 @@ from astropy.io import fits
 from tqdm import tqdm
 from cascade.exoplanet_tools import extract_exoplanet_data
 from cascade.initialize import cascade_default_data_path
+from cascade.initialize import cascade_default_initialization_path
+from cascade.initialize import cascade_default_path
+from cascade.initialize import cascade_default_save_path
 from cascade.exoplanet_tools import parse_database
 
 
@@ -412,6 +416,53 @@ def return_header_info(data_file, cal_data_file):
     cascade_parameter_dict['instrument_cal_aperture'] = \
         cal_header_info['APERTURE']
     return cascade_parameter_dict
+
+
+def create_bash_script(database_id, configuration):
+    """
+    Create bash run script.
+
+    Parameters
+    ----------
+    database_id : 'str'
+        DESCRIPTION.
+    configuration : TYPE
+        DESCRIPTION.
+
+    Returns
+    -------
+    None.
+
+    """
+    # Location of the tamples
+    TEMPLATES_DIR = os.path.join(cascade_default_data_path,
+                                 'configuration_templates/')
+    SCRIPTS_TEMPLATE = 'bash_script.template'
+
+    observatory = configuration['INSTRUMENT']["instrument_observatory"]
+    instrument = configuration['INSTRUMENT']["instrument"]
+    system_name = configuration['OBSERVATIONS']['observations_target_name']
+    instrument_save_path = os.path.join(observatory, instrument, "")
+    script_dict = {}
+    script_dict['save_path'] = cascade_default_save_path
+    script_dict['default_path'] = cascade_default_path
+    script_dict['init_path'] = cascade_default_initialization_path
+    script_dict['data_path'] = cascade_default_data_path
+    script_dict['system_name'] = system_name
+    script_dict['instrument_save_path'] = instrument_save_path
+    script_dict['visit'] = database_id
+
+    with open(os.path.join(TEMPLATES_DIR, SCRIPTS_TEMPLATE)) as template_file:
+        filled_template = template_file.read().format(**script_dict)
+
+    bash_file_path = os.path.join(cascade_default_data_path, 'scripts',
+                                  instrument_save_path)
+    bash_filename = 'run_'+system_name+'.sh'
+    with open(os.path.join(bash_file_path, bash_filename), 'w') as f:
+        f.write(filled_template)
+    st = os.stat(os.path.join(bash_file_path, bash_filename))
+    os.chmod(os.path.join(bash_file_path, bash_filename),
+             st.st_mode | stat.S_IEXEC)
 
 
 def save_observations(data_files, cal_data_files, parser,

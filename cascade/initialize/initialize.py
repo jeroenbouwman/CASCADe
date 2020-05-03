@@ -79,6 +79,7 @@ import warnings
 import shutil
 
 from cascade import __path__
+from cascade import __version__
 
 __all__ = ['cascade_warnings',
            'cascade_default_path',
@@ -128,29 +129,7 @@ except KeyError:
         os.path.join(cascade_default_path, "data/")
     os.environ['CASCADE_DATA_PATH'] = cascade_default_data_path
     __flag_not_set__ = True
-if not os.path.isdir(os.path.join(cascade_default_data_path, 'calibration/')):
-    destination = shutil.copytree(os.path.join(__cascade_data_path,
-                                               'calibration/'),
-                                  os.path.join(cascade_default_data_path,
-                                               'calibration/'))
-if not os.path.isdir(os.path.join(cascade_default_data_path,
-                                  'exoplanet_data/')):
-    destination = shutil.copytree(os.path.join(__cascade_data_path,
-                                               'exoplanet_data/'),
-                                  os.path.join(cascade_default_data_path,
-                                               'exoplanet_data/'))
-if not os.path.isdir(os.path.join(cascade_default_data_path,
-                                  'archive_databases/')):
-    destination = shutil.copytree(os.path.join(__cascade_data_path,
-                                               'archive_databases/'),
-                                  os.path.join(cascade_default_data_path,
-                                               'archive_databases/'))
-if not os.path.isdir(os.path.join(cascade_default_data_path,
-                                  'configuration_templates/')):
-    destination = shutil.copytree(os.path.join(__cascade_data_path,
-                                               'configuration_templates/'),
-                                  os.path.join(cascade_default_data_path,
-                                               'configuration_templates/'))
+
 try:
     cascade_default_save_path = os.environ['CASCADE_SAVE_PATH']
 except KeyError:
@@ -210,6 +189,58 @@ def reset_data():
         shutil.copytree(os.path.join(__cascade_data_path,
                                      'configuration_templates/'), new_path)
     print("Updated cascade data in directory: {}".format(destination))
+    with open(os.path.join(cascade_default_data_path,
+                           '.cascade_data_version'), 'w') as f:
+        f.write("{}".format(__version__))
+
+
+__data_dirs = ['calibration/', 'exoplanet_data/', 'archive_databases/',
+               'configuration_templates/']
+
+if __cascade_data_path != cascade_default_data_path:
+    dir_present = True
+    for data_dir in __data_dirs:
+        dir_present = \
+            (dir_present &
+             os.path.isdir(os.path.join(cascade_default_data_path, data_dir)))
+    if not dir_present:
+        reset_data()
+    if not os.path.isfile(os.path.join(cascade_default_data_path,
+                                       '.cascade_data_version')):
+        print("No data version file found, resetting cascade data")
+        reset_data()
+    else:
+        with open(os.path.join(cascade_default_data_path,
+                           '.cascade_data_version'), 'r') as f:
+            data_version = f.read()
+        if data_version != __version__:
+            print("Data version older then current cascade version, "
+                  "resetting data")
+            reset_data()
+
+# if not os.path.isdir(os.path.join(cascade_default_data_path, 'calibration/')):
+#     destination = shutil.copytree(os.path.join(__cascade_data_path,
+#                                                'calibration/'),
+#                                   os.path.join(cascade_default_data_path,
+#                                                'calibration/'))
+# if not os.path.isdir(os.path.join(cascade_default_data_path,
+#                                   'exoplanet_data/')):
+#     destination = shutil.copytree(os.path.join(__cascade_data_path,
+#                                                'exoplanet_data/'),
+#                                   os.path.join(cascade_default_data_path,
+#                                                'exoplanet_data/'))
+# if not os.path.isdir(os.path.join(cascade_default_data_path,
+#                                   'archive_databases/')):
+#     destination = shutil.copytree(os.path.join(__cascade_data_path,
+#                                                'archive_databases/'),
+#                                   os.path.join(cascade_default_data_path,
+#                                                'archive_databases/'))
+# if not os.path.isdir(os.path.join(cascade_default_data_path,
+#                                   'configuration_templates/')):
+#     destination = shutil.copytree(os.path.join(__cascade_data_path,
+#                                                'configuration_templates/'),
+#                                   os.path.join(cascade_default_data_path,
+#                                                'configuration_templates/'))
 
 
 def generate_default_initialization(observatory='HST', data='SPECTRUM',

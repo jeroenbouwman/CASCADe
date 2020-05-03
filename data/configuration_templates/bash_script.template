@@ -1,0 +1,25 @@
+#!/bin/bash
+
+eval "$(conda shell.bash hook)"
+conda activate cascade
+
+export CASCADE_DEFAULT_PATH={default_path}
+export CASCADE_INITIALIZATION_FILE_PATH={init_path}
+export CASCADE_DATA_PATH={data_path}
+export CASCADE_SAVE_PATH={save_path}
+
+cascade_script_path=${{CASCADE_DEFAULT_PATH}}/scripts
+[[ ":$PATH:" =~ ":${{cascade_script_path}}:" ]] || PATH="${{cascade_script_path}}:$PATH"
+
+# uncomment the line below to re-build local archive
+# build_local_hst_archive.py -v {visit}
+run_cascade.py cascade_{system_name}_object.ini cascade_{system_name}_extract_timeseries.ini -ip {instrument_save_path}{system_name}/  -sp {instrument_save_path} -nw
+run_cascade.py cascade_{system_name}_object.ini cascade_{system_name}_calibrate_planet_spectrum.ini -ip {instrument_save_path}{system_name}/  -sp {instrument_save_path} -nw
+
+unset CASCADE_INITIALIZATION_FILE_PATH
+unset CASCADE_DATA_PATH
+unset CASCADE_SAVE_PATH
+unset CASCADE_DEFAULT_PATH
+PATH="$(echo "$PATH" |sed -e "s#\(^\|:\)$(echo "$cascade_script_path" |sed -e 's/[^^]/[&]/g' -e 's/\^/\\^/g')\(:\|/\{{0,1\}}$\)#\1\2#" -e 's#:\+#:#g' -e 's#^:\|:$##g')"
+
+conda deactivate

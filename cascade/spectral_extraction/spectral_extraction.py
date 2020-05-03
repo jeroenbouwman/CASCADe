@@ -588,7 +588,7 @@ def iterative_bad_pixel_flagging(dataset, ROIcube, Filters,
         mem = virtual_memory()
         num_cpus = int(cpu_count(logical=False))
         mem_store = np.max([int(initialData.nbytes*3.0), int(1.1*78643200)])
-        mem_workers = int(initialData.nbytes*5.0)
+        mem_workers = np.max([int(initialData.nbytes*5.0), int(1.1*52428800)])
         if mem.available < (mem_store+mem_workers):
             warnings.warn("WARNING: Not enough memory for Ray to start. "
                           "Required free memory: {} bytes".

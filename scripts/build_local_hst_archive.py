@@ -127,6 +127,17 @@ def check_path_option(new_path, environent_variable, message):
                    'it defaults to the CASCADe default value of the CASCADe '
                    'distribution.',
               )
+@click.option('--save_path',
+              '-sp',
+              nargs=1,
+              type=click.STRING,
+              help='Path to the directory where CASCADe saves results '
+                   '(plots, extracted planetary spectra). If not specified, '
+                   'the value set by the environment variable '
+                   'CASCADE_SAVE_PATH is used, or if neither is set it '
+                   'defaults to the CASCADe default value of the CASCADe '
+                   'distribution.',
+              )
 @click.option('--no_warnings',
               '-nw',
               is_flag=True,
@@ -192,18 +203,26 @@ def check_path_option(new_path, environent_variable, message):
               help='If set only the ini files are created. '
                    'Default is False'
               )
-@click.option('--skip_existing',
-              '-se',
+@click.option('--skip_existing_data',
+              '-sed',
               is_flag=True,
               default=False,
               help='If set already downloaded data is skipped. '
                    'Default is False'
               )
-def built_local_hst_archive(init_path, data_path, no_warnings,
+@click.option('--skip_existing_initalization_files',
+              '-sei',
+              is_flag=True,
+              default=False,
+              help='If set already created initialization files are skipped. '
+                   'Default is False'
+              )
+def built_local_hst_archive(init_path, data_path, save_path, no_warnings,
                             primary_exoplanet_catalog, list_all_planets,
                             list_catalog_id, visits, all_visits_planet,
                             download_all_data, create_ini_files_only,
-                            skip_existing):
+                            skip_existing_data,
+                            skip_existing_initalization_files):
     """
     Build local HST archive.
 
@@ -227,6 +246,12 @@ def built_local_hst_archive(init_path, data_path, no_warnings,
                           "CASCADE_DATA_PATH environment "
                           "variable Stopping script")
 
+    if save_path is not None:
+        check_path_option(save_path, "CASCADE_SAVE_PATH",
+                          "Relative save_path given without setting the "
+                          "CASCADE_SAVE_PATH environment "
+                          "variable Stopping script")
+
     import cascade
     from cascade.initialize import cascade_default_data_path
     from cascade.initialize import cascade_default_initialization_path
@@ -242,6 +267,7 @@ def built_local_hst_archive(init_path, data_path, no_warnings,
     from build_archive import fill_config_parameters
     from build_archive import save_observations
     from build_archive import IniFileParser
+    from build_archive import create_bash_script
 
     log('CASCADe', color="blue", figlet=True)
     log("version {}, Copyright (C) 2020 "
@@ -447,34 +473,48 @@ def built_local_hst_archive(init_path, data_path, no_warnings,
              )
         configuration_object_filename = \
             configuration_base_filename+"_object.ini"
-        with open(os.path.join(initialization_save_path,
-                               configuration_object_filename),
-                  'w') as configfile:
-            object_parser.write(configfile)
+        if not (skip_existing_initalization_files & os.path.isfile(
+            os.path.join(initialization_save_path,
+                         configuration_object_filename))):
+            with open(os.path.join(initialization_save_path,
+                                   configuration_object_filename),
+                      'w') as configfile:
+                object_parser.write(configfile)
 
         configuration_extract_timeseries_filename = \
             configuration_base_filename+"_extract_timeseries.ini"
-        with open(os.path.join(
-                initialization_save_path,
-                configuration_extract_timeseries_filename), 'w') as configfile:
-            extract_timeseries_parser.write(configfile)
+
+        if not (skip_existing_initalization_files & os.path.isfile(
+            os.path.join(initialization_save_path,
+                         configuration_extract_timeseries_filename))):
+            with open(os.path.join(
+                    initialization_save_path,
+                    configuration_extract_timeseries_filename),
+                    'w') as configfile:
+                extract_timeseries_parser.write(configfile)
 
         configuration_calibrate_planet_spectrum_filename = \
             configuration_base_filename+"_calibrate_planet_spectrum.ini"
-        with open(os.path.join(
-                initialization_save_path,
-                configuration_calibrate_planet_spectrum_filename),
-                'w') as configfile:
-            calibrate_planet_spectrum_parser.write(configfile)
+        if not (skip_existing_initalization_files & os.path.isfile(
+            os.path.join(initialization_save_path,
+                         configuration_calibrate_planet_spectrum_filename))):
+            with open(os.path.join(
+                    initialization_save_path,
+                    configuration_calibrate_planet_spectrum_filename),
+                    'w') as configfile:
+                calibrate_planet_spectrum_parser.write(configfile)
 
         # # ################# GET ARCHIVE DATA ######################
         if not create_ini_files_only:
             save_observations(data_files, cal_data_files,
                               extract_timeseries_parser,
-                              skip_existing=skip_existing)
+                              skip_existing=skip_existing_data)
         else:
             log("create_ini_files_only flag is True, not downloading data",
                 "red")
+
+        # ###################### crete bash script #######################
+        create_bash_script(visit, extract_timeseries_parser)
 
 
 if __name__ == '__main__':
