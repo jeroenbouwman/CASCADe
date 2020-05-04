@@ -218,30 +218,6 @@ if __cascade_data_path != cascade_default_data_path:
                   "resetting data")
             reset_data()
 
-# if not os.path.isdir(os.path.join(cascade_default_data_path, 'calibration/')):
-#     destination = shutil.copytree(os.path.join(__cascade_data_path,
-#                                                'calibration/'),
-#                                   os.path.join(cascade_default_data_path,
-#                                                'calibration/'))
-# if not os.path.isdir(os.path.join(cascade_default_data_path,
-#                                   'exoplanet_data/')):
-#     destination = shutil.copytree(os.path.join(__cascade_data_path,
-#                                                'exoplanet_data/'),
-#                                   os.path.join(cascade_default_data_path,
-#                                                'exoplanet_data/'))
-# if not os.path.isdir(os.path.join(cascade_default_data_path,
-#                                   'archive_databases/')):
-#     destination = shutil.copytree(os.path.join(__cascade_data_path,
-#                                                'archive_databases/'),
-#                                   os.path.join(cascade_default_data_path,
-#                                                'archive_databases/'))
-# if not os.path.isdir(os.path.join(cascade_default_data_path,
-#                                   'configuration_templates/')):
-#     destination = shutil.copytree(os.path.join(__cascade_data_path,
-#                                                'configuration_templates/'),
-#                                   os.path.join(cascade_default_data_path,
-#                                                'configuration_templates/'))
-
 
 def generate_default_initialization(observatory='HST', data='SPECTRUM',
                                     mode='STARING', observation='TRANSIT'):

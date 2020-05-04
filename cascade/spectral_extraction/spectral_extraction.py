@@ -791,7 +791,8 @@ def extract_spectrum(dataset, ROICube, extractionProfile=None, optimal=False,
         sns.set_context("talk", font_scale=1.5, rc={"lines.linewidth": 2.5})
         sns.set_style("white", {"xtick.bottom": True, "ytick.left": True})
         fig, ax0 = plt.subplots(figsize=(6, 6), nrows=1, ncols=1)
-        ax0.plot(extractedSpectra[1:8].T)
+        for iwave in range(1,8):   
+            ax0.plot(extractedSpectra[iwave, :])
         ax0.set_title('Extracted 1D spectral timeseries')
         ax0.set_xlabel('Integration #')
         ax0.set_ylabel('Flux [{}]'.format(dataset.data_unit))

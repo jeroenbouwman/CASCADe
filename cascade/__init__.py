@@ -8,7 +8,7 @@ CASCADe init file
 __version__ = "0.9.23"
 __all__ = ['data_model', 'TSO', 'instruments', 'cpm_model',
            'initialize', 'exoplanet_tools', 'utilities',
-           'spectral_extraction']
+           'spectral_extraction', 'build_archive', 'verbose']
 
 from . import data_model
 from . import TSO
@@ -18,3 +18,5 @@ from . import initialize
 from . import exoplanet_tools
 from . import utilities
 from . import spectral_extraction
+from . import build_archive
+from . import verbose

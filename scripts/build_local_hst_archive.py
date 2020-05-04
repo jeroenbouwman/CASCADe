@@ -256,14 +256,14 @@ def built_local_hst_archive(init_path, data_path, save_path, no_warnings,
     from cascade.initialize import cascade_default_data_path
     from cascade.initialize import cascade_default_initialization_path
     from cascade.initialize import cascade_default_save_path
-    from build_archive import return_exoplanet_catalogs
-    from build_archive import return_all_hst_planets
-    from build_archive import return_hst_data_calalog_keys
-    from build_archive import long_substr
-    from build_archive import return_header_info
-    from build_archive import save_observations
-    from build_archive import IniFileParser
-    from build_archive import create_bash_script
+    from cascade.build_archive import return_exoplanet_catalogs
+    from cascade.build_archive import return_all_hst_planets
+    from cascade.build_archive import return_hst_data_calalog_keys
+    from cascade.build_archive import long_substr
+    from cascade.build_archive import return_header_info
+    from cascade.build_archive import save_observations
+    from cascade.build_archive import IniFileParser
+    from cascade.build_archive import create_bash_script
 
     log('CASCADe', color="blue", figlet=True)
     log("version {}, Copyright (C) 2020 "
@@ -416,7 +416,6 @@ def built_local_hst_archive(init_path, data_path, save_path, no_warnings,
                           TEMPLATES_DIR)
         IFP.print_parser()
         extract_timeseries_parser = IFP.return_parser()
-        # print_parser_content(extract_timeseries_parser)
 
         # ############### CREATE CALIBRATE_PLANET_SPECTRUM.INI ################
         # update parameters for timeseries of 1D spectra
@@ -443,7 +442,6 @@ def built_local_hst_archive(init_path, data_path, save_path, no_warnings,
                           TEMPLATES_DIR)
         IFP.print_parser()
         calibrate_planet_spectrum_parser = IFP.return_parser()
-        # print_parser_content(calibrate_planet_spectrum_parser)
 
         # ############## Saving ini files ##################
         initialization_save_path = os.path.join(
