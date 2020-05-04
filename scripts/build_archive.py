@@ -27,17 +27,16 @@ Created on April 24 2020
 """
 import os
 import stat
-# import sys
-import astropy.units as u
-import numpy as np
-from astropy.table import MaskedColumn
 import io
 import configparser
-import requests
-# from urllib.request import urlretrieve
 import shutil
-from astropy.io import fits
+from ast import literal_eval
+import numpy as np
+import requests
 from tqdm import tqdm
+import astropy.units as u
+from astropy.table import MaskedColumn
+from astropy.io import fits
 from cascade.exoplanet_tools import extract_exoplanet_data
 from cascade.initialize import cascade_default_data_path
 from cascade.initialize import cascade_default_initialization_path
@@ -62,7 +61,6 @@ def read_config_file(file_name, path):
     config_dict : 'dict'
         DESCRIPTION.
     """
-    from ast import literal_eval
     config_file = os.path.join(path, file_name)
     with open(config_file, 'r') as conf:
         config_dict = literal_eval(conf.read())
@@ -148,48 +146,51 @@ def fill_system_parameters(name, catalogs, configuration,
     search_results = {}
     for cat in catalogs:
         try:
-            dr = extract_exoplanet_data(catalogs[cat],
-                                        name, search_radius=2*u.arcsec)
+            data_record = \
+                extract_exoplanet_data(catalogs[cat], name,
+                                       search_radius=2*u.arcsec)
             no_match = False
-        except (ValueError, KeyError) as e:
+        except (ValueError, KeyError) as error:
             print("No match in {}".format(cat))
-            print(e)
+            print(error)
             no_match = True
-            dr = [{}]
-        search_results[cat] = {'no_match': no_match, 'record': dr}
+            data_record = [{}]
+        search_results[cat] = {'no_match': no_match, 'record': data_record}
     # check if system is found in any catalog
     if np.all([i['no_match'] for i in search_results.values()]):
         raise ValueError("Planet not found")
     # does the primary found the target?  if not pick another
     if not search_results[primary_cat]['no_match']:
-        dr = search_results[primary_cat]['record'][0].copy()
+        data_record = search_results[primary_cat]['record'][0].copy()
     else:
         for cat in search_results:
             if not cat == primary_cat:
                 if not search_results[cat]['no_match']:
-                    dr = search_results[cat]['record'][0].copy()
+                    data_record = search_results[cat]['record'][0].copy()
                     break
     # check for missing observable
     for observable, unit in zip(observables, observables_units):
-        if observable not in dr.keys():
-            dr[observable] = MaskedColumn(data=[0.0], mask=True, unit=unit)
+        if observable not in data_record.keys():
+            data_record[observable] = MaskedColumn(data=[0.0], mask=True,
+                                                   unit=unit)
             for cat in search_results:
                 if observable in search_results[cat]['record'][0].keys():
-                    dr[observable] = \
+                    data_record[observable] = \
                         search_results[cat]['record'][0][observable]
                     break
     # check for missing values
     for observable in observables:
-        if dr[observable].mask[0]:
+        if data_record[observable].mask[0]:
             for cat in search_results:
                 if observable in search_results[cat]['record'][0].keys():
                     if not search_results[cat]['record'][0][observable].mask[0]:
-                        dr[observable] = \
+                        data_record[observable] = \
                              search_results[cat]['record'][0][observable]
                         break
     # Make sure the units are those we use as standard units.
-    values = [dr[key].filled(0.0)[0] * dr[key].unit if key != 'NAME' else
-              dr[key][0] for key in observables]
+    values = [data_record[key].filled(0.0)[0] *
+              data_record[key].unit if key != 'NAME' else
+              data_record[key][0] for key in observables]
     for i, (value, unit) in enumerate(zip(values, observables_units)):
         if unit != u.dimensionless_unscaled:
             values[i] = value.to(unit)
@@ -262,7 +263,7 @@ def create_configuration(template, path, parameter_dict):
         filled_template = template_file.read().format(**parameter_dict)
         parser = configparser.ConfigParser()
         parser.optionxform = str  # make option names case sensitive
-        parser.readfp(io.StringIO(filled_template))
+        parser.read_file(io.StringIO(filled_template))
     return parser
 
 
@@ -348,42 +349,42 @@ def return_header_info(data_file, cal_data_file):
         DESCRIPTION.
 
     """
-    FITS_KEYWORDS = ['TARGNAME', 'RA_TARG', 'DEC_TARG', 'PROPOSID',
+    fits_keywords = ['TARGNAME', 'RA_TARG', 'DEC_TARG', 'PROPOSID',
                      'TELESCOP', 'INSTRUME', 'FILTER', 'APERTURE',
                      'NSAMP', 'EXPTIME', 'SCAN_TYP', 'SCAN_RAT', 'SCAN_LEN']
 
-    URL_DATA_ARCHIVE = \
+    url_data_archive = \
         'https://mast.stsci.edu/portal/Download/file/HST/product/{0}'
 
     data_file_id = [file.split('_')[0] for file in [data_file, cal_data_file]]
     data_file_id = long_substr(data_file_id)
-    TEMP_DOWNLOAD_DIR = os.path.join(cascade_default_data_path,
+    temp_download_dir = os.path.join(cascade_default_data_path,
                                      "mastDownload_"+data_file_id+"/")
 
-    os.makedirs(TEMP_DOWNLOAD_DIR, exist_ok=True)
-    df = requests.get(URL_DATA_ARCHIVE.format(data_file), stream=True)
-    with open(os.path.join(TEMP_DOWNLOAD_DIR, data_file), 'wb') as f:
+    os.makedirs(temp_download_dir, exist_ok=True)
+    df = requests.get(url_data_archive.format(data_file), stream=True)
+    with open(os.path.join(temp_download_dir, data_file), 'wb') as file:
         for chunk in df.iter_content(chunk_size=1024):
-            f.write(chunk)
+            file.write(chunk)
     # urlretrieve(URL_DATA_ARCHIVE.format(data_file),
     #             os.path.join(TEMP_DOWNLOAD_DIR, data_file))
     header_info = {}
-    with fits.open(os.path.join(TEMP_DOWNLOAD_DIR, data_file)) as hdul:
-        for keyword in FITS_KEYWORDS:
+    with fits.open(os.path.join(temp_download_dir, data_file)) as hdul:
+        for keyword in fits_keywords:
             header_info[keyword] = hdul['PRIMARY'].header[keyword]
 
-    df = requests.get(URL_DATA_ARCHIVE.format(cal_data_file), stream=True)
-    with open(os.path.join(TEMP_DOWNLOAD_DIR, cal_data_file), 'wb') as f:
+    df = requests.get(url_data_archive.format(cal_data_file), stream=True)
+    with open(os.path.join(temp_download_dir, cal_data_file), 'wb') as file:
         for chunk in df.iter_content(chunk_size=1024):
-            f.write(chunk)
+            file.write(chunk)
     # urlretrieve(URL_DATA_ARCHIVE.format(cal_data_file),
     #             os.path.join(TEMP_DOWNLOAD_DIR, cal_data_file))
     cal_header_info = {}
-    with fits.open(os.path.join(TEMP_DOWNLOAD_DIR, cal_data_file)) as hdul:
-        for keyword in FITS_KEYWORDS:
+    with fits.open(os.path.join(temp_download_dir, cal_data_file)) as hdul:
+        for keyword in fits_keywords:
             cal_header_info[keyword] = hdul['PRIMARY'].header[keyword]
     # some house cleaning
-    shutil.rmtree(TEMP_DOWNLOAD_DIR)
+    shutil.rmtree(temp_download_dir)
 
     if header_info['SCAN_TYP'] == 'N':
         obs_mode = 'STARING'
@@ -435,9 +436,9 @@ def create_bash_script(database_id, configuration):
 
     """
     # Location of the tamples
-    TEMPLATES_DIR = os.path.join(cascade_default_data_path,
+    templates_dir = os.path.join(cascade_default_data_path,
                                  'configuration_templates/')
-    SCRIPTS_TEMPLATE = 'bash_script.template'
+    scripts_template = 'bash_script.template'
 
     observatory = configuration['INSTRUMENT']["instrument_observatory"]
     instrument = configuration['INSTRUMENT']["instrument"]
@@ -452,14 +453,14 @@ def create_bash_script(database_id, configuration):
     script_dict['instrument_save_path'] = instrument_save_path
     script_dict['visit'] = database_id
 
-    with open(os.path.join(TEMPLATES_DIR, SCRIPTS_TEMPLATE)) as template_file:
+    with open(os.path.join(templates_dir, scripts_template)) as template_file:
         filled_template = template_file.read().format(**script_dict)
 
     bash_file_path = os.path.join(cascade_default_data_path, 'scripts',
                                   instrument_save_path)
     bash_filename = 'run_'+system_name+'.sh'
-    with open(os.path.join(bash_file_path, bash_filename), 'w') as f:
-        f.write(filled_template)
+    with open(os.path.join(bash_file_path, bash_filename), 'w') as file:
+        file.write(filled_template)
     st = os.stat(os.path.join(bash_file_path, bash_filename))
     os.chmod(os.path.join(bash_file_path, bash_filename),
              st.st_mode | stat.S_IEXEC)
@@ -486,7 +487,7 @@ def save_observations(data_files, cal_data_files, parser,
     None.
 
     """
-    URL_DATA_ARCHIVE = \
+    url_data_archive = \
         'https://mast.stsci.edu/portal/Download/file/HST/product/{0}'
 
     data_save_path = os.path.join(
@@ -508,19 +509,19 @@ def save_observations(data_files, cal_data_files, parser,
                          desc='Downloading Archive Data '):
         if not skip_existing and not os.path.exists(
                 os.path.join(data_save_path, datafile)):
-            df = requests.get(URL_DATA_ARCHIVE.format(datafile), stream=True)
-            with open(os.path.join(data_save_path, datafile), 'wb') as f:
+            df = requests.get(url_data_archive.format(datafile), stream=True)
+            with open(os.path.join(data_save_path, datafile), 'wb') as file:
                 for chunk in df.iter_content(chunk_size=1024):
-                    f.write(chunk)
+                    file.write(chunk)
     data_files_to_download = cal_data_files.copy()
     for datafile in tqdm(data_files_to_download, dynamic_ncols=True,
                          desc='Downloading Aquisition Images '):
         if not skip_existing and not os.path.exists(
                 os.path.join(data_save_path, datafile)):
-            df = requests.get(URL_DATA_ARCHIVE.format(datafile), stream=True)
-            with open(os.path.join(data_save_path, datafile), 'wb') as f:
+            df = requests.get(url_data_archive.format(datafile), stream=True)
+            with open(os.path.join(data_save_path, datafile), 'wb') as file:
                 for chunk in df.iter_content(chunk_size=1024):
-                    f.write(chunk)
+                    file.write(chunk)
     if parser['OBSERVATIONS']['observations_mode'] == 'SCANNING':
         data_files_to_download = \
             [file.replace('_flt', '_ima') for file in cal_data_files]
@@ -528,11 +529,11 @@ def save_observations(data_files, cal_data_files, parser,
                              desc='Downloading Aquisition Images '):
             if not skip_existing and not os.path.exists(
                     os.path.join(data_save_path, datafile)):
-                df = requests.get(URL_DATA_ARCHIVE.format(datafile),
+                df = requests.get(url_data_archive.format(datafile),
                                   stream=True)
-                with open(os.path.join(data_save_path, datafile), 'wb') as f:
+                with open(os.path.join(data_save_path, datafile), 'wb') as file:
                     for chunk in df.iter_content(chunk_size=1024):
-                        f.write(chunk)
+                        file.write(chunk)
 
 
 def fill_config_parameters(config_dict, namespece_dict):
@@ -575,11 +576,16 @@ class IniFileParser:
     """Inititialization file parser class."""
 
     def __init__(self, configuration_file_list, initialization_file_template,
-                 namespace_dict, templates_path):
+                 namespace_dict, templates_path, planet_name=None,
+                 exoplanet_catalogs_dictionary=None,
+                 primary_exoplanet_catalog=None):
         self.configuration_file_list = configuration_file_list
         self.initialization_file_template = initialization_file_template
         self.namespace_dict = namespace_dict
         self.templates_path = templates_path
+        self.planet_name = planet_name
+        self.exoplanet_catalogs_dictionary = exoplanet_catalogs_dictionary
+        self.primary_exoplanet_catalog = primary_exoplanet_catalog
         self.create_parser()
 
     def create_parser(self):
@@ -595,8 +601,15 @@ class IniFileParser:
         for configuration_file in self.configuration_file_list:
             config_dict = \
                 read_config_file(configuration_file, self.templates_path)
-            config_dict = \
-                fill_config_parameters(config_dict, self.namespace_dict)
+            if 'object' not in configuration_file:
+                config_dict = \
+                    fill_config_parameters(config_dict, self.namespace_dict)
+            else:
+                config_dict = \
+                    fill_system_parameters(self.planet_name,
+                                           self.exoplanet_catalogs_dictionary,
+                                           config_dict,
+                                           self.primary_exoplanet_catalog)
             full_configuration_dict.update(config_dict.copy())
         init_file_parser = create_configuration(
             self.initialization_file_template,
@@ -616,3 +629,25 @@ class IniFileParser:
 
         """
         return self.init_file_parser
+
+    def print_parser(self):
+        """
+        Print parser content.
+
+        Returns
+        -------
+        None.
+
+        """
+        print_parser_content(self.init_file_parser)
+
+    def save_parser(self):
+        """
+        Save parser.
+
+        Returns
+        -------
+        None.
+
+        """
+        pass

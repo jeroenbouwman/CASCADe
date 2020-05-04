@@ -2,9 +2,8 @@ name: cascade
 channels:
   - defaults
   - conda-forge
-  - http://ssb.stsci.edu/astroconda
 dependencies:
-  - python=3.7.7
+  - python=3.8.2
   - ipython=7.13.0
   - pip=20.0.2
   - qt=5.9.7
@@ -34,3 +33,5 @@ dependencies:
   - setproctitle
   - grpcio
   - joblib
+  - pyfiglet
+  - termcolor

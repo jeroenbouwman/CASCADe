@@ -143,7 +143,7 @@ def check_path_option(new_path, environent_variable, message):
               is_flag=True,
               default=False,
               help='If set no warning messages are printed to stdev. '
-                   'Default is False',
+                   'Default is False.',
               )
 @click.option('--primary_exoplanet_catalog',
               '-pc',
@@ -151,7 +151,7 @@ def check_path_option(new_path, environent_variable, message):
               type=click.STRING,
               default='NASAEXOPLANETARCHIVE',
               help='The name of the primary exoplanet catalog used to create '
-                   'the object.ini file'
+                   'the object.ini file.'
               )
 @click.option('--list_all_planets',
               '-lap', cls=MutuallyExclusiveOption,
@@ -165,17 +165,17 @@ def check_path_option(new_path, environent_variable, message):
               '-lci', cls=MutuallyExclusiveOption,
               nargs=1,
               type=click.STRING,
-              help='List the observation calatog id of the planet which '
-                   'name is given as an argument',
+              help='Returns all observation calatog id of the planet which '
+                   'name is given as an argument.',
               mutually_exclusive=['list_all_planets', 'visits',
                                   'all_visits_planet', 'download_all_data']
               )
 @click.option('--visits',
               '-v', cls=MutuallyExclusiveOption,
               multiple=True,
-              help="List observation calatog id's for which the "
-                   "initialization files will be created and the archive "
-                   "data will be downloaded",
+              help="All initialization files will be created and the archive "
+                   "data will be downloaded for the system of which the "
+                   "calatog id is given as an argument.",
               mutually_exclusive=['list_all_planets', 'list_catalog_id',
                                   'all_visits_planet', 'download_all_data']
               )
@@ -183,9 +183,9 @@ def check_path_option(new_path, environent_variable, message):
               '-avp', cls=MutuallyExclusiveOption,
               nargs=1,
               type=click.STRING,
-              help="List observation calatog id's for a certain planet for "
-                   "which the initialization files will be created and the "
-                   "archive data will be downloaded",
+              help="All initialization files will be created and the "
+                   "archive data will be downloaded for all visits "
+                   "of the planet given as an argument.",
               mutually_exclusive=['list_all_planets', 'list_catalog_id',
                                   'visits', 'download_all_data']
               )
@@ -201,21 +201,21 @@ def check_path_option(new_path, environent_variable, message):
               '-cio',
               is_flag=True,
               help='If set only the ini files are created. '
-                   'Default is False'
+                   'Default is False.'
               )
 @click.option('--skip_existing_data',
               '-sed',
               is_flag=True,
               default=False,
               help='If set already downloaded data is skipped. '
-                   'Default is False'
+                   'Default is False.'
               )
 @click.option('--skip_existing_initalization_files',
               '-sei',
               is_flag=True,
               default=False,
               help='If set already created initialization files are skipped. '
-                   'Default is False'
+                   'Default is False.'
               )
 def built_local_hst_archive(init_path, data_path, save_path, no_warnings,
                             primary_exoplanet_catalog, list_all_planets,
@@ -255,16 +255,12 @@ def built_local_hst_archive(init_path, data_path, save_path, no_warnings,
     import cascade
     from cascade.initialize import cascade_default_data_path
     from cascade.initialize import cascade_default_initialization_path
+    from cascade.initialize import cascade_default_save_path
     from build_archive import return_exoplanet_catalogs
-    from build_archive import read_config_file
     from build_archive import return_all_hst_planets
     from build_archive import return_hst_data_calalog_keys
-    from build_archive import fill_system_parameters
-    from build_archive import create_configuration
-    from build_archive import print_parser_content
     from build_archive import long_substr
     from build_archive import return_header_info
-    from build_archive import fill_config_parameters
     from build_archive import save_observations
     from build_archive import IniFileParser
     from build_archive import create_bash_script
@@ -276,6 +272,8 @@ def built_local_hst_archive(init_path, data_path, save_path, no_warnings,
         "{}".format(cascade_default_initialization_path), "green")
     log("The data directory is set to: "
         "{}".format(cascade_default_data_path), "green")
+    log("The save directory is set to: "
+        "{}".format(cascade_default_save_path), "green")
 
     # Location of the tamples
     TEMPLATES_DIR = os.path.join(cascade_default_data_path,
@@ -374,35 +372,24 @@ def built_local_hst_archive(init_path, data_path, save_path, no_warnings,
         OBS_ID = long_substr(data_file_id)
 
         # ################ CREATE OBJECT.INI ##############################
-        # read object.conf file
-        object_config_dict = \
-            read_config_file(OBJECT_CONFIGURATION_FILE, TEMPLATES_DIR)
-        # fill with exoplanet catalog data
-        object_config_dict = \
-            fill_system_parameters(PLANET_NAME, catalogs_dictionary,
-                                   object_config_dict,
-                                   primary_exoplanet_catalog)
-        # read catalog.conf file and fill parameters with values.
-        # set which catalog to use
-        catalog_name = primary_exoplanet_catalog
-        # pass along namespace dict containing relevant parameters
+        # create dictionary to pass along parameters
         namespace_dict = {**locals()}
-        catalog_config_dict = \
-            read_config_file(CATALOG_CONFIGURATION_FILE, TEMPLATES_DIR)
-        catalog_config_dict = \
-            fill_config_parameters(catalog_config_dict, namespace_dict)
 
-        # combine configureation
-        combined_object_initialization_file_dict = \
-            {**object_config_dict,
-             **catalog_config_dict
-             }
-        # create parser
-        object_parser = create_configuration(
-            OBJECT_CONFIGURATION_TEMPLATE,
-            TEMPLATES_DIR,
-            combined_object_initialization_file_dict)
-        print_parser_content(object_parser)
+        # create list with the configuration files to use
+        configuration_file_list = [OBJECT_CONFIGURATION_FILE,
+                                   CATALOG_CONFIGURATION_FILE]
+
+        # create initialization file parser object
+        IFP = \
+            IniFileParser(configuration_file_list,
+                          OBJECT_CONFIGURATION_TEMPLATE,
+                          namespace_dict,
+                          TEMPLATES_DIR,
+                          planet_name=PLANET_NAME,
+                          exoplanet_catalogs_dictionary=catalogs_dictionary,
+                          primary_exoplanet_catalog=primary_exoplanet_catalog)
+        IFP.print_parser()
+        object_parser = IFP.return_parser()
 
         # ################ CREATE EXTRACT_TIMESERIES.INI ####################
         create_timeseries_namespace_dict = {}
@@ -427,8 +414,9 @@ def built_local_hst_archive(init_path, data_path, save_path, no_warnings,
                           EXTRACT_TIMESERIES_CONFIGURATION_TEMPLATE,
                           create_timeseries_namespace_dict,
                           TEMPLATES_DIR)
+        IFP.print_parser()
         extract_timeseries_parser = IFP.return_parser()
-        print_parser_content(extract_timeseries_parser)
+        # print_parser_content(extract_timeseries_parser)
 
         # ############### CREATE CALIBRATE_PLANET_SPECTRUM.INI ################
         # update parameters for timeseries of 1D spectra
@@ -453,8 +441,9 @@ def built_local_hst_archive(init_path, data_path, save_path, no_warnings,
                           CALIBRATE_PLANET_SPECTRUM_CONFIGURATION_TEMPLATE,
                           cal_planet_spec_namespace_dict,
                           TEMPLATES_DIR)
+        IFP.print_parser()
         calibrate_planet_spectrum_parser = IFP.return_parser()
-        print_parser_content(calibrate_planet_spectrum_parser)
+        # print_parser_content(calibrate_planet_spectrum_parser)
 
         # ############## Saving ini files ##################
         initialization_save_path = os.path.join(

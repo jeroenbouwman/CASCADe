@@ -2,7 +2,6 @@ name: cascade
 channels:
   - defaults
   - conda-forge
-  - http://ssb.stsci.edu/astroconda
 dependencies:
   - python=3.8.2
   - ipython=7.13.0
