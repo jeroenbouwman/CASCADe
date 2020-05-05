@@ -1317,7 +1317,7 @@ class TSOSuite:
                     np.max(optimallyExtractedDataset.sample_number) + 1
             else:
                 nscanSamples = 1
-            data_shape = optimallyExtractedDataset.shape
+            data_shape = optimallyExtractedDataset.data.shape
             rebinFactor = \
                 np.max([rebinFactor,
                         data_shape[0]/((data_shape[-1]-6)/nscanSamples)])
