@@ -1267,6 +1267,14 @@ class TSOSuite:
                                  "configuration parameter is not defined. "
                                  "Aborting extraction of 1d spectra.")
         try:
+            autoAdjustRebinFactor = \
+                bool(self.cascade_parameters.
+                     processing_auto_adjust_rebin_factor_extract1d)
+        except AttributeError:
+            raise AttributeError("The processing_auto_adjust_rebin_factor_"
+                                 "extract1d configuration parameter is not "
+                                 "defined. Aborting extraction of 1d spectra.")
+        try:
             savePathVerbose = self.cascade_parameters.cascade_save_path
             if not os.path.isabs(savePathVerbose):
                 savePathVerbose = os.path.join(cascade_default_save_path,
@@ -1303,6 +1311,16 @@ class TSOSuite:
                              verboseSaveFile=verboseSaveFile)
 
         # rebin the spectra to single wavelength per row
+        if autoAdjustRebinFactor:
+            if observationDataType == 'SPECTRAL_CUBE':
+                nscanSamples = \
+                    np.max(optimallyExtractedDataset.sample_number) + 1
+            else:
+                nscanSamples = 1
+            data_shape = optimallyExtractedDataset.shape
+            rebinFactor = \
+                np.max([rebinFactor,
+                        data_shape[0]/((data_shape[-1]-6)/nscanSamples)])
         verboseSaveFile = 'rebin_to_common_wavelength_grid' + \
             '_optimally_extracted_data.png'
         verboseSaveFile = os.path.join(savePathVerbose, verboseSaveFile)
