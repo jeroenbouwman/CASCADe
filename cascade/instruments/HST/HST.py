@@ -1244,14 +1244,14 @@ class HSTWFC3(InstrumentBase):
                 wavelength_min = 0.98*0.8*u.micron
                 wavelength_max = 1.01*1.15*u.micron
             if self.par["obs_mode"] == 'STARING':
-                roi_width = 15
+                roi_width = 20
             elif self.par["obs_mode"] == 'SCANNING':
                 try:
-                    roi_width = self.wfc3_cal.scan_length+10
+                    roi_width = self.wfc3_cal.scan_length+15
                 except AttributeError:
                     roi_width = 150
             else:
-                roi_width = 15
+                roi_width = 20
         else:
             raise ValueError("Only beam A implemented")
         trace = self.spectral_trace.copy()
