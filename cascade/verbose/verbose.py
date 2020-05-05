@@ -36,8 +36,159 @@ from ..initialize import cascade_default_initialization_path
 from ..initialize import cascade_default_path
 from ..initialize import cascade_default_save_path
 
-__all__ = ['make_extract_background_step_plots']
+__all__ = ["load_data_plots",
+           "subtract_background_plots",
+           "filter_dataset_plots",
+           "determine_source_movement_plots",
+           "correct_wavelengths_plots",
+           "set_extraction_mask_plots",
+           "extract_1d_spectra_plots",
+           "define_eclipse_model_plots",
+           "select_regressors_plots",
+           "calibrate_timeseries_plots",
+           "extract_spectrum_plots",
+           "correct_extracted_spectrum_plots"]
 
 
-def extract_background_step_plots():
+def load_data_plots():
+    """
+    Make verbose plots for load_data step.
+
+    Returns
+    -------
+    None.
+
+    """
+    pass
+
+
+def subtract_background_plots():
+    """
+    Make verbose plots.
+
+    Returns
+    -------
+    None.
+
+    """
+    pass
+
+
+def filter_dataset_plots():
+    """
+    Make verbose plots.
+
+    Returns
+    -------
+    None.
+
+    """
+    pass
+
+
+def determine_source_movement_plots():
+    """
+    Make verbose plots.
+
+    Returns
+    -------
+    None.
+
+    """
+    pass
+
+
+def correct_wavelengths_plots():
+    """
+    Make verbose plots.
+
+    Returns
+    -------
+    None.
+
+    """
+    pass
+
+
+def set_extraction_mask_plots():
+    """
+    Make verbose plots.
+
+    Returns
+    -------
+    None.
+
+    """
+    pass
+
+
+def extract_1d_spectra_plots():
+    """
+    Make verbose plots.
+
+    Returns
+    -------
+    None.
+
+    """
+    pass
+
+
+def define_eclipse_model_plots():
+    """
+    Make verbose plots.
+
+    Returns
+    -------
+    None.
+
+    """
+    pass
+
+
+def select_regressors_plots():
+    """
+    Make verbose plots.
+
+    Returns
+    -------
+    None.
+
+    """
+    pass
+
+
+def calibrate_timeseries_plots():
+    """
+    Make verbose plots.
+
+    Returns
+    -------
+    None.
+
+    """
+    pass
+
+
+def extract_spectrum_plots():
+    """
+    Make verbose plots.
+
+    Returns
+    -------
+    None.
+
+    """
+    pass
+
+
+def correct_extracted_spectrum_plots():
+    """
+    Make verbose plots.
+
+    Returns
+    -------
+    None.
+
+    """
     pass
