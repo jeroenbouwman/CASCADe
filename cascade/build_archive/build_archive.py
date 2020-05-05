@@ -466,6 +466,7 @@ def create_bash_script(database_id, configuration):
 
     bash_file_path = os.path.join(cascade_default_data_path, 'scripts',
                                   instrument_save_path)
+    os.makedirs(bash_file_path, exist_ok=True)
     bash_filename = 'run_'+system_name+'.sh'
     with open(os.path.join(bash_file_path, bash_filename), 'w') as file:
         file.write(filled_template)
