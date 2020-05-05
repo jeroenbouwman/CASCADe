@@ -1314,7 +1314,7 @@ class TSOSuite:
         if autoAdjustRebinFactor:
             if observationDataType == 'SPECTRAL_CUBE':
                 nscanSamples = \
-                    np.max(optimallyExtractedDataset.sample_number) + 1
+                    np.max(datasetIn.sample_number) + 1
             else:
                 nscanSamples = 1
             data_shape = optimallyExtractedDataset.data.shape
