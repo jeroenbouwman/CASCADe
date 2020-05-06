@@ -264,6 +264,7 @@ def built_local_hst_archive(init_path, data_path, save_path, no_warnings,
     from cascade.build_archive import save_observations
     from cascade.build_archive import IniFileParser
     from cascade.build_archive import create_bash_script
+    from cascade.build_archive import check_for_exceptions
 
     log('CASCADe', color="blue", figlet=True)
     log("version {}, Copyright (C) 2020 "
@@ -296,6 +297,10 @@ def built_local_hst_archive(init_path, data_path, save_path, no_warnings,
         'cascade_extract_timeseries_template.ini'
     CALIBRATE_PLANET_SPECTRUM_CONFIGURATION_TEMPLATE = \
         'cascade_calibrate_planet_spectrum_template.ini'
+
+    # In case of non standart issues with observations
+    # list them in an exceptions.ini file
+    INITIALIZATION_EXCEPTIONS = 'exceptions.ini'
 
     # Get the HST observations catalog file
     HST_CATALOG_FILE = os.path.join(cascade_default_data_path,
@@ -373,7 +378,12 @@ def built_local_hst_archive(init_path, data_path, save_path, no_warnings,
 
         # ################ CREATE OBJECT.INI ##############################
         # create dictionary to pass along parameters
-        namespace_dict = {**locals()}
+        exceptions_dict = check_for_exceptions(INITIALIZATION_EXCEPTIONS,
+                                               PLANET_NAME+'_'+OBS_ID)
+        # namespace dict for object and catalog sections
+        namespace_dict = {}
+        # update with exceptions
+        namespace_dict.update(exceptions_dict)
 
         # create list with the configuration files to use
         configuration_file_list = [OBJECT_CONFIGURATION_FILE,
@@ -403,6 +413,8 @@ def built_local_hst_archive(init_path, data_path, save_path, no_warnings,
         create_timeseries_namespace_dict.update(
             **return_header_info(data_files[0], cal_data_files[0])
             )
+        # update with exceptions
+        create_timeseries_namespace_dict.update(exceptions_dict)
         # create list with the configuration files to use
         configuration_file_list = [CASCADE_CONFIGURATION_FILE,
                                    PROCESSING_CONFIGURATION_FILE,
@@ -426,6 +438,8 @@ def built_local_hst_archive(init_path, data_path, save_path, no_warnings,
         cal_planet_spec_namespace_dict['observations_has_background'] = False
         cal_planet_spec_namespace_dict['observations_mode'] = 'STARING'
         cal_planet_spec_namespace_dict['observations_data'] = 'SPECTRUM'
+        # update with exceptions
+        cal_planet_spec_namespace_dict.update(exceptions_dict)
 
         # update which configureation files to use
         configuration_file_list = [CASCADE_CONFIGURATION_FILE,

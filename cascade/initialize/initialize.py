@@ -89,7 +89,8 @@ __all__ = ['cascade_warnings',
            'generate_default_initialization',
            'configurator',
            'cascade_configuration',
-           'reset_data']
+           'reset_data',
+           'read_ini_files']
 
 __valid_environment_variables__ = ['CASCADE_WARNINGS',
                                    'CASCADE_PATH',

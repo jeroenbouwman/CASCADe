@@ -43,6 +43,7 @@ from ..initialize import cascade_default_initialization_path
 from ..initialize import cascade_default_path
 from ..initialize import cascade_default_save_path
 from ..exoplanet_tools import parse_database
+from ..initialize import read_ini_files
 
 
 __all__ = ['read_config_file', 'remove_space', 'remove_duplicate',
@@ -51,7 +52,8 @@ __all__ = ['read_config_file', 'remove_space', 'remove_duplicate',
            'print_parser_content', 'return_hst_data_calalog_keys',
            'return_all_hst_planets', 'return_header_info',
            'create_bash_script', 'save_observations', 'fill_config_parameters',
-           'IniFileParser']
+           'IniFileParser', 'check_for_exceptions',
+           'convert_object_value_strings_to_values']
 
 def read_config_file(file_name, path):
     """
@@ -581,6 +583,89 @@ def fill_config_parameters(config_dict, namespece_dict):
     return config_dict
 
 
+def convert_value_strings_to_values(value_string):
+    """
+    Convert value strings to values.
+
+    Parameters
+    ----------
+    value_string : TYPE
+        DESCRIPTION.
+
+    Returns
+    -------
+    value : TYPE
+        DESCRIPTION.
+
+    """
+    try:
+        value = literal_eval(value_string)
+    except (ValueError, SyntaxError):
+        value = value_string
+    return value
+
+
+def convert_object_value_strings_to_values(value_string):
+    """
+    Convert object value strings to values.
+
+    Parameters
+    ----------
+    value_string : TYPE
+        DESCRIPTION.
+
+    Returns
+    -------
+    value : TYPE
+        DESCRIPTION.
+
+    """
+    try:
+        value = u.Quantity(value_string)
+    except (ValueError, TypeError):
+        try:
+            value = literal_eval(value_string)
+        except (ValueError, SyntaxError):
+            value = value_string
+    return value
+
+
+def check_for_exceptions(exception_file, observation_name):
+    """
+    Check for initialization exceptions.
+
+    Parameters
+    ----------
+    exception_file : TYPE
+        DESCRIPTION.
+    observation_name : TYPE
+        DESCRIPTION.
+
+    Returns
+    -------
+    exceptions_dict : TYPE
+        DESCRIPTION.
+
+    """
+    if not os.path.isfile(os.path.join(cascade_default_initialization_path,
+                                       exception_file)):
+        return {}
+    parser = read_ini_files(os.path.join(cascade_default_initialization_path,
+                                         exception_file))
+    section_names = parser.sections()
+    if observation_name in section_names:
+        exceptions_dict = dict(parser.items(observation_name))
+        for key, value_string in exceptions_dict.items():
+            if 'object' in key:
+                value = convert_object_value_strings_to_values(value_string)
+            else:
+                value = convert_value_strings_to_values(value_string)
+            exceptions_dict[key] = value
+    else:
+        exceptions_dict = {}
+    return exceptions_dict
+
+
 class IniFileParser:
     """Inititialization file parser class."""
 
@@ -619,6 +704,9 @@ class IniFileParser:
                                            self.exoplanet_catalogs_dictionary,
                                            config_dict,
                                            self.primary_exoplanet_catalog)
+                for key in config_dict.keys():
+                    if key in self.namespace_dict.keys():
+                        config_dict[key] = self.namespace_dict[key].copy()
             full_configuration_dict.update(config_dict.copy())
         init_file_parser = create_configuration(
             self.initialization_file_template,
