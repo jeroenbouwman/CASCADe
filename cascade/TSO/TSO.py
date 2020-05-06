@@ -1320,7 +1320,7 @@ class TSOSuite:
             data_shape = optimallyExtractedDataset.data.shape
             rebinFactor = \
                 np.max([rebinFactor,
-                        data_shape[0]/((data_shape[-1]-6)/nscanSamples)])
+                        data_shape[0]/(data_shape[-1]/nscanSamples-5)])
         verboseSaveFile = 'rebin_to_common_wavelength_grid' + \
             '_optimally_extracted_data.png'
         verboseSaveFile = os.path.join(savePathVerbose, verboseSaveFile)

@@ -256,6 +256,13 @@ class HSTWFC3(InstrumentBase):
         obs_target_name = cascade_configuration.observations_target_name
         obs_has_backgr = ast.literal_eval(cascade_configuration.
                                           observations_has_background)
+        # processing
+        try:
+            proc_drop_samples = cascade_configuration.processing_drop_frames
+            proc_drop_samples = \
+                [int(i) for i in ast.literal_eval(proc_drop_samples)]
+        except AttributeError:
+            proc_drop_samples = [-1]
         try:
             obs_uses_backgr_model = \
                 ast.literal_eval(cascade_configuration.
@@ -326,7 +333,8 @@ class HSTWFC3(InstrumentBase):
             obs_data_product=obs_data_product,
             obs_target_name=obs_target_name,
             obs_has_backgr=obs_has_backgr,
-            obs_uses_backgr_model=obs_uses_backgr_model)
+            obs_uses_backgr_model=obs_uses_backgr_model,
+            proc_drop_samp=proc_drop_samples)
         if obs_has_backgr and not obs_uses_backgr_model:
             par.update({'obs_backgr_id': obs_backgr_id})
             par.update({'obs_backgr_target_name': obs_backgr_target_name})
@@ -862,16 +870,18 @@ class HSTWFC3(InstrumentBase):
                 isSparse = self._is_sparse_sequence(hdul)
                 cubeCalType = self._get_cube_cal_type(hdul)
                 nsamp = hdul['PRIMARY'].header['NSAMP']
-                # The angle difference between “SCAN_ANG” and “PA_V3"
-                # determines if it is an up or down scan.
-                # For up scan, this angle is around +90 degrees (91.8),
-                # for down scan, this angle is around -90 degrees (-88.1).
-                scanLeng = hdul['PRIMARY'].header['SCAN_LEN']
+                exptime = hdul['PRIMARY'].header['EXPTIME']
+# BUG FIX       scanLeng = hdul['PRIMARY'].header['SCAN_LEN']
+                scanRate = hdul['PRIMARY'].header['SCAN_RAT']
                 scanOffset2 = hdul['PRIMARY'].header['POSTARG2']
                 scanOffset1 = hdul['PRIMARY'].header['POSTARG1']
                 scanAng = hdul['PRIMARY'].header['SCAN_ANG']
                 # paV3 = hdul['PRIMARY'].header['PA_V3']
 # BUG FIX
+                # The angle difference between “SCAN_ANG” and “PA_V3"
+                # determines if it is an up or down scan.
+                # For up scan, this angle is around +90 degrees (91.8),
+                # for down scan, this angle is around -90 degrees (-88.1).
                 if scanAng - 135.0 > 0:
                     isUpScan = True
                 else:
@@ -880,7 +890,10 @@ class HSTWFC3(InstrumentBase):
                     nsampMax = nsamp-2
                 else:
                     nsampMax = nsamp-1
+                sample_counter = 0
                 for isample in range(0, nsampMax):
+                    if isample in self.par['proc_drop_samp']:
+                        continue
                     routtime = hdul[1+5*isample].header['ROUTTIME']
                     deltaTime = hdul[1+5*isample].header['DELTATIM']
                     if ((cubeCalType == 'COUNTS') |
@@ -908,10 +921,11 @@ class HSTWFC3(InstrumentBase):
                     spectral_image_cube.append(spectral_image.copy())
                     spectral_image_unc_cube.append(spectral_image_unc.copy())
                     spectral_image_dq_cube.append(spectral_image_dq.copy())
-                    spectral_sample_number.append(isample)
+                    spectral_sample_number.append(sample_counter)
                     spectral_scan_directon.append(isUpScan)
                     spectral_sampling_time.append(deltaTime)
-                    spectral_scan_length.append(scanLeng)
+# BUG FIX           spectral_scan_length.append(scanLeng)
+                    spectral_scan_length.append(scanRate*exptime)
                     spectral_scan_offset2.append(scanOffset2)
                     spectral_scan_offset1.append(scanOffset1)
                     time.append(routtime - 0.5*deltaTime/86400.0)
@@ -922,6 +936,7 @@ class HSTWFC3(InstrumentBase):
                     spectral_data_files_out.append(image_file_sample)
                     spectral_data_files_in.append(image_file)
                     spectral_image_number_of_samples.append(nsampMax)
+                    sample_counter += 1
 
         if len(spectral_image_cube) == 0:
             raise ValueError("No science data found for the \

@@ -182,8 +182,8 @@ def run_cascade(initfiles, init_path, data_path, save_path, show_plots,
         "green")
     log("The save directory is: {}".format(os.environ["CASCADE_SAVE_PATH"]),
         "green")
-    log("Note that the speciefied directories will ignored if an absolute "
-        "path is spesified in the initialization files", "green")
+    log("Note that the specified directories will ignored if an absolute "
+        "path is specified in the initialization files", "green")
 
     tso = cascade.TSO.TSOSuite()
     tso.execute("reset")
