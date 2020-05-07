@@ -654,7 +654,7 @@ def check_for_exceptions(exception_file, parameter_dict):
                              observtory, instrument)
     if not os.path.isfile(os.path.join(file_path, exception_file)):
         return {}
-    parser = read_ini_files(file_path, exception_file)
+    parser = read_ini_files(os.path.join(file_path, exception_file))
     section_names = parser.sections()
     if observation_name in section_names:
         exceptions_dict = dict(parser.items(observation_name))
