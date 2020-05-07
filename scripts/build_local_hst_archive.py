@@ -300,7 +300,8 @@ def built_local_hst_archive(init_path, data_path, save_path, no_warnings,
 
     # In case of non standart issues with observations
     # list them in an exceptions.ini file
-    INITIALIZATION_EXCEPTIONS = 'exceptions.ini'
+    INITIALIZATION_EXCEPTIONS = 'processing_exceptions.ini'
+    INITIALIZATION_EXCEPTIONS_USER = 'user_processing_exceptions.ini'
 
     # Get the HST observations catalog file
     HST_CATALOG_FILE = os.path.join(cascade_default_data_path,
@@ -371,37 +372,14 @@ def built_local_hst_archive(init_path, data_path, save_path, no_warnings,
         data_files = hst_data_catalog[visit]['observations_id_ima'].split(',')
         cal_data_files = hst_data_catalog[visit]['calibrations_id'].split(',')
         data_file_id = [file.split('_')[0] for file in data_files]
-        cal_data_file_id = [file.split('_')[0] for file in cal_data_files]
+#        cal_data_file_id = [file.split('_')[0] for file in cal_data_files]
+
         # get or calculate all parameters needed for the observations and
         # instrument sections in the .ini file
         OBS_ID = long_substr(data_file_id)
 
-        # ################ CREATE OBJECT.INI ##############################
-        # create dictionary to pass along parameters
-        exceptions_dict = check_for_exceptions(INITIALIZATION_EXCEPTIONS,
-                                               PLANET_NAME+'_'+OBS_ID)
-        # namespace dict for object and catalog sections
-        namespace_dict = {}
-        # update with exceptions
-        namespace_dict.update(exceptions_dict)
-
-        # create list with the configuration files to use
-        configuration_file_list = [OBJECT_CONFIGURATION_FILE,
-                                   CATALOG_CONFIGURATION_FILE]
-
-        # create initialization file parser object
-        IFP = \
-            IniFileParser(configuration_file_list,
-                          OBJECT_CONFIGURATION_TEMPLATE,
-                          namespace_dict,
-                          TEMPLATES_DIR,
-                          planet_name=PLANET_NAME,
-                          exoplanet_catalogs_dictionary=catalogs_dictionary,
-                          primary_exoplanet_catalog=primary_exoplanet_catalog)
-        IFP.print_parser()
-        object_parser = IFP.return_parser()
-
-        # ################ CREATE EXTRACT_TIMESERIES.INI ####################
+        # get all needed parametesr from the data files and catalog files
+        # to create the ini files for creating the spctral timeseries
         create_timeseries_namespace_dict = {}
         # fill dictionary with parameters to be filled into templates
         create_timeseries_namespace_dict['cascade_save_path'] = \
@@ -413,6 +391,52 @@ def built_local_hst_archive(init_path, data_path, save_path, no_warnings,
         create_timeseries_namespace_dict.update(
             **return_header_info(data_files[0], cal_data_files[0])
             )
+
+        # update parameters for timeseries of 1D spectra to create the
+        # ini files for the calibration of the planet specrum
+        cal_planet_spec_namespace_dict = \
+            create_timeseries_namespace_dict.copy()
+        cal_planet_spec_namespace_dict['processing_nextraction'] = 1
+        cal_planet_spec_namespace_dict['observations_data_product'] = 'COE'
+        cal_planet_spec_namespace_dict['observations_has_background'] = False
+        cal_planet_spec_namespace_dict['observations_mode'] = 'STARING'
+        cal_planet_spec_namespace_dict['observations_data'] = 'SPECTRUM'
+
+        # The name space for creating the ini files defining the object
+        object_namespace_dict = {}
+
+        # Check for exceptions on the standard values defined for a
+        # particular system.
+        exceptions_dict = \
+            check_for_exceptions(INITIALIZATION_EXCEPTIONS,
+                                 create_timeseries_namespace_dict)
+        exceptions_dict_user = \
+            check_for_exceptions(INITIALIZATION_EXCEPTIONS_USER,
+                                 create_timeseries_namespace_dict)
+        exceptions_dict.update(exceptions_dict_user)
+
+        # ################ CREATE OBJECT.INI ##############################
+        # update with exceptions
+        object_namespace_dict.update(exceptions_dict)
+
+        # create list with the configuration files to use
+        configuration_file_list = [OBJECT_CONFIGURATION_FILE,
+                                   CATALOG_CONFIGURATION_FILE]
+
+        # create initialization file parser object
+        IFP = \
+            IniFileParser(configuration_file_list,
+                          OBJECT_CONFIGURATION_TEMPLATE,
+                          object_namespace_dict,
+                          TEMPLATES_DIR,
+                          planet_name=PLANET_NAME,
+                          exoplanet_catalogs_dictionary=catalogs_dictionary,
+                          primary_exoplanet_catalog=primary_exoplanet_catalog)
+        IFP.print_parser()
+        object_parser = IFP.return_parser()
+
+        # ################ CREATE EXTRACT_TIMESERIES.INI ####################
+
         # update with exceptions
         create_timeseries_namespace_dict.update(exceptions_dict)
         # create list with the configuration files to use
@@ -430,14 +454,7 @@ def built_local_hst_archive(init_path, data_path, save_path, no_warnings,
         extract_timeseries_parser = IFP.return_parser()
 
         # ############### CREATE CALIBRATE_PLANET_SPECTRUM.INI ################
-        # update parameters for timeseries of 1D spectra
-        cal_planet_spec_namespace_dict = \
-            create_timeseries_namespace_dict.copy()
-        cal_planet_spec_namespace_dict['processing_nextraction'] = 1
-        cal_planet_spec_namespace_dict['observations_data_product'] = 'COE'
-        cal_planet_spec_namespace_dict['observations_has_background'] = False
-        cal_planet_spec_namespace_dict['observations_mode'] = 'STARING'
-        cal_planet_spec_namespace_dict['observations_data'] = 'SPECTRUM'
+
         # update with exceptions
         cal_planet_spec_namespace_dict.update(exceptions_dict)
 

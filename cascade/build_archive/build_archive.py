@@ -630,7 +630,7 @@ def convert_object_value_strings_to_values(value_string):
     return value
 
 
-def check_for_exceptions(exception_file, observation_name):
+def check_for_exceptions(exception_file, parameter_dict):
     """
     Check for initialization exceptions.
 
@@ -638,7 +638,7 @@ def check_for_exceptions(exception_file, observation_name):
     ----------
     exception_file : TYPE
         DESCRIPTION.
-    observation_name : TYPE
+    parameter_dict : TYPE
         DESCRIPTION.
 
     Returns
@@ -647,11 +647,14 @@ def check_for_exceptions(exception_file, observation_name):
         DESCRIPTION.
 
     """
-    if not os.path.isfile(os.path.join(cascade_default_initialization_path,
-                                       exception_file)):
+    observation_name = parameter_dict['observations_target_name']
+    observtory = parameter_dict['instrument_observatory']
+    instrument = parameter_dict['instrument']
+    file_path = os.path.join(cascade_default_data_path, 'archive_databases/',
+                             observtory, instrument)
+    if not os.path.isfile(os.path.join(file_path, exception_file)):
         return {}
-    parser = read_ini_files(os.path.join(cascade_default_initialization_path,
-                                         exception_file))
+    parser = read_ini_files(file_path, exception_file)
     section_names = parser.sections()
     if observation_name in section_names:
         exceptions_dict = dict(parser.items(observation_name))
