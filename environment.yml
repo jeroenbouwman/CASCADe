@@ -23,7 +23,7 @@ dependencies:
   - setuptools
   - cython
   - networkx
-  - pytest
+  - pytest=5.4.2
   - tqdm
   - libgcc-ng
   - libgfortran-ng
