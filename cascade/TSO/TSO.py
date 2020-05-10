@@ -38,6 +38,9 @@ import warnings
 import numpy as np
 from scipy import interpolate
 from scipy import ndimage
+from numpy.linalg import cond
+from scipy.linalg import lstsq
+from scipy.linalg import pinv2
 import astropy.units as u
 from astropy.stats import akaike_info_criterion
 from astropy.table import MaskedColumn, Table
@@ -1906,6 +1909,8 @@ class TSOSuite:
                                  Check the initialiation of the TSO object. \
                                  Aborting time series calibration")
         try:
+            add_offset = \
+                ast.literal_eval(self.cascade_parameters.cpm_add_constant)
             add_time = ast.literal_eval(self.cascade_parameters.cpm_add_time)
             add_position = \
                 ast.literal_eval(self.cascade_parameters.cpm_add_postition)
@@ -1969,8 +1974,6 @@ class TSOSuite:
                     raise AttributeError("Number of PCA components need "
                                          "to be set when using use_pca=True. "
                                          "Aborting time series calibration")
-            else:
-                add_offset = False
         try:
             use_pca_filter = \
                ast.literal_eval(self.cascade_parameters.cpm_use_pca_filter)
@@ -2001,16 +2004,11 @@ class TSOSuite:
         data_unit = data_use.data.unit
         nlambda, nspatial, ntime = data_use.shape
 
-# TEST
-        # add_offset = True
-
         # number of additional regressors
         nadd = 1
         if add_offset:
             nadd += 1
-        if add_time and not add_offset:
-            nadd += 2
-        elif add_time and add_offset:
+        if add_time:
             nadd += 1
         if add_position:
             nadd += 1
@@ -2166,10 +2164,7 @@ class TSOSuite:
                     if add_offset:
                         design_matrix = np.vstack((design_matrix,
                                                    np.ones_like(x)))
-                    if add_time and not add_offset:
-                        design_matrix = np.vstack((design_matrix,
-                                                   np.ones_like(x), x))
-                    elif add_time and add_offset:
+                    if add_time:
                         design_matrix = np.vstack((design_matrix, x))
                     if add_position:
                         design_matrix = np.vstack((design_matrix, r))
@@ -2353,6 +2348,11 @@ class TSOSuite:
             self.calibration_results.model_time_series = model_time_series
             self.calibration_results.residual = residual_time_series
             self.calibration_results.aic = AIC
+            print("Median regularization value: {}".
+                  format(np.median(self.calibration_results.
+                                   regularization.data)))
+            print("Median AIC value: {} ".
+                  format(np.median(self.calibration_results.aic.data)))
 
     def extract_spectrum(self):
         """
@@ -2734,25 +2734,22 @@ class TSOSuite:
         weighted_signal = self.exoplanet_spectrum.weighted_signal.copy()
         weighted_signal.set_fill_value(0.0)
 
-#        from sklearn.linear_model import RidgeCV
-#
-#        clf = RidgeCV(alphas=[1e-9, 1e-7, 1e-6, 1e-4, 5.e-3, 1e-3, 5.e-2,
-#                              1e-2, 5.e-2, 1.e-1, 5.e-1,
-#                              1., 5.0, 1.e1, 1.e2, 1.e3],
-#                      gcv_mode=None,
-#                      cv=None,
-#                      fit_intercept=True).fit(K.filled(),
-#                                               weighted_signal.filled())
-#        corrected_spectrum = clf.predict(K.filled())
-#        from numpy.linalg import cond
-#        print(cond(K.filled()))
-        import scipy
-        corrected_spectrum = scipy.linalg.lstsq(K.filled(),
-                                                -weighted_signal.filled(),
-                                                cond=rcond_limit)[0]
+        # use approximate inverse as preconditioner
+        M = pinv2(K.filled(), rcond=1.e-5)
 
-#        corrected_spectrum = np.dot(pinv2(K.filled(), rcond=rcond_limit),
-#                                    -weighted_signal.filled())
+        print("Correcting planet spectrum for non-uniform average "
+              "transit depth subtraction")
+        print("Condition numner K matrix: {}".format(cond(K.filled())))
+        print("Condition number pre-conditioned "
+              "K matrix: {}".format(cond(np.dot(M, K.filled()))))
+
+        corrected_spectrum = lstsq(np.dot(M, K.filled()),
+                                   np.dot(M, -weighted_signal.filled()),
+                                   cond=rcond_limit)[0]
+        # corrected_spectrum = scipy.linalg.lstsq(K.filled(),
+        #                                         -weighted_signal.filled(),
+        #                                         cond=rcond_limit)[0]
+
         corrected_spectrum = corrected_spectrum - \
             np.ma.median(corrected_spectrum)
 
@@ -3002,9 +2999,6 @@ class TSOSuite:
 
         if results.weighted_image.shape[1] <= 1:
             fig, ax = plt.subplots(figsize=(7, 5), dpi=72)
-#            for item in ([ax.title, ax.xaxis.label, ax.yaxis.label] +
-#                         ax.get_xticklabels() + ax.get_yticklabels()):
-#                item.set_fontsize(20)
             ax.plot(results.spectrum.wavelength,
                     np.ma.abs(results.weighted_image), lw=3)
             ax.set_ylabel('| Signal * weight |')
@@ -3013,9 +3007,6 @@ class TSOSuite:
             plt.show()
         else:
             fig, ax = plt.subplots(figsize=(6, 6), dpi=72)
-#            for item in ([ax.title, ax.xaxis.label, ax.yaxis.label] +
-#                         ax.get_xticklabels() + ax.get_yticklabels()):
-#                item.set_fontsize(20)
             cmap = plt.cm.gist_heat
             cmap.set_bad('black', 1.)
             p = ax.imshow(np.ma.abs(results.weighted_image),
@@ -3029,9 +3020,6 @@ class TSOSuite:
                                  save_name_base+'_weighted_signal.png'),
                     bbox_inches='tight')
 
-        # BUG FIX as errorbar does not support quantaties.
-        # also the calculations with masked quantities ,
-        # like subtraction of a constant quantity can lead to wrong results
         err_temp = np.ma.array(results.spectrum.uncertainty.data.value,
                                mask=results.spectrum.uncertainty.mask)
         wav_temp = np.ma.array(results.spectrum.wavelength.data.value,
@@ -3050,23 +3038,19 @@ class TSOSuite:
                             mask=results.corrected_spectrum.uncertainty.mask)
         except AttributeError:
             pass
-#        with quantity_support():
         fig, ax = plt.subplots(figsize=(7, 4), dpi=72)
-#        for item in ([ax.title, ax.xaxis.label, ax.yaxis.label] +
-#                     ax.get_xticklabels() + ax.get_yticklabels()):
-#            item.set_fontsize(20)
         ax.plot(results.spectrum.wavelength, results.spectrum.data,
-                lw=3, alpha=0.7, color='blue')
-        ax.errorbar(wav_temp, flux_temp, yerr=err_temp,
+                lw=3, alpha=0.7, color='blue', zorder=7)
+        ax.errorbar(wav_temp, flux_temp, yerr=err_temp, zorder=7,
                     fmt=".k", color='blue', lw=3, alpha=0.7, ecolor='blue',
                     markerfacecolor='blue', markeredgecolor='blue',
                     fillstyle='full', markersize=10, label='Not-Corrected')
         try:
             ax.plot(wav_temp_corrected, flux_temp_corrected,
-                    lw=3, alpha=0.7, color='green')
+                    lw=3, alpha=0.7, color='green', zorder=8)
             ax.errorbar(wav_temp_corrected, flux_temp_corrected,
-                        yerr=err_temp_correced,
-                        fmt=".k", color='green', lw=3, alpha=0.7,
+                        yerr=err_temp_correced, zorder=8,
+                        fmt=".k", color='green', lw=3, alpha=0.9,
                         ecolor='green',
                         markerfacecolor='green', markeredgecolor='green',
                         fillstyle='full', markersize=10, label='Corrected')
@@ -3079,8 +3063,8 @@ class TSOSuite:
             ax.set_ylabel('Fplanet/Fstar [{}]'.format(results.
                           spectrum.data_unit))
         else:
-            axes.set_ylim([np.ma.median(flux_temp)/1.2,
-                           1.2*np.ma.median(flux_temp)])
+            axes.set_ylim([np.ma.median(flux_temp_corrected)/1.2,
+                           1.2*np.ma.median(flux_temp_corrected)])
             ax.set_ylabel('Transit Depth [{}]'.format(results.
                                                       spectrum.data_unit))
         ax.set_xlabel('Wavelength [{}]'.format(results.
@@ -3096,9 +3080,6 @@ class TSOSuite:
                     bbox_inches='tight')
 
         if transittype == 'secondary':
-            # BUG FIX as errorbar does not support quantaties.
-            # also the calculations with masked quantities ,
-            # like subtraction of a constant quantity can lead to wrong results
             err_bt_temp = \
              np.ma.array(results.brightness_temperature.uncertainty.data.value,
                          mask=results.brightness_temperature.uncertainty.mask)
@@ -3112,9 +3093,6 @@ class TSOSuite:
                             mask=results.brightness_temperature.data.mask)
 
             fig, ax = plt.subplots(figsize=(7, 4), dpi=72)
-#            for item in ([ax.title, ax.xaxis.label, ax.yaxis.label] +
-#                         ax.get_xticklabels() + ax.get_yticklabels()):
-#                item.set_fontsize(20)
             ax.plot(results.brightness_temperature.wavelength,
                     results.brightness_temperature.data,
                     lw=3, alpha=0.7, color='blue')
@@ -3155,9 +3133,6 @@ class TSOSuite:
                             mask=results.calibration_correction.mask)
 
             fig, ax = plt.subplots(figsize=(7, 4), dpi=72)
-#            for item in ([ax.title, ax.xaxis.label, ax.yaxis.label] +
-#                         ax.get_xticklabels() + ax.get_yticklabels()):
-#                item.set_fontsize(20)
             ax.plot(results.calibration_correction.wavelength,
                     results.calibration_correction.data)
             ax.errorbar(wav_corr_temp, cal_corr_temp,
@@ -3182,9 +3157,6 @@ class TSOSuite:
 
             with quantity_support():
                 fig, ax = plt.subplots(figsize=(7, 4), dpi=72)
-#                for item in ([ax.title, ax.xaxis.label, ax.yaxis.label] +
-#                             ax.get_xticklabels() + ax.get_yticklabels()):
-#                    item.set_fontsize(20)
                 ax.plot(results.spectrum.wavelength, snr_cal)
                 ax.plot(results.spectrum.wavelength, snr_signal)
                 axes = plt.gca()
