@@ -80,6 +80,7 @@ import shutil
 
 from cascade import __path__
 from cascade import __version__
+from cascade.utilities import find
 
 __all__ = ['cascade_warnings',
            'cascade_default_path',
@@ -178,9 +179,20 @@ def reset_data():
     print("Updated cascade data in directory: {}".format(destination))
     new_path = os.path.join(cascade_default_data_path, 'archive_databases/')
     if os.path.exists(new_path):
+        user_files = find("user_processing_exceptions.ini", new_path)
+        temp_dir = os.path.join(cascade_default_data_path, "temp_dir_user/")
+        os.mkdir(temp_dir)
+        for i, file in enumerate(user_files):
+            sub_temp_dir = os.path.join(temp_dir, "{}/".format(i))
+            os.mkdir(sub_temp_dir)
+            shutil.copy(file, sub_temp_dir)
         shutil.rmtree(new_path)
     destination = shutil.copytree(os.path.join(__cascade_data_path,
                                                'archive_databases/'), new_path)
+    user_files2 = find("user_processing_exceptions.ini", temp_dir)
+    for file, file2 in zip(user_files, user_files2):
+        shutil.copy(file2, file)
+    shutil.rmtree(temp_dir)
     print("Updated cascade data in directory: {}".format(destination))
     new_path = os.path.join(cascade_default_data_path,
                             'configuration_templates/')
