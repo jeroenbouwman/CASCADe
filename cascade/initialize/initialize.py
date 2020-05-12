@@ -38,6 +38,8 @@ CASCADEe used the following environment variables:
         Default path to where CASCADe saves output.
     CASCADE_INITIALIZATION_FILE_PATH:
         Default directory for CASCADe initialization files.
+    CASCADE_LOG_PATH:
+        Default directory for logfiles.
 
 Attributes:
 -----------
@@ -87,6 +89,7 @@ __all__ = ['cascade_warnings',
            'cascade_default_data_path',
            'cascade_default_save_path',
            'cascade_default_initialization_path',
+           'cascade_default_log_path',
            'generate_default_initialization',
            'configurator',
            'cascade_configuration',
@@ -97,7 +100,8 @@ __valid_environment_variables__ = ['CASCADE_WARNINGS',
                                    'CASCADE_PATH',
                                    'CASCADE_DATA_PATH',
                                    'CASCADE_SAVE_PATH',
-                                   'CASCADE_INITIALIZATION_FILE_PATH']
+                                   'CASCADE_INITIALIZATION_FILE_PATH',
+                                   'CASCADE_LOG_PATH']
 
 __flag_not_set__ = False
 
@@ -148,6 +152,16 @@ except KeyError:
         os.path.join(cascade_default_path, "examples/init_files/")
     os.environ['CASCADE_INITIALIZATION_FILE_PATH'] = \
         cascade_default_initialization_path
+    __flag_not_set__ = True
+
+try:
+    cascade_default_log_path = \
+        os.environ['CASCADE_LOG_PATH']
+except KeyError:
+    cascade_default_log_path = \
+        os.path.join(cascade_default_path, "examples/logs/")
+    os.environ['CASCADE_LOG_PATH'] = \
+        cascade_default_log_path
     __flag_not_set__ = True
 
 if __flag_not_set__:
@@ -230,7 +244,6 @@ if __cascade_data_path != cascade_default_data_path:
             print("Data version older then current cascade version, "
                   "resetting data")
             reset_data()
-
 
 def generate_default_initialization(observatory='HST', data='SPECTRUM',
                                     mode='STARING', observation='TRANSIT'):
