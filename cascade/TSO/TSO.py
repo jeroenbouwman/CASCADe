@@ -547,8 +547,14 @@ class TSOSuite:
                     bool(self.cascade_parameters.
                          cascade_use_multi_processes)
             except AttributeError:
-                raise AttributeError("UseMultiProcesses flag not set. "
-                                     "Aborting filtering of data.")
+                raise AttributeError("cascade_use_multi_processes flag not "
+                                     "set. Aborting filtering of data.")
+            try:
+                maxNumberOfCPUs = \
+                    int(self.cascade_parameters.cascade_max_number_of_cpus)
+            except AttributeError:
+                raise AttributeError("cascade_max_number_of_cpus flag not set."
+                                     " Aborting filtering of data.")
 
         # if timeseries data of 1D spctra use simpler filtering
         if observationDataType == 'SPECTRUM':
@@ -599,7 +605,8 @@ class TSOSuite:
                 sigmaLimit=sigma,
                 maxNumberOfIterations=max_number_of_iterations,
                 fractionalAcceptanceLimit=fractionalAcceptanceLimit,
-                useMultiProcesses=useMultiProcesses)
+                useMultiProcesses=useMultiProcesses,
+                maxNumberOfCPUs=maxNumberOfCPUs)
 
         self.observation.dataset = datasetOut
         self.cpm.cleaned_dataset = cleanedDataset
@@ -835,6 +842,12 @@ class TSOSuite:
             raise AttributeError("processing_angle_oversampling_movement "
                                  "parameter not set. Aborting position "
                                  "determination")
+        try:
+            maxNumberOfCPUs = \
+                int(self.cascade_parameters.cascade_max_number_of_cpus)
+        except AttributeError:
+            raise AttributeError("cascade_max_number_of_cpus flag not set."
+                                 " Aborting filtering of data.")
         verboseSaveFile = 'register_telescope_movement.png'
         verboseSaveFile = os.path.join(savePathVerbose, verboseSaveFile)
         spectral_movement = \
@@ -844,7 +857,8 @@ class TSOSuite:
                                         upsampleFactor=upsampleFactor,
                                         AngleOversampling=AngleOversampling,
                                         verbose=verbose,
-                                        verboseSaveFile=verboseSaveFile)
+                                        verboseSaveFile=verboseSaveFile,
+                                        maxNumberOfCPUs=maxNumberOfCPUs)
         newShiftedTrace["positional_pixel"] = \
             newShiftedTrace["positional_pixel"] - \
             medianCrossDispersionPosition * \
@@ -1913,7 +1927,7 @@ class TSOSuite:
                 ast.literal_eval(self.cascade_parameters.cpm_add_constant)
             add_time = ast.literal_eval(self.cascade_parameters.cpm_add_time)
             add_position = \
-                ast.literal_eval(self.cascade_parameters.cpm_add_postition)
+                ast.literal_eval(self.cascade_parameters.cpm_add_position)
             add_calibration_signal = \
                 ast.literal_eval(self.cascade_parameters.
                                  cpm_add_calibration_signal)

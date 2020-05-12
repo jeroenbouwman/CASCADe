@@ -495,8 +495,10 @@ def filter_image_cube(data_in, Filters, ROIcube, enumeratedSubRegions,
             filteredImage[indices_poi[j[0]]] = j[2]
             filteredImageVariance[indices_poi[j[0]]] = j[3],
     else:
-        ncpus = ray.cluster_resources()['CPU']
-        chunksize = int(np.min([256, len(enumeratedSubRegions)//ncpus]))
+        ncpus =int(ray.cluster_resources()['CPU'])
+        chunksize = len(enumeratedSubRegions)//ncpus + 1
+        while chunksize > 256:
+            chunksize = chunksize//ncpus + 1
 
         data_id = ray.put(data_in)
         filters_id = ray.put(Filters)
@@ -532,7 +534,8 @@ def iterative_bad_pixel_flagging(dataset, ROIcube, Filters,
                                  enumeratedSubRegions, sigmaLimit=4.0,
                                  maxNumberOfIterations=12,
                                  fractionalAcceptanceLimit=0.005,
-                                 useMultiProcesses=True):
+                                 useMultiProcesses=True,
+                                 maxNumberOfCPUs=12):
     """
     Flag bad pixels.
 
@@ -559,6 +562,8 @@ def iterative_bad_pixel_flagging(dataset, ROIcube, Filters,
         which the iteration can be terminated.
     useMultiProcesses : 'bool' (optional|True)
         Use multiprocessing or not.
+    max_number_of_cpus : 'int' (optional|12)
+        Maximum number of CPU's which can be used.
 
     Returns
     -------
@@ -586,15 +591,23 @@ def iterative_bad_pixel_flagging(dataset, ROIcube, Filters,
 
     if useMultiProcesses:
         mem = virtual_memory()
-        num_cpus = int(cpu_count(logical=False))
+        # num_cpus = int(np.max([cpu_count(logical=False),
+        #                        cpu_count(logical=True)//2-2]))
+        # num_cpus = int(np.min([maxNumberOfCPUs, num_cpus]))
+        
+        ncpu = int(np.min([maxNumberOfCPUs,
+                           np.max([1, cpu_count(logical=True)//2])
+                           ])
+                   )
         mem_store = np.max([int(initialData.nbytes*3.0), int(1.1*78643200)])
         mem_workers = np.max([int(initialData.nbytes*5.0), int(1.1*52428800)])
         if mem.available < (mem_store+mem_workers):
             warnings.warn("WARNING: Not enough memory for Ray to start. "
-                          "Required free memory: {} bytes".
-                          format(mem_store+mem_workers))
+                          "Required free memory: {} bytes "
+                          "Available: {} bytes".
+                          format(mem_store+mem_workers, mem.available))
         ray.disconnect()
-        ray.init(num_cpus=num_cpus, object_store_memory=mem_store,
+        ray.init(num_cpus=ncpu, object_store_memory=mem_store,
                  memory=mem_workers)
 
     numberOfFlaggedPixels = np.sum(~ROIcube & dataset.mask)
@@ -1371,7 +1384,7 @@ def grouper(iterable, n, fillvalue=None):
 
 
 def joblib_loop(dataCube, ROICube=None, upsampleFactor=111,
-                AngleOversampling=2, nreference=6):
+                AngleOversampling=2, nreference=6, maxNumberOfCPUs=12):
     """
     Loop using joblib.
 
@@ -1388,6 +1401,7 @@ def joblib_loop(dataCube, ROICube=None, upsampleFactor=111,
     nreferences : 'int', optional
     upsampleFactor : 'int, optional
     AngleOversampling : 'int, optional
+    max_number_of_cpus : 'int', optionla
 
     Returns
     -------
@@ -1398,7 +1412,10 @@ def joblib_loop(dataCube, ROICube=None, upsampleFactor=111,
                    ROICube,
                    upsampleFactor=upsampleFactor,
                    AngleOversampling=AngleOversampling)
-    ncpu = np.min([12, np.max([1, mp.cpu_count()-2])])
+    ncpu = int(np.min([maxNumberOfCPUs, np.max([1, mp.cpu_count()-2])]))
+    # ncpu = int(np.max([cpu_count(logical=False),
+    #                    cpu_count(logical=True)//2-2]))
+    # ncpu = np.min([maxNumberOfCPUs, ncpu])
     batch_size = np.min([ncpu, nreference])
     dfunc = joblib.delayed(func)
     with joblib.Parallel(n_jobs=-1, prefer="processes") as MP:
@@ -1417,7 +1434,7 @@ def joblib_loop(dataCube, ROICube=None, upsampleFactor=111,
 def register_telescope_movement(cleanedDataset, ROICube=None,  nreferences=6,
                                 mainReference=4, upsampleFactor=111,
                                 AngleOversampling=2, verbose=False,
-                                verboseSaveFile=None):
+                                verboseSaveFile=None, maxNumberOfCPUs=12):
     """
     Register the telescope movement.
 
@@ -1446,6 +1463,8 @@ def register_telescope_movement(cleanedDataset, ROICube=None,  nreferences=6,
         If true diagnostic plots will be generated. Default is False
     verboseSaveFile : 'str', optional
         If not None, verbose output will be saved to the specified file.
+    max_number_of_cpus : 'int', optional
+        Maxiumum bumber of cpu's to be used.
 
     Returns
     -------
@@ -1482,7 +1501,8 @@ def register_telescope_movement(cleanedDataset, ROICube=None,  nreferences=6,
         joblib_loop(dataUse, ROICube=ROICube,
                     upsampleFactor=upsampleFactor,
                     AngleOversampling=AngleOversampling,
-                    nreference=nreferences)
+                    nreference=nreferences,
+                    maxNumberOfCPUs=maxNumberOfCPUs)
     iteratorResults = [position for position in determinePositionIterator]
 
     referenceIndex = np.linspace(0, ntime-1, nreferences, dtype=int)
