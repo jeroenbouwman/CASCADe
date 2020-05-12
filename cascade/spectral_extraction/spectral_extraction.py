@@ -646,7 +646,6 @@ def iterative_bad_pixel_flagging(dataset, ROIcube, Filters,
 
     ray.disconnect()
     ray.shutdown()
-    os.system("ray stop")
 
     cleanedUncertainty = np.ma.array(dataset.uncertainty.data.value.copy(),
                                      mask=dataset.mask.copy())
