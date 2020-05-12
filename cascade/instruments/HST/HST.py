@@ -1567,7 +1567,16 @@ class HSTWFC3(InstrumentBase):
                     sigma_clipped_stats(calibration_image_cube[im, :, :],
                                         sigma=3.0, maxiters=5)
 
-                iraffind = IRAFStarFinder(fwhm=2.0, threshold=30.*std)
+#FL sometimes no source is found, reduce the threshold until one is
+                source=0
+                threshold=30.
+                while source == 0:
+                    iraffind = IRAFStarFinder(fwhm=2.0, threshold=threshold*std)
+                    sources = iraffind(calibration_image_cube[im, :, :] - median)
+                    if sources == None:
+                        threshold=0.9*threshold
+                    else:
+                        source=1
 
                 sources = iraffind(calibration_image_cube[im, :, :] - median)
                 distances = \
