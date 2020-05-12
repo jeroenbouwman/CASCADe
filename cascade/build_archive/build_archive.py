@@ -518,8 +518,8 @@ def save_observations(data_files, cal_data_files, parser,
             [file.replace('_ima', '_flt') for file in data_files]
     for datafile in tqdm(data_files_to_download, dynamic_ncols=True,
                          desc='Downloading Archive Data '):
-        if not skip_existing and not os.path.exists(
-                os.path.join(data_save_path, datafile)):
+        if not (skip_existing and os.path.exists(
+                os.path.join(data_save_path, datafile))):
             df = requests.get(url_data_archive.format(datafile), stream=True)
             with open(os.path.join(data_save_path, datafile), 'wb') as file:
                 for chunk in df.iter_content(chunk_size=1024):
@@ -527,8 +527,8 @@ def save_observations(data_files, cal_data_files, parser,
     data_files_to_download = cal_data_files.copy()
     for datafile in tqdm(data_files_to_download, dynamic_ncols=True,
                          desc='Downloading Aquisition Images '):
-        if not skip_existing and not os.path.exists(
-                os.path.join(data_save_path, datafile)):
+        if not (skip_existing and os.path.exists(
+                os.path.join(data_save_path, datafile))):
             df = requests.get(url_data_archive.format(datafile), stream=True)
             with open(os.path.join(data_save_path, datafile), 'wb') as file:
                 for chunk in df.iter_content(chunk_size=1024):
@@ -538,8 +538,8 @@ def save_observations(data_files, cal_data_files, parser,
             [file.replace('_flt', '_ima') for file in cal_data_files]
         for datafile in tqdm(data_files_to_download, dynamic_ncols=True,
                              desc='Downloading Aquisition Images '):
-            if not skip_existing and not os.path.exists(
-                    os.path.join(data_save_path, datafile)):
+            if not (skip_existing and os.path.exists(
+                    os.path.join(data_save_path, datafile))):
                 df = requests.get(url_data_archive.format(datafile),
                                   stream=True)
                 with open(os.path.join(data_save_path, datafile), 'wb') as file:
