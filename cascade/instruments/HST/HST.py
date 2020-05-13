@@ -263,7 +263,7 @@ class HSTWFC3(InstrumentBase):
             for key, values in proc_drop_samples.items():
                 proc_drop_samples[key]=[int(i) for i in values]
         except AttributeError:
-            proc_drop_samples = [-1]
+            proc_drop_samples = {'up': [-1], 'down': [-1]}
         try:
             obs_uses_backgr_model = \
                 ast.literal_eval(cascade_configuration.
