@@ -535,7 +535,7 @@ def iterative_bad_pixel_flagging(dataset, ROIcube, Filters,
                                  maxNumberOfIterations=12,
                                  fractionalAcceptanceLimit=0.005,
                                  useMultiProcesses=True,
-                                 maxNumberOfCPUs=12):
+                                 maxNumberOfCPUs=2):
     """
     Flag bad pixels.
 
@@ -591,10 +591,6 @@ def iterative_bad_pixel_flagging(dataset, ROIcube, Filters,
 
     if useMultiProcesses:
         mem = virtual_memory()
-        # num_cpus = int(np.max([cpu_count(logical=False),
-        #                        cpu_count(logical=True)//2-2]))
-        # num_cpus = int(np.min([maxNumberOfCPUs, num_cpus]))
-        
         ncpu = int(np.min([maxNumberOfCPUs,
                            np.max([1, cpu_count(logical=True)//2])
                            ])
@@ -1383,7 +1379,7 @@ def grouper(iterable, n, fillvalue=None):
 
 
 def joblib_loop(dataCube, ROICube=None, upsampleFactor=111,
-                AngleOversampling=2, nreference=6, maxNumberOfCPUs=12):
+                AngleOversampling=2, nreference=6, maxNumberOfCPUs=2):
     """
     Loop using joblib.
 
@@ -1412,9 +1408,6 @@ def joblib_loop(dataCube, ROICube=None, upsampleFactor=111,
                    upsampleFactor=upsampleFactor,
                    AngleOversampling=AngleOversampling)
     ncpu = int(np.min([maxNumberOfCPUs, np.max([1, mp.cpu_count()-2])]))
-    # ncpu = int(np.max([cpu_count(logical=False),
-    #                    cpu_count(logical=True)//2-2]))
-    # ncpu = np.min([maxNumberOfCPUs, ncpu])
     batch_size = np.min([ncpu, nreference])
     dfunc = joblib.delayed(func)
     with joblib.Parallel(n_jobs=-1, prefer="processes") as MP:
@@ -1433,7 +1426,7 @@ def joblib_loop(dataCube, ROICube=None, upsampleFactor=111,
 def register_telescope_movement(cleanedDataset, ROICube=None,  nreferences=6,
                                 mainReference=4, upsampleFactor=111,
                                 AngleOversampling=2, verbose=False,
-                                verboseSaveFile=None, maxNumberOfCPUs=12):
+                                verboseSaveFile=None, maxNumberOfCPUs=2):
     """
     Register the telescope movement.
 

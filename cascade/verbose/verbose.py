@@ -25,44 +25,227 @@ Created on Mon May  4 19:08:58 2020
 
 @author: Jeroen Bouwman
 """
-import copy
+# import copy
 import os
+import ast
+import warnings
 import numpy as np
 from matplotlib import pyplot as plt
-from matplotlib.ticker import MaxNLocator, ScalarFormatter
+# from matplotlib.ticker import MaxNLocator, ScalarFormatter
 import seaborn as sns
-from ..initialize import cascade_default_data_path
-from ..initialize import cascade_default_initialization_path
-from ..initialize import cascade_default_path
+# from ..initialize import cascade_default_data_path
+# from ..initialize import cascade_default_initialization_path
+# from ..initialize import cascade_default_path
 from ..initialize import cascade_default_save_path
+from ..initialize import cascade_configuration
 
-__all__ = ["load_data_plots",
-           "subtract_background_plots",
-           "filter_dataset_plots",
-           "determine_source_movement_plots",
-           "correct_wavelengths_plots",
-           "set_extraction_mask_plots",
-           "extract_1d_spectra_plots",
-           "define_eclipse_model_plots",
-           "select_regressors_plots",
-           "calibrate_timeseries_plots",
-           "extract_spectrum_plots",
-           "correct_extracted_spectrum_plots"]
+__all__ = ["load_data_verbose",
+           "subtract_background_verbose",
+           "filter_dataset_verbose",
+           "determine_source_movement_verbose",
+           "correct_wavelengths_verbose",
+           "set_extraction_mask_verbose",
+           "extract_1d_spectra_verbose",
+           "define_eclipse_model_verbose",
+           "select_regressors_verbose",
+           "calibrate_timeseries_verbose",
+           "extract_spectrum_verbose",
+           "correct_extracted_spectrum_verbose",
+           "Verbose"]
 
 
-def load_data_plots():
+def _get_plot_parameters():
+    try:
+        verbose = ast.literal_eval(cascade_configuration.cascade_verbose)
+        save_verbose = ast.literal_eval(cascade_configuration.cascade_save_verbose)
+    except AttributeError:
+        warnings.warn("Verbose flags not defined. Assuming False")
+        verbose = False
+        save_verbose = False
+    try:
+        save_path = cascade_configuration.cascade_save_path
+        if not os.path.isabs(save_path):
+            save_path = os.path.join(cascade_default_save_path, save_path)
+        os.makedirs(save_path, exist_ok=True)
+    except AttributeError:
+        warnings.warn("No save path defined. Not saving plots")
+        save_verbose = False
+    try:
+        observations_id = cascade_configuration.observations_id
+        observations_target_name = \
+            cascade_configuration.observations_target_name
+        if observations_id not in observations_target_name:
+            save_name_base = observations_target_name+'_'+observations_id
+        else:
+            save_name_base = observations_target_name
+    except AttributeError:
+        warnings.warn("No uniue id or target name set"
+                      "save name not unique.")
+        save_name_base = 'verbose'
+    return (verbose, save_verbose, save_path, save_name_base)
+   
+
+def load_data_verbose(*args, **kwargs):
     """
     Make verbose plots for load_data step.
 
+    Parameters
+    ----------
+    plot_name : 'st'
+    args : 'tuple'
+    kwargs : 'dict'
+
     Returns
     -------
     None.
 
     """
-    pass
+    (verbose, save_verbose, save_path, save_name_base) = kwargs["verbose_par"]
+    if not verbose:
+        return
+    if "plot_data" not in kwargs.keys():
+        return
+    sns.set_context("talk", font_scale=1.5, rc={"lines.linewidth": 2.5})
+    sns.set_style("white", {"xtick.bottom": True, "ytick.left": True})
+ 
+    data = kwargs["plot_data"].dataset.return_masked_array('data')
+    wavelength = kwargs["plot_data"].dataset.return_masked_array('wavelength')
+    fig, ax = plt.subplots(figsize=(12, 12), nrows=1, ncols=1)
+    if data.ndim == 3:
+        cmap = plt.cm.gist_heat
+        cmap.set_bad('white', 1.)
+        p = ax.imshow(data[...,0],
+                      origin='lower', aspect='auto',
+                      cmap=cmap, interpolation='none', vmin=0, vmax=1000)
+        plt.colorbar(p, ax=ax).set_label("Intensity")
+        ax.set_ylabel('Pixel Position Dispersion Direction')
+        ax.set_xlabel('Pixel Position Corss-Dispersion Direction')
+        fig_name_extension='a'
+    else:
+        ax.plot(wavelength[:,0], data[:,0], lw=3, color='b')
+        ax.set_ylabel("Siganl")
+        ax.set_xlabel("Wavelength")
+        fig_name_extension='b'
+    ax.set_title('First Integration Raw Data.')
+    if save_verbose:
+        fig.savefig(os.path.join(save_path, save_name_base+
+                                 "_load_data_step_figure1{}.png".
+                                 format(fig_name_extension)),
+                    bbox_inches='tight')
+
+    if not hasattr(kwargs["plot_data"].instrument_calibration,
+                   "calibration_images"):
+        return
+    fig, ax = plt.subplots(figsize=(12, 12), nrows=1, ncols=1)
+    cmap = plt.cm.gist_heat
+    cmap.set_bad('white', 1.)
+    image = \
+        kwargs["plot_data"].instrument_calibration.calibration_images[0,...]
+    source_pos = kwargs["plot_data"].instrument_calibration.\
+        calibration_source_position[0]
+    expected_source_pos = kwargs["plot_data"].instrument_calibration.\
+        expected_calibration_source_position[0]
+    p = ax.imshow(image,
+                  origin='lower', aspect='auto',
+                  cmap=cmap, interpolation='none', vmin=0, vmax=1000)
+    plt.colorbar(p, ax=ax).set_label("Intensity")
+    ax.scatter(*source_pos, s=400,
+               edgecolor='white', facecolor='none',
+               label="Fitted position ({0:3.2f},{1:3.2f})".
+               format(*source_pos))
+    ax.scatter(*expected_source_pos, s=400,
+               edgecolor='g', facecolor='none',
+               label="Expected position ({0:3.2f},{1:3.2f})".
+               format(*expected_source_pos))
+    ax.set_title("Acquisition Image with Source Position")
+    ax.legend()
+    plt.show()
+    if save_verbose:
+        fig.savefig(os.path.join(save_path, save_name_base+
+                                 "_load_data_step_figure2a.png"),
+                    bbox_inches='tight')
 
 
-def subtract_background_plots():
+def subtract_background_verbose(*args, **kwargs):
+    """
+    Make verbose plots.
+
+    Returns
+    -------
+    None.
+
+    """
+    (verbose, save_verbose, save_path, save_name_base) = kwargs["verbose_par"]
+    if not verbose:
+        return
+    if "plot_data" not in kwargs.keys():
+        return
+    sns.set_context("talk", font_scale=1.5, rc={"lines.linewidth": 2.5})
+    sns.set_style("white", {"xtick.bottom": True, "ytick.left": True})
+
+    data = kwargs["plot_data"].dataset.return_masked_array('data')
+    wavelength = kwargs["plot_data"].dataset.return_masked_array('wavelength')
+    time = kwargs["plot_data"].dataset.return_masked_array('time')
+    roi = kwargs["plot_data"].instrument_calibration.roi
+
+    if data.ndim == 3:
+        roi_cube = np.tile(roi.T, (time.shape[-1], 1, 1)).T
+    else:
+        roi_cube = np.tile(roi.T, (time.shape[-1], 1)).T
+    data_with_roi = \
+        np.ma.array(data,
+                    mask=np.ma.mask_or(data.mask, roi_cube))
+    wavelength_with_roi = \
+       np.ma.array(wavelength,
+                    mask=np.ma.mask_or(wavelength.mask, roi_cube))
+    total_data = np.ma.sum(data_with_roi, axis=-1)/time.shape[-1]
+    total_wavelength = np.ma.sum(wavelength_with_roi, axis=-1)/time.shape[-1]  
+
+    if data.ndim == 3:
+        lightcurve = np.ma.sum(data_with_roi, axis=(0, 1))
+        time = time[0, 0, :]
+    else:
+        lightcurve = np.ma.sum(data_with_roi, axis=(0))
+        time = time[0, :]
+
+    fig, ax = plt.subplots(figsize=(12, 12))
+    if total_data.ndim == 2:
+        cmap = plt.cm.gist_heat
+        cmap.set_bad('white', 1.)
+        p = ax.imshow(total_data,
+                      origin='lower', aspect='auto',
+                      cmap=cmap, interpolation='none', vmin=0, vmax=1000)
+        plt.colorbar(p, ax=ax).set_label("Average Intensity")        
+        ax.set_ylabel('Pixel Position Dispersion Direction')
+        ax.set_xlabel('Pixel Position Corss-Dispersion Direction')
+        fig_name_extension='a'
+    else:
+        ax.plot(total_wavelength, total_data)
+        ax.set_xlabel('Wavelength')
+        ax.set_ylabel('Average Signal')
+        fig_name_extension='b'
+    ax.set_title('Background subtracted time averaged data.')
+    plt.show()
+    if save_verbose:
+        fig.savefig(os.path.join(save_path, save_name_base+
+                                 "_subtract_background_step_figure1{}.png".
+                                 format(fig_name_extension)),
+                    bbox_inches='tight')
+
+    fig, ax = plt.subplots(figsize=(12, 12))
+    ax.plot(time, lightcurve, '.')
+    ax.set_xlabel('Orbital phase')
+    ax.set_ylabel('Total Signal')
+    ax.set_title('Background subtracted data.')
+    plt.show()
+    if save_verbose:
+        fig.savefig(os.path.join(save_path, save_name_base+
+                                 "_subtract_background_step_figure2{}.png".
+                                 format(fig_name_extension)),
+                    bbox_inches='tight')
+
+
+def filter_dataset_verbose():
     """
     Make verbose plots.
 
@@ -74,7 +257,7 @@ def subtract_background_plots():
     pass
 
 
-def filter_dataset_plots():
+def determine_source_movement_verbose():
     """
     Make verbose plots.
 
@@ -86,7 +269,7 @@ def filter_dataset_plots():
     pass
 
 
-def determine_source_movement_plots():
+def correct_wavelengths_verbose():
     """
     Make verbose plots.
 
@@ -98,7 +281,7 @@ def determine_source_movement_plots():
     pass
 
 
-def correct_wavelengths_plots():
+def set_extraction_mask_verbose():
     """
     Make verbose plots.
 
@@ -110,7 +293,7 @@ def correct_wavelengths_plots():
     pass
 
 
-def set_extraction_mask_plots():
+def extract_1d_spectra_verbose():
     """
     Make verbose plots.
 
@@ -122,7 +305,7 @@ def set_extraction_mask_plots():
     pass
 
 
-def extract_1d_spectra_plots():
+def define_eclipse_model_verbose():
     """
     Make verbose plots.
 
@@ -134,7 +317,7 @@ def extract_1d_spectra_plots():
     pass
 
 
-def define_eclipse_model_plots():
+def select_regressors_verbose():
     """
     Make verbose plots.
 
@@ -146,7 +329,7 @@ def define_eclipse_model_plots():
     pass
 
 
-def select_regressors_plots():
+def calibrate_timeseries_verbose():
     """
     Make verbose plots.
 
@@ -158,7 +341,7 @@ def select_regressors_plots():
     pass
 
 
-def calibrate_timeseries_plots():
+def extract_spectrum_verbose():
     """
     Make verbose plots.
 
@@ -170,7 +353,7 @@ def calibrate_timeseries_plots():
     pass
 
 
-def extract_spectrum_plots():
+def correct_extracted_spectrum_verbose():
     """
     Make verbose plots.
 
@@ -182,13 +365,64 @@ def extract_spectrum_plots():
     pass
 
 
-def correct_extracted_spectrum_plots():
-    """
-    Make verbose plots.
+class Verbose:
 
-    Returns
-    -------
-    None.
+    def __init__(self):
+        self.verbose_par = _get_plot_parameters()
 
-    """
-    pass
+    @property
+    def __valid_commands(self):
+        """
+        All valid pipeline commands.
+
+        This function returns a dictionary with all the valid commands
+        which can be parsed to the instance of the TSO object.
+        """
+        return {"load_data": load_data_verbose,
+                "subtract_background": subtract_background_verbose,
+                "filter_dataset": filter_dataset_verbose,
+                "determine_source_movement": determine_source_movement_verbose,
+                "correct_wavelengths": correct_wavelengths_verbose,
+                "set_extraction_mask": set_extraction_mask_verbose,
+                "extract_1d_spectra": extract_1d_spectra_verbose,
+                "define_eclipse_model": define_eclipse_model_verbose,
+                "select_regressors": select_regressors_verbose,
+                "calibrate_timeseries": calibrate_timeseries_verbose,
+                "extract_spectrum": extract_spectrum_verbose,
+                "correct_extracted_spectrum": correct_extracted_spectrum_verbose,
+                }
+
+    def execute(self, command, *args, **kwargs):
+        """
+        Excecute the pipeline commands.
+
+        This function checks if a command is valid and excecute it if True.
+
+        Parameters
+        ----------
+        command : `str`
+            Command to be excecuted. If valid the method corresponding
+            to the command will be excecuted
+
+        Raises
+        ------
+        ValueError
+            error is raised if command is not valid
+
+        Examples
+        --------
+        Example how to run the command to reset a tso object:
+
+        >>> vrbs.execute('load_data')
+
+        """
+        if command not in self.__valid_commands:
+            raise ValueError("Command not recognized, "
+                             "check your data reduction command for the "
+                             "following valid commands: {}. Aborting "
+                             "command".format(self.__valid_commands.keys()))
+
+        self.__valid_commands[command](*args, **kwargs,
+                                       verbose_par=self.verbose_par)
+
+

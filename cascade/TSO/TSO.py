@@ -74,6 +74,7 @@ from ..spectral_extraction import correct_wavelength_for_source_movent
 from ..spectral_extraction import create_extraction_profile
 from ..spectral_extraction import extract_spectrum
 from ..spectral_extraction import rebin_to_common_wavelength_grid
+from ..verbose import Verbose
 
 __all__ = ['TSOSuite']
 
@@ -270,6 +271,8 @@ class TSOSuite:
         >>> tso.execute("load_data")
         """
         self.observation = Observation()
+        vrbs = Verbose()
+        vrbs.execute("load_data", plot_data=self.observation)
 
     def subtract_background(self):
         """
@@ -322,21 +325,6 @@ class TSOSuite:
             warnings.warn('observations_uses_background_model parameter \
                           not defined, assuming it to be False')
             obs_uses_backgr_model = False
-        try:
-            verbose = bool(self.cascade_parameters.cascade_verbose)
-        except AttributeError:
-            warnings.warn("Verbose flag not set, assuming it to be False.")
-            verbose = False
-        try:
-            savePathVerbose = self.cascade_parameters.cascade_save_path
-            if not os.path.isabs(savePathVerbose):
-                savePathVerbose = os.path.join(cascade_default_save_path,
-                                               savePathVerbose)
-            os.makedirs(savePathVerbose, exist_ok=True)
-        except AttributeError:
-            warnings.warn("No save path defined to save verbose output "
-                          "No verbose plots will be saved")
-            savePathVerbose = None
 
         if obs_uses_backgr_model:
             self.observation.dataset.data = self.observation.dataset.data -\
@@ -363,57 +351,9 @@ class TSOSuite:
                 median_background
             self.observation.dataset.isBackgroundSubtracted = True
 
-        if verbose:
-            spec_data = self.observation.dataset.return_masked_array('data')
-            time_data = self.observation.dataset.return_masked_array('time')
-            roi = self.observation.instrument_calibration.roi
+        vrbs = Verbose()
+        vrbs.execute("subtract_background", plot_data=self.observation)
 
-            if spec_data.ndim == 3:
-                roi_cube = np.tile(roi.T, (time_data.shape[-1], 1, 1)).T
-                spec_data
-            else:
-                roi_cube = np.tile(roi.T, (time_data.shape[-1], 1)).T
-            data_with_roi = \
-                np.ma.array(spec_data,
-                            mask=np.ma.mask_or(spec_data.mask, roi_cube))
-            total_data = np.ma.sum(data_with_roi, axis=-1)
-            if spec_data.ndim == 3:
-                lightcurve = np.ma.sum(data_with_roi, axis=(0, 1))
-                time = time_data[0, 0, :]
-            else:
-                lightcurve = np.ma.sum(data_with_roi, axis=(0))
-                time = time_data[0, :]
-
-            sns.set_context("talk", font_scale=1.5,
-                            rc={"lines.linewidth": 2.5})
-            sns.set_style("white", {"xtick.bottom": True, "ytick.left": True})
-            fig, ax = plt.subplots(figsize=(10, 10))
-            if total_data.ndim == 2:
-                ax.imshow(total_data)
-                ax.set_ylabel('Pixel Position Dispersion Direction')
-                ax.set_xlabel('Pixel Position Corss-Dispersion Direction')
-            else:
-                ax.plot(total_data)
-                ax.set_xlabel('Pixel Position Dispersion Direction')
-                ax.set_ylabel('Total Signal')
-            ax.set_title('Background subtracted data.')
-            plt.show()
-            if savePathVerbose is not None:
-                verboseSaveFile = ('background_subtracted_spectral_data.png')
-                verboseSaveFile = os.path.join(savePathVerbose,
-                                               verboseSaveFile)
-                fig.savefig(verboseSaveFile, bbox_inches='tight')
-            fig, ax = plt.subplots(figsize=(10, 10))
-            ax.plot(time, lightcurve, '.')
-            ax.set_xlabel('Orbital phase')
-            ax.set_ylabel('Total Signal')
-            ax.set_title('Background subtracted data.')
-            plt.show()
-            if savePathVerbose is not None:
-                verboseSaveFile = 'background_subtracted_white_light_curve.png'
-                verboseSaveFile = os.path.join(savePathVerbose,
-                                               verboseSaveFile)
-                fig.savefig(verboseSaveFile, bbox_inches='tight')
 
     def filter_dataset(self):
         """

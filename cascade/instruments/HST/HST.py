@@ -29,7 +29,7 @@ import collections
 import ast
 from types import SimpleNamespace
 import gc
-
+import warnings
 import numpy as np
 from astropy.io import fits
 import astropy.units as u
@@ -1553,6 +1553,8 @@ class HSTWFC3(InstrumentBase):
             with the HST spectral timeseries observations.
         """
         calibration_source_position = []
+        expected_calibration_source_position = []
+        calibration_images = []
         for im, image_file in enumerate(calibration_data_files):
             with fits.open(image_file) as hdul:
                 ra_target = hdul['PRIMARY'].header['RA_TARG']
@@ -1566,15 +1568,17 @@ class HSTWFC3(InstrumentBase):
                 mean, median, std = \
                     sigma_clipped_stats(calibration_image_cube[im, :, :],
                                         sigma=3.0, maxiters=5)
-
-#FL sometimes no source is found, reduce the threshold until one is
                 source=0
                 threshold=30.
                 while source == 0:
                     iraffind = IRAFStarFinder(fwhm=2.0, threshold=threshold*std)
                     sources = iraffind(calibration_image_cube[im, :, :] - median)
                     if sources == None:
+                        warnings.warn("No aquisition target found above "
+                                      "a threshold of {}".format(threshold))
                         threshold=0.9*threshold
+                        warnings.warn("Lowering  threshold to a value "
+                                      "of {}".format(threshold))
                     else:
                         source=1
 
@@ -1585,7 +1589,11 @@ class HSTWFC3(InstrumentBase):
                 idx_target = distances.argmin()
                 source_position = (sources[idx_target]['xcentroid'],
                                    sources[idx_target]['ycentroid'])
+                expected_source_position = \
+                    (expexted_xcentroid, expected_ycentroid)
                 calibration_source_position.append(source_position)
+                expected_calibration_source_position.\
+                    append(expected_source_position)
                 gc.collect()
 
         try:
@@ -1595,6 +1603,10 @@ class HSTWFC3(InstrumentBase):
         finally:
             self.wfc3_cal.calibration_source_position = \
                 calibration_source_position
+            self.wfc3_cal.expected_calibration_source_position = \
+                expected_calibration_source_position
+            self.wfc3_cal.calibration_images = \
+                calibration_image_cube
         return
 
     def _read_grism_configuration_files(self):
