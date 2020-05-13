@@ -259,8 +259,9 @@ class HSTWFC3(InstrumentBase):
         # processing
         try:
             proc_drop_samples = cascade_configuration.processing_drop_frames
-            proc_drop_samples = \
-                [int(i) for i in ast.literal_eval(proc_drop_samples)]
+            proc_drop_samples = ast.literal_eval(proc_drop_samples)
+            for key, values in proc_drop_samples.items():
+                proc_drop_samples[key]=[int(i) for i in values]
         except AttributeError:
             proc_drop_samples = [-1]
         try:
@@ -892,8 +893,12 @@ class HSTWFC3(InstrumentBase):
                     nsampMax = nsamp-1
                 sample_counter = 0
                 for isample in range(0, nsampMax):
-                    if isample in self.par['proc_drop_samp']:
-                        continue
+                    if isUpScan:
+                        if isample in self.par['proc_drop_samp']['up']:
+                           continue 
+                    else:
+                        if isample in self.par['proc_drop_samp']['down']:
+                           continue
                     routtime = hdul[1+5*isample].header['ROUTTIME']
                     deltaTime = hdul[1+5*isample].header['DELTATIM']
                     if ((cubeCalType == 'COUNTS') |
