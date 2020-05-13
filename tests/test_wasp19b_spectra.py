@@ -27,7 +27,8 @@ import dill as pickle
 import shutil
 import pytest
 #
-from .readwrite_spectra import read_spectra_dir, compare_spectra
+from cascade.utilities.readwrite_spectra import read_spectra_dir
+from cascade.utilities.readwrite_spectra import compare_spectra
 DEBUG = False
 #
 #  rtol=1.1e-3  2.62e-2

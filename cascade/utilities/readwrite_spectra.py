@@ -10,6 +10,7 @@ import numpy as np
 import os
 import glob
 from astropy.io import fits
+from astropy.io import ascii
 from astropy.table import Table, Column
 import astropy.units as u
 import datetime
@@ -201,6 +202,45 @@ def compare_spectra(flux1, ferror1, wavelength1, times1, flux2, ferror2, wavelen
 
     if(result): message='OK'
     return result, message
+
+##########################  READ/WRITE DEPTH ##############
+######  depth (absorption) can be exonoodle input or cascade output ####
+def write_depth_ecsv(fileName, array_depth, array_wl):
+    col1 = Column(array_wl, name='wavelength', unit=u.micron, dtype='float32')
+    col2 = Column(array_depth, name='depth', dtype='float32')
+    
+    t = Table([col1, col2])
+    t.write(fileName, format='ascii.ecsv')
+    ff = open(fileName, 'a')
+    ff.write('# DATE = ' + str(datetime.datetime.now()) + '\n')
+    ff.close()
+    return
+
+def write_depth_fits(fileName, array_depth, array_wl, mask=None, meta=None):
+    col1 = Column(array_wl, name='wavelength', unit=u.micron, dtype='float32')
+    col2 = Column(array_depth, name='depth', dtype='float32')
+    t = Table([col1, col2])
+    if mask is not None:
+        col3 = Column(mask, name='mask', dtype='unit32')
+        t = Table([col1, col2, col3])
+    if meta is not None:
+        t.meta=meta
+    t.meta['DATE'] = str(datetime.datetime.now())
+    #
+    t.write(fileName, format='fits')
+    return
+
+
+def read_depth_ecsv(file_name):
+    '''
+        Read depths file used by ExoNoodle.
+        
+        :param file_name: Name of the file. It has to be calibrated the same way as for ExoNoodle
+        :return: array_depth = f(array_wl)
+        '''
+    array_wl, array_depth = np.asarray(ascii.read(file_name)['wavelength']), np.asarray(ascii.read(file_name)['depth'])
+    ## depth and not absorption
+    return array_wl, array_depth
 
 
 ####
