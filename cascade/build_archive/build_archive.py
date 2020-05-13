@@ -53,7 +53,7 @@ __all__ = ['read_config_file', 'remove_space', 'remove_duplicate',
            'return_all_hst_planets', 'return_header_info',
            'create_bash_script', 'save_observations', 'fill_config_parameters',
            'IniFileParser', 'check_for_exceptions',
-           'convert_object_value_strings_to_values']
+           'convert_object_value_strings_to_values', 'create_unique_ids']
 
 def read_config_file(file_name, path):
     """
@@ -342,6 +342,46 @@ def return_all_hst_planets(hst_data_catalog):
     return all_observed_planets
 
 
+def create_unique_ids(hst_data_catalog):
+    """
+    Check for duplicate ID's.
+
+    Parameters
+    ----------
+    hst_data_catalog : 'dict'
+        DESCRIPTION.
+
+    Returns
+    -------
+    id_dict_all : 'dict'
+        DESCRIPTION.
+    """
+    numeral = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII']
+    id_dict_all = {}
+    all_planets = return_all_hst_planets(hst_data_catalog)
+    for planet in  all_planets:
+        visits = return_hst_data_calalog_keys(planet, hst_data_catalog)
+        obs_ids = []
+        for visit in visits:
+            data_files = hst_data_catalog[visit]['observations_id_ima'].split(',')
+            data_file_id = [file.split('_')[0] for file in data_files]
+            obs_ids.append(long_substr(data_file_id))
+        uniq_id = np.unique(obs_ids)
+        obs_ids_dir = obs_ids.copy()
+        if len(uniq_id) != len(obs_ids):
+            for id in uniq_id:
+                idx = np.where(np.array(obs_ids) == id)[0]
+                if len(idx) > 1:
+                    for inum, idx_select in enumerate(idx):
+                        obs_ids_dir[idx_select] = \
+                            obs_ids_dir[idx_select]+'_'+numeral[inum]
+        id_dict_visit = {}    
+        for visit, obs_id, obs_id_dir in zip(visits, obs_ids, obs_ids_dir):
+           id_dict_visit[visit] = {'obs_id': obs_id, 'obs_id_dir': obs_id_dir}
+        id_dict_all[planet] = id_dict_visit
+    return id_dict_all
+
+            
 def return_header_info(data_file, cal_data_file):
     """
     Return all relavant parameters from fits data file header.

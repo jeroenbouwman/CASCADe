@@ -265,6 +265,7 @@ def built_local_hst_archive(init_path, data_path, save_path, no_warnings,
     from cascade.build_archive import IniFileParser
     from cascade.build_archive import create_bash_script
     from cascade.build_archive import check_for_exceptions
+    from cascade.build_archive import create_unique_ids
 
     log('CASCADe', color="blue", figlet=True)
     log("version {}, Copyright (C) 2020 "
@@ -348,6 +349,9 @@ def built_local_hst_archive(init_path, data_path, save_path, no_warnings,
         log("Warning, no visits found, check search or path settings", "red")
         sys.exit()
 
+    # get all unique ID's and check for duplicates
+    OBS_ID_DICT = create_unique_ids(hst_data_catalog)
+
     # explanet data catalogs
     catalogs_dictionary = return_exoplanet_catalogs()
 
@@ -371,22 +375,25 @@ def built_local_hst_archive(init_path, data_path, save_path, no_warnings,
         # get the data files from hst databes
         data_files = hst_data_catalog[visit]['observations_id_ima'].split(',')
         cal_data_files = hst_data_catalog[visit]['calibrations_id'].split(',')
-        data_file_id = [file.split('_')[0] for file in data_files]
+#        data_file_id = [file.split('_')[0] for file in data_files]
 #        cal_data_file_id = [file.split('_')[0] for file in cal_data_files]
 
         # get or calculate all parameters needed for the observations and
         # instrument sections in the .ini file
-        OBS_ID = long_substr(data_file_id)
+#        OBS_ID = long_substr(data_file_id)
+        
+        OBS_ID = OBS_ID_DICT[PLANET_NAME][visit]['obs_id']
+        OBS_ID_DIR = OBS_ID_DICT[PLANET_NAME][visit]['obs_id_dir']
 
         # get all needed parametesr from the data files and catalog files
         # to create the ini files for creating the spctral timeseries
         create_timeseries_namespace_dict = {}
         # fill dictionary with parameters to be filled into templates
         create_timeseries_namespace_dict['cascade_save_path'] = \
-            PLANET_NAME+'_'+OBS_ID
+            PLANET_NAME+'_'+OBS_ID_DIR
         create_timeseries_namespace_dict['observations_type'] = OBS_TYPE
         create_timeseries_namespace_dict['observations_target_name'] = \
-            PLANET_NAME+'_'+OBS_ID
+            PLANET_NAME+'_'+OBS_ID_DIR
         create_timeseries_namespace_dict['observations_id'] = OBS_ID
         create_timeseries_namespace_dict.update(
             **return_header_info(data_files[0], cal_data_files[0])
