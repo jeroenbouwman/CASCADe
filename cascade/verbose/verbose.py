@@ -33,6 +33,8 @@ import numpy as np
 from matplotlib import pyplot as plt
 # from matplotlib.ticker import MaxNLocator, ScalarFormatter
 import seaborn as sns
+from skimage import exposure
+from skimage import img_as_float
 # from ..initialize import cascade_default_data_path
 # from ..initialize import cascade_default_initialization_path
 # from ..initialize import cascade_default_path
@@ -112,12 +114,15 @@ def load_data_verbose(*args, **kwargs):
     wavelength = kwargs["plot_data"].dataset.return_masked_array('wavelength')
     fig, ax = plt.subplots(figsize=(12, 12), nrows=1, ncols=1)
     if data.ndim == 3:
-        cmap = plt.cm.gist_heat
+        cmap = plt.cm.viridis
         cmap.set_bad('white', 1.)
-        p = ax.imshow(data[...,0],
+        im_scaled = exposure.rescale_intensity(data[..., 0].filled(0.0))
+        img_adapteq = exposure.equalize_adapthist(im_scaled, clip_limit=0.03)
+        img_adapteq = np.ma.array(img_adapteq, mask=data[..., 0].mask)
+        p = ax.imshow(img_adapteq,
                       origin='lower', aspect='auto',
-                      cmap=cmap, interpolation='none', vmin=0, vmax=1000)
-        plt.colorbar(p, ax=ax).set_label("Intensity")
+                      cmap=cmap, interpolation='none', vmin=0.0, vmax=1.0)
+        plt.colorbar(p, ax=ax).set_label("Normalized Intensity")
         ax.set_ylabel('Pixel Position Dispersion Direction')
         ax.set_xlabel('Pixel Position Corss-Dispersion Direction')
         fig_name_extension='a'
@@ -137,7 +142,7 @@ def load_data_verbose(*args, **kwargs):
                    "calibration_images"):
         return
     fig, ax = plt.subplots(figsize=(12, 12), nrows=1, ncols=1)
-    cmap = plt.cm.gist_heat
+    cmap = plt.cm.viridis
     cmap.set_bad('white', 1.)
     image = \
         kwargs["plot_data"].instrument_calibration.calibration_images[0,...]
@@ -145,16 +150,18 @@ def load_data_verbose(*args, **kwargs):
         calibration_source_position[0]
     expected_source_pos = kwargs["plot_data"].instrument_calibration.\
         expected_calibration_source_position[0]
-    p = ax.imshow(image,
+    im_scaled = exposure.rescale_intensity(image)
+    img_adapteq = exposure.equalize_adapthist(im_scaled, clip_limit=0.03)
+    p = ax.imshow(img_adapteq,
                   origin='lower', aspect='auto',
-                  cmap=cmap, interpolation='none', vmin=0, vmax=1000)
-    plt.colorbar(p, ax=ax).set_label("Intensity")
-    ax.scatter(*source_pos, s=400,
+                  cmap=cmap, interpolation='none', vmin=0.0, vmax=1.0)
+    plt.colorbar(p, ax=ax).set_label("Normalized Intensity")
+    ax.scatter(*source_pos, s=430,
                edgecolor='white', facecolor='none',
                label="Fitted position ({0:3.2f},{1:3.2f})".
                format(*source_pos))
-    ax.scatter(*expected_source_pos, s=400,
-               edgecolor='g', facecolor='none',
+    ax.scatter(*expected_source_pos, s=380,
+               edgecolor='r', facecolor='none',
                label="Expected position ({0:3.2f},{1:3.2f})".
                format(*expected_source_pos))
     ax.set_title("Acquisition Image with Source Position")
@@ -210,12 +217,15 @@ def subtract_background_verbose(*args, **kwargs):
 
     fig, ax = plt.subplots(figsize=(12, 12))
     if total_data.ndim == 2:
-        cmap = plt.cm.gist_heat
+        cmap = plt.cm.viridis
         cmap.set_bad('white', 1.)
-        p = ax.imshow(total_data,
+        im_scaled = exposure.rescale_intensity(total_data.filled(0.0))
+        img_adapteq = exposure.equalize_adapthist(im_scaled, clip_limit=0.03)
+        img_adapteq = np.ma.array(img_adapteq, mask=total_data.mask)
+        p = ax.imshow(img_adapteq,
                       origin='lower', aspect='auto',
-                      cmap=cmap, interpolation='none', vmin=0, vmax=1000)
-        plt.colorbar(p, ax=ax).set_label("Average Intensity")        
+                      cmap=cmap, interpolation='none', vmin=0.0, vmax=1.0)
+        plt.colorbar(p, ax=ax).set_label("Normalized Average Intensity")        
         ax.set_ylabel('Pixel Position Dispersion Direction')
         ax.set_xlabel('Pixel Position Corss-Dispersion Direction')
         fig_name_extension='a'
