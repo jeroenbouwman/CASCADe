@@ -110,40 +110,40 @@ def load_data_verbose(*args, **kwargs):
     sns.set_context("talk", font_scale=1.5, rc={"lines.linewidth": 2.5})
     sns.set_style("white", {"xtick.bottom": True, "ytick.left": True})
  
-    data = kwargs["plot_data"].dataset.return_masked_array('data')
-    wavelength = kwargs["plot_data"].dataset.return_masked_array('wavelength')
+    data = kwargs["plot_data"].dataset.return_masked_array("data")
+    wavelength = kwargs["plot_data"].dataset.return_masked_array("wavelength")
     fig, ax = plt.subplots(figsize=(12, 12), nrows=1, ncols=1)
     if data.ndim == 3:
         cmap = plt.cm.viridis
-        cmap.set_bad('white', 1.)
+        cmap.set_bad("white", 1.)
         im_scaled = exposure.rescale_intensity(data[..., 0].filled(0.0))
         img_adapteq = exposure.equalize_adapthist(im_scaled, clip_limit=0.03)
         img_adapteq = np.ma.array(img_adapteq, mask=data[..., 0].mask)
         p = ax.imshow(img_adapteq,
-                      origin='lower', aspect='auto',
-                      cmap=cmap, interpolation='none', vmin=0.0, vmax=1.0)
+                      origin="lower", aspect="auto",
+                      cmap=cmap, interpolation="none", vmin=0.0, vmax=1.0)
         plt.colorbar(p, ax=ax).set_label("Normalized Intensity")
-        ax.set_ylabel('Pixel Position Dispersion Direction')
-        ax.set_xlabel('Pixel Position Corss-Dispersion Direction')
-        fig_name_extension='a'
+        ax.set_ylabel("Pixel Position Dispersion Direction")
+        ax.set_xlabel("Pixel Position Corss-Dispersion Direction")
+        fig_name_extension="a"
     else:
-        ax.plot(wavelength[:,0], data[:,0], lw=3, color='b')
+        ax.plot(wavelength[:,0], data[:,0], lw=3, color="b")
         ax.set_ylabel("Siganl")
         ax.set_xlabel("Wavelength")
-        fig_name_extension='b'
-    ax.set_title('First Integration Raw Data.')
+        fig_name_extension="b"
+    ax.set_title("First Integration {}.".format(save_name_base))
     if save_verbose:
         fig.savefig(os.path.join(save_path, save_name_base+
                                  "_load_data_step_figure1{}.png".
                                  format(fig_name_extension)),
-                    bbox_inches='tight')
+                    bbox_inches="tight")
 
     if not hasattr(kwargs["plot_data"].instrument_calibration,
                    "calibration_images"):
         return
     fig, ax = plt.subplots(figsize=(12, 12), nrows=1, ncols=1)
     cmap = plt.cm.viridis
-    cmap.set_bad('white', 1.)
+    cmap.set_bad("white", 1.)
     image = \
         kwargs["plot_data"].instrument_calibration.calibration_images[0,...]
     source_pos = kwargs["plot_data"].instrument_calibration.\
@@ -153,24 +153,25 @@ def load_data_verbose(*args, **kwargs):
     im_scaled = exposure.rescale_intensity(image)
     img_adapteq = exposure.equalize_adapthist(im_scaled, clip_limit=0.03)
     p = ax.imshow(img_adapteq,
-                  origin='lower', aspect='auto',
-                  cmap=cmap, interpolation='none', vmin=0.0, vmax=1.0)
+                  origin="lower", aspect="auto",
+                  cmap=cmap, interpolation="none", vmin=0.0, vmax=1.0)
     plt.colorbar(p, ax=ax).set_label("Normalized Intensity")
     ax.scatter(*source_pos, s=430,
-               edgecolor='white', facecolor='none',
+               edgecolor="white", facecolor='none',
                label="Fitted position ({0:3.2f},{1:3.2f})".
                format(*source_pos))
     ax.scatter(*expected_source_pos, s=380,
-               edgecolor='r', facecolor='none',
+               edgecolor="r", facecolor="none",
                label="Expected position ({0:3.2f},{1:3.2f})".
                format(*expected_source_pos))
-    ax.set_title("Acquisition Image with Source Position")
+    ax.set_title("Acquisition Image "
+                 "Position {}".format(save_name_base))
     ax.legend()
     plt.show()
     if save_verbose:
         fig.savefig(os.path.join(save_path, save_name_base+
                                  "_load_data_step_figure2a.png"),
-                    bbox_inches='tight')
+                    bbox_inches="tight")
 
 
 def subtract_background_verbose(*args, **kwargs):
@@ -190,9 +191,9 @@ def subtract_background_verbose(*args, **kwargs):
     sns.set_context("talk", font_scale=1.5, rc={"lines.linewidth": 2.5})
     sns.set_style("white", {"xtick.bottom": True, "ytick.left": True})
 
-    data = kwargs["plot_data"].dataset.return_masked_array('data')
-    wavelength = kwargs["plot_data"].dataset.return_masked_array('wavelength')
-    time = kwargs["plot_data"].dataset.return_masked_array('time')
+    data = kwargs["plot_data"].dataset.return_masked_array("data")
+    wavelength = kwargs["plot_data"].dataset.return_masked_array("wavelength")
+    time = kwargs["plot_data"].dataset.return_masked_array("time")
     roi = kwargs["plot_data"].instrument_calibration.roi
 
     if data.ndim == 3:
@@ -218,23 +219,24 @@ def subtract_background_verbose(*args, **kwargs):
     fig, ax = plt.subplots(figsize=(12, 12))
     if total_data.ndim == 2:
         cmap = plt.cm.viridis
-        cmap.set_bad('white', 1.)
+        cmap.set_bad("white", 1.)
         im_scaled = exposure.rescale_intensity(total_data.filled(0.0))
         img_adapteq = exposure.equalize_adapthist(im_scaled, clip_limit=0.03)
         img_adapteq = np.ma.array(img_adapteq, mask=total_data.mask)
         p = ax.imshow(img_adapteq,
-                      origin='lower', aspect='auto',
-                      cmap=cmap, interpolation='none', vmin=0.0, vmax=1.0)
+                      origin="lower", aspect="auto",
+                      cmap=cmap, interpolation="none", vmin=0.0, vmax=1.0)
         plt.colorbar(p, ax=ax).set_label("Normalized Average Intensity")        
-        ax.set_ylabel('Pixel Position Dispersion Direction')
-        ax.set_xlabel('Pixel Position Corss-Dispersion Direction')
-        fig_name_extension='a'
+        ax.set_ylabel("Pixel Position Dispersion Direction")
+        ax.set_xlabel("Pixel Position Corss-Dispersion Direction")
+        fig_name_extension="a"
     else:
         ax.plot(total_wavelength, total_data)
-        ax.set_xlabel('Wavelength')
-        ax.set_ylabel('Average Signal')
-        fig_name_extension='b'
-    ax.set_title('Background subtracted time averaged data.')
+        ax.set_xlabel("Wavelength")
+        ax.set_ylabel("Average Signal")
+        fig_name_extension="b"
+    ax.set_title("Background subtracted averaged "
+                 "data {}.".format(save_name_base))
     plt.show()
     if save_verbose:
         fig.savefig(os.path.join(save_path, save_name_base+
@@ -243,16 +245,16 @@ def subtract_background_verbose(*args, **kwargs):
                     bbox_inches='tight')
 
     fig, ax = plt.subplots(figsize=(12, 12))
-    ax.plot(time, lightcurve, '.')
-    ax.set_xlabel('Orbital phase')
-    ax.set_ylabel('Total Signal')
-    ax.set_title('Background subtracted data.')
+    ax.plot(time, lightcurve, ".")
+    ax.set_xlabel("Orbital phase")
+    ax.set_ylabel("Total Signal")
+    ax.set_title("Background subtracted data {}.".format(save_name_base))
     plt.show()
     if save_verbose:
         fig.savefig(os.path.join(save_path, save_name_base+
                                  "_subtract_background_step_figure2{}.png".
                                  format(fig_name_extension)),
-                    bbox_inches='tight')
+                    bbox_inches="tight")
 
 
 def filter_dataset_verbose():
