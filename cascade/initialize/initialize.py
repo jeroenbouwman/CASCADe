@@ -192,7 +192,8 @@ def reset_data():
                                                'exoplanet_data/'), new_path)
     print("Updated cascade data in directory: {}".format(destination))
     new_path = os.path.join(cascade_default_data_path, 'archive_databases/')
-    if os.path.exists(new_path):
+    cp_user_files=os.path.exists(new_path)
+    if cp_user_files:
         user_files = find("user_processing_exceptions.ini", new_path)
         temp_dir = os.path.join(cascade_default_data_path, "temp_dir_user/")
         os.mkdir(temp_dir)
@@ -203,10 +204,11 @@ def reset_data():
         shutil.rmtree(new_path)
     destination = shutil.copytree(os.path.join(__cascade_data_path,
                                                'archive_databases/'), new_path)
-    user_files2 = find("user_processing_exceptions.ini", temp_dir)
-    for file, file2 in zip(user_files, user_files2):
-        shutil.copy(file2, file)
-    shutil.rmtree(temp_dir)
+    if cp_user_files:
+        user_files2 = find("user_processing_exceptions.ini", temp_dir)
+        for file, file2 in zip(user_files, user_files2):
+            shutil.copy(file2, file)
+        shutil.rmtree(temp_dir)
     print("Updated cascade data in directory: {}".format(destination))
     new_path = os.path.join(cascade_default_data_path,
                             'configuration_templates/')
