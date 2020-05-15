@@ -89,6 +89,12 @@ def check_path_option(new_path, environent_variable, message):
 @click.argument('initfiles',
                 nargs=-1,
                 )
+@click.option('--commands',
+              '-c',
+              nargs=1,
+              type=click.STRING,
+              help='Commands to be executed',
+             )
 @click.option('--init_path',
               '-ip',
               nargs=1,
@@ -135,7 +141,7 @@ def check_path_option(new_path, environent_variable, message):
               help='If set no warning messages are printed to stdev. '
                    'Default is False',
               )
-def run_cascade(initfiles, init_path, data_path, save_path, show_plots,
+def run_cascade(initfiles, init_path, data_path, save_path, show_plots, commands,
                 no_warnings):
     """
     Run CASCADe.
@@ -189,12 +195,19 @@ def run_cascade(initfiles, init_path, data_path, save_path, show_plots,
     tso.execute("reset")
     tso.execute("initialize", *initfiles)
 
-    if tso.cascade_parameters.observations_data == "SPECTRUM":
-        for command in COMMAND_LIST_CALIBRATION:
-            tso.execute(command)
+    if commands == None :
+        if tso.cascade_parameters.observations_data == "SPECTRUM":
+            commands=COMMAND_LIST_CALIBRATION
+        else:
+            commands=COMMAND_LIST_PROCESSING
     else:
-        for command in COMMAND_LIST_PROCESSING:
-            tso.execute(command)
+        commands=commands.split()
+
+    for command in commands:
+        st = time.time()
+        tso.execute(command)
+        et = time.time() - st
+        log('elapsed time: {} {}'.format(command,et), "green")
 
 
 if __name__ == '__main__':
