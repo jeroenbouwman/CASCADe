@@ -5,10 +5,11 @@ CASCADe init file
 @author: bouwman
 """
 
-__version__ = "0.9.38"
+__version__ = "0.9.41"
 __all__ = ['data_model', 'TSO', 'instruments', 'cpm_model',
            'initialize', 'exoplanet_tools', 'utilities',
-           'spectral_extraction', 'build_archive', 'verbose']
+           'spectral_extraction', 'build_archive', 'verbose',
+           'simulation']
 
 from . import data_model
 from . import TSO
@@ -20,3 +21,4 @@ from . import utilities
 from . import spectral_extraction
 from . import build_archive
 from . import verbose
+from . import simulation

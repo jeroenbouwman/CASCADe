@@ -258,10 +258,15 @@ class HSTWFC3(InstrumentBase):
                                           observations_has_background)
         # processing
         try:
+            proc_source_selection = \
+                cascade_configuration.processing_source_selection_method
+        except AttributeError:
+            proc_source_selection = 'nearest'
+        try:
             proc_drop_samples = cascade_configuration.processing_drop_frames
             proc_drop_samples = ast.literal_eval(proc_drop_samples)
             for key, values in proc_drop_samples.items():
-                proc_drop_samples[key]=[int(i) for i in values]
+                proc_drop_samples[key] = [int(i) for i in values]
         except AttributeError:
             proc_drop_samples = {'up': [-1], 'down': [-1]}
         try:
@@ -335,6 +340,7 @@ class HSTWFC3(InstrumentBase):
             obs_target_name=obs_target_name,
             obs_has_backgr=obs_has_backgr,
             obs_uses_backgr_model=obs_uses_backgr_model,
+            proc_source_selection=proc_source_selection,
             proc_drop_samp=proc_drop_samples)
         if obs_has_backgr and not obs_uses_backgr_model:
             par.update({'obs_backgr_id': obs_backgr_id})
@@ -894,11 +900,14 @@ class HSTWFC3(InstrumentBase):
                 sample_counter = 0
                 for isample in range(0, nsampMax):
                     if isUpScan:
-                        if isample in self.par['proc_drop_samp']['up']:
-                           continue 
+                        # ramp data stored reversed in time
+                        if (nsampMax-1-isample) in \
+                                self.par['proc_drop_samp']['up']:
+                            continue
                     else:
-                        if isample in self.par['proc_drop_samp']['down']:
-                           continue
+                        if (nsampMax-1-isample) in \
+                                self.par['proc_drop_samp']['down']:
+                            continue
                     routtime = hdul[1+5*isample].header['ROUTTIME']
                     deltaTime = hdul[1+5*isample].header['DELTATIM']
                     if ((cubeCalType == 'COUNTS') |
@@ -1557,9 +1566,13 @@ class HSTWFC3(InstrumentBase):
             The position of the source in the acquisition images associated
             with the HST spectral timeseries observations.
         """
+        if self.par['proc_source_selection'] == 'nearest':
+            brightest = 10
+        else:
+            brightest = 1
         calibration_source_position = []
         expected_calibration_source_position = []
-        calibration_images = []
+#        calibration_images = []
         for im, image_file in enumerate(calibration_data_files):
             with fits.open(image_file) as hdul:
                 ra_target = hdul['PRIMARY'].header['RA_TARG']
@@ -1573,21 +1586,23 @@ class HSTWFC3(InstrumentBase):
                 mean, median, std = \
                     sigma_clipped_stats(calibration_image_cube[im, :, :],
                                         sigma=3.0, maxiters=5)
-                source=0
-                threshold=30.
+                source = 0
+                threshold = 50.
                 while source == 0:
-                    iraffind = IRAFStarFinder(fwhm=2.0, threshold=threshold*std)
-                    sources = iraffind(calibration_image_cube[im, :, :] - median)
-                    if sources == None:
+                    iraffind = IRAFStarFinder(fwhm=1.8,
+                                              threshold=threshold*std,
+                                              brightest=brightest)
+                    sources = iraffind(calibration_image_cube[im, :, :]-median)
+                    if sources is None:
                         warnings.warn("No aquisition target found above "
                                       "a threshold of {}".format(threshold))
-                        threshold=0.9*threshold
+                        threshold = 0.9*threshold
                         warnings.warn("Lowering  threshold to a value "
                                       "of {}".format(threshold))
                     else:
-                        source=1
+                        source = 1
 
-                sources = iraffind(calibration_image_cube[im, :, :] - median)
+                sources = iraffind(calibration_image_cube[im, :, :]-median)
                 distances = \
                     np.sqrt((sources['xcentroid']-expexted_xcentroid)**2 +
                             (sources['ycentroid']-expected_ycentroid)**2)

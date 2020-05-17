@@ -18,7 +18,7 @@ dependencies:
   - pandas
   - sphinx
   - alabaster
-  - scikit-image=0.16.2
+  - scikit-image=0.17.2
   - scikit-learn=0.22.1
   - setuptools
   - cython

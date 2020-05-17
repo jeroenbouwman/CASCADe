@@ -34,7 +34,7 @@ from matplotlib import pyplot as plt
 # from matplotlib.ticker import MaxNLocator, ScalarFormatter
 import seaborn as sns
 from skimage import exposure
-from skimage import img_as_float
+# from skimage import img_as_float
 # from ..initialize import cascade_default_data_path
 # from ..initialize import cascade_default_initialization_path
 # from ..initialize import cascade_default_path
@@ -59,7 +59,8 @@ __all__ = ["load_data_verbose",
 def _get_plot_parameters():
     try:
         verbose = ast.literal_eval(cascade_configuration.cascade_verbose)
-        save_verbose = ast.literal_eval(cascade_configuration.cascade_save_verbose)
+        save_verbose = \
+            ast.literal_eval(cascade_configuration.cascade_save_verbose)
     except AttributeError:
         warnings.warn("Verbose flags not defined. Assuming False")
         verbose = False
@@ -85,7 +86,7 @@ def _get_plot_parameters():
                       "save name not unique.")
         save_name_base = 'verbose'
     return (verbose, save_verbose, save_path, save_name_base)
-   
+
 
 def load_data_verbose(*args, **kwargs):
     """
@@ -93,7 +94,6 @@ def load_data_verbose(*args, **kwargs):
 
     Parameters
     ----------
-    plot_name : 'st'
     args : 'tuple'
     kwargs : 'dict'
 
@@ -109,7 +109,7 @@ def load_data_verbose(*args, **kwargs):
         return
     sns.set_context("talk", font_scale=1.5, rc={"lines.linewidth": 2.5})
     sns.set_style("white", {"xtick.bottom": True, "ytick.left": True})
- 
+
     data = kwargs["plot_data"].dataset.return_masked_array("data")
     wavelength = kwargs["plot_data"].dataset.return_masked_array("wavelength")
     fig, ax = plt.subplots(figsize=(12, 12), nrows=1, ncols=1)
@@ -125,15 +125,15 @@ def load_data_verbose(*args, **kwargs):
         plt.colorbar(p, ax=ax).set_label("Normalized Intensity")
         ax.set_ylabel("Pixel Position Dispersion Direction")
         ax.set_xlabel("Pixel Position Corss-Dispersion Direction")
-        fig_name_extension="a"
+        fig_name_extension = "a"
     else:
-        ax.plot(wavelength[:,0], data[:,0], lw=3, color="b")
+        ax.plot(wavelength[:, 0], data[:, 0], lw=3, color="b")
         ax.set_ylabel("Siganl")
         ax.set_xlabel("Wavelength")
-        fig_name_extension="b"
+        fig_name_extension = "b"
     ax.set_title("First Integration {}.".format(save_name_base))
     if save_verbose:
-        fig.savefig(os.path.join(save_path, save_name_base+
+        fig.savefig(os.path.join(save_path, save_name_base +
                                  "_load_data_step_figure1{}.png".
                                  format(fig_name_extension)),
                     bbox_inches="tight")
@@ -145,7 +145,7 @@ def load_data_verbose(*args, **kwargs):
     cmap = plt.cm.viridis
     cmap.set_bad("white", 1.)
     image = \
-        kwargs["plot_data"].instrument_calibration.calibration_images[0,...]
+        kwargs["plot_data"].instrument_calibration.calibration_images[0, ...]
     source_pos = kwargs["plot_data"].instrument_calibration.\
         calibration_source_position[0]
     expected_source_pos = kwargs["plot_data"].instrument_calibration.\
@@ -169,7 +169,7 @@ def load_data_verbose(*args, **kwargs):
     ax.legend()
     plt.show()
     if save_verbose:
-        fig.savefig(os.path.join(save_path, save_name_base+
+        fig.savefig(os.path.join(save_path, save_name_base +
                                  "_load_data_step_figure2a.png"),
                     bbox_inches="tight")
 
@@ -177,6 +177,11 @@ def load_data_verbose(*args, **kwargs):
 def subtract_background_verbose(*args, **kwargs):
     """
     Make verbose plots.
+
+    Parameters
+    ----------
+    args : 'tuple'
+    kwargs : 'dict'
 
     Returns
     -------
@@ -204,10 +209,10 @@ def subtract_background_verbose(*args, **kwargs):
         np.ma.array(data,
                     mask=np.ma.mask_or(data.mask, roi_cube))
     wavelength_with_roi = \
-       np.ma.array(wavelength,
+        np.ma.array(wavelength,
                     mask=np.ma.mask_or(wavelength.mask, roi_cube))
     total_data = np.ma.sum(data_with_roi, axis=-1)/time.shape[-1]
-    total_wavelength = np.ma.sum(wavelength_with_roi, axis=-1)/time.shape[-1]  
+    total_wavelength = np.ma.sum(wavelength_with_roi, axis=-1)/time.shape[-1]
 
     if data.ndim == 3:
         lightcurve = np.ma.sum(data_with_roi, axis=(0, 1))
@@ -226,20 +231,20 @@ def subtract_background_verbose(*args, **kwargs):
         p = ax.imshow(img_adapteq,
                       origin="lower", aspect="auto",
                       cmap=cmap, interpolation="none", vmin=0.0, vmax=1.0)
-        plt.colorbar(p, ax=ax).set_label("Normalized Average Intensity")        
+        plt.colorbar(p, ax=ax).set_label("Normalized Average Intensity")
         ax.set_ylabel("Pixel Position Dispersion Direction")
         ax.set_xlabel("Pixel Position Corss-Dispersion Direction")
-        fig_name_extension="a"
+        fig_name_extension = "a"
     else:
         ax.plot(total_wavelength, total_data)
         ax.set_xlabel("Wavelength")
         ax.set_ylabel("Average Signal")
-        fig_name_extension="b"
+        fig_name_extension = "b"
     ax.set_title("Background subtracted averaged "
                  "data {}.".format(save_name_base))
     plt.show()
     if save_verbose:
-        fig.savefig(os.path.join(save_path, save_name_base+
+        fig.savefig(os.path.join(save_path, save_name_base +
                                  "_subtract_background_step_figure1{}.png".
                                  format(fig_name_extension)),
                     bbox_inches='tight')
@@ -251,13 +256,13 @@ def subtract_background_verbose(*args, **kwargs):
     ax.set_title("Background subtracted data {}.".format(save_name_base))
     plt.show()
     if save_verbose:
-        fig.savefig(os.path.join(save_path, save_name_base+
+        fig.savefig(os.path.join(save_path, save_name_base +
                                  "_subtract_background_step_figure2{}.png".
                                  format(fig_name_extension)),
                     bbox_inches="tight")
 
 
-def filter_dataset_verbose():
+def filter_dataset_verbose(*args, **kwargs):
     """
     Make verbose plots.
 
@@ -269,7 +274,7 @@ def filter_dataset_verbose():
     pass
 
 
-def determine_source_movement_verbose():
+def determine_source_movement_verbose(*args, **kwargs):
     """
     Make verbose plots.
 
@@ -281,7 +286,7 @@ def determine_source_movement_verbose():
     pass
 
 
-def correct_wavelengths_verbose():
+def correct_wavelengths_verbose(*args, **kwargs):
     """
     Make verbose plots.
 
@@ -293,7 +298,7 @@ def correct_wavelengths_verbose():
     pass
 
 
-def set_extraction_mask_verbose():
+def set_extraction_mask_verbose(*args, **kwargs):
     """
     Make verbose plots.
 
@@ -305,7 +310,7 @@ def set_extraction_mask_verbose():
     pass
 
 
-def extract_1d_spectra_verbose():
+def extract_1d_spectra_verbose(*args, **kwargs):
     """
     Make verbose plots.
 
@@ -317,7 +322,7 @@ def extract_1d_spectra_verbose():
     pass
 
 
-def define_eclipse_model_verbose():
+def define_eclipse_model_verbose(*args, **kwargs):
     """
     Make verbose plots.
 
@@ -329,7 +334,7 @@ def define_eclipse_model_verbose():
     pass
 
 
-def select_regressors_verbose():
+def select_regressors_verbose(*args, **kwargs):
     """
     Make verbose plots.
 
@@ -341,7 +346,7 @@ def select_regressors_verbose():
     pass
 
 
-def calibrate_timeseries_verbose():
+def calibrate_timeseries_verbose(*args, **kwargs):
     """
     Make verbose plots.
 
@@ -353,7 +358,7 @@ def calibrate_timeseries_verbose():
     pass
 
 
-def extract_spectrum_verbose():
+def extract_spectrum_verbose(*args, **kwargs):
     """
     Make verbose plots.
 
@@ -365,7 +370,7 @@ def extract_spectrum_verbose():
     pass
 
 
-def correct_extracted_spectrum_verbose():
+def correct_extracted_spectrum_verbose(*args, **kwargs):
     """
     Make verbose plots.
 
@@ -378,6 +383,7 @@ def correct_extracted_spectrum_verbose():
 
 
 class Verbose:
+    """The Class handels verbose output vor the cascade pipeline."""
 
     def __init__(self):
         self.verbose_par = _get_plot_parameters()
@@ -436,5 +442,3 @@ class Verbose:
 
         self.__valid_commands[command](*args, **kwargs,
                                        verbose_par=self.verbose_par)
-
-

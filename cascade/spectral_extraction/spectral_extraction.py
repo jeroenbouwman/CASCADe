@@ -42,6 +42,7 @@ import seaborn as sns
 from scipy import ndimage
 from scipy.ndimage import binary_dilation
 from skimage.feature import register_translation
+from skimage.registration import phase_cross_correlation
 from astropy.convolution import convolve
 from astropy.convolution import Gaussian2DKernel
 from astropy.convolution import Kernel2D
@@ -963,8 +964,11 @@ def _determine_relative_source_shift(reference_image, image,
 
     # subpixel precision by oversampling image by upsampleFactor
     # returns shift, error and phase difference
+    # shift, _, _ = \
+    #     register_translation(ref_im, im, upsample_factor=upsampleFactor,
+    #                          space=space)
     shift, _, _ = \
-        register_translation(ref_im, im, upsample_factor=upsampleFactor,
+        phase_cross_correlation(ref_im, im, upsample_factor=upsampleFactor,
                              space=space)
     relativeImageShiftY = -shift[0]
     relativeImageShiftX = -shift[1]
@@ -1042,9 +1046,13 @@ def _determine_relative_rotation_and_scale(reference_image, referenceROI,
                                output_shape=None, multichannel=None,
                                AngleOversampling=AngleOversampling)
 
-    tparams = register_translation(warped_fft_ref_im, warped_fft_im,
+    # tparams = register_translation(warped_fft_ref_im, warped_fft_im,
+    #                                upsample_factor=upsampleFactor,
+    #                                space='real')
+    tparams = phase_cross_correlation(warped_fft_ref_im, warped_fft_im,
                                    upsample_factor=upsampleFactor,
                                    space='real')
+    
     shifts = tparams[0]
     # calculate rotation
     # note, only look for angles between +- 90 degrees,
