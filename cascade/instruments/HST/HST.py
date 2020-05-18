@@ -641,10 +641,13 @@ class HSTWFC3(InstrumentBase):
                                              dynamic_ncols=True)):
             with fits.open(image_file) as hdul:
                 instrument_fiter = hdul['PRIMARY'].header['FILTER']
+                instrument_aperture = hdul['PRIMARY'].header['APERTURE']
                 exptime = hdul['PRIMARY'].header['EXPTIME']
                 expstart = hdul['PRIMARY'].header['EXPSTART']
                 if instrument_fiter != self.par["inst_filter"]:
-                    if instrument_fiter == self.par["inst_cal_filter"]:
+                    if ((instrument_fiter == self.par["inst_cal_filter"]) and
+                            (instrument_aperture ==
+                             self.par["inst_cal_aperture"])):
                         calibration_image = hdul['SCI'].data
                         calibration_image_cube.append(calibration_image.copy())
                         calibration_data_files.append(image_file)
@@ -859,8 +862,11 @@ class HSTWFC3(InstrumentBase):
                                              dynamic_ncols=True)):
             with fits.open(image_file) as hdul:
                 instrument_fiter = hdul['PRIMARY'].header['FILTER']
+                instrument_aperture = hdul['PRIMARY'].header['APERTURE']
                 if instrument_fiter != self.par["inst_filter"]:
-                    if instrument_fiter == self.par["inst_cal_filter"]:
+                    if ((instrument_fiter == self.par["inst_cal_filter"]) and
+                            (instrument_aperture ==
+                             self.par["inst_cal_aperture"])):
                         image_file_flt = image_file.replace('_ima', '_flt')
                         with fits.open(image_file_flt) as hdul_cal:
                             calibration_image = hdul_cal['SCI'].data
