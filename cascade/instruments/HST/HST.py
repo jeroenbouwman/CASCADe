@@ -270,6 +270,12 @@ class HSTWFC3(InstrumentBase):
         except AttributeError:
             proc_drop_samples = {'up': [-1], 'down': [-1]}
         try:
+            proc_bits_not_to_flag = \
+                ast.literal_eval(cascade_configuration.
+                                 processing_bits_not_to_flag)
+        except AttributeError:
+            proc_bits_not_to_flag = [0, 12, 14]
+        try:
             obs_uses_backgr_model = \
                 ast.literal_eval(cascade_configuration.
                                  observations_uses_background_model)
@@ -341,7 +347,8 @@ class HSTWFC3(InstrumentBase):
             obs_has_backgr=obs_has_backgr,
             obs_uses_backgr_model=obs_uses_backgr_model,
             proc_source_selection=proc_source_selection,
-            proc_drop_samp=proc_drop_samples)
+            proc_drop_samp=proc_drop_samples,
+            proc_bits_not_to_flag=proc_bits_not_to_flag)
         if obs_has_backgr and not obs_uses_backgr_model:
             par.update({'obs_backgr_id': obs_backgr_id})
             par.update({'obs_backgr_target_name': obs_backgr_target_name})
@@ -1033,10 +1040,22 @@ class HSTWFC3(InstrumentBase):
         nintegrations, mpix, npix = spectral_image_cube.shape
         nintegrations_cal, ypix_cal, xpix_cal = calibration_image_cube.shape
 
-        mask = ((spectral_image_dq_cube != 0) &
-                (spectral_image_dq_cube != 8192) &
-                (spectral_image_dq_cube != 2048) &
-                (spectral_image_dq_cube != 8192+2048))
+        # bits_not_to_flag = [0, 10, 12,14]
+        # bits_to_flag = []
+        # for ibit in range(1, 16):
+        #     if ibit not in bits_not_to_flag:
+        #         bits_to_flag.append(ibit)
+        # all_flag_values = np.unique(spectral_image_dq_cube)
+        # bit_select = np.zeros_like(all_flag_values, dtype='int')
+        # for ibit in bits_to_flag:
+        #     print((all_flag_values & (1 << (ibit - 1))))
+        #     bit_select = bit_select + (all_flag_values & (1 << (ibit - 1)))
+        # bit_select = bit_select.astype('bool')
+        # mask = np.zeros_like(spectral_image_dq_cube, dtype='bool')
+        # for iflag in all_flag_values[bit_select]:
+        #     mask = mask | (spectral_image_dq_cube == iflag)
+            
+        mask = self. _create_mask_from_dq(spectral_image_dq_cube)
 
         # convert to BJD
         ra_target = fits.getval(spectral_data_files_in[0], "RA_TARG")
@@ -1116,6 +1135,41 @@ class HSTWFC3(InstrumentBase):
             self._get_background_cal_data()
             SpectralTimeSeries = self._fit_background(SpectralTimeSeries)
         return SpectralTimeSeries
+
+    def _create_mask_from_dq(self, dq_cube):
+        """
+        Create mask from DQ cube.
+
+        Parameters
+        ----------
+        dq_cube : TYPE
+            DESCRIPTION.
+
+        Returns
+        -------
+        mask : TYPE
+            DESCRIPTION.
+
+        Note
+        ----
+        Standard bit values not to flag are 0, 12 and 14.
+        Bit valiue 10 (blobs) is not set by default but can be selected not to
+        be flagged in case of problem.
+        """
+        bits_not_to_flag = self.par['proc_bits_not_to_flag']
+        bits_to_flag = []
+        for ibit in range(1, 16):
+            if ibit not in bits_not_to_flag:
+                bits_to_flag.append(ibit)
+        all_flag_values = np.unique(dq_cube)
+        bit_select = np.zeros_like(all_flag_values, dtype='int')
+        for ibit in bits_to_flag:
+            bit_select = bit_select + (all_flag_values & (1 << (ibit - 1)))
+        bit_select = bit_select.astype('bool')
+        mask = np.zeros_like(dq_cube, dtype='bool')
+        for iflag in all_flag_values[bit_select]:
+            mask = mask | (dq_cube == iflag)
+        return mask
 
     def _determine_position_offset(self, scan_offset_x, scan_offset_y,
                                    cal_offset_x, cal_offset_y):
