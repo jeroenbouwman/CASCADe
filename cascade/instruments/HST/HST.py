@@ -729,7 +729,9 @@ class HSTWFC3(InstrumentBase):
         idx_remove1 = spectral_data_nrptexp != med_nrptexp
         median_exposure_time = np.median(spectral_image_exposure_time)
         idx_remove2 = (spectral_image_exposure_time-0.01) > median_exposure_time
-        idx_remove = idx_remove1 | idx_remove2
+# BUG FIX reversion
+        # idx_remove = idx_remove1 | idx_remove2
+        idx_remove = idx_remove2
         spectral_image_exposure_time = \
             spectral_image_exposure_time[~idx_remove]
         time = time[~idx_remove]
@@ -1053,7 +1055,9 @@ class HSTWFC3(InstrumentBase):
         idx_remove1 = spectral_data_nrptexp != med_nrptexp
         med_number_of_samples = np.median(spectral_image_number_of_samples)
         idx_remove2 = spectral_image_number_of_samples > med_number_of_samples
-        idx_remove = idx_remove1 | idx_remove2
+#        idx_remove = idx_remove1 | idx_remove2
+# BUG FIX reversion
+        idx_remove = idx_remove2
         time = time[~idx_remove]
         spectral_sampling_time = spectral_sampling_time[~idx_remove]
         spectral_image_cube = spectral_image_cube[~idx_remove, :, :]
