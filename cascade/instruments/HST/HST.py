@@ -639,10 +639,14 @@ class HSTWFC3(InstrumentBase):
         spectral_image_unc_cube = []
         spectral_image_dq_cube = []
         spectral_image_exposure_time = []
+        spectral_offset2 = []
+        spectral_offset1 = []
         time = []
         cal_time = []
         spectral_data_files = []
         calibration_data_files = []
+        cal_offset2 = []
+        cal_offset1 = []
         for im, image_file in enumerate(tqdm(data_files,
                                              desc="Loading Spectral Images",
                                              dynamic_ncols=True)):
@@ -659,6 +663,10 @@ class HSTWFC3(InstrumentBase):
                         calibration_image_cube.append(calibration_image.copy())
                         calibration_data_files.append(image_file)
                         cal_time.append(expstart + 0.5*(exptime/(24.0*3600.0)))
+                        calOffset2 = hdul['PRIMARY'].header['POSTARG2']
+                        calOffset1 = hdul['PRIMARY'].header['POSTARG1']
+                        cal_offset2.append(calOffset2)
+                        cal_offset1.append(calOffset1)
                         del calibration_image
                     continue
                 spectral_image = hdul['SCI'].data
@@ -670,6 +678,10 @@ class HSTWFC3(InstrumentBase):
                 spectral_data_files.append(image_file)
                 time.append(expstart + 0.5*(exptime/(24.0*3600.0)))
                 spectral_image_exposure_time.append(exptime)
+                Offset2 = hdul['PRIMARY'].header['POSTARG2']
+                Offset1 = hdul['PRIMARY'].header['POSTARG1']
+                spectral_offset2.append(Offset2)
+                spectral_offset1.append(Offset1)
 
         if len(spectral_image_cube) == 0:
             raise ValueError("No science data found for the \
@@ -683,13 +695,17 @@ class HSTWFC3(InstrumentBase):
         spectral_image_unc_cube = \
             np.array(spectral_image_unc_cube, dtype=np.float64)
         spectral_image_dq_cube = \
-            np.array(spectral_image_dq_cube, dtype=np.float64)
+            np.array(spectral_image_dq_cube, dtype=np.int64)
         calibration_image_cube = \
             np.array(calibration_image_cube, dtype=np.float64)
         time = np.array(time, dtype=np.float64)
         cal_time = np.array(cal_time, dtype=np.float64)
         spectral_image_exposure_time = np.array(spectral_image_exposure_time,
                                                 dtype=np.float64)
+        spectral_offset1 = np.array(spectral_offset1, dtype=np.float64)
+        spectral_offset2 = np.array(spectral_offset2, dtype=np.float64)
+        cal_offset1 = np.array(cal_offset1, dtype=np.float64)
+        cal_offset2 = np.array(cal_offset2, dtype=np.float64)
 
         idx_time_sort = np.argsort(time)
         time = time[idx_time_sort]
@@ -700,6 +716,8 @@ class HSTWFC3(InstrumentBase):
             list(np.array(spectral_data_files)[idx_time_sort])
         spectral_image_exposure_time = \
             spectral_image_exposure_time[idx_time_sort]
+        spectral_offset1 = spectral_offset1[idx_time_sort]
+        spectral_offset2 = spectral_offset2[idx_time_sort]
 
         # check for spurious longer exosures.
         median_exposure_time = np.median(spectral_image_exposure_time)
@@ -712,18 +730,21 @@ class HSTWFC3(InstrumentBase):
         spectral_image_dq_cube = spectral_image_dq_cube[~idx_remove, :, :]
         spectral_data_files = \
             list(np.array(spectral_data_files)[~idx_remove])
+        spectral_offset1 = spectral_offset1[~idx_remove]
+        spectral_offset2 = spectral_offset2[~idx_remove]
 
         idx_time_sort = np.argsort(cal_time)
         cal_time = cal_time[idx_time_sort]
         calibration_image_cube = calibration_image_cube[idx_time_sort]
         calibration_data_files = \
             list(np.array(calibration_data_files)[idx_time_sort])
+        cal_offset1 = cal_offset1[idx_time_sort]
+        cal_offset2 = cal_offset2[idx_time_sort]
 
         nintegrations, mpix, npix = spectral_image_cube.shape
         nintegrations_cal, ypix_cal, xpix_cal = calibration_image_cube.shape
 
-        mask = ((spectral_image_dq_cube != 0) &
-                (spectral_image_dq_cube != 8192))
+        mask = self. _create_mask_from_dq(spectral_image_dq_cube)
 
         # convert to BJD
         ra_target = fits.getval(spectral_data_files[0], "RA_TARG")
@@ -760,10 +781,10 @@ class HSTWFC3(InstrumentBase):
 
         self._define_convolution_kernel()
 # BUG FIX
-        offset_x = [0.0]
-        offset_y = [0.0]
-        cal_offset_x = [0.0]
-        cal_offset_y = [0]
+        offset_x = spectral_offset1
+        offset_y = spectral_offset2
+        cal_offset_x = cal_offset1
+        cal_offset_y = cal_offset2
         self._determine_position_offset(offset_x, offset_y,
                                         cal_offset_x, cal_offset_y)
         self._determine_source_position_from_cal_image(
@@ -1188,7 +1209,8 @@ class HSTWFC3(InstrumentBase):
         None.
 
         """
-        xc_offset = (-np.mean(cal_offset_x))/0.135
+        xc_offset = (np.mean(scan_offset_x)-np.mean(cal_offset_x))/0.135
+        #xc_offset = (-np.mean(cal_offset_x))/0.135
         yc_offset = (np.mean(scan_offset_y)-np.mean(cal_offset_y))/0.121
         try:
             self.wfc3_cal
