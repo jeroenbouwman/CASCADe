@@ -647,6 +647,7 @@ class HSTWFC3(InstrumentBase):
         calibration_data_files = []
         cal_offset2 = []
         cal_offset1 = []
+        spectral_data_nrptexp = []
         for im, image_file in enumerate(tqdm(data_files,
                                              desc="Loading Spectral Images",
                                              dynamic_ncols=True)):
@@ -682,6 +683,8 @@ class HSTWFC3(InstrumentBase):
                 Offset1 = hdul['PRIMARY'].header['POSTARG1']
                 spectral_offset2.append(Offset2)
                 spectral_offset1.append(Offset1)
+                nrptexp = hdul['PRIMARY'].header['NRPTEXP']
+                spectral_data_nrptexp.append(nrptexp)
 
         if len(spectral_image_cube) == 0:
             raise ValueError("No science data found for the \
@@ -706,6 +709,7 @@ class HSTWFC3(InstrumentBase):
         spectral_offset2 = np.array(spectral_offset2, dtype=np.float64)
         cal_offset1 = np.array(cal_offset1, dtype=np.float64)
         cal_offset2 = np.array(cal_offset2, dtype=np.float64)
+        spectral_data_nrptexp = np.array(spectral_data_nrptexp, dtype=np.int64)
 
         idx_time_sort = np.argsort(time)
         time = time[idx_time_sort]
@@ -718,10 +722,14 @@ class HSTWFC3(InstrumentBase):
             spectral_image_exposure_time[idx_time_sort]
         spectral_offset1 = spectral_offset1[idx_time_sort]
         spectral_offset2 = spectral_offset2[idx_time_sort]
+        spectral_data_nrptexp = spectral_data_nrptexp[idx_time_sort]
 
         # check for spurious longer exosures.
+        med_nrptexp = np.median(spectral_data_nrptexp)
+        idx_remove1 = spectral_data_nrptexp != med_nrptexp
         median_exposure_time = np.median(spectral_image_exposure_time)
-        idx_remove = (spectral_image_exposure_time-0.01) > median_exposure_time
+        idx_remove2 = (spectral_image_exposure_time-0.01) > median_exposure_time
+        idx_remove = idx_remove1 | idx_remove2
         spectral_image_exposure_time = \
             spectral_image_exposure_time[~idx_remove]
         time = time[~idx_remove]
@@ -913,7 +921,8 @@ class HSTWFC3(InstrumentBase):
                 cubeCalType = self._get_cube_cal_type(hdul)
                 nsamp = hdul['PRIMARY'].header['NSAMP']
                 exptime = hdul['PRIMARY'].header['EXPTIME']
-                nrptexp =  hdul['PRIMARY'].header['NRPTEXP']
+# BUG FIX
+                nrptexp = hdul['PRIMARY'].header['NRPTEXP']
 # BUG FIX       scanLeng = hdul['PRIMARY'].header['SCAN_LEN']
                 scanRate = hdul['PRIMARY'].header['SCAN_RAT']
                 scanOffset2 = hdul['PRIMARY'].header['POSTARG2']
@@ -1038,6 +1047,7 @@ class HSTWFC3(InstrumentBase):
         spectral_scan_length = spectral_scan_length[idx_time_sort]
         spectral_scan_offset2 = spectral_scan_offset2[idx_time_sort]
         spectral_scan_offset1 = spectral_scan_offset1[idx_time_sort]
+        spectral_data_nrptexp = spectral_data_nrptexp[idx_time_sort]
 
         med_nrptexp = np.median(spectral_data_nrptexp)
         idx_remove1 = spectral_data_nrptexp != med_nrptexp
