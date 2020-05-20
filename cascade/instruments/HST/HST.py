@@ -885,6 +885,7 @@ class HSTWFC3(InstrumentBase):
         spectral_scan_offset1 = []
         cal_offset2 = []
         cal_offset1 = []
+        spectral_data_nrptexp = []
         for im, image_file in enumerate(tqdm(data_files,
                                              desc="Loading Spectral Cubes",
                                              dynamic_ncols=True)):
@@ -912,6 +913,7 @@ class HSTWFC3(InstrumentBase):
                 cubeCalType = self._get_cube_cal_type(hdul)
                 nsamp = hdul['PRIMARY'].header['NSAMP']
                 exptime = hdul['PRIMARY'].header['EXPTIME']
+                nrptexp =  hdul['PRIMARY'].header['NRPTEXP']
 # BUG FIX       scanLeng = hdul['PRIMARY'].header['SCAN_LEN']
                 scanRate = hdul['PRIMARY'].header['SCAN_RAT']
                 scanOffset2 = hdul['PRIMARY'].header['POSTARG2']
@@ -969,6 +971,7 @@ class HSTWFC3(InstrumentBase):
                     spectral_image_cube.append(spectral_image.copy())
                     spectral_image_unc_cube.append(spectral_image_unc.copy())
                     spectral_image_dq_cube.append(spectral_image_dq.copy())
+                    spectral_data_nrptexp.append(nrptexp)
                     spectral_sample_number.append(sample_counter)
                     spectral_scan_directon.append(isUpScan)
                     spectral_sampling_time.append(deltaTime)
@@ -1018,6 +1021,7 @@ class HSTWFC3(InstrumentBase):
                                          dtype=np.float64)
         cal_offset1 = np.array(cal_offset1, dtype=np.int64)
         cal_offset2 = np.array(cal_offset2, dtype=np.int64)
+        spectral_data_nrptexp = np.array(spectral_data_nrptexp, dtype=np.int64)
 
         idx_time_sort = np.argsort(time)
         time = time[idx_time_sort]
@@ -1035,8 +1039,11 @@ class HSTWFC3(InstrumentBase):
         spectral_scan_offset2 = spectral_scan_offset2[idx_time_sort]
         spectral_scan_offset1 = spectral_scan_offset1[idx_time_sort]
 
+        med_nrptexp = np.median(spectral_data_nrptexp)
+        idx_remove1 = spectral_data_nrptexp != med_nrptexp
         med_number_of_samples = np.median(spectral_image_number_of_samples)
-        idx_remove = spectral_image_number_of_samples > med_number_of_samples
+        idx_remove2 = spectral_image_number_of_samples > med_number_of_samples
+        idx_remove = idx_remove1 | idx_remove2
         time = time[~idx_remove]
         spectral_sampling_time = spectral_sampling_time[~idx_remove]
         spectral_image_cube = spectral_image_cube[~idx_remove, :, :]
