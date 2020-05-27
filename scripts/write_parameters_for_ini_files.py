@@ -225,8 +225,7 @@ def get_hst_parameters(path_catalogue, name_catalogue):
     hst_observations = pickle.load(open(os.path.join(path_catalogue, name_catalogue), 'rb'))
 
     hst_data = pd.DataFrame({'PLANET': [i['planet'] for i in hst_observations.values()],
-                             'OBSERVATION': [i['observation'] for i in hst_observations.values()],
-                             'FILTER': [i['filter'] for i in hst_observations.values()]})
+                             'OBSERVATION': [i['observation'] for i in hst_observations.values()]})
 
     hst_data['PLANET'] = remove_binary_name(hst_data['PLANET'])
     hst_data['PLANET'] = remove_space(hst_data['PLANET'])
@@ -586,144 +585,144 @@ def write_diff(exoplanet_a, exoplanets_org, nea_catalog, tepcat):
 
     writer.save()
 
+######################################  Here starts the main  ######################################
 
-# Initialisation
-verbose = True
+def main(verbose=True):
 
-#  planets observed by HST WFC3
-list_planets_hst_wfc3_path = '../data/archive_databases/HST/WFC3'
-list_planets_hst_wfc3_filename = 'WFC3_files.pickle'
-object_ini_files_path = 'object_init_files'
+    # Initialisation
 
-# Exoplanet.a catalogue
-path_catalogue_exoplanets_a = '../data/exoplanet_data/EXOPLANETS_A'
-name_catalogue_exoplanets_a = 'exoplanets_a_full.csv'
-url_catalogue_exoplanets_a = 'http://svo2.cab.inta-csic.es/vocats/v2/exostars/cs.php?RA=180.000000&DEC=0.000000&S' \
-                             'R=180.000000&VERB=1&objlist=-1,0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,' \
-                             '22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,' \
-                             '51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,66,67,68,69,70,71,72,73,74,75,76,77,78,79,' \
-                             '80,81,82,83,84,85,86,87,88,89,90,91,92,93,94,95,96,97,98,99,100,101,102,103,104,105,' \
-                             '106,107,108,109,110,111,112,113,114,115,116,117,118,119,120,121,122,123,124,125,126,' \
-                             '127,128,129,130,131,132,133,134,135,136,137,138,139,140,141,142,143,144,145,146,147,' \
-                             '148,149,150,151,152,153,154,155,156,157,158,159,160,161,162,163,164,165,166,167,168,' \
-                             '169,170,171,172,173,174,175,176,177,178,179,180,181,182,183,184,185,186,187,188,189,' \
-                             '190,191,192,193,194,195,196,197,198,199,200,201&fldlist=-1,3,4,5,6,7,8,9,12,13,14,15,' \
-                             '16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,' \
-                             '45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,66,67,68,69,70,71,72,73,' \
-                             '74,75,76,77,78,79,80,81,82,83,84,85,86,87,88,89,90,91,92,93,94,95,96,97,98,99,100,101,' \
-                             '102,103,104,105,106,107,108,109,110,111,112,113&nocoor=1&format=ascii'
+    #  planets observed by HST WFC3
+    list_planets_hst_wfc3_path = '../data/archive_databases/HST/WFC3'
+    list_planets_hst_wfc3_filename = 'WFC3_files.pickle'
+    object_ini_files_path = 'object_init_files'
 
-# Exoplanets.org catalogue
-path_catalogue_exoplanets_org = '../data/exoplanet_data/exoplanets.org/'
-name_catalogue_exoplanets_org = 'exoplanets.csv'
-url_catalogue_exoplanets_org = 'http://www.exoplanets.org/csv-files/exoplanets.csv'
+    # Exoplanet.a catalogue
+    path_catalogue_exoplanets_a = '../data/exoplanet_data/EXOPLANETS_A'
+    name_catalogue_exoplanets_a = 'exoplanets_a_full.csv'
+    url_catalogue_exoplanets_a = 'http://svo2.cab.inta-csic.es/vocats/v2/exostars/cs.php?RA=180.000000&DEC=0.000000&S' \
+                                 'R=180.000000&VERB=1&objlist=-1,0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,' \
+                                 '22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,' \
+                                 '51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,66,67,68,69,70,71,72,73,74,75,76,77,78,79,' \
+                                 '80,81,82,83,84,85,86,87,88,89,90,91,92,93,94,95,96,97,98,99,100,101,102,103,104,105,' \
+                                 '106,107,108,109,110,111,112,113,114,115,116,117,118,119,120,121,122,123,124,125,126,' \
+                                 '127,128,129,130,131,132,133,134,135,136,137,138,139,140,141,142,143,144,145,146,147,' \
+                                 '148,149,150,151,152,153,154,155,156,157,158,159,160,161,162,163,164,165,166,167,168,' \
+                                 '169,170,171,172,173,174,175,176,177,178,179,180,181,182,183,184,185,186,187,188,189,' \
+                                 '190,191,192,193,194,195,196,197,198,199,200,201&fldlist=-1,3,4,5,6,7,8,9,12,13,14,15,' \
+                                 '16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,' \
+                                 '45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,66,67,68,69,70,71,72,73,' \
+                                 '74,75,76,77,78,79,80,81,82,83,84,85,86,87,88,89,90,91,92,93,94,95,96,97,98,99,100,101,' \
+                                 '102,103,104,105,106,107,108,109,110,111,112,113&nocoor=1&format=ascii'
 
-# Nasa Exoplanet Archive catalogue
-path_catalogue_nasa_exoplanet_archive = '../data/exoplanet_data/NASAEXOPLANETARCHIVE'
-name_catalogue_nasa_exoplanet_archive = 'nasaexoplanetarchive_full.csv'
-url_catalogue_nasa_exoplanet_archive = ''
+    # Exoplanets.org catalogue
+    path_catalogue_exoplanets_org = '../data/exoplanet_data/exoplanets.org/'
+    name_catalogue_exoplanets_org = 'exoplanets.csv'
+    url_catalogue_exoplanets_org = 'http://www.exoplanets.org/csv-files/exoplanets.csv'
 
-# Tepcat allplanet catalogue
-path_allplanet_tepcat = '../data/exoplanet_data/tepcat/'
-name_allplanet_tepcat = 'allplanets.csv'
-url_allplanet_tepcat = 'http://www.astro.keele.ac.uk/jkt/tepcat/allplanets-csv.csv'
+    # Nasa Exoplanet Archive catalogue
+    path_catalogue_nasa_exoplanet_archive = '../data/exoplanet_data/NASAEXOPLANETARCHIVE'
+    name_catalogue_nasa_exoplanet_archive = 'nasaexoplanetarchive_full.csv'
+    url_catalogue_nasa_exoplanet_archive = ''
 
-# Tepcat observables catalogue
-path_observable_tepcat = '../data/exoplanet_data/tepcat/'
-name_observable_tepcat = 'observables.csv'
-url_observable_tepcat = 'http://www.astro.keele.ac.uk/jkt/tepcat/observables.csv'
+    # Tepcat allplanet catalogue
+    path_allplanet_tepcat = '../data/exoplanet_data/tepcat/'
+    name_allplanet_tepcat = 'allplanets.csv'
+    url_allplanet_tepcat = 'http://www.astro.keele.ac.uk/jkt/tepcat/allplanets-csv.csv'
 
-
-# catalogue reading
-hst_data = get_hst_parameters(list_planets_hst_wfc3_path, list_planets_hst_wfc3_filename)
-
-exoplanet_a_catalogue = get_catalogue(path_catalogue_exoplanets_a,
-                                      name_catalogue_exoplanets_a,
-                                      url_catalogue=url_catalogue_exoplanets_a, update=False)
-
-exoplanet_org_catalogue = get_catalogue(path_catalogue_exoplanets_org,
-                                        name_catalogue_exoplanets_org,
-                                        url_catalogue=url_catalogue_exoplanets_org, update=False)
-
-nea_catalogue = get_catalogue(path_catalogue_nasa_exoplanet_archive,
-                              name_catalogue_nasa_exoplanet_archive,
-                              url_catalogue=url_catalogue_nasa_exoplanet_archive, update=False)
-
-tepcat_allplanets_catalogue = get_catalogue(path_allplanet_tepcat,
-                                            name_allplanet_tepcat,
-                                            url_catalogue=url_allplanet_tepcat, update=False)
-
-tepcat_observable_catalogue = get_catalogue(path_observable_tepcat,
-                                            name_observable_tepcat,
-                                            url_catalogue=url_observable_tepcat, update=False)
+    # Tepcat observables catalogue
+    path_observable_tepcat = '../data/exoplanet_data/tepcat/'
+    name_observable_tepcat = 'observables.csv'
+    url_observable_tepcat = 'http://www.astro.keele.ac.uk/jkt/tepcat/observables.csv'
 
 
-# data reading
-list_planets_hst_wfc3 = hst_data.drop_duplicates('PLANET')['PLANET']  # remove hst data duplicates
+    # catalogue reading
+    hst_data = get_hst_parameters(list_planets_hst_wfc3_path, list_planets_hst_wfc3_filename)
 
-exo_a_merged_hst = reformat_exoplanets_a_data(exoplanet_a_catalogue)
-exoplanet_org_data = reformat_exoplanets_org_data(exoplanet_org_catalogue)
-nea_data = reformat_nasa_exoplanet_archive_data(nea_catalogue)
-tepcat_data = reformat_tepcat_data(tepcat_allplanets_catalogue, tepcat_observable_catalogue)
+    exoplanet_a_catalogue = get_catalogue(path_catalogue_exoplanets_a,
+                                          name_catalogue_exoplanets_a,
+                                          url_catalogue=url_catalogue_exoplanets_a, update=False)
 
-exo_a_merged_hst = merge_catalogue(list_planets_hst_wfc3, exo_a_merged_hst, verbose=False)
-exo_org_merged_hst = merge_catalogue(list_planets_hst_wfc3, exoplanet_org_data, verbose=False)
-nea_merged_hst = merge_catalogue(list_planets_hst_wfc3, nea_data, verbose=False)
-tepcat_merged_hst = merge_catalogue(list_planets_hst_wfc3, tepcat_data, verbose=False)
+    exoplanet_org_catalogue = get_catalogue(path_catalogue_exoplanets_org,
+                                            name_catalogue_exoplanets_org,
+                                            url_catalogue=url_catalogue_exoplanets_org, update=False)
 
-# Write merged catalogue with parameters comparaison
-#write_diff(exo_a_merged_hst, exo_org_merged_hst, nea_merged_hst, tepcat_merged_hst)
+    nea_catalogue = get_catalogue(path_catalogue_nasa_exoplanet_archive,
+                                  name_catalogue_nasa_exoplanet_archive,
+                                  url_catalogue=url_catalogue_nasa_exoplanet_archive, update=False)
 
+    tepcat_allplanets_catalogue = get_catalogue(path_allplanet_tepcat,
+                                                name_allplanet_tepcat,
+                                                url_catalogue=url_allplanet_tepcat, update=False)
 
-# planet parameters
-planet_name = exo_a_merged_hst['PLANET']  # Name of the planet
-alternative_planet_name = exo_a_merged_hst['OTHERNAME']  # Other name of the planet
-planet_radius = exo_a_merged_hst['RPLANET']  # Radius of the planet [Rjupiter]
-semi_major_axis = exo_a_merged_hst['A']  # Orbit semi major axis [au]
-inclination = exo_a_merged_hst['I']  # Orbital inclination [degrees]
-eccentricity = exo_a_merged_hst['ECC']  # Orbital eccentricity []
-omega = exo_a_merged_hst['OM']  # longitude of the ascendent node [degrees]
-orbital_period = exo_a_merged_hst['PER']  # Orbital period [days]
-kmag = exo_a_merged_hst['KMAG']  # Magnitude in the K filter [magnitude]
-ephemeris = exo_a_merged_hst['TT']  # primary transit [JD]
+    tepcat_observable_catalogue = get_catalogue(path_observable_tepcat,
+                                                name_observable_tepcat,
+                                                url_catalogue=url_observable_tepcat, update=False)
 
-# star parameters
-star_name = exo_a_merged_hst['STAR']  # Name of the star
-star_radius = exo_a_merged_hst['RSTAR']  # Radius of the star [Rsun]
-star_temperature = exo_a_merged_hst['TEFF']  # Star temperature [K]
-star_metallicity = exo_a_merged_hst['FE']  # Star metallicity [dex]
-star_logg = exo_a_merged_hst['LOGG']  # Star surface gravity [dex(cm/s2)]
+    # data reading
+    list_planets_hst_wfc3 = hst_data.drop_duplicates('PLANET')['PLANET']  # remove hst data duplicates
 
+    exo_a_merged_hst = reformat_exoplanets_a_data(exoplanet_a_catalogue)
+    exoplanet_org_data = reformat_exoplanets_org_data(exoplanet_org_catalogue)
+    nea_data = reformat_nasa_exoplanet_archive_data(nea_catalogue)
+    tepcat_data = reformat_tepcat_data(tepcat_allplanets_catalogue, tepcat_observable_catalogue)
 
-# Write object ini files
-check_folder(object_ini_files_path, create_directory=True, verbose=verbose)
+    exo_a_merged_hst = merge_catalogue(list_planets_hst_wfc3, exo_a_merged_hst, verbose=False)
+    exo_org_merged_hst = merge_catalogue(list_planets_hst_wfc3, exoplanet_org_data, verbose=False)
+    nea_merged_hst = merge_catalogue(list_planets_hst_wfc3, nea_data, verbose=False)
+    tepcat_merged_hst = merge_catalogue(list_planets_hst_wfc3, tepcat_data, verbose=False)
 
-for i in range(list_planets_hst_wfc3.size):
+    # Write merged catalogue with parameters comparaison
+    #write_diff(exo_a_merged_hst, exo_org_merged_hst, nea_merged_hst, tepcat_merged_hst)
 
-    object_ini_files_name = 'cascade_' + planet_name[i] + '_object.ini'
+    # planet parameters
+    planet_name = exo_a_merged_hst['PLANET']  # Name of the planet
+    alternative_planet_name = exo_a_merged_hst['OTHERNAME']  # Other name of the planet
+    planet_radius = exo_a_merged_hst['RPLANET']  # Radius of the planet [Rjupiter]
+    semi_major_axis = exo_a_merged_hst['A']  # Orbit semi major axis [au]
+    inclination = exo_a_merged_hst['I']  # Orbital inclination [degrees]
+    eccentricity = exo_a_merged_hst['ECC']  # Orbital eccentricity []
+    omega = exo_a_merged_hst['OM']  # longitude of the ascendent node [degrees]
+    orbital_period = exo_a_merged_hst['PER']  # Orbital period [days]
+    kmag = exo_a_merged_hst['KMAG']  # Magnitude in the K filter [magnitude]
+    ephemeris = exo_a_merged_hst['TT']  # primary transit [JD]
 
-    with open(os.path.join(object_ini_files_path, object_ini_files_name), "w") as output_file:
-        output_file.write('[OBJECT]\n')
-        output_file.write('object_name = {}\n'.format(planet_name[i]))
-        output_file.write('object_radius = {} Rjup\n'.format(planet_radius[i]))
-        output_file.write('object_radius_host_star = {} Rsun\n'.format(star_radius[i]))
-        output_file.write('object_temperature_host_star = {} K\n'.format(star_temperature[i]))
-        output_file.write('object_semi_major_axis = {} AU\n'.format(semi_major_axis[i]))
-        output_file.write('object_inclination = {} deg\n'.format(inclination[i]))
-        output_file.write('object_eccentricity = {}\n'.format(eccentricity[i]))
-        output_file.write('object_omega = {} deg\n'.format(omega[i]))
-        output_file.write('object_period = {} d\n'.format(orbital_period[i]))
-        output_file.write('object_ephemeris = {} d\n'.format(ephemeris[i]))
-        output_file.write('object_kmag = {} Kmag\n'.format(kmag[i]))
-        output_file.write('object_metallicity_host_star = {} dex\n'.format(star_metallicity[i]))
-        output_file.write('object_logg_host_star = {} dex(cm/s2)\n'.format(star_logg[i]))
-        output_file.write('\n')
-        output_file.write('[CATALOG]\n')
-        output_file.write('catalog_use_catalog = False\n')
-        output_file.write('catalog_name = MIXTE\n')
-        output_file.write('catalog_update = True\n')
+    # star parameters
+    star_name = exo_a_merged_hst['STAR']  # Name of the star
+    star_radius = exo_a_merged_hst['RSTAR']  # Radius of the star [Rsun]
+    star_temperature = exo_a_merged_hst['TEFF']  # Star temperature [K]
+    star_metallicity = exo_a_merged_hst['FE']  # Star metallicity [dex]
+    star_logg = exo_a_merged_hst['LOGG']  # Star surface gravity [dex(cm/s2)]
 
-    if verbose:
-        print_parameter_missing(planet_name[i], planet_radius[i], star_radius[i], star_temperature[i],
-                            semi_major_axis[i], inclination[i], eccentricity[i], omega[i],
-                            ephemeris[i], orbital_period[i])
+    # Write object ini files
+    check_folder(object_ini_files_path, create_directory=True, verbose=verbose)
+    for i in range(list_planets_hst_wfc3.size):
+        object_ini_files_name = 'cascade_' + planet_name[i] + '_object.ini'
+        with open(os.path.join(object_ini_files_path, object_ini_files_name), "w") as output_file:
+            output_file.write('[OBJECT]\n')
+            output_file.write('object_name = {}\n'.format(planet_name[i]))
+            output_file.write('object_radius = {} Rjup\n'.format(planet_radius[i]))
+            output_file.write('object_radius_host_star = {} Rsun\n'.format(star_radius[i]))
+            output_file.write('object_temperature_host_star = {} K\n'.format(star_temperature[i]))
+            output_file.write('object_semi_major_axis = {} AU\n'.format(semi_major_axis[i]))
+            output_file.write('object_inclination = {} deg\n'.format(inclination[i]))
+            output_file.write('object_eccentricity = {}\n'.format(eccentricity[i]))
+            output_file.write('object_omega = {} deg\n'.format(omega[i]))
+            output_file.write('object_period = {} d\n'.format(orbital_period[i]))
+            output_file.write('object_ephemeris = {} d\n'.format(ephemeris[i]))
+            output_file.write('object_kmag = {} Kmag\n'.format(kmag[i]))
+            output_file.write('object_metallicity_host_star = {} dex\n'.format(star_metallicity[i]))
+            output_file.write('object_logg_host_star = {} dex(cm/s2)\n'.format(star_logg[i]))
+            output_file.write('\n')
+            output_file.write('[CATALOG]\n')
+            output_file.write('catalog_use_catalog = False\n')
+            output_file.write('catalog_name = MIXTE\n')
+            output_file.write('catalog_update = True\n')
+
+        if verbose:
+            print_parameter_missing(planet_name[i], planet_radius[i], star_radius[i], star_temperature[i],
+                                semi_major_axis[i], inclination[i], eccentricity[i], omega[i],
+                                ephemeris[i], orbital_period[i])
+    return
+
+if __name__ == "__main__":
+    main()
