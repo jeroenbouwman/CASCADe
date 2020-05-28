@@ -492,7 +492,7 @@ def merge_catalogue(catalogue_a, catalogue_b, verbose=False):
     only_in_othername = catalogue_b['OTHERNAME'].isin(catalogue_a) \
                         & ~catalogue_b['PLANET'].isin(catalogue_a)
 
-    catalogue_b['PLANET'][only_in_othername] = catalogue_b['OTHERNAME'][only_in_othername]
+    catalogue_b.loc[only_in_othername, 'PLANET'] = catalogue_b['OTHERNAME'][only_in_othername]
 
     not_match = catalogue_a.loc[~catalogue_a.isin(catalogue_b['PLANET'])]
     if verbose and not_match.size > 0:
