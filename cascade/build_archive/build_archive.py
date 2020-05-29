@@ -232,9 +232,14 @@ def long_substr(data):
     return substr
 
 
-def return_exoplanet_catalogs():
+def return_exoplanet_catalogs(update=True):
     """
     Create dictionary with all exoplanet catalog data.
+
+    Parameters
+    ----------
+    update : 'bool'
+    DESCRIPTION Default is True, if True update the files csv 
 
     Returns
     -------
@@ -246,7 +251,7 @@ def return_exoplanet_catalogs():
                     'EXOPLANETS_A']
     catalog_dict = {}
     for cat in all_catalogs:
-        catalog_dict[cat] = parse_database(cat, update=True)
+        catalog_dict[cat] = parse_database(cat, update=update)
     return catalog_dict
 
 
