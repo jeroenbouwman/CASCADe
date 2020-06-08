@@ -355,6 +355,7 @@ def reformat_nasa_exoplanet_archive_data(nea_cat):
                               'pl_orbincl': 'I', 'pl_orbinclerr1': 'IUPPER', 'pl_orbinclerr2': 'ILOWER',
                               'pl_orbeccen': 'ECC', 'pl_orbeccenerr1': 'ECCUPPER', 'pl_orbeccenerr2': 'ECCLOWER',
                               'pl_orblper': 'OM', 'pl_orblpererr1': 'OMUPPER', 'pl_orblpererr2': 'OMLOWER',
+                              'mpl_tranmid': 'EPH', 'mpl_tranmiderr1': 'EPHUPPER', 'mpl_tranmiderr2': 'EPHLOWER',
                               'pl_orbper': 'PER', 'pl_orbpererr1': 'PERUPPER', 'pl_orbpererr2': 'PERLOWER',
                               'st_k': 'KMAG', 'st_kerr': 'KMAGUPPER',
                               'pl_tranmid': 'TT', 'pl_tranmiderr1': 'TTUPPER', 'pl_tranmiderr2': 'TTLOWER',
@@ -585,7 +586,6 @@ def write_diff(exoplanet_a, exoplanets_org, nea_catalog, tepcat):
 
     writer.save()
 
-######################################  Here starts the main  ######################################
 
 def main(verbose=True):
 
@@ -623,6 +623,7 @@ def main(verbose=True):
     path_catalogue_nasa_exoplanet_archive = '../data/exoplanet_data/NASAEXOPLANETARCHIVE'
     name_catalogue_nasa_exoplanet_archive = 'nasaexoplanetarchive_full.csv'
     url_catalogue_nasa_exoplanet_archive = ''
+    #https://exoplanetarchive.ipac.caltech.edu/workspace/TMP_XTDT5D_5033/TblSearch/2020.06.02_03.25.58_005033/index.html
 
     # Tepcat allplanet catalogue
     path_allplanet_tepcat = '../data/exoplanet_data/tepcat/'
