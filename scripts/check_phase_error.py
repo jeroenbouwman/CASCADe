@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-
 import os
 import pandas as pd
 import numpy as np
@@ -15,11 +14,7 @@ from scripts.write_parameters_for_ini_files import reformat_tepcat_data
 from scripts.write_parameters_for_ini_files import merge_catalogue
 from scripts.write_parameters_for_ini_files import remove_binary_name
 from scripts.write_parameters_for_ini_files import remove_space
-
-
-###  to be customised
-#root_dir = os.path.dirname(cascade.__path__[0])
-#root_dir = '/Users/gastaud/test_dap/cascade/CASCADe/'
+from scripts.write_parameters_for_ini_files import write_diff
 
 
 def get_jeroen_parameters(path_catalogue, name_catalogue):
@@ -62,9 +57,9 @@ def compute_number_period(period, ephemeris, expstart, exptime, verbose=True):
     nbr_period = (delta_t / period).decompose().value
 
     if verbose:
-        print('delta_t = ', delta_t, 'number of periods = ', round(nbr_period))
+        print('delta_t = ', delta_t, 'number of periods = ', np.round(nbr_period))
 
-    return round(nbr_period)
+    return np.round(nbr_period)
 
 
 def compute_phase_error(period, period_error, nbr_period, verbose=False):
@@ -77,15 +72,15 @@ def compute_phase_error(period, period_error, nbr_period, verbose=False):
     return phase_error
 
 
-def get_phase_error(visit_cat, param_cat):
+def get_phase_error(visit_cat, param_cat, best_value_only=True):
 
-    planet_ref = visit_cat['PLANET'].values
+    visit_planet = visit_cat['PLANET'].values
     visit = visit_cat['visit'].values
     observation = visit_cat['observation'].values
     expstart = visit_cat['expstart'].values * u.day
     exptime = visit_cat['exptime'].values * u.s
 
-    list_of_planet = param_cat['PLANET']
+    param_planet = param_cat['PLANET'].values
     ephemeris = param_cat['TT'].values * u.day  # primary transit [JD]
     ephemeris_err = param_cat['TTUPPER'].values * u.day  # primary transit [JD]
     period = param_cat['PER'].values * u.day
@@ -94,17 +89,30 @@ def get_phase_error(visit_cat, param_cat):
     result = []
 
     for i in range(visit.size):
-        j = np.where(planet_ref[i] == list_of_planet)[0][0]
+        j = np.where(visit_planet[i] == param_planet)[0]
 
         nbr_period = compute_number_period(period[j], ephemeris[j], expstart[i], exptime[i], verbose=False)
         phase_error = compute_phase_error(period[j], period_err[j], nbr_period, verbose=False)
 
-        result.append({'planet_name': list_of_planet[j], 'visit': visit[i], 'observation': observation[i],
+        if best_value_only:
+            try:
+                k = np.nanargmin(abs(phase_error))  # ignore Nan
+            except:
+                k = 0   # if phase_error contains only Nan values, returns the first item (a NaN value)
+
+            result.append({'planet_name': visit_planet[i], 'visit': visit[i], 'observation': observation[i],
+                           'expstart': expstart[i].value, 'exptime': exptime[i].value,
+                           'ephemeris': ephemeris[j].value[k], 'ephemeris_error': ephemeris_err[j].value[k],
+                           'period': period[j].value[k], 'period_error': period_err[j].value[k],
+                           'nbr_period': nbr_period[k], 'phase_error': phase_error[k]
+                           })
+        else:   #TODO voir si je ne peux pas avoir le k=argmin dans le cas d'un array a un nombre pour eviter de reecrire les resultats
+            result.append({'planet_name': visit_planet[i], 'visit': visit[i], 'observation': observation[i],
+                       'expstart': expstart[i].value, 'exptime': exptime[i].value,
                        'ephemeris': ephemeris[j].value, 'ephemeris_error': ephemeris_err[j].value,
                        'period': period[j].value, 'period_error': period_err[j].value,
-                       'expstart': expstart[i].value, 'exptime': exptime[i].value,
                        'nbr_period': nbr_period, 'phase_error': phase_error
-                       })
+                        })
 
     result = pd.DataFrame(result)
 
@@ -142,7 +150,7 @@ def main(root_dir, output_filename, verbose=False):
 
     # Nasa Exoplanet Archive catalogue
     path_catalogue_nasa_exoplanet_archive = os.path.join(root_dir, 'data/exoplanet_data/NASAEXOPLANETARCHIVE')
-    name_catalogue_nasa_exoplanet_archive = 'nasaexoplanetarchive_full.csv'
+    name_catalogue_nasa_exoplanet_archive = 'PS_2020.06.09_02.17.21.csv'  #'nasaexoplanetarchive_full.csv'
     url_catalogue_nasa_exoplanet_archive = ''
     #https://exoplanetarchive.ipac.caltech.edu/workspace/TMP_XTDT5D_5033/TblSearch/2020.06.02_03.25.58_005033/index.html
 
@@ -169,7 +177,8 @@ def main(root_dir, output_filename, verbose=False):
 
     nea_catalogue = get_catalogue(path_catalogue_nasa_exoplanet_archive,
                                   name_catalogue_nasa_exoplanet_archive,
-                                  url_catalogue=url_catalogue_nasa_exoplanet_archive, update=False)
+                                  url_catalogue=url_catalogue_nasa_exoplanet_archive,
+                                  skiprows=303, update=False)
 
     tepcat_allplanets_catalogue = get_catalogue(path_allplanet_tepcat,
                                                 name_allplanet_tepcat,
@@ -183,22 +192,24 @@ def main(root_dir, output_filename, verbose=False):
     list_planets_hst = jeroen_compilation.drop_duplicates('PLANET')['PLANET']
 
     # reformating catalogues
-    exo_a_merged_hst = reformat_exoplanets_a_data(exoplanet_a_catalogue)
-    exoplanet_org_data = reformat_exoplanets_org_data(exoplanet_org_catalogue)
+    exo_a_data = reformat_exoplanets_a_data(exoplanet_a_catalogue)
+    exo_org_data = reformat_exoplanets_org_data(exoplanet_org_catalogue)
     nea_data = reformat_nasa_exoplanet_archive_data(nea_catalogue)
     tepcat_data = reformat_tepcat_data(tepcat_allplanets_catalogue, tepcat_observable_catalogue)
 
-    # merging catalogues
-    exo_a_merged_hst = merge_catalogue(list_planets_hst, exo_a_merged_hst, verbose=verbose)
-    exo_org_merged_hst = merge_catalogue(list_planets_hst, exoplanet_org_data, verbose=verbose)
-    nea_merged_hst = merge_catalogue(list_planets_hst, nea_data, verbose=verbose)
-    tepcat_merged_hst = merge_catalogue(list_planets_hst, tepcat_data, verbose=verbose)
+    exo_a_merged_hst = merge_catalogue(list_planets_hst, exo_a_data, verbose=False)
+    exo_org_merged_hst = merge_catalogue(list_planets_hst, exo_org_data, verbose=False)
+    nea_merged_hst = merge_catalogue(list_planets_hst, nea_data, verbose=False)
+    tepcat_merged_hst = merge_catalogue(list_planets_hst, tepcat_data, verbose=False)
+
+    # Write merged catalogue with parameters comparison
+    #write_diff(exo_a_merged_hst, exo_org_merged_hst, nea_merged_hst, tepcat_merged_hst, output_filename='diff')
 
     # computing phase error
-    exo_a = get_phase_error(jeroen_compilation, exo_a_merged_hst)
-    exo_org = get_phase_error(jeroen_compilation, exo_org_merged_hst)
-    nea = get_phase_error(jeroen_compilation, nea_merged_hst)
-    tepcat = get_phase_error(jeroen_compilation, tepcat_merged_hst)
+    exo_a = get_phase_error(jeroen_compilation, exo_a_merged_hst, best_value_only=False)
+    exo_org = get_phase_error(jeroen_compilation, exo_org_merged_hst, best_value_only=True)
+    nea = get_phase_error(jeroen_compilation, nea_merged_hst, best_value_only=False)
+    tepcat = get_phase_error(jeroen_compilation, tepcat_merged_hst, best_value_only=True)
 
     # Writing results
     writer = pd.ExcelWriter(output_filename + '.xlsx', engine='xlsxwriter')
@@ -211,8 +222,7 @@ def main(root_dir, output_filename, verbose=False):
     writer.save()
 
 
-
-
 if __name__ == "__main__":
     root_dir = '../'
+    # root_dir = os.path.dirname(cascade.__path__[0])   #need to import cascade module
     main(root_dir=root_dir, output_filename='check_cat_phase_error', verbose=False)

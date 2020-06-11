@@ -176,7 +176,7 @@ def print_parameter_missing(planet_name, planet_radius, star_radius, star_temper
         print("Warning: for the planet {}, the parameters {} are missing".format(planet_name, names[where_nan]))
 
 
-def get_catalogue(path_catalogue, name_catalogue, url_catalogue, update=False):
+def get_catalogue(path_catalogue, name_catalogue, url_catalogue, skiprows=None, update=False):
     """
     Read file containing the HST observations
     and extract the list of planet, type of observations and the filter used
@@ -187,8 +187,10 @@ def get_catalogue(path_catalogue, name_catalogue, url_catalogue, update=False):
         catalogue path
     name_catalogue : string
         catalogue filename. The format have to be a csv file
-    url_catalogue  : string
+    url_catalogue : string
         link to the online catalogue
+    skiprows : list-like, int or callable, optional
+        skip first rows. By default: None
     update : boolean
         if True, the online catalogue is used
 
@@ -199,9 +201,9 @@ def get_catalogue(path_catalogue, name_catalogue, url_catalogue, update=False):
 
     """
     if update:
-        catalogue_data = pd.read_csv(url_catalogue)
+        catalogue_data = pd.read_csv(url_catalogue, skiprows=skiprows)
     else:
-        catalogue_data = pd.read_csv(os.path.join(path_catalogue, name_catalogue))
+        catalogue_data = pd.read_csv(os.path.join(path_catalogue, name_catalogue), skiprows=skiprows)
 
     return catalogue_data
 
@@ -349,24 +351,38 @@ def reformat_nasa_exoplanet_archive_data(nea_cat):
          relevant parameters with an uniform header
 
     """
-    nea_cat = nea_cat.rename({'pl_name': 'PLANET', 'ra': 'RA', 'dec': 'DEC',
+    nea_cat = nea_cat.rename({'pl_name': 'PLANET', 'mpl_name': 'PLANET',
+                              'ra': 'RA', 'dec': 'DEC',
                               'pl_radj': 'RPLANET', 'pl_radjerr1': 'RPLANETUPPER', 'pl_radjerr2': 'RPLANETLOWER',
+                              'mpl_radj': 'RPLANET', 'mpl_radjerr1': 'RPLANETUPPER', 'mpl_radjerr2': 'RPLANETLOWER',
                               'pl_orbsmax': 'A', 'pl_orbsmaxerr1': 'AUPPER', 'pl_orbsmaxerr2': 'ALOWER',
+                              'mpl_orbsmax': 'A', 'mpl_orbsmaxerr1': 'AUPPER', 'mpl_orbsmaxerr2': 'ALOWER',
                               'pl_orbincl': 'I', 'pl_orbinclerr1': 'IUPPER', 'pl_orbinclerr2': 'ILOWER',
+                              'mpl_orbincl': 'I', 'mpl_orbinclerr1': 'IUPPER', 'mpl_orbinclerr2': 'ILOWER',
                               'pl_orbeccen': 'ECC', 'pl_orbeccenerr1': 'ECCUPPER', 'pl_orbeccenerr2': 'ECCLOWER',
+                              'mpl_orbeccen': 'ECC', 'mpl_orbeccenerr1': 'ECCUPPER', 'mpl_orbeccenerr2': 'ECCLOWER',
                               'pl_orblper': 'OM', 'pl_orblpererr1': 'OMUPPER', 'pl_orblpererr2': 'OMLOWER',
-                              'mpl_tranmid': 'EPH', 'mpl_tranmiderr1': 'EPHUPPER', 'mpl_tranmiderr2': 'EPHLOWER',
+                              'mpl_orblper': 'OM', 'mpl_orblpererr1': 'OMUPPER', 'mpl_orblpererr2': 'OMLOWER',
                               'pl_orbper': 'PER', 'pl_orbpererr1': 'PERUPPER', 'pl_orbpererr2': 'PERLOWER',
+                              'mpl_orbper': 'PER', 'mpl_orbpererr1': 'PERUPPER', 'mpl_orbpererr2': 'PERLOWER',
                               'st_k': 'KMAG', 'st_kerr': 'KMAGUPPER',
+                              'sy_kmag':'KMAG', 'sy_kmagerr1': 'KMAGUPPER', 'sy_kmagerr2': 'KMAGLOWER',
                               'pl_tranmid': 'TT', 'pl_tranmiderr1': 'TTUPPER', 'pl_tranmiderr2': 'TTLOWER',
-                              'pl_hostname': 'STAR', 'hd_name': 'OTHERNAME',
+                              'mpl_tranmid': 'TT', 'mpl_tranmiderr1': 'TTUPPER', 'mpl_tranmiderr2': 'TTLOWER',
+                              'pl_hostname': 'STAR', 'mpl_hostname': 'STAR', 'hostname': 'STAR', 'hd_name': 'OTHERNAME',
                               'st_rad': 'RSTAR', 'st_raderr1': 'RSTARUPPER', 'st_raderr2': 'RSTARLOWER',
+                              'mst_rad': 'RSTAR', 'mst_raderr1': 'RSTARUPPER', 'mst_raderr2': 'RSTARLOWER',
                               'st_teff': 'TEFF', 'st_tefferr1': 'TEFFUPPER', 'st_tefferr2': 'TEFFLOWER',
+                              'mst_teff': 'TEFF', 'mst_tefferr1': 'TEFFUPPER', 'mst_tefferr2': 'TEFFLOWER',
                               'st_metfe': 'FE', 'st_metfeerr1': 'FEUPPER', 'st_metfeerr2': 'FELOWER',
-                              'st_logg': 'LOGG', 'st_loggerr1': 'LOGGUPPER', 'st_loggerr2': 'LOGGLOWER'
+                              'st_met': 'FE', 'st_meterr1': 'FEUPPER', 'st_meterr2': 'FELOWER',
+                              'mst_metfe': 'FE', 'mst_metfeerr1': 'FEUPPER', 'mst_metfeerr2': 'FELOWER',
+                              'st_logg': 'LOGG', 'st_loggerr1': 'LOGGUPPER', 'st_loggerr2': 'LOGGLOWER',
+                              'mst_logg': 'LOGG', 'mst_loggerr1': 'LOGGUPPER', 'mst_loggerr2': 'LOGGLOWER'
                               }, axis='columns')
 
-    nea_cat = nea_cat.assign(KMAGLOWER=nea_cat['KMAGUPPER'])
+    if 'KMAGLOWER' not in nea_cat:
+        nea_cat = nea_cat.assign(KMAGLOWER=nea_cat['KMAGUPPER'])
 
     nea_cat['PLANET'] = remove_binary_name(nea_cat['PLANET'])
     nea_cat['PLANET'] = remove_space(nea_cat['PLANET'])
@@ -532,11 +548,11 @@ def check_folder(folder_path, create_directory, verbose=True):
             os.mkdir(folder_path)
 
 
-def write_diff(exoplanet_a, exoplanets_org, nea_catalog, tepcat):
+def write_diff(exoplanet_a, exoplanets_org, nea_catalog, tepcat, output_filename):
 
     parameter = ['I', 'RPLANET', 'PER', 'TT', 'A']
 
-    writer = pd.ExcelWriter('diff.xlsx', engine='xlsxwriter')
+    writer = pd.ExcelWriter(output_filename + '.xlsx', engine='xlsxwriter')
 
     exoplanet_a.to_excel(writer, sheet_name='exo_a_merged_hst', index=False)
     exoplanets_org.to_excel(writer, sheet_name='exo_org_merged_hst', index=False)
@@ -662,18 +678,18 @@ def main(verbose=True):
     # data reading
     list_planets_hst_wfc3 = hst_data.drop_duplicates('PLANET')['PLANET']  # remove hst data duplicates
 
-    exo_a_merged_hst = reformat_exoplanets_a_data(exoplanet_a_catalogue)
-    exoplanet_org_data = reformat_exoplanets_org_data(exoplanet_org_catalogue)
+    exo_a_data = reformat_exoplanets_a_data(exoplanet_a_catalogue)
+    exo_org_data = reformat_exoplanets_org_data(exoplanet_org_catalogue)
     nea_data = reformat_nasa_exoplanet_archive_data(nea_catalogue)
     tepcat_data = reformat_tepcat_data(tepcat_allplanets_catalogue, tepcat_observable_catalogue)
 
-    exo_a_merged_hst = merge_catalogue(list_planets_hst_wfc3, exo_a_merged_hst, verbose=False)
-    exo_org_merged_hst = merge_catalogue(list_planets_hst_wfc3, exoplanet_org_data, verbose=False)
+    exo_a_merged_hst = merge_catalogue(list_planets_hst_wfc3, exo_a_data, verbose=False)
+    exo_org_merged_hst = merge_catalogue(list_planets_hst_wfc3, exo_org_data, verbose=False)
     nea_merged_hst = merge_catalogue(list_planets_hst_wfc3, nea_data, verbose=False)
     tepcat_merged_hst = merge_catalogue(list_planets_hst_wfc3, tepcat_data, verbose=False)
 
-    # Write merged catalogue with parameters comparaison
-    #write_diff(exo_a_merged_hst, exo_org_merged_hst, nea_merged_hst, tepcat_merged_hst)
+    # Write merged catalogue with parameters comparison
+    #write_diff(exo_a_merged_hst, exo_org_merged_hst, nea_merged_hst, tepcat_merged_hst, output_filename='diff')
 
     # planet parameters
     planet_name = exo_a_merged_hst['PLANET']  # Name of the planet
@@ -724,6 +740,7 @@ def main(verbose=True):
                                 semi_major_axis[i], inclination[i], eccentricity[i], omega[i],
                                 ephemeris[i], orbital_period[i])
     return
+
 
 if __name__ == "__main__":
     main()
