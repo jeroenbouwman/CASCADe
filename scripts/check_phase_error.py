@@ -99,23 +99,27 @@ def get_phase_error(visit_cat, param_cat, best_value_only=True):
                 k = np.nanargmin(abs(phase_error))  # ignore Nan
             except:
                 k = 0   # if phase_error contains only Nan values, returns the first item (a NaN value)
+        else:
+            k = 0
 
+        if 'TTV' in param_cat:
+            result.append({'planet_name': visit_planet[i], 'visit': visit[i], 'observation': observation[i],
+                           'expstart': expstart[i].value, 'exptime': exptime[i].value,
+                           'ephemeris': ephemeris[j].value[k], 'ephemeris_error': ephemeris_err[j].value[k],
+                           'period': period[j].value[k], 'period_error': period_err[j].value[k],
+                           'nbr_period': nbr_period[k], 'phase_error': phase_error[k],
+                           'ttv': param_cat['TTV'][j].values[k]
+                           })
+
+        else:
             result.append({'planet_name': visit_planet[i], 'visit': visit[i], 'observation': observation[i],
                            'expstart': expstart[i].value, 'exptime': exptime[i].value,
                            'ephemeris': ephemeris[j].value[k], 'ephemeris_error': ephemeris_err[j].value[k],
                            'period': period[j].value[k], 'period_error': period_err[j].value[k],
                            'nbr_period': nbr_period[k], 'phase_error': phase_error[k]
                            })
-        else:   #TODO voir si je ne peux pas avoir le k=argmin dans le cas d'un array a un nombre pour eviter de reecrire les resultats
-            result.append({'planet_name': visit_planet[i], 'visit': visit[i], 'observation': observation[i],
-                       'expstart': expstart[i].value, 'exptime': exptime[i].value,
-                       'ephemeris': ephemeris[j].value, 'ephemeris_error': ephemeris_err[j].value,
-                       'period': period[j].value, 'period_error': period_err[j].value,
-                       'nbr_period': nbr_period, 'phase_error': phase_error
-                        })
 
     result = pd.DataFrame(result)
-
     return result
 
 
@@ -206,10 +210,10 @@ def main(root_dir, output_filename, verbose=False):
     #write_diff(exo_a_merged_hst, exo_org_merged_hst, nea_merged_hst, tepcat_merged_hst, output_filename='diff')
 
     # computing phase error
-    exo_a = get_phase_error(jeroen_compilation, exo_a_merged_hst, best_value_only=False)
-    exo_org = get_phase_error(jeroen_compilation, exo_org_merged_hst, best_value_only=True)
-    nea = get_phase_error(jeroen_compilation, nea_merged_hst, best_value_only=False)
-    tepcat = get_phase_error(jeroen_compilation, tepcat_merged_hst, best_value_only=True)
+    exo_a = get_phase_error(jeroen_compilation, exo_a_merged_hst, best_value_only=True)
+    exo_org = get_phase_error(jeroen_compilation, exo_org_merged_hst, best_value_only=False)
+    nea = get_phase_error(jeroen_compilation, nea_merged_hst, best_value_only=True)
+    tepcat = get_phase_error(jeroen_compilation, tepcat_merged_hst, best_value_only=False)
 
     # Writing results
     writer = pd.ExcelWriter(output_filename + '.xlsx', engine='xlsxwriter')
