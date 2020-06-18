@@ -154,7 +154,7 @@ def main(root_dir, output_filename, verbose=False):
 
     # Nasa Exoplanet Archive catalogue
     path_catalogue_nasa_exoplanet_archive = os.path.join(root_dir, 'data/exoplanet_data/NASAEXOPLANETARCHIVE')
-    name_catalogue_nasa_exoplanet_archive = 'PS_2020.06.09_02.17.21.csv'  #'nasaexoplanetarchive_full.csv'
+    name_catalogue_nasa_exoplanet_archive = 'nasaexoplanetarchive_full.csv'
     url_catalogue_nasa_exoplanet_archive = ''
     #https://exoplanetarchive.ipac.caltech.edu/workspace/TMP_XTDT5D_5033/TblSearch/2020.06.02_03.25.58_005033/index.html
 

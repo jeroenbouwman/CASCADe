@@ -378,7 +378,8 @@ def reformat_nasa_exoplanet_archive_data(nea_cat):
                               'st_met': 'FE', 'st_meterr1': 'FEUPPER', 'st_meterr2': 'FELOWER',
                               'mst_metfe': 'FE', 'mst_metfeerr1': 'FEUPPER', 'mst_metfeerr2': 'FELOWER',
                               'st_logg': 'LOGG', 'st_loggerr1': 'LOGGUPPER', 'st_loggerr2': 'LOGGLOWER',
-                              'mst_logg': 'LOGG', 'mst_loggerr1': 'LOGGUPPER', 'mst_loggerr2': 'LOGGLOWER'
+                              'mst_logg': 'LOGG', 'mst_loggerr1': 'LOGGUPPER', 'mst_loggerr2': 'LOGGLOWER',
+                              'ttv_flag': 'TTV'
                               }, axis='columns')
 
     if 'KMAGLOWER' not in nea_cat:
@@ -395,7 +396,8 @@ def reformat_nasa_exoplanet_archive_data(nea_cat):
                         'A', 'ALOWER', 'AUPPER', 'I', 'IUPPER', 'ILOWER', 'ECC', 'ECCUPPER', 'ECCLOWER',
                         'OM', 'OMUPPER', 'OMLOWER', 'PER', 'PERUPPER', 'PERLOWER', 'KMAG', 'KMAGUPPER', 'KMAGLOWER',
                         'TT', 'TTUPPER', 'TTLOWER', 'STAR', 'RSTAR', 'RSTARUPPER', 'RSTARLOWER',
-                        'TEFF', 'TEFFUPPER', 'TEFFLOWER', 'FE', 'FEUPPER', 'FELOWER', 'LOGG', 'LOGGUPPER', 'LOGGLOWER']]
+                        'TEFF', 'TEFFUPPER', 'TEFFLOWER', 'FE', 'FEUPPER', 'FELOWER',
+                        'LOGG', 'LOGGUPPER', 'LOGGLOWER', 'TTV']]
 
     nea_data = nea_data.sort_values(by=['PLANET'])
 
@@ -665,7 +667,8 @@ def main(verbose=True):
 
     nea_catalogue = get_catalogue(path_catalogue_nasa_exoplanet_archive,
                                   name_catalogue_nasa_exoplanet_archive,
-                                  url_catalogue=url_catalogue_nasa_exoplanet_archive, update=False)
+                                  url_catalogue=url_catalogue_nasa_exoplanet_archive,
+                                  skiprows=303, update=False)
 
     tepcat_allplanets_catalogue = get_catalogue(path_allplanet_tepcat,
                                                 name_allplanet_tepcat,
