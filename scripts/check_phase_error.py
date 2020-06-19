@@ -211,9 +211,9 @@ def main(root_dir, output_filename, verbose=False):
 
     # computing phase error
     exo_a = get_phase_error(jeroen_compilation, exo_a_merged_hst, best_value_only=True)
-    exo_org = get_phase_error(jeroen_compilation, exo_org_merged_hst, best_value_only=False)
-    nea = get_phase_error(jeroen_compilation, nea_merged_hst, best_value_only=True)
-    tepcat = get_phase_error(jeroen_compilation, tepcat_merged_hst, best_value_only=False)
+    exo_org = get_phase_error(jeroen_compilation, exo_org_merged_hst, best_value_only=True)
+    nea = get_phase_error(jeroen_compilation, nea_merged_hst, best_value_only=False)
+    tepcat = get_phase_error(jeroen_compilation, tepcat_merged_hst, best_value_only=True)
 
     # Writing results
     writer = pd.ExcelWriter(output_filename + '.xlsx', engine='xlsxwriter')
@@ -222,6 +222,12 @@ def main(root_dir, output_filename, verbose=False):
     exo_org.to_excel(writer, sheet_name='exo_org', index=False)
     nea.to_excel(writer, sheet_name='nea', index=False)
     tepcat.to_excel(writer, sheet_name='tepcat', index=False)
+
+    nea = get_phase_error(jeroen_compilation, nea_merged_hst, best_value_only=True)
+    all_phase_errors = pd.DataFrame({'planet_name': exo_a['planet_name'], 'visit': exo_a['visit'],
+                                     'exo_a': exo_a['phase_error'], 'exo_org': exo_org['phase_error'],
+                                     'nea': nea['phase_error'], 'tepcat': tepcat['phase_error'], 'ttv': nea['ttv']})
+    all_phase_errors.to_excel(writer, sheet_name='all_phase_errors', index=False)
 
     writer.save()
 
