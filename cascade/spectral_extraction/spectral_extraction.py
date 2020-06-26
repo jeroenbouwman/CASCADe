@@ -1424,7 +1424,7 @@ def joblib_loop(dataCube, ROICube=None, upsampleFactor=111,
                             desc=('Determining source rotation and '
                                   'positional shift between integrations'))
         for block in grouper(ITR, batch_size):
-            MPITR = MP(dfunc(i) for i in block if i != None)
+            MPITR = MP(dfunc(i) for i in block if i is not None)
             for (k, relativeSourcePosition) in enumerate(MPITR):
                 yield relativeSourcePosition
             progress_bar.update(k+1)

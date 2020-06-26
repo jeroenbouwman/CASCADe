@@ -1281,7 +1281,7 @@ class HSTWFC3(InstrumentBase):
         finally:
             self.wfc3_cal.xc_offset = xc_offset
             self.wfc3_cal.yc_offset = yc_offset
-            self.wfc3_cal.scan_length = int(np.mean(scan_length)/0.121) + 1
+            self.wfc3_cal.scan_length = int(np.median(scan_length)/0.121) + 1
         return
 
     @staticmethod
@@ -1368,18 +1368,28 @@ class HSTWFC3(InstrumentBase):
 
         Defines region on detector which containes the intended target star.
         """
+        dim = self.data.data.shape
         if self.par["inst_beam"] == 'A':
             if self.par['inst_filter'] == 'G141':
-                wavelength_min = 0.98*1.082*u.micron
-                wavelength_max = 1.02*1.678*u.micron
+                # BUG
+                if len(dim) <= 2:
+                    wavelength_min = 1.02*1.082*u.micron
+                    wavelength_max = 0.99*1.678*u.micron
+                else:
+                    wavelength_min = 0.98*1.082*u.micron
+                    wavelength_max = 1.02*1.678*u.micron
             elif self.par['inst_filter'] == 'G102':
-                wavelength_min = 0.98*0.8*u.micron
-                wavelength_max = 1.01*1.15*u.micron
+                if len(dim) <= 2:
+                    wavelength_min = 1.02*0.8*u.micron
+                    wavelength_max = 0.99*1.15*u.micron
+                else:
+                    wavelength_min = 0.98*0.8*u.micron
+                    wavelength_max = 1.01*1.15*u.micron
             if self.par["obs_mode"] == 'STARING':
                 roi_width = 20
             elif self.par["obs_mode"] == 'SCANNING':
                 try:
-                    roi_width = self.wfc3_cal.scan_length+15
+                    roi_width = self.wfc3_cal.scan_length+25
                 except AttributeError:
                     roi_width = 150
             else:
@@ -1392,7 +1402,6 @@ class HSTWFC3(InstrumentBase):
         mask_not_defined = trace['wavelength'] == 0.
         idx_min = int(np.min(trace['wavelength_pixel'].value[mask_min]))
         idx_max = int(np.max(trace['wavelength_pixel'].value[mask_max]))
-        dim = self.data.data.shape
         if len(dim) <= 2:
             roi = np.zeros((dim[0]), dtype=np.bool)
             roi[0:idx_min] = True
