@@ -2689,7 +2689,7 @@ class TSOSuite:
         weighted_signal.set_fill_value(0.0)
 
         # use approximate inverse as preconditioner
-        M = pinv2(K.filled(), rcond=1.e-5)
+        M = pinv2(K.filled(), rcond=0.001)
 
         print("Correcting planet spectrum for non-uniform average "
               "transit depth subtraction")
@@ -2700,9 +2700,9 @@ class TSOSuite:
         corrected_spectrum = lstsq(np.dot(M, K.filled()),
                                    np.dot(M, -weighted_signal.filled()),
                                    cond=rcond_limit)[0]
-        # corrected_spectrum = scipy.linalg.lstsq(K.filled(),
-        #                                         -weighted_signal.filled(),
-        #                                         cond=rcond_limit)[0]
+        # corrected_spectrum = lstsq(K.filled(),
+        #                             -weighted_signal.filled(),
+        #                             cond=rcond_limit)[0]
 
         corrected_spectrum = corrected_spectrum - \
             np.ma.median(corrected_spectrum)
@@ -2781,15 +2781,16 @@ class TSOSuite:
             save_name_base = observations_target_name
 
         t = Table()
-        col = MaskedColumn(data=results.spectrum.wavelength,
+        mask = ~results.spectrum.data.mask
+        col = MaskedColumn(data=results.spectrum.wavelength[mask],
                            unit=results.spectrum.wavelength_unit,
                            name='Wavelength')
         t.add_column(col)
-        col = MaskedColumn(data=results.spectrum.data,
+        col = MaskedColumn(data=results.spectrum.data[mask],
                            unit=results.spectrum.data_unit,
                            name='Flux')
         t.add_column(col)
-        col = MaskedColumn(data=results.spectrum.uncertainty,
+        col = MaskedColumn(data=results.spectrum.uncertainty[mask],
                            unit=results.spectrum.data_unit,
                            name='Error')
         t.add_column(col)
@@ -2799,15 +2800,16 @@ class TSOSuite:
 
         try:
             t = Table()
-            col = MaskedColumn(data=results.corrected_spectrum.wavelength,
+            mask = ~results.corrected_spectrum.data.mask
+            col = MaskedColumn(data=results.corrected_spectrum.wavelength[mask],
                                unit=results.corrected_spectrum.wavelength_unit,
                                name='Wavelength')
             t.add_column(col)
-            col = MaskedColumn(data=results.corrected_spectrum.data,
+            col = MaskedColumn(data=results.corrected_spectrum.data[mask],
                                unit=results.corrected_spectrum.data_unit,
                                name='Flux')
             t.add_column(col)
-            col = MaskedColumn(data=results.corrected_spectrum.uncertainty,
+            col = MaskedColumn(data=results.corrected_spectrum.uncertainty[mask],
                                unit=results.corrected_spectrum.data_unit,
                                name='Error')
             t.add_column(col)
@@ -2819,16 +2821,17 @@ class TSOSuite:
 
         if transittype == 'secondary':
             t = Table()
-            col = MaskedColumn(data=results.brightness_temperature.wavelength,
+            mask = ~results.brightness_temperature.data.mask
+            col = MaskedColumn(data=results.brightness_temperature.wavelength[mask],
                                unit=results.brightness_temperature.
                                wavelength_unit,
                                name='Wavelength')
             t.add_column(col)
-            col = MaskedColumn(data=results.brightness_temperature.data,
+            col = MaskedColumn(data=results.brightness_temperature.data[mask],
                                unit=results.brightness_temperature.data_unit,
                                name='Flux')
             t.add_column(col)
-            col = MaskedColumn(data=results.brightness_temperature.uncertainty,
+            col = MaskedColumn(data=results.brightness_temperature.uncertainty[mask],
                                unit=results.brightness_temperature.data_unit,
                                name='Error')
             t.add_column(col)
