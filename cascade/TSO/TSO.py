@@ -56,7 +56,7 @@ from skimage.morphology import binary_dilation
 from ..cpm_model import solve_linear_equation
 from ..data_model import SpectralData
 from ..exoplanet_tools import convert_spectrum_to_brighness_temperature
-from ..exoplanet_tools import lightcuve
+from ..exoplanet_tools import lightcurve
 from ..initialize import (cascade_configuration, configurator)
 from ..initialize import cascade_default_initialization_path
 from ..initialize import cascade_default_save_path
@@ -1541,7 +1541,7 @@ class TSOSuite:
             raise AttributeError("Calibration signal parameters not set. \
                                  Aborting definition of eclipse model.")
         # define lightcurve model
-        lc_model = lightcuve()
+        lc_model = lightcurve()
         times_during_transit = \
             lc_model.lc[1][~np.isclose(lc_model.lc[2][0, :], 0.0)]
         Tstart = times_during_transit[0]

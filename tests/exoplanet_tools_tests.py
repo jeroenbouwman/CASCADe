@@ -11,7 +11,7 @@ import cascade
 from cascade.exoplanet_tools import parse_database
 from cascade.exoplanet_tools import extract_exoplanet_data
 from cascade.exoplanet_tools import convert_spectrum_to_brighness_temperature
-from cascade.exoplanet_tools import lightcuve
+from cascade.exoplanet_tools import lightcurve
 from cascade.initialize import cascade_default_initialization_path
 from cascade.initialize import cascade_default_data_path
 from cascade.initialize import generate_default_initialization
@@ -113,9 +113,9 @@ class TestExoplanetsTools(unittest.TestCase):
         generate_default_initialization()
         cascade_param = \
             configurator(self.path_init_files+"cascade_default.ini")
-        lc_model = lightcuve()
+        lc_model = lightcurve()
         self.assertIsInstance(lc_model.par, collections.OrderedDict)
-        self.assertTrue('batman' in lc_model.valid_models)
+        self.assertTrue('batman' in lc_model._lightcurve__valid_models)
         self.assertIsInstance(lc_model.lc, tuple)
 
 

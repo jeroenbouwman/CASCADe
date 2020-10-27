@@ -63,7 +63,7 @@ __all__ = ['Vmag', 'Kmag', 'Rho_jup', 'Rho_jup', 'kmag_to_jy', 'jy_to_kmag',
            'surface_gravity', 'scale_height', 'transit_depth', 'planck',
            'equilibrium_temperature', 'get_calalog', 'parse_database',
            'convert_spectrum_to_brighness_temperature', 'combine_spectra',
-           'extract_exoplanet_data', 'lightcuve', 'batman_model',
+           'extract_exoplanet_data', 'lightcurve', 'batman_model',
            'masked_array_input', 'eclipse_to_transit', 'transit_to_eclipse',
            'exotethys_model', 'limbdarkning', 'exotethys_stellar_model',
            'SpectralModel']
@@ -1774,7 +1774,7 @@ class limbdarkning:
         return ([None], [ld_coefficients])
 
 
-class lightcuve:
+class lightcurve:
     """
     Class defining lightcurve model.
 
@@ -1811,7 +1811,7 @@ class lightcuve:
 
     Define  the ligthcurve model specified in the .ini file
 
-    >>> lc_model = cascade.exoplanet_tools.lightcuve()
+    >>> lc_model = cascade.exoplanet_tools.lightcurve()
     >>> print(lc_model.valid_models)
     >>> print(lc_model.par)
 

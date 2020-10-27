@@ -327,6 +327,7 @@ def generate_default_initialization(observatory='HST', data='SPECTRUM',
     config.optionxform = str
     config['CASCADE'] = {'cascade_save_path': 'HD189733b_'+observation+'/',
                          'cascade_use_multi_processes': 'True',
+                         'cascade_max_number_of_cpus': '6',
                          'cascade_verbose': 'True',
                          'cascade_save_verbose': 'True'}
 
@@ -335,7 +336,8 @@ def generate_default_initialization(observatory='HST', data='SPECTRUM',
             {'processing_sigma_filtering': '3.5',
              'processing_nfilter': '5',
              'processing_stdv_kernel_time_axis_filter': '0.4',
-             'processing_nextraction': '1'}
+             'processing_nextraction': '1',
+             'processing_determine_initial_wavelength_shift': 'False'}
     else:
         config['PROCESSING'] = \
             {'processing_sigma_filtering': '3.5',
@@ -348,7 +350,9 @@ def generate_default_initialization(observatory='HST', data='SPECTRUM',
              'processing_upsample_factor_movement':  '111',
              'processing_angle_oversampling_movement': '2',
              'processing_nextraction': '7',
-             'processing_rebin_factor_extract1d': '1.05'}
+             'processing_rebin_factor_extract1d': '1.05',
+             'processing_auto_adjust_rebin_factor_extract1d': 'True',
+             'processing_determine_initial_wavelength_shift': 'True'}
 
     config['CPM'] = {'cpm_cv_method': 'gcv',
                      'cpm_lam0': '1.0e-9',
@@ -369,7 +373,10 @@ def generate_default_initialization(observatory='HST', data='SPECTRUM',
                      'cpm_relative_sig_value_limit': '4.e-1'}
 
     config['MODEL'] = {'model_type': 'batman',
-                       'model_limb darkening': 'quadratic',
+                       'model_type_limb_darkening': 'exotethys',
+                       'model_limb_darkening': 'quadratic',
+                       'model_stellar_models_grid': 'Atlas_2000',
+                       'model_calculate_limb_darkening_from_model': 'False',
                        'model_limb_darkening_coeff': '[0.0, 0.0]',
                        'model_nphase_points': '10000',
                        'model_phase_range': '0.5'}
@@ -377,8 +384,7 @@ def generate_default_initialization(observatory='HST', data='SPECTRUM',
     if observatory == 'SPITZER':
         config['INSTRUMENT'] = {'instrument_observatory': observatory,
                                 'instrument': 'IRS',
-                                'instrument_mode': 'SL',
-                                'instrument_order': '1'}
+                                'instrument_filter': 'SL1'}
         config['OBSERVATIONS'] = \
             {'observations_type': observation,
              'observations_mode': mode,
@@ -435,7 +441,10 @@ def generate_default_initialization(observatory='HST', data='SPECTRUM',
                         'object_eccentricity': '0.0041',
                         'object_omega': '90.0 deg',
                         'object_period': '2.218575200 d',
-                        'object_ephemeris': '2454279.436714 d'}
+                        'object_ephemeris': '2454279.436714 d',
+                        'object_kmag': '5.54 Kmag',
+                        'object_metallicity_host_star': '0.03 dex',
+                        'object_logg_host_star': '4.56 dex(cm / s2)'}
     config['CATALOG'] = {'catalog_use_catalog': 'False',
                          'catalog_name': 'EXOPLANETS.ORG',
                          'catalog_update': 'True',
