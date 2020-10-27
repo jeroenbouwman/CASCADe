@@ -70,6 +70,8 @@ class HST(ObservatoryBase):
                 if cascade_configuration.instrument == 'WFC3':
                     factory = HSTWFC3()
                     self.par = factory.par
+                    cascade_configuration.telescope_collecting_area = \
+                        self.collecting_area
                     self.data = factory.data
                     self.spectral_trace = factory.spectral_trace
                     if self.par['obs_has_backgr']:
@@ -103,6 +105,17 @@ class HST(ObservatoryBase):
         Returns 'SPACE'
         """
         return "SPACE"
+
+    @property
+    def collecting_area(self):
+        """
+        Size of the collecting area of the telescope.
+
+        Returns
+        -------
+        4.525 m**2
+        """
+        return '4.525 m2'
 
     @property
     def NAIF_ID(self):
@@ -1374,6 +1387,8 @@ class HSTWFC3(InstrumentBase):
                 # BUG
                 if len(dim) <= 2:
                     wavelength_min = 1.02*1.082*u.micron
+                    wavelength_max = 0.99*1.678*u.micron
+                    wavelength_min = 0.98*1.082*u.micron
                     wavelength_max = 0.99*1.678*u.micron
                 else:
                     wavelength_min = 0.98*1.082*u.micron

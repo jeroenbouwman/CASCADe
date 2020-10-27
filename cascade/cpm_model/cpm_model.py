@@ -32,16 +32,27 @@ from __future__ import absolute_import
 import numpy as np
 from scipy.linalg import svd
 from scipy import signal
-from sklearn.utils.extmath import svd_flip
+from scipy.linalg import solve_triangular
+from scipy.linalg import cholesky
 
-__all__ = ['solve_linear_equation', 'return_PCR']
+from sklearn.utils.extmath import svd_flip
+from sklearn.preprocessing import RobustScaler
+from sklearn.decomposition import PCA
+import numba as nb
+from numba import jit
+
+__all__ = ['solve_linear_equation', 'ols', 'return_PCA','return_PCR',
+           'check_causality',
+           'select_regressors', 'return_design_matrix',
+           'log_likelihood','modified_AIC', 'create_regularization_matrix',
+           'return_lambda_grid']
 
 
 def solve_linear_equation(design_matrix, data, weights=None, cv_method='gcv',
                           reg_par={"lam0": 1.e-6, "lam1": 1.e2, "nlam": 60},
                           feature_scaling='norm', degrees_of_freedom=None):
     """
-    Solve linear system using SVD with TIKHONOV regularization
+    Solve linear system using SVD with TIKHONOV regularization.
 
     Parameters
     ----------
@@ -312,3 +323,303 @@ def return_PCR(design_matrix, n_components=None, variance_prior_scaling=1.):
         np.median(np.square(np.dot(B.T, design_matrix)), axis=1)
 
     return B, lambdas
+
+
+def ols(design_matrix, data, weights=None):
+    if not isinstance(weights, type(None)):
+        weighted_design_matrix = np.dot(np.diag(np.sqrt(weights)),
+                                        design_matrix)
+        data_weighted = np.dot(np.diag(np.sqrt(weights)), data)
+    else:
+        weighted_design_matrix = design_matrix
+        data_weighted = data    
+    dim_dm = weighted_design_matrix.shape
+    if dim_dm[0] - dim_dm[1] < 1:
+        AssertionError("Wrong dimensions of design matrix: \
+                                 more regressors as data; Aborting")
+
+    # First make SVD of design matrix A
+    U, sigma, VH = svd(weighted_design_matrix)
+
+    # residual_not_reg = (u[:,rnk:].dot(u[:,rnk:].T)).dot(y)
+    residual_not_reg = np.linalg.multi_dot([U[:, dim_dm[1]:],
+                                            U[:, dim_dm[1]:].T, data_weighted])
+
+    # calculate the filter factors
+    F = np.identity(sigma.shape[0])
+    Fsigma_inv = np.diag(1.0/sigma)
+
+    # Solution of the linear system
+    fit_parameters = np.linalg.multi_dot([VH.T, Fsigma_inv,
+                                          U.T[:dim_dm[1], :], data_weighted])
+
+    # calculate the general risidual vector (b-model), which can be caculated
+    # by using U1 (mxn) and U2 (mxm-n), with U=[U1,U2]
+    residual_reg = residual_not_reg + \
+        np.linalg.multi_dot([U[:, :dim_dm[1]], np.identity(dim_dm[1]) - F,
+                             U[:, :dim_dm[1]].T, data_weighted])
+
+    effective_degrees_of_freedom = (dim_dm[0] - dim_dm[1])
+    sigma_hat_sqr = np.dot(residual_reg.T, residual_reg) / \
+        effective_degrees_of_freedom
+
+    # calculate the errors on the fit parameters
+    err_fit_parameters = np.sqrt(sigma_hat_sqr *
+                                 np.diag(np.linalg.multi_dot([VH.T,
+                                                              Fsigma_inv**2,
+                                                              VH])))
+    return fit_parameters, err_fit_parameters, sigma_hat_sqr
+
+
+def check_causality():
+    """
+    Check if all data has a causal connection.
+
+    Returns
+    -------
+    causal_mask :  ndarray of 'bool'
+        DESCRIPTION.
+
+    """
+    causal_mask = True
+    return causal_mask
+
+
+def select_regressors(selection_mask, exclusion_distance):
+    """
+    Return list with indici of the regressors for each wavelength data point.
+
+    Parameters
+    ----------
+    selectionMask : 'ndarray' of 'bool'
+        DESCRIPTION.
+    exclusion_distance : 'int'
+        DESCRIPTION.
+
+    Returns
+    -------
+    regressors : TYPE
+        DESCRIPTION.
+
+    """
+    if selection_mask.ndim == 1:
+        selection_mask = np.expand_dims(selection_mask, axis=1)
+    used_data_index = \
+        [tuple(coord) for coord in np.argwhere(~selection_mask).tolist()]
+    all_data_index = list(np.where(~selection_mask))
+    regressor_list = []
+    for coord in used_data_index:
+        idx = np.abs(coord[0]-all_data_index[0]) >= exclusion_distance
+        regressor_list.append([coord, (all_data_index[0][idx],
+                                       all_data_index[1][idx])])
+
+    return regressor_list
+
+
+def return_PCA(matrix, n_components):
+    """
+    Return PCA componentns of input matrix.
+
+    Parameters
+    ----------
+    matrix : TYPE
+        DESCRIPTION.
+    n_components : TYPE
+        DESCRIPTION.
+
+    Returns
+    -------
+    pca_matrix : TYPE
+        DESCRIPTION.
+    pca_back_transnformation : TYPE
+        DESCRIPTION.
+
+    """
+    pca = PCA(n_components=np.min([n_components, matrix.shape[0]]),
+              whiten=False, svd_solver='auto')
+    pca_matrix = pca.fit_transform(matrix.T).T
+    pca_scores = pca.components_.T
+    return pca_matrix, pca_scores
+
+
+def return_design_matrix(data, selection_list, use_pca=False, npca=30):
+    """
+    Return the design matrix based on the data set itself.
+
+    Parameters
+    ----------
+    data : TYPE
+        DESCRIPTION.
+    selection_list : TYPE
+        DESCRIPTION.
+    use_pca
+    npca
+
+    Returns
+    -------
+    design_matrix : TYPE
+        DESCRIPTION.
+    pca_back_transformation : TYPE
+        DESCRIPTION.
+
+    """
+    (il, ir), (idx_cal, trace) = selection_list
+    if data.ndim == 2:
+        data = data[:, np.newaxis, :].copy()
+    design_matrix = data[idx_cal, trace, :]
+    return design_matrix
+
+
+#@jit(nopython=True, cache=True, parallel=True)
+def log_likelihood(data, covariance, model):
+    """
+    Calculate the log likelihood.
+
+    Parameters
+    ----------
+    data : TYPE
+        DESCRIPTION.
+    covariance : TYPE
+        DESCRIPTION.
+    model : TYPE
+        DESCRIPTION.
+
+    Returns
+    -------
+    lnL : TYPE
+        DESCRIPTION.
+    Note
+    2*np.sum(np.log(np.diag(np.linalg.cholesky(covariance))))
+
+    np.dot(np.dot((data-model), np.diag(weights)), (data-model))
+    """
+    ndata = len(data)
+    residual = data-model
+    # Cholesky decomposition and inversion:
+    G = cholesky(covariance, lower=True)
+#    S = np.linalg.inv(G)
+#    inverse_covariance = np.dot(S.T, S)
+    RG = solve_triangular(G, residual, lower=True, check_finite=False)
+    lnL = -0.5*(ndata*np.log(2.0*np.pi) +
+                2*np.sum(np.log(np.diag(G))) +
+                np.dot(RG.T, RG))
+#                np.dot(np.dot(residual, inverse_covariance), residual))
+    return lnL
+
+
+@jit(nopython=True, cache=True)
+def modified_AIC(lnL, n_data, n_parameters):
+    """
+    Calculate the modified AIC.
+
+    Parameters
+    ----------
+    lnL : TYPE
+        DESCRIPTION.
+    n_data : TYPE
+        DESCRIPTION.
+    n_parameters : TYPE
+        DESCRIPTION.
+
+    Returns
+    -------
+    AICc : TYPE
+        DESCRIPTION.
+
+    """
+    AIC = -2*lnL + 2*n_parameters
+    AICc = AIC + (2*n_parameters*(n_parameters+1))/(n_data-n_parameters-1)
+    return AICc
+
+
+def create_regularization_matrix(method, n_regressors, n_not_regularized):
+    """
+    Create regularization matrix.
+
+    Parameters
+    ----------
+    method : TYPE
+        DESCRIPTION.
+    n_regressors : TYPE
+        DESCRIPTION.
+    n_not_regularized : TYPE
+        DESCRIPTION.
+
+    Raises
+    ------
+    ValueError
+        DESCRIPTION.
+
+    Returns
+    -------
+    delta : TYPE
+        DESCRIPTION.
+
+    """
+    allowed_methods = ['value', 'derivative']
+    if method not in allowed_methods:
+        raise ValueError("regularization method not recognized. "
+                         "Allowd values are: {}".format(allowed_methods))
+    if method == 'value':
+        # regularization on value
+        delta = np.diag(np.zeros((n_regressors)))
+        delta[n_not_regularized:, n_not_regularized:] += \
+            np.diag(np.ones(n_regressors-n_not_regularized))
+    elif method == 'derivative':
+        # regularazation on derivative
+        delta_temp = np.diag(-1*np.ones(n_regressors-n_not_regularized-1), 1) +\
+            np.diag(-1*np.ones(n_regressors-n_not_regularized-1), -1) + \
+            np.diag(2*np.ones(n_regressors-n_not_regularized))
+        delta_temp[0, 0] = 1.0
+        delta_temp[-1, -1] = 1.0
+        delta = np.diag(np.zeros((n_regressors)))
+        delta[n_not_regularized:, n_not_regularized:] += delta_temp
+    return delta
+
+
+def return_lambda_grid(lambda_min, lambda_max, n_lambda):
+    """
+    Create grid for regularization parameters lambda.
+
+    Parameters
+    ----------
+    lambda_min : TYPE
+        DESCRIPTION.
+    lambda_max : TYPE
+        DESCRIPTION.
+    n_lambda : TYPE
+        DESCRIPTION.
+
+    Returns
+    -------
+    lambda_grid : TYPE
+        DESCRIPTION.
+
+    """
+    delta_lam = np.abs(np.log10(lambda_max)-np.log10(lambda_min))/(n_lambda-1)
+    lambda_grid = 10**(np.log10(lambda_min) +
+                       np.linspace(0, n_lambda-1, n_lambda)*delta_lam)
+    return lambda_grid
+
+
+class RIDGECV:
+    def __init__(self, alpha=0.01, delta=None, cv_par=None, scaling=True,
+                 fit_intercept=False):
+        self._alpa = alpha
+        self._delta = delta
+        self._cv_par = cv_par
+        self._scaling = scaling
+        self._fit_intercept = fit_intercept
+
+    def fit(self, Xdata, Xmodel, y, weights=None):
+        pass
+
+    def predict(self, X):
+        pass
+
+    def cv(self):
+        pass
+        
+    
+
+

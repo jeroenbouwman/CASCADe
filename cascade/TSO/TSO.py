@@ -74,6 +74,9 @@ from ..spectral_extraction import correct_wavelength_for_source_movent
 from ..spectral_extraction import create_extraction_profile
 from ..spectral_extraction import extract_spectrum
 from ..spectral_extraction import rebin_to_common_wavelength_grid
+from ..spectral_extraction import compressROI
+from ..spectral_extraction import compressSpectralTrace
+from ..spectral_extraction import compressDataset
 from ..verbose import Verbose
 
 __all__ = ['TSOSuite']
@@ -140,6 +143,7 @@ class TSOSuite:
                 "determine_source_movement": self.determine_source_movement,
                 "correct_wavelengths": self.correct_wavelengths,
                 "set_extraction_mask": self.set_extraction_mask,
+                "check_wavelength_solution": self.check_wavelength_solution,
                 "extract_1d_spectra": self.extract_1d_spectra,
                 "define_eclipse_model": self.define_eclipse_model,
                 "select_regressors": self.select_regressors,
@@ -270,7 +274,30 @@ class TSOSuite:
 
         >>> tso.execute("load_data")
         """
+        try:
+            proc_compr_data = ast.literal_eval(self.cascade_parameters.
+                                               processing_compress_data)
+        except AttributeError:
+            proc_compr_data = False
         self.observation = Observation()
+        if proc_compr_data:
+            datasetIn = self.observation.dataset
+            ROI = self.observation.instrument_calibration.roi.copy()
+            spectral_trace = self.observation.spectral_trace.copy()
+            compressedDataset, compressMask = compressDataset(datasetIn, ROI)
+            compressedROI = compressROI(ROI, compressMask)
+            compressedTrace = \
+                compressSpectralTrace(spectral_trace, compressMask)
+            self.observation.dataset = compressedDataset
+            self.observation.instrument_calibration.roi = compressedROI
+            self.observation.spectral_trace = compressedTrace
+            try:
+                backgroundDatasetIn = self.observation.dataset_background
+                compressedDataset, _ = \
+                    compressDataset(backgroundDatasetIn, ROI)
+                self.observation.dataset_background = compressedDataset
+            except AttributeError:
+                pass
         vrbs = Verbose()
         vrbs.execute("load_data", plot_data=self.observation)
 
@@ -353,7 +380,6 @@ class TSOSuite:
 
         vrbs = Verbose()
         vrbs.execute("subtract_background", plot_data=self.observation)
-
 
     def filter_dataset(self):
         """
@@ -1079,6 +1105,49 @@ class TSOSuite:
 
             self.cpm.extraction_mask = ExtractionMask
 
+    def check_wavelength_solution(self):
+        """
+        Check general wavelength solution.
+
+        Returns
+        -------
+        None.
+
+        """
+        try:
+            verbose = bool(self.cascade_parameters.cascade_verbose)
+        except AttributeError:
+            warnings.warn("Verbose flag not set, "
+                          "assuming it to be False.")
+            verbose = False
+        try:
+            savePathVerbose = self.cascade_parameters.cascade_save_path
+            if not os.path.isabs(savePathVerbose):
+                savePathVerbose = os.path.join(cascade_default_save_path,
+                                               savePathVerbose)
+            os.makedirs(savePathVerbose, exist_ok=True)
+        except AttributeError:
+            warnings.warn("No save path defined to save verbose output "
+                          "No verbose plots will be saved")
+            savePathVerbose = None
+        try:
+            cleanedDataset = self.cpm.cleaned_dataset
+            ndim = cleanedDataset.data.ndim
+        except AttributeError:
+            raise AttributeError("No valid cleaned data found. "
+                                 "Aborting check wavelength solution")
+        try:
+            dataset = self.observation.dataset
+        except AttributeError:
+            raise AttributeError("No valid data found. "
+                                 "Aborting check wavelength solution")
+        if ndim > 2:
+            return
+
+        from cascade.spectral_extraction import correct_initial_wavelength_shift
+        cleanedDataset, dataset = \
+            correct_initial_wavelength_shift(cleanedDataset, dataset)
+
     def extract_1d_spectra(self):
         """
         Extract 1d spectra from spectral images.
@@ -1338,6 +1407,13 @@ class TSOSuite:
             rebinnedApertureExtractedDataset.add_auxilary(
                 sample_number=datasetIn.sample_number)
 
+        from cascade.spectral_extraction import correct_initial_wavelength_shift
+        (rebinnedOptimallyExtractedDataset,
+         rebinnedApertureExtractedDataset) = \
+            correct_initial_wavelength_shift(
+                rebinnedOptimallyExtractedDataset,
+                rebinnedApertureExtractedDataset)
+
         from cascade.spectral_extraction import combine_scan_samples
         if observationDataType == 'SPECTRAL_CUBE':
             nscanSamples = \
@@ -1466,14 +1542,25 @@ class TSOSuite:
                                  Aborting definition of eclipse model.")
         # define lightcurve model
         lc_model = lightcuve()
-        times_during_transit = lc_model.lc[0][~np.isclose(lc_model.lc[1], 0.0)]
+        times_during_transit = \
+            lc_model.lc[1][~np.isclose(lc_model.lc[2][0, :], 0.0)]
         Tstart = times_during_transit[0]
         Tend = times_during_transit[-1]
 
-        # interpoplate light curve model to observed phases
-        f = interpolate.interp1d(lc_model.lc[0], lc_model.lc[1])
-        # use interpolation function returned by `interp1d`
-        lcmodel_obs = f(self.observation.dataset.time.data.value)
+        # if len(lc_model.lc[0]) == 1:
+        #     # interpoplate light curve model to observed phases
+        #     f = interpolate.interp1d(lc_model.lc[1], lc_model.lc[2][0, :])
+        #     # use interpolation function returned by `interp1d`
+        #     lcmodel_obs = f(self.observation.dataset.time.data.value)
+        # else:
+        #     f = interpolate.interp2d(lc_model.lc[0][1:], lc_model.lc[1],
+        #                              lc_model.lc[2][1:, :].T, kind='cubic')
+        #     lcmodel_obs = f(self.observation.dataset.wavelength.data.value[:,0],
+        #                     self.observation.dataset.time.data.value[0, :]).T
+        # tol = 1.e-16
+        # lcmodel_obs[abs(lcmodel_obs) < tol] = 0.0
+        
+        lcmodel_obs = lc_model.interpolated_lc_model(self.observation.dataset)
 
         # define a calibration signal which can be used to inject a
         # artificial signal into the data. The shape of the calibration
@@ -2697,12 +2784,12 @@ class TSOSuite:
         print("Condition number pre-conditioned "
               "K matrix: {}".format(cond(np.dot(M, K.filled()))))
 
-        corrected_spectrum = lstsq(np.dot(M, K.filled()),
-                                   np.dot(M, -weighted_signal.filled()),
-                                   cond=rcond_limit)[0]
-        # corrected_spectrum = lstsq(K.filled(),
-        #                             -weighted_signal.filled(),
-        #                             cond=rcond_limit)[0]
+        # corrected_spectrum = lstsq(np.dot(M, K.filled()),
+        #                            np.dot(M, -weighted_signal.filled()),
+        #                            cond=rcond_limit)[0]
+        corrected_spectrum = lstsq(K.filled(),
+                                     -weighted_signal.filled(),
+                                     cond=rcond_limit)[0]
 
         corrected_spectrum = corrected_spectrum - \
             np.ma.median(corrected_spectrum)

@@ -61,6 +61,7 @@ import ray
 from ..data_model import SpectralDataTimeSeries
 from ..data_model import MeasurementDesc
 from ..data_model import AuxilaryInfoDesc
+from ..exoplanet_tools import SpectralModel
 
 __all__ = ['directional_filters', 'create_edge_mask',
            'determine_optimal_filter', 'define_image_regions_to_be_filtered',
@@ -77,7 +78,9 @@ __all__ = ['directional_filters', 'create_edge_mask',
            'determine_center_of_light_posision',
            'determine_absolute_cross_dispersion_position',
            'combine_scan_samples', 'sigma_clip_data',
-           'sigma_clip_data_cosmic', 'create_cleaned_dataset']
+           'sigma_clip_data_cosmic', 'create_cleaned_dataset',
+           'compressROI', 'compressSpectralTrace',
+           'compressDataset', 'correct_initial_wavelength_shift']
 
 
 def _round_up_to_odd_integer(value):
@@ -1655,6 +1658,40 @@ def determine_center_of_light_posision(cleanData, ROI=None, verbose=False,
     return total_light[idx_use], idx, COL[idx_use], ytrace, xtrace
 
 
+def correct_initial_wavelength_shift(referenceDataset, *otherDatasets):
+    """
+    Determine if there is an initial wavelength shift and correct.
+
+    Parameters
+    ----------
+    referenceDataset : TYPE
+        DESCRIPTION.
+    **otherDatasets : TYPE
+        DESCRIPTION.
+
+    Returns
+    -------
+    referenceDataset : Type
+        DESCRIPTION.
+    """
+    model_spectra = SpectralModel()
+    wave_shift, error_wave_shift = \
+        model_spectra.determine_wavelength_shift(referenceDataset)
+    referenceDataset.wavelength = referenceDataset.wavelength+wave_shift
+    referenceDataset.add_auxilary(wave_shift=wave_shift)
+    referenceDataset.add_auxilary(error_wave_shift=wave_shift)
+    otherDatasets_list = list(otherDatasets)
+    for i, dataset in enumerate(otherDatasets_list):
+        dataset.wavelength = dataset.wavelength+wave_shift
+        dataset.add_auxilary(wave_shift=wave_shift)
+        dataset.add_auxilary(error_wave_shift=wave_shift)
+        otherDatasets_list[i] = dataset
+    if len(otherDatasets_list) > 0:
+        return [referenceDataset] + otherDatasets_list
+    else:
+        return referenceDataset
+
+
 def determine_absolute_cross_dispersion_position(cleanedDataset, initialTrace,
                                                  ROI=None,
                                                  verbose=False,
@@ -2363,7 +2400,8 @@ def sigma_clip_data(datasetIn, sigma, nfilter):
         # add to mask
         newMask[filter_index] = np.ma.mask_or(newMask[filter_index], mask.T,
                                               shrink=False)
-    newMask = np.ma.mask_or(datasetIn.mask, newMask)
+
+    newMask = np.ma.mask_or(datasetIn.mask, newMask, shrink=False)
 
     # update mask and set flag
     datasetIn.mask = newMask
@@ -2455,3 +2493,110 @@ def create_cleaned_dataset(datasetIn, ROI, kernel, stdvKernelTime):
         isCleanedData=True)
 
     return cleanedDataset
+
+
+def compressROI(ROI, compressMask):
+    """
+    Remove masked wavelengths from ROI.
+
+    Parameters
+    ----------
+    ROI : TYPE
+        DESCRIPTION.
+    compressMask : TYPE
+        DESCRIPTION.
+
+    Returns
+    -------
+    compressedROI : TYPE
+        DESCRIPTION.
+
+    """
+    compressedROI = ROI[compressMask]
+    return compressedROI
+
+
+def compressSpectralTrace(spectralTrace, compressMask):
+    """
+    Remove masked wavelengths from spectral trace.
+
+    Parameters
+    ----------
+    spectralTrace : TYPE
+        DESCRIPTION.
+    compressMask : TYPE
+        DESCRIPTION.
+
+    Returns
+    -------
+    compressedsSpectralTrace : TYPE
+        DESCRIPTION.
+
+    """
+    compressedsSpectralTrace = spectralTrace.copy()
+    for key in compressedsSpectralTrace.keys():
+        compressedsSpectralTrace[key] = \
+           compressedsSpectralTrace[key][compressMask]
+    compressedsSpectralTrace['wavelength_pixel'] = \
+        compressedsSpectralTrace['wavelength_pixel'] - \
+        compressedsSpectralTrace['wavelength_pixel'][0]
+    return compressedsSpectralTrace
+
+
+def compressDataset(datasetIn, ROI):
+    """
+    Remove all flaged wavelengths from data set.
+
+    Parameters
+    ----------
+    datasetIn : TYPE
+        DESCRIPTION.
+    ROI : TYPE
+        DESCRIPTION.
+
+    Returns
+    -------
+    compressedDataset : TYPE
+        DESCRIPTION.
+
+    """
+    dataIn = datasetIn.return_masked_array('data').copy()
+    dataInShape = dataIn.shape
+    errorIn = datasetIn.return_masked_array('uncertainty').copy()
+    dataUnit = datasetIn.data_unit
+    waveIn = datasetIn.return_masked_array('wavelength').copy()
+    wavelengthUnit = datasetIn.wavelength_unit
+    timeIn = datasetIn.return_masked_array('time').copy()
+    timeUnit = datasetIn.time_unit
+
+    fullMask = \
+        np.ma.mask_or(dataIn.mask,
+                      np.repeat(ROI[..., np.newaxis],
+                                dataInShape[-1],
+                                axis=-1),
+                      shrink=False)
+    compressMask = ~fullMask.all(axis=tuple(np.arange(1, dataIn.ndim)))
+
+    dictTimeSeries = {}
+    for key in vars(datasetIn).keys():
+        if key[0] != "_":
+            if isinstance(vars(datasetIn)[key], MeasurementDesc):
+                dictTimeSeries[key] = \
+                    getattr(datasetIn, key)[compressMask, ...]
+            else:
+                # print('can be added withour rebin')
+                dictTimeSeries[key] = getattr(datasetIn, key)
+
+    dictTimeSeries['data'] = dataIn[compressMask, ...]
+    dictTimeSeries['data_unit'] = dataUnit
+    dictTimeSeries['uncertainty'] = errorIn[compressMask, ...]
+    dictTimeSeries['wavelength'] = waveIn[compressMask, ...]
+    dictTimeSeries['wavelength_unit'] = wavelengthUnit
+    dictTimeSeries['time'] = timeIn[compressMask, ...]
+    dictTimeSeries['time_unit'] = timeUnit
+
+    compressedDataset = \
+        SpectralDataTimeSeries(**dictTimeSeries)
+    return compressedDataset, compressMask
+
+
