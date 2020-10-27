@@ -96,14 +96,12 @@ def get_phase_error(visit_cat, param_cat, best_value_only=True):
 
         if best_value_only:
             try:
-                k = np.nanargmin(abs(phase_error))  # ignore Nan
+                k = np.nanargmin(abs(phase_error))  # nanargmin ignores Nan
             except:
                 k = 0   # if phase_error contains only Nan values, returns the first item (a NaN value)
-        else:
-            k = 0
 
-        if 'TTV' in param_cat:
-            result.append({'planet_name': visit_planet[i], 'visit': visit[i], 'observation': observation[i],
+            if 'TTV' in param_cat:
+                result.append({'planet_name': visit_planet[i], 'visit': visit[i], 'observation': observation[i],
                            'expstart': expstart[i].value, 'exptime': exptime[i].value,
                            'ephemeris': ephemeris[j].value[k], 'ephemeris_error': ephemeris_err[j].value[k],
                            'period': period[j].value[k], 'period_error': period_err[j].value[k],
@@ -111,15 +109,35 @@ def get_phase_error(visit_cat, param_cat, best_value_only=True):
                            'ttv': param_cat['TTV'][j].values[k]
                            })
 
-        else:
-            result.append({'planet_name': visit_planet[i], 'visit': visit[i], 'observation': observation[i],
+            else:
+                result.append({'planet_name': visit_planet[i], 'visit': visit[i], 'observation': observation[i],
                            'expstart': expstart[i].value, 'exptime': exptime[i].value,
                            'ephemeris': ephemeris[j].value[k], 'ephemeris_error': ephemeris_err[j].value[k],
                            'period': period[j].value[k], 'period_error': period_err[j].value[k],
                            'nbr_period': nbr_period[k], 'phase_error': phase_error[k]
                            })
 
+        else:
+
+            if 'TTV' in param_cat:
+                result.append({'planet_name': visit_planet[i], 'visit': visit[i], 'observation': observation[i],
+                           'expstart': expstart[i].value, 'exptime': exptime[i].value,
+                           'ephemeris': ephemeris[j].value, 'ephemeris_error': ephemeris_err[j].value,
+                           'period': period[j].value, 'period_error': period_err[j].value,
+                           'nbr_period': nbr_period, 'phase_error': phase_error,
+                           'ttv': param_cat['TTV'][j].values
+                           })
+
+            else:
+                result.append({'planet_name': visit_planet[i], 'visit': visit[i], 'observation': observation[i],
+                           'expstart': expstart[i].value, 'exptime': exptime[i].value,
+                           'ephemeris': ephemeris[j].value, 'ephemeris_error': ephemeris_err[j].value,
+                           'period': period[j].value, 'period_error': period_err[j].value,
+                           'nbr_period': nbr_period, 'phase_error': phase_error
+                           })
+
     result = pd.DataFrame(result)
+
     return result
 
 
@@ -210,24 +228,37 @@ def main(root_dir, output_filename, verbose=False):
     #write_diff(exo_a_merged_hst, exo_org_merged_hst, nea_merged_hst, tepcat_merged_hst, output_filename='diff')
 
     # computing phase error
-    exo_a = get_phase_error(jeroen_compilation, exo_a_merged_hst, best_value_only=True)
-    exo_org = get_phase_error(jeroen_compilation, exo_org_merged_hst, best_value_only=True)
+    exo_a = get_phase_error(jeroen_compilation, exo_a_merged_hst, best_value_only=False)
+    exo_org = get_phase_error(jeroen_compilation, exo_org_merged_hst, best_value_only=False)
     nea = get_phase_error(jeroen_compilation, nea_merged_hst, best_value_only=False)
-    tepcat = get_phase_error(jeroen_compilation, tepcat_merged_hst, best_value_only=True)
+    tepcat = get_phase_error(jeroen_compilation, tepcat_merged_hst, best_value_only=False)
 
     # Writing results
     writer = pd.ExcelWriter(output_filename + '.xlsx', engine='xlsxwriter')
 
+    jeroen_compilation.to_excel(writer, sheet_name='jeroen_compil', index=False)
     exo_a.to_excel(writer, sheet_name='exo_a', index=False)
     exo_org.to_excel(writer, sheet_name='exo_org', index=False)
     nea.to_excel(writer, sheet_name='nea', index=False)
     tepcat.to_excel(writer, sheet_name='tepcat', index=False)
 
+    exo_a = get_phase_error(jeroen_compilation, exo_a_merged_hst, best_value_only=True)
+    exo_org = get_phase_error(jeroen_compilation, exo_org_merged_hst, best_value_only=True)
     nea = get_phase_error(jeroen_compilation, nea_merged_hst, best_value_only=True)
+    tepcat = get_phase_error(jeroen_compilation, tepcat_merged_hst, best_value_only=True)
     all_phase_errors = pd.DataFrame({'planet_name': exo_a['planet_name'], 'visit': exo_a['visit'],
+                                     'Jeroen': jeroen_compilation['phase_error'],
                                      'exo_a': exo_a['phase_error'], 'exo_org': exo_org['phase_error'],
                                      'nea': nea['phase_error'], 'tepcat': tepcat['phase_error'], 'ttv': nea['ttv']})
     all_phase_errors.to_excel(writer, sheet_name='all_phase_errors', index=False)
+
+    tt_diff = pd.DataFrame({'planet_name': exo_a['planet_name'], 'visit': exo_a['visit'],
+                            '(eph_a-eph_j)/eph_j': (exo_a['ephemeris'] - jeroen_compilation['ephemeris']) % jeroen_compilation['period'],
+                            '(eph_org-eph_j)/eph_j': (exo_org['ephemeris'] - jeroen_compilation['ephemeris']) % jeroen_compilation['period'],
+                            '(eph_nea-eph_j)/eph_j': (nea['ephemeris'] - jeroen_compilation['ephemeris']) % jeroen_compilation['period'],
+                            '(eph_tepcat-eph_j)/eph_j': (tepcat['ephemeris'] - jeroen_compilation['ephemeris']) % jeroen_compilation['period'],
+                            'ttv': nea['ttv']})
+    tt_diff.to_excel(writer, sheet_name='diff_ephemerids', index=False)
 
     writer.save()
 
