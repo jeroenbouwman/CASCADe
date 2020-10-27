@@ -38,4 +38,4 @@ dependencies:
   - pip:
     - ray==0.8.7
     - batman-package==2.4.6
-    - "--editable=git+https://github.com/ucl-exoplanets/ExoTETHyS.git@v2-beta"
+    - "--editable=git+https://github.com/ucl-exoplanets/ExoTETHyS.git@v2-beta#egg=exotethys"
