@@ -51,8 +51,8 @@ from scipy import interpolate
 import pandas
 import difflib
 import batman
-from exotethys import sail
-from exotethys import boats
+# from exotethys import sail
+# from exotethys import boats
 
 from ..initialize import cascade_configuration
 from ..initialize import cascade_default_data_path
@@ -1446,6 +1446,8 @@ class exotethys_model:
             DESCRIPTION.
 
         """
+        from exotethys import sail
+
         exotethys_data_path = os.path.join(cascade_default_data_path,
                                            "exoplanet_data/exotethys/")
         passband = InputParameter['instrument'] + '_' +\
@@ -1913,6 +1915,9 @@ class exotethys_stellar_model:
             DESCRIPTION.
 
         """
+        from exotethys import sail
+        from exotethys import boats
+
         exotethys_data_path = \
             os.path.join(cascade_default_data_path,
                          "exoplanet_data/exotethys/passbands")

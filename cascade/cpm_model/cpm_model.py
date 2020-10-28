@@ -602,6 +602,37 @@ def return_lambda_grid(lambda_min, lambda_max, n_lambda):
     return lambda_grid
 
 
+def make_bootstrap_samples(ndata, nsamples):
+    """
+    Make sboortrap sample indicii.
+
+    Parameters
+    ----------
+    ndata : TYPE
+        DESCRIPTION.
+    nsamples : TYPE
+        DESCRIPTION.
+
+    Returns
+    -------
+    bootsptrap_indici : TYPE
+        DESCRIPTION.
+    non_common_indici : TYPE
+        DESCRIPTION.
+
+    """
+    all_indici = np.arange(ndata)
+    bootsptrap_indici = np.zeros((nsamples+1, ndata), dtype=int)
+    non_common_indici = []
+    bootsptrap_indici[0, :] = all_indici
+    non_common_indici.append(np.setxor1d(all_indici, all_indici))
+    for i in range(nsamples):
+        bootsptrap_indici[i+1, :] = np.sort(np.random.choice(ndata, ndata))
+        non_common_indici.append(np.setxor1d(all_indici,
+                                             bootsptrap_indici[i+1, :]))
+    return bootsptrap_indici, non_common_indici
+
+
 class RIDGECV:
     def __init__(self, alpha=0.01, delta=None, cv_par=None, scaling=True,
                  fit_intercept=False):

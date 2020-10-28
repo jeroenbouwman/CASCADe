@@ -30,7 +30,7 @@ from functools import partial
 import collections
 import warnings
 import copy
-import os
+# import os
 from psutil import virtual_memory, cpu_count
 from tqdm import tqdm
 import multiprocessing as mp
@@ -41,7 +41,7 @@ from matplotlib import pyplot as plt
 import seaborn as sns
 from scipy import ndimage
 from scipy.ndimage import binary_dilation
-from skimage.feature import register_translation
+# from skimage.feature import register_translation
 from skimage.registration import phase_cross_correlation
 from astropy.convolution import convolve
 from astropy.convolution import Gaussian2DKernel
@@ -1678,13 +1678,13 @@ def correct_initial_wavelength_shift(referenceDataset, *otherDatasets):
     wave_shift, error_wave_shift = \
         model_spectra.determine_wavelength_shift(referenceDataset)
     referenceDataset.wavelength = referenceDataset.wavelength+wave_shift
-    referenceDataset.add_auxilary(wave_shift=wave_shift)
-    referenceDataset.add_auxilary(error_wave_shift=wave_shift)
+    referenceDataset.add_auxilary(wave_shift=wave_shift.to_string())
+    referenceDataset.add_auxilary(error_wave_shift=error_wave_shift.to_string())
     otherDatasets_list = list(otherDatasets)
     for i, dataset in enumerate(otherDatasets_list):
         dataset.wavelength = dataset.wavelength+wave_shift
-        dataset.add_auxilary(wave_shift=wave_shift)
-        dataset.add_auxilary(error_wave_shift=wave_shift)
+        dataset.add_auxilary(wave_shift=wave_shift.to_string())
+        dataset.add_auxilary(error_wave_shift=error_wave_shift.to_string())
         otherDatasets_list[i] = dataset
     if len(otherDatasets_list) > 0:
         return [referenceDataset] + otherDatasets_list

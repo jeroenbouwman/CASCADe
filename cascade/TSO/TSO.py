@@ -581,8 +581,10 @@ class TSOSuite:
             optimal_filter_index = filteredDataset.optimalFilterIndex
             label_im, nb_labels = \
                 ndimage.label(optimal_filter_index[..., 0].mask)
-            slice_y, slice_x = ndimage.find_objects(label_im != 1)[0]
+            slice_y, slice_x = \
+                ndimage.find_objects((label_im != 1) | (label_im != 2))[0]
             im_use = optimal_filter_index[slice_y, slice_x, 0]
+            im_use = im_use.filled(-1)
             npad = np.abs(im_use.shape[0] - im_use.shape[1])//2
             max_axis = np.argmax(im_use.shape)
             min_axis = np.argmin(im_use.shape)
