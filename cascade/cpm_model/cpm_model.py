@@ -38,6 +38,7 @@ from scipy.linalg import cholesky
 from sklearn.utils.extmath import svd_flip
 from sklearn.preprocessing import RobustScaler
 from sklearn.decomposition import PCA
+from sklearn.preprocessing import StandardScaler
 import numba as nb
 from numba import jit
 
@@ -45,7 +46,7 @@ __all__ = ['solve_linear_equation', 'ols', 'return_PCA','return_PCR',
            'check_causality',
            'select_regressors', 'return_design_matrix',
            'log_likelihood','modified_AIC', 'create_regularization_matrix',
-           'return_lambda_grid']
+           'return_lambda_grid', 'DesignMatrix']
 
 
 def solve_linear_equation(design_matrix, data, weights=None, cv_method='gcv',
@@ -442,34 +443,6 @@ def return_PCA(matrix, n_components):
     return pca_matrix, pca_scores
 
 
-def return_design_matrix(data, selection_list, use_pca=False, npca=30):
-    """
-    Return the design matrix based on the data set itself.
-
-    Parameters
-    ----------
-    data : TYPE
-        DESCRIPTION.
-    selection_list : TYPE
-        DESCRIPTION.
-    use_pca
-    npca
-
-    Returns
-    -------
-    design_matrix : TYPE
-        DESCRIPTION.
-    pca_back_transformation : TYPE
-        DESCRIPTION.
-
-    """
-    (il, ir), (idx_cal, trace) = selection_list
-    if data.ndim == 2:
-        data = data[:, np.newaxis, :].copy()
-    design_matrix = data[idx_cal, trace, :]
-    return design_matrix
-
-
 #@jit(nopython=True, cache=True, parallel=True)
 def log_likelihood(data, covariance, model):
     """
@@ -631,6 +604,135 @@ def make_bootstrap_samples(ndata, nsamples):
         non_common_indici.append(np.setxor1d(all_indici,
                                              bootsptrap_indici[i+1, :]))
     return bootsptrap_indici, non_common_indici
+
+
+def return_design_matrix(data, selection_list, use_pca=False, npca=30):
+    """
+    Return the design matrix based on the data set itself.
+
+    Parameters
+    ----------
+    data : TYPE
+        DESCRIPTION.
+    selection_list : TYPE
+        DESCRIPTION.
+    use_pca
+    npca
+
+    Returns
+    -------
+    design_matrix : TYPE
+        DESCRIPTION.
+    pca_back_transformation : TYPE
+        DESCRIPTION.
+
+    """
+    (il, ir), (idx_cal, trace) = selection_list
+    if data.ndim == 2:
+        data = data[:, np.newaxis, :].copy()
+    design_matrix = data[idx_cal, trace, :]
+    return design_matrix
+
+
+class DesignMatrix:
+    """
+    Class which defines regressors and data to be fitted.
+
+    The is class load the data and cleaned data to define for each
+    wavelength the timeseries data at that wavelength which will be
+    abalysed and the regressors which will be used for the analysis.
+    """
+
+    def __init__(self, dataset, cleanedDataset, lightcurve, add_time=False,
+                 add_position=False):
+        self.data = dataset.return_masked_array('data')
+        np.ma.set_fill_value(self.data, 0.0)
+        self.uncertainty = dataset.return_masked_array('uncertainty')
+        np.ma.set_fill_value(self.uncertainty, 1.e8)
+        self.wavelength = dataset.return_masked_array('wavelength')
+        self.cleaned_data = cleanedDataset.return_masked_array('data')
+        self.lightcurve = lightcurve
+        self.add_time = add_time
+        self.add_position = add_position
+        if add_time:
+            self.time = dataset.return_masked_array('time')
+        if add_position:
+            self.position = dataset.return_masked_array('position')
+        self.RS = StandardScaler()
+
+    def setup_regression_data(self, selection, bootstrap_indici=None):
+        """
+        Setupe the data which will be fitted.
+
+        Parameters
+        ----------
+        selection : TYPE
+            DESCRIPTION.
+        bootstrap_indici : TYPE, optional
+            DESCRIPTION. The default is None.
+
+        Returns
+        -------
+        None.
+
+        """
+        (index_dispersion, index_cross_dispersion), \
+            (index_dispersion_regressors, index_cross_dispersion_regressos) = \
+            selection
+        if bootstrap_indici is None:
+            bootstrap_indici = np.arange(self.cleaned_data.shape[-1])
+        if self.cleaned_data.ndim == 2:
+            fit_data = self.data[index_dispersion, bootstrap_indici]
+            fit_wavelength =\
+                self.wavelength[index_dispersion, bootstrap_indici]
+            fit_uncertainty = \
+                self.uncertainty[index_dispersion, bootstrap_indici]
+            fit_weights = fit_uncertainty**-2
+        else:
+            fit_data = self.data[index_dispersion, index_cross_dispersion,
+                                 bootstrap_indici]
+            fit_wavelength = \
+                self.wavelength[index_dispersion, index_cross_dispersion,
+                                bootstrap_indici]
+            fit_uncertainty = \
+                self.uncertainty[index_dispersion, index_cross_dispersion,
+                                 bootstrap_indici]
+            fit_weights = fit_uncertainty**-2
+        self.fit_data = fit_data.filled()
+        self.fit_uncertainty = fit_uncertainty.filled()
+        self.fit_weights = fit_weights.filled()
+
+    def setup_regression_matrix(self, selection, bootstrap_indici=None):
+        """
+        Define the regression matrix.
+
+        Parameters
+        ----------
+        selection : TYPE
+            DESCRIPTION.
+        bootstrap_indici : TYPE, optional
+            DESCRIPTION. The default is None.
+
+        Returns
+        -------
+        None.
+
+        """
+        # (index_dispersion, index_cross_dispersion), \
+        #     (index_dispersion_regressors, index_cross_dispersion_regressos) = \
+        #     selection
+        if bootstrap_indici is None:
+            bootstrap_indici = np.arange(self.cleaned_data.shape[-1])
+        # design_matrix = \
+        #     return_design_matrix(self.cleaned_data[..., bootstrap_indici],
+        #                          selection)
+        design_matrix = \
+            return_design_matrix(self.cleaned_data,
+                                 selection)[..., bootstrap_indici]  
+
+        self.design_matrix = self.RS.fit_transform(design_matrix.T).T
+        self.feature_scale = self.RS.scale_
+        self.feature_mean = self.RS.mean_
 
 
 class RIDGECV:
