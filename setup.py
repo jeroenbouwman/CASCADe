@@ -9,7 +9,7 @@ config = {
     'url': 'https://gitlab.com/jbouwman/CASCADe/wikis/home',
     'download_url': 'https://gitlab.com/jbouwman/CASCADe',
     'author_email': 'bouwman@mpia.de',
-    'version': '0.9.65',
+    'version': '0.9.68',
     'install_requires': ['batman-package', 'astropy', 'jplephem', 'scipy',
                          'numpy', 'configparser', 'photutils', 'pandas',
 	                 'scikit-learn', 'matplotlib', 'tqdm', 'seaborn',

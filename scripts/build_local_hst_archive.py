@@ -449,6 +449,7 @@ def built_local_hst_archive(init_path, data_path, save_path, no_warnings,
         # create list with the configuration files to use
         configuration_file_list = [CASCADE_CONFIGURATION_FILE,
                                    PROCESSING_CONFIGURATION_FILE,
+                                   MODEL_CONFIGURATION_FILE,
                                    INSTRUMENT_CONFIGURATION_FILE,
                                    OBSERVATIONS_CONFIGURATION_FILE]
         # create initialization file parser object
