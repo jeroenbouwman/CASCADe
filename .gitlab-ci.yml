@@ -18,7 +18,7 @@ units_and_doc_tests:
       #- source activate cascade
       #- conda env update -f environment.yml
     - conda env create -f environment.yml
-    - conda activate cascade
+    - source activate cascade
     - python -m unittest discover -v -p *tests.py -s tests
     - cd docs
     - make html
