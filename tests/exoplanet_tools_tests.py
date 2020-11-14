@@ -113,7 +113,7 @@ class TestExoplanetsTools(unittest.TestCase):
         generate_default_initialization()
         cascade_param = \
             configurator(self.path_init_files+"cascade_default.ini")
-        lc_model = lightcurve()
+        lc_model = lightcurve(cascade_param)
         self.assertIsInstance(lc_model.par, collections.OrderedDict)
         self.assertTrue('batman' in lc_model._lightcurve__valid_models)
         self.assertIsInstance(lc_model.lc, tuple)

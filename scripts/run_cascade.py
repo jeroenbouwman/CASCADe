@@ -54,11 +54,8 @@ COMMAND_LIST_PROCESSING = ["load_data", "subtract_background",
                            "extract_1d_spectra"]
 COMMAND_LIST_CALIBRATION = ["load_data", "subtract_background",
                             "filter_dataset", "check_wavelength_solution",
-                            "determine_source_movement",
-                            "set_extraction_mask", "select_regressors",
-                            "define_eclipse_model", "calibrate_timeseries",
-                            "extract_spectrum", "correct_extracted_spectrum",
-                            "save_results", "plot_results"]
+                            "calibrate_timeseries",
+                            "save_results"]
 
 
 def log(string, color, font="slant", figlet=False):

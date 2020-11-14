@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import cascade
-from cascade.cpm_model import solve_linear_equation
+from cascade.cpm_model import ols
+from cascade.cpm_model import return_lambda_grid
 import unittest
 import numpy as np
 from scipy.stats import norm as norm_stats
@@ -24,17 +25,11 @@ class TestCpmModel(unittest.TestCase):
         del self.b
 
     def test_basic_cpm(self):
-        regularization_pararameters = {"lam0": 1.e-16, "lam1": 1.e-8,
-                                       "nlam": 150}
         # solve linear Eq.
-        P, Perr, opt_reg_par, _, _, _ = \
-            solve_linear_equation(self.A, self.b, cv_method='gcv',
-                                  reg_par=regularization_pararameters)
+        (P, Perr, _) = ols(self.A, self.b)
         for i, (result, error) in enumerate(zip(P, Perr)):
             self.assertAlmostEqual(result, self.answer[i], places=None,
                                    msg=None, delta=1.e4*error)
-        self.assertLess(opt_reg_par, regularization_pararameters["lam1"])
-        self.assertGreater(opt_reg_par, regularization_pararameters["lam0"])
 
 
 if __name__ == '__main__':

@@ -607,8 +607,10 @@ def iterative_bad_pixel_flagging(dataset, ROIcube, Filters,
                           "Available: {} bytes".
                           format(mem_store+mem_workers, mem.available))
         ray.disconnect()
-        ray.init(num_cpus=ncpu, object_store_memory=mem_store,
-                 memory=mem_workers)
+#        ray.init(num_cpus=ncpu, object_store_memory=mem_store,
+#                 memory=mem_workers)
+# bug fix
+        ray.init(num_cpus=ncpu, object_store_memory=mem_store)
 
     numberOfFlaggedPixels = np.sum(~ROIcube & dataset.mask)
     tqdm.write('Initial bad pixel flagging. '

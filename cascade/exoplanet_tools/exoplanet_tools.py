@@ -53,6 +53,7 @@ import difflib
 import batman
 # from exotethys import sail
 # from exotethys import boats
+import ray
 
 from ..initialize import cascade_configuration
 from ..initialize import cascade_default_data_path
@@ -66,7 +67,7 @@ __all__ = ['Vmag', 'Kmag', 'Rho_jup', 'Rho_jup', 'kmag_to_jy', 'jy_to_kmag',
            'extract_exoplanet_data', 'lightcurve', 'batman_model',
            'masked_array_input', 'eclipse_to_transit', 'transit_to_eclipse',
            'exotethys_model', 'limbdarkning', 'exotethys_stellar_model',
-           'SpectralModel']
+           'SpectralModel','rayLightcurve','rayLimbdarkning']
 
 
 # enable cds to be able to use certain quantities defined in this system
@@ -695,7 +696,7 @@ def eclipse_to_transit(eclipse):
     return transit
 
 
-def transit_to_eclipse(transit):
+def transit_to_eclipse(transit, uncertainty=None):
     """
     Convert transit spectrum to eclipse spectrum.
 
@@ -703,6 +704,8 @@ def transit_to_eclipse(transit):
     ----------
     transit :
         Transit depth values to be converted
+    uncertainty :
+        optional
 
     Returns
     -------
@@ -710,6 +713,11 @@ def transit_to_eclipse(transit):
         eclipse depth values derived from input transit values
     """
     eclipse = 1.0/((1.0/transit)-1.0)
+    if uncertainty is not None:
+        eclipse_min = 1.0/((1.0/(transit-uncertainty))-1.0)
+        eclipse_max = 1.0/((1.0/(transit+uncertainty))-1.0)
+        error = np.abs((eclipse_max-eclipse_min))/2.0
+        return eclipse, error
     return eclipse
 
 
@@ -1205,8 +1213,9 @@ class batman_model:
 
     __valid_ttypes = {'ECLIPSE', 'TRANSIT'}
 
-    def __init__(self, limbdarkning_model):
-        if ast.literal_eval(cascade_configuration.catalog_use_catalog):
+    def __init__(self, cascade_configuration, limbdarkning_model):
+        self.cascade_configuration = cascade_configuration
+        if ast.literal_eval(self.cascade_configuration.catalog_use_catalog):
             self.par = self.return_par_from_db()
         else:
             self.par = self.return_par_from_ini()
@@ -1292,44 +1301,46 @@ class batman_model:
             input model parameters for batman lightcurve model
         """
         planet_radius = \
-            (u.Quantity(cascade_configuration.object_radius).to(u.m) /
-             u.Quantity(cascade_configuration.object_radius_host_star).to(u.m))
+            (u.Quantity(self.cascade_configuration.object_radius).to(u.m) /
+             u.Quantity(self.cascade_configuration.object_radius_host_star).to(u.m))
         planet_radius = planet_radius.decompose().value
         semi_major_axis = \
-            (u.Quantity(cascade_configuration.object_semi_major_axis).to(u.m) /
-             u.Quantity(cascade_configuration.object_radius_host_star).to(u.m))
+            (u.Quantity(self.cascade_configuration.object_semi_major_axis).to(u.m) /
+             u.Quantity(self.cascade_configuration.object_radius_host_star).to(u.m))
         semi_major_axis = semi_major_axis.decompose().value
         inclination = \
-            u.Quantity(cascade_configuration.object_inclination).to(u.deg)
+            u.Quantity(self.cascade_configuration.object_inclination).to(u.deg)
         inclination = inclination.value
-        eccentricity = u.Quantity(cascade_configuration.object_eccentricity)
+        eccentricity = u.Quantity(self.cascade_configuration.object_eccentricity)
         eccentricity = eccentricity.value
         arg_of_periastron = \
-            u.Quantity(cascade_configuration.object_omega).to(u.deg)
+            u.Quantity(self.cascade_configuration.object_omega).to(u.deg)
         arg_of_periastron = arg_of_periastron.value
-
-        # limb_darkening_coeff = ast.literal_eval(
-        #     cascade_configuration.model_limb_darkening_coeff)
-        if not (cascade_configuration.observations_type in self.__valid_ttypes):
+        ephemeris = \
+            u.Quantity(self.cascade_configuration.object_ephemeris).to(u.day)
+        orbital_period = \
+            u.Quantity(self.cascade_configuration.object_period).to(u.day)
+        if not (self.cascade_configuration.observations_type in self.__valid_ttypes):
             raise ValueError("Observations type not recognized, \
                      check your init file for the following \
                      valid types: {}. Aborting creation of \
                      lightcurve".format(self.__valid_ttypes))
-        if cascade_configuration.observations_type == 'ECLIPSE':
+        if self.cascade_configuration.observations_type == 'ECLIPSE':
             ttype = 'secondary'
         else:
             ttype = 'primary'
-        nphase = int(cascade_configuration.model_nphase_points)
-        phase_range = u.Quantity(cascade_configuration.model_phase_range).value
+        nphase = int(self.cascade_configuration.model_nphase_points)
+        phase_range = u.Quantity(self.cascade_configuration.model_phase_range).value
         par = collections.OrderedDict(rp=planet_radius,
                                       a=semi_major_axis,
                                       inc=inclination,
                                       ecc=eccentricity,
                                       w=arg_of_periastron,
-                                      # u=limb_darkening_coeff,
                                       transittype=ttype,
                                       nphase=nphase,
-                                      phase_range=phase_range)
+                                      phase_range=phase_range,
+                                      t0=ephemeris,
+                                      p=orbital_period)
         return par
 
     def return_par_from_db(self):
@@ -1349,13 +1360,13 @@ class batman_model:
         ValueError
             Raises error in case the observation type is not recognized.
         """
-        catalog_name = cascade_configuration.catalog_name.strip()
-        catalog_update = ast.literal_eval(cascade_configuration.catalog_update)
+        catalog_name = self.cascade_configuration.catalog_name.strip()
+        catalog_update = ast.literal_eval(self.cascade_configuration.catalog_update)
         catalog = parse_database(catalog_name, update=catalog_update)
-        target_name = cascade_configuration.object_name.strip()
+        target_name = self.cascade_configuration.object_name.strip()
         try:
             search_radius = \
-                u.Quantity(cascade_configuration.catalog_search_radius)
+                u.Quantity(self.cascade_configuration.catalog_search_radius)
         except (AttributeError, NameError):
             search_radius = 5.0*u.arcsec
         system_info = extract_exoplanet_data(catalog, target_name,
@@ -1373,28 +1384,32 @@ class batman_model:
         eccentricity = eccentricity.value
         arg_of_periastron = (system_info[0]['OM'].quantity[0]).to(u.deg)
         arg_of_periastron = arg_of_periastron.value
-        # limb_darkening_coeff = ast.literal_eval(
-        #     cascade_configuration.model_limb_darkening_coeff)
-        if not (cascade_configuration.observations_type in self.__valid_ttypes):
+        ephemeris = (system_info[0]['TT'].quantity[0]).to(u.day)
+        ephemeris = ephemeris.value
+        orbital_period = (system_info[0]['PER'].quantity[0]).to(u.day)
+        orbital_period = orbital_period.value
+
+        if not (self.cascade_configuration.observations_type in self.__valid_ttypes):
             raise ValueError("Observations type not recognized, \
                      check your init file for the following \
                      valid types: {}. Aborting creation of \
                      lightcurve".format(self.__valid_ttypes))
-        if cascade_configuration.observations_type == 'ECLIPSE':
+        if self.cascade_configuration.observations_type == 'ECLIPSE':
             ttype = 'secondary'
         else:
             ttype = 'primary'
-        nphase = int(cascade_configuration.model_nphase_points)
-        phase_range = u.Quantity(cascade_configuration.model_phase_range).value
+        nphase = int(self.cascade_configuration.model_nphase_points)
+        phase_range = u.Quantity(self.cascade_configuration.model_phase_range).value
         par = collections.OrderedDict(rp=planet_radius,
                                       a=semi_major_axis,
                                       inc=inclination,
                                       ecc=eccentricity,
                                       w=arg_of_periastron,
-                                      # u=limb_darkening_coeff,
                                       transittype=ttype,
                                       nphase=nphase,
-                                      phase_range=phase_range)
+                                      phase_range=phase_range,
+                                      t0=ephemeris,
+                                      p=orbital_period)
         return par
 
 
@@ -1402,7 +1417,7 @@ class exotethys_model:
     """
     Defines the limbdarkening model using the exotethys package.
 
-    The class uses the exotethys package by .... [1]_ to define the
+    The class uses the exotethys package by Morello et al. [2]_ to define the
     limbdarkning coefficients used in the calculation of the light curve
     model for the analysis of the observed transit.
 
@@ -1415,14 +1430,15 @@ class exotethys_model:
 
     References
     ----------
-    .. [1] .....
+    .. [2] Morello et al. 2019, (arXiv:1908.09599)
     """
 
     __valid_ld_laws = {'quadratic'}
-    __valid_model_grid = {'Atlas_2000'}
+    __valid_model_grid = {'Atlas_2000', 'Phoenix_2012_13', 'Phoenix_2018'}
 
-    def __init__(self):
-        if ast.literal_eval(cascade_configuration.catalog_use_catalog):
+    def __init__(self, cascade_configuration):
+        self.cascade_configuration = cascade_configuration
+        if ast.literal_eval(self.cascade_configuration.catalog_use_catalog):
             self.par = self.return_par_from_db()
         else:
             self.par = self.return_par_from_ini()
@@ -1499,33 +1515,33 @@ class exotethys_model:
         par : 'ordered_dict'
             input model parameters for batman lightcurve model
         """
-        target_name = cascade_configuration.object_name
-        instrument = cascade_configuration.instrument
-        instrument_filter = cascade_configuration.instrument_filter
+        target_name = self.cascade_configuration.object_name
+        instrument = self.cascade_configuration.instrument
+        instrument_filter = self.cascade_configuration.instrument_filter
         logg_unit = re.split("[\\(\\)]",
-                             cascade_configuration.object_logg_host_star)[1]
-        logg = u.function.Dex(cascade_configuration.object_logg_host_star,
+                             self.cascade_configuration.object_logg_host_star)[1]
+        logg = u.function.Dex(self.cascade_configuration.object_logg_host_star,
                               u.function.DexUnit(logg_unit))
         logg = logg.to(u.dex(u.cm/u.s**2)).value
-        Tstar = u.Quantity(cascade_configuration.object_temperature_host_star)
+        Tstar = u.Quantity(self.cascade_configuration.object_temperature_host_star)
         Tstar = Tstar.to(u.K).value
         star_metallicity = \
-            u.Quantity(cascade_configuration.object_metallicity_host_star)
+            u.Quantity(self.cascade_configuration.object_metallicity_host_star)
         star_metallicity = star_metallicity.value
-        limb_darkening_laws = cascade_configuration.model_limb_darkening
+        limb_darkening_laws = self.cascade_configuration.model_limb_darkening
         if not (limb_darkening_laws in self.__valid_ld_laws):
             raise ValueError("Limbdarkning model not recognized, \
                      check your init file for the following \
                      valid models: {}. Aborting calculation of \
                      limbdarkning coefficients".format(self.__valid_ld_laws))
-        stellar_models_grids = cascade_configuration.model_stellar_models_grid
+        stellar_models_grids = self.cascade_configuration.model_stellar_models_grid
         if not (stellar_models_grids in self.__valid_model_grid):
             raise ValueError("Stellar model grid not recognized, \
                      check your init file for the following \
                      valid model grids: {}. Aborting calculation of \
                      limbdarkning coefficients".format(self.__valid_model_grid))        
         try:
-            save_path = cascade_configuration.cascade_save_path
+            save_path = self.cascade_configuration.cascade_save_path
             if not os.path.isabs(save_path):
                 save_path = os.path.join(cascade_default_save_path, save_path)
             os.makedirs(save_path, exist_ok=True)
@@ -1561,13 +1577,13 @@ class exotethys_model:
         ValueError
             Raises error in case the observation type is not recognized.
         """
-        catalog_name = cascade_configuration.catalog_name.strip()
-        catalog_update = ast.literal_eval(cascade_configuration.catalog_update)
+        catalog_name = self.cascade_configuration.catalog_name.strip()
+        catalog_update = ast.literal_eval(self.cascade_configuration.catalog_update)
         catalog = parse_database(catalog_name, update=catalog_update)
-        target_name = cascade_configuration.object_name.strip()
+        target_name = self.cascade_configuration.object_name.strip()
         try:
             search_radius = \
-                u.Quantity(cascade_configuration.catalog_search_radius)
+                u.Quantity(self.cascade_configuration.catalog_search_radius)
         except (AttributeError, NameError):
             search_radius = 5.0*u.arcsec
         system_info = extract_exoplanet_data(catalog, target_name,
@@ -1580,23 +1596,23 @@ class exotethys_model:
         star_metallicity = system_info[0]['FE'].quantity[0]
         star_metallicity = star_metallicity.value
 
-        target_name = cascade_configuration.object_name
-        instrument = cascade_configuration.instrument
-        instrument_filter = cascade_configuration.instrument_filter
-        limb_darkening_laws = cascade_configuration.model_limb_darkening
+        target_name = self.cascade_configuration.object_name
+        instrument = self.cascade_configuration.instrument
+        instrument_filter = self.cascade_configuration.instrument_filter
+        limb_darkening_laws = self.cascade_configuration.model_limb_darkening
         if not (limb_darkening_laws in self.__valid_ld_laws):
             raise ValueError("Limbdarkning model not recognized, \
                      check your init file for the following \
                      valid models: {}. Aborting calculation of \
                      limbdarkning coefficients".format(self.__valid_ld_laws))
-        stellar_models_grids = cascade_configuration.model_stellar_models_grid
+        stellar_models_grids = self.cascade_configuration.model_stellar_models_grid
         if not (stellar_models_grids in self.__valid_model_grid):
             raise ValueError("Stellar model grid not recognized, \
                      check your init file for the following \
                      valid model grids: {}. Aborting calculation of \
                      limbdarkning coefficients".format(self.__valid_model_grid))        
         try:
-            save_path = cascade_configuration.cascade_save_path
+            save_path = self.cascade_configuration.cascade_save_path
             if not os.path.isabs(save_path):
                 save_path = os.path.join(cascade_default_save_path, save_path)
             os.makedirs(save_path, exist_ok=True)
@@ -1665,13 +1681,14 @@ class limbdarkning:
     __valid_ttypes = {'ECLIPSE', 'TRANSIT'}
     __factory_picker = {"exotethys": exotethys_model}
 
-    def __init__(self):
+    def __init__(self, cascade_configuration):
+        self.cascade_configuration = cascade_configuration
         # check if cascade is initialized
-        if cascade_configuration.isInitialized:
+        if self.cascade_configuration.isInitialized:
             InputParameter = self.return_par()
             if (InputParameter['calculate'] and
                     not (InputParameter['ttype'] == 'secondary')):
-                factory = self.__factory_picker[InputParameter['model_type']]()
+                factory = self.__factory_picker[InputParameter['model_type']](self.cascade_configuration)
                 self.ld = factory.ld
                 self.par = factory.par
             else:
@@ -1698,27 +1715,27 @@ class limbdarkning:
 
         """
         calculatate_ld_coefficients_flag = ast.literal_eval(
-            cascade_configuration.model_calculate_limb_darkening_from_model)
-        model_type = cascade_configuration.model_type_limb_darkening
+            self.cascade_configuration.model_calculate_limb_darkening_from_model)
+        model_type = self.cascade_configuration.model_type_limb_darkening
         if not (model_type in self.__valid_models):
             raise ValueError("Limbdarkning code not recognized, \
                      check your init file for the following \
                      valid packages: {}. Aborting calculation of \
                      limbdarkning coefficients".format(self.__valid_models))
-        limb_darkening_laws = cascade_configuration.model_limb_darkening
+        limb_darkening_laws = self.cascade_configuration.model_limb_darkening
         if not (limb_darkening_laws in self.__valid_ld_laws):
             raise ValueError("Limbdarkning law not recognized, \
                      check your init file for the following \
                      valid models: {}. Aborting calculation of \
                      limbdarkning coefficients".format(self.__valid_ld_laws))
         limb_darkening_coeff = ast.literal_eval(
-            cascade_configuration.model_limb_darkening_coeff)
-        if not (cascade_configuration.observations_type in self.__valid_ttypes):
+            self.cascade_configuration.model_limb_darkening_coeff)
+        if not (self.cascade_configuration.observations_type in self.__valid_ttypes):
             raise ValueError("Observations type not recognized, \
                      check your init file for the following \
                      valid types: {}. Aborting creation of \
                      lightcurve".format(self.__valid_ttypes))
-        if cascade_configuration.observations_type == 'ECLIPSE':
+        if self.cascade_configuration.observations_type == 'ECLIPSE':
             ttype = 'secondary'
         else:
             ttype = 'primary'
@@ -1774,6 +1791,14 @@ class limbdarkning:
         else:
             ld_coefficients = InputParameter['limb_darkening_coeff']
         return ([None], [ld_coefficients])
+
+
+@ray.remote
+class rayLimbdarkning(limbdarkning):
+    """Ray wrapper regressionDataServer class."""
+
+    def __init__(self, cascade_configuration):
+        super().__init__(cascade_configuration)
 
 
 class lightcurve:
@@ -1832,14 +1857,16 @@ class lightcurve:
 
     __valid_models = {'batman'}
 
-    def __init__(self):
+    def __init__(self, cascade_configuration):
+        self.cascade_configuration = cascade_configuration
         # check if cascade is initialized
-        if cascade_configuration.isInitialized:
+        if self.cascade_configuration.isInitialized:
             # check if model is implemented and pick model
-            self.limbdarkning_model = limbdarkning()
-            if cascade_configuration.model_type in self.__valid_models:
-                if cascade_configuration.model_type == 'batman':
-                    factory = batman_model(self.limbdarkning_model)
+            self.limbdarkning_model = limbdarkning(self.cascade_configuration)
+            if self.cascade_configuration.model_type in self.__valid_models:
+                if self.cascade_configuration.model_type == 'batman':
+                    factory = batman_model(self.cascade_configuration,
+                                           self.limbdarkning_model)
                     self.lc = factory.lc
                     self.par = factory.par
             else:
@@ -1873,14 +1900,29 @@ class lightcurve:
             f = interpolate.interp1d(self.lc[1], self.lc[2][0, :])
             # use interpolation function returned by `interp1d`
             lcmodel_obs = f(dataset.time.data.value - time_offset)
+            # correction for limbdarking
+            ld_correction_obs = \
+                np.repeat(self.lc[3], len(dataset.wavelength.data.value[:, 0]))
         else:
             f = interpolate.interp2d(self.lc[0][1:], self.lc[1],
                                      self.lc[2][1:, :].T, kind='cubic')
             lcmodel_obs = f(dataset.wavelength.data.value[:, 0],
                             dataset.time.data.value[0, :] - time_offset).T
+            # correction for limbdarking
+            f = interpolate.interp1d(self.lc[0], self.lc[3])
+            ld_correction_obs = f(dataset.wavelength.data.value[:, 0])
         tol = 1.e-16
         lcmodel_obs[abs(lcmodel_obs) < tol] = 0.0
-        return lcmodel_obs
+
+        return lcmodel_obs, ld_correction_obs
+
+
+@ray.remote
+class rayLightcurve(lightcurve):
+    """Ray wrapper regressionDataServer class."""
+
+    def __init__(self, cascade_configuration):
+        super().__init__(cascade_configuration)
 
 
 class exotethys_stellar_model:
@@ -1888,10 +1930,11 @@ class exotethys_stellar_model:
     Class defining stellar model and symulated observations using exotethys.
     """
 
-    __valid_model_grid = {'Atlas_2000'}
+    __valid_model_grid = {'Atlas_2000', 'Phoenix_2012_13', 'Phoenix_2018'}
 
-    def __init__(self):
-        if ast.literal_eval(cascade_configuration.catalog_use_catalog):
+    def __init__(self, cascade_configuration):
+        self.cascade_configuration = cascade_configuration
+        if ast.literal_eval(self.cascade_configuration.catalog_use_catalog):
             self.par = self.return_par_from_db()
         else:
             self.par = self.return_par_from_ini()
@@ -1960,28 +2003,28 @@ class exotethys_stellar_model:
         par : 'ordered_dict'
             input model parameters for batman lightcurve model
         """
-        instrument = cascade_configuration.instrument
-        instrument_filter = cascade_configuration.instrument_filter
+        instrument = self.cascade_configuration.instrument
+        instrument_filter = self.cascade_configuration.instrument_filter
         telescope_collecting_area = \
-            u.Quantity(cascade_configuration.telescope_collecting_area)
+            u.Quantity(self.cascade_configuration.telescope_collecting_area)
         logg_unit = re.split('\\((.*?)\\)',
-                             cascade_configuration.object_logg_host_star)[1]
-        logg = u.function.Dex(cascade_configuration.object_logg_host_star,
+                             self.cascade_configuration.object_logg_host_star)[1]
+        logg = u.function.Dex(self.cascade_configuration.object_logg_host_star,
                               u.function.DexUnit(logg_unit))
         logg = logg.to(u.dex(u.cm/u.s**2)).value
-        Tstar = u.Quantity(cascade_configuration.object_temperature_host_star)
+        Tstar = u.Quantity(self.cascade_configuration.object_temperature_host_star)
         Tstar = Tstar.to(u.K).value
         star_metallicity = \
-            u.Quantity(cascade_configuration.object_metallicity_host_star)
+            u.Quantity(self.cascade_configuration.object_metallicity_host_star)
         star_metallicity = star_metallicity.value
-        stellar_models_grids = cascade_configuration.model_stellar_models_grid
+        stellar_models_grids = self.cascade_configuration.model_stellar_models_grid
         if not (stellar_models_grids in self.__valid_model_grid):
             raise ValueError("Stellar model grid not recognized, \
                      check your init file for the following \
                      valid model grids: {}. Aborting calculation of \
                      limbdarkning coefficients".format(self.__valid_model_grid))        
         try:
-            save_path = cascade_configuration.cascade_save_path
+            save_path = self.cascade_configuration.cascade_save_path
             if not os.path.isabs(save_path):
                 save_path = os.path.join(cascade_default_save_path, save_path)
             os.makedirs(save_path, exist_ok=True)
@@ -2018,13 +2061,13 @@ class exotethys_stellar_model:
         ValueError
             Raises error in case the observation type is not recognized.
         """
-        catalog_name = cascade_configuration.catalog_name.strip()
-        catalog_update = ast.literal_eval(cascade_configuration.catalog_update)
+        catalog_name = self.cascade_configuration.catalog_name.strip()
+        catalog_update = ast.literal_eval(self.cascade_configuration.catalog_update)
         catalog = parse_database(catalog_name, update=catalog_update)
-        target_name = cascade_configuration.object_name.strip()
+        target_name = self.cascade_configuration.object_name.strip()
         try:
             search_radius = \
-                u.Quantity(cascade_configuration.catalog_search_radius)
+                u.Quantity(self.cascade_configuration.catalog_search_radius)
         except (AttributeError, NameError):
             search_radius = 5.0*u.arcsec
         system_info = extract_exoplanet_data(catalog, target_name,
@@ -2035,18 +2078,18 @@ class exotethys_stellar_model:
         Tstar = Tstar.to(u.K).value
         star_metallicity = system_info[0]['FE'].quantity[0]
         star_metallicity = star_metallicity.value
-        instrument = cascade_configuration.instrument
-        instrument_filter = cascade_configuration.instrument_filter
+        instrument = self.cascade_configuration.instrument
+        instrument_filter = self.cascade_configuration.instrument_filter
         telescope_collecting_area = \
-            u.Quantity(cascade_configuration.telescope_collecting_area)
-        stellar_models_grids = cascade_configuration.model_stellar_models_grid
+            u.Quantity(self.cascade_configuration.telescope_collecting_area)
+        stellar_models_grids = self.cascade_configuration.model_stellar_models_grid
         if not (stellar_models_grids in self.__valid_model_grid):
             raise ValueError("Stellar model grid not recognized, \
                      check your init file for the following \
                      valid model grids: {}. Aborting calculation of \
                      limbdarkning coefficients".format(self.__valid_model_grid))        
         try:
-            save_path = cascade_configuration.cascade_save_path
+            save_path = self.cascade_configuration.cascade_save_path
             if not os.path.isabs(save_path):
                 save_path = os.path.join(cascade_default_save_path, save_path)
             os.makedirs(save_path, exist_ok=True)
@@ -2075,11 +2118,14 @@ class SpectralModel:
     __factory_picker = {"exotethys": exotethys_stellar_model}
 
     def __init__(self):
+        self.cascade_configuration = cascade_configuration
         # check if cascade is initialized
-        if cascade_configuration.isInitialized:
+        if self.cascade_configuration.isInitialized:
             InputParameter = self.return_par()
             self.calculatate_shift = InputParameter['calculate_shift']
-            factory = self.__factory_picker[InputParameter['model_type']]()
+            factory = self.__factory_picker[
+                InputParameter['model_type']
+                                            ](self.cascade_configuration)
             self.sm = factory.sm
             self.par = factory.par
         else:
@@ -2103,10 +2149,10 @@ class SpectralModel:
         """
         calculatate_initial_wavelength_shift_flag = \
             ast.literal_eval(
-                cascade_configuration.
+                self.cascade_configuration.
                 processing_determine_initial_wavelength_shift
                              )
-        model_type = cascade_configuration.model_type_limb_darkening
+        model_type = self.cascade_configuration.model_type_limb_darkening
         if not (model_type in self.__valid_models):
             raise ValueError("Limbdarkning code not recognized, \
                      check your init file for the following \

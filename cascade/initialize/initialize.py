@@ -458,11 +458,11 @@ def generate_default_initialization(observatory='HST', data='SPECTRUM',
 
 def read_ini_files(*files):
     """
-    Read *.ini files using the configparser package.
+    Read .ini files using the configparser package.
 
     Parameters
     ----------
-    *files : 'list' of 'str'
+    files : 'list' of 'str'
         List of file names of initialization files to be read to initialize
         an instance of a TSO object.
 

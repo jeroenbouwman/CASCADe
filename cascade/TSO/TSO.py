@@ -35,6 +35,9 @@ import os.path
 from functools import reduce
 from types import SimpleNamespace
 import warnings
+import time as time_module
+import psutil
+import ray
 import numpy as np
 from scipy import interpolate
 from scipy import ndimage
@@ -53,7 +56,8 @@ from sklearn.preprocessing import RobustScaler
 from sklearn.decomposition import PCA
 from skimage.morphology import binary_dilation
 
-from ..cpm_model import solve_linear_equation
+from ..cpm_model import regressionControler
+from ..cpm_model import rayRegressionControler
 from ..data_model import SpectralData
 from ..exoplanet_tools import convert_spectrum_to_brighness_temperature
 from ..exoplanet_tools import lightcurve
@@ -145,13 +149,9 @@ class TSOSuite:
                 "set_extraction_mask": self.set_extraction_mask,
                 "check_wavelength_solution": self.check_wavelength_solution,
                 "extract_1d_spectra": self.extract_1d_spectra,
-                "define_eclipse_model": self.define_eclipse_model,
-                "select_regressors": self.select_regressors,
                 "calibrate_timeseries": self.calibrate_timeseries,
-                "extract_spectrum": self.extract_spectrum,
-                "correct_extracted_spectrum": self.correct_extracted_spectrum,
                 "save_results": self.save_results,
-                "plot_results": self.plot_results}
+                }
 
     def execute(self, command, *init_files, path=None):
         """
@@ -1491,422 +1491,13 @@ class TSOSuite:
             self.observation.dataset_aperture_extracted = \
                 rebinnedApertureExtractedDataset
 
-    def define_eclipse_model(self):
-        """
-        Define the transit or eclipse model.
-
-        This function defines the light curve model used to analize the
-        transit or eclipse. We define both the actual trasit/eclipse signal
-        as wel as an calibration signal.
-
-        Attributes
-        ----------
-        light_curve : `ndarray`
-            The lightcurve model
-        transit_timing : `list`
-            list with start time and end time of transit
-        light_curve_interpolated : `list` of `ndarray`
-            to the time grid of the observations interpolated lightcurve model
-        calibration_signal : `list` of `ndarray`
-            lightcurve model of the calibration signal
-        transittype : `str`
-            Currently either 'eclipse' or 'transit'
-
-        Raises
-        ------
-        AttributeError
-            Raises error if observations not properly defined.
-
-        Notes
-        -----
-        The only lightcurve models presently incorporated in the CASCADe code
-        are the ones provide by batman package.
-
-        Examples
-        --------
-        To define the lightcurve model appropriate for the observations
-        loaded into the instance of a TSO obkect, excecute the
-        following command:
-
-        >>> tso.execute("define_eclipse_model")
-
-        """
-        try:
-            isNodded = self.observation.dataset.isNodded
-        except AttributeError:
-            raise AttributeError("Observational strategy not properly set. \
-                                 Aborting definition of eclipse model.")
-        try:
-            cal_signal_pos = \
-                self.cascade_parameters.cpm_calibration_signal_position
-        except AttributeError:
-            raise AttributeError("Calibration signal parameters not set. \
-                                 Aborting definition of eclipse model.")
-        # define lightcurve model
-        lc_model = lightcurve()
-        times_during_transit = \
-            lc_model.lc[1][~np.isclose(lc_model.lc[2][0, :], 0.0)]
-        Tstart = times_during_transit[0]
-        Tend = times_during_transit[-1]
-
-        # if len(lc_model.lc[0]) == 1:
-        #     # interpoplate light curve model to observed phases
-        #     f = interpolate.interp1d(lc_model.lc[1], lc_model.lc[2][0, :])
-        #     # use interpolation function returned by `interp1d`
-        #     lcmodel_obs = f(self.observation.dataset.time.data.value)
-        # else:
-        #     f = interpolate.interp2d(lc_model.lc[0][1:], lc_model.lc[1],
-        #                              lc_model.lc[2][1:, :].T, kind='cubic')
-        #     lcmodel_obs = f(self.observation.dataset.wavelength.data.value[:,0],
-        #                     self.observation.dataset.time.data.value[0, :]).T
-        # tol = 1.e-16
-        # lcmodel_obs[abs(lcmodel_obs) < tol] = 0.0
-        
-        lcmodel_obs = lc_model.interpolated_lc_model(self.observation.dataset)
-
-        # define a calibration signal which can be used to inject a
-        # artificial signal into the data. The shape of the calibration
-        # signal is a box car.
-        lcmodel_cal = np.zeros_like(lcmodel_obs)
-        ndim = lcmodel_cal.ndim
-        selection1 = [slice(1)]*(ndim-1)+[slice(None)]
-        time_cal = np.squeeze(self.observation.dataset.time.
-                              data.value[tuple(selection1)])
-        # select data before and after transit
-        idx_before = np.where(time_cal < Tstart)[0]
-        idx_after = np.where(time_cal > Tend)[0]
-        # check the duration of the time series out of transit
-        max_cal_points_before = len(idx_before)
-        max_cal_points_after = len(idx_after)
-        # inject signal of half the the duration of the transit
-        # place calibration signal in the midle of the time sequence before
-        # or after the actual transit.
-        if cal_signal_pos == 'before':
-            idx_end = idx_before[-1] - max_cal_points_before//4
-            idx_start = idx_end - max_cal_points_before//2
-            selection1 = [slice(None)]*(ndim-1) + \
-                [slice(idx_start, idx_end)]
-            lcmodel_cal[tuple(selection1)] = -1.0
-        else:
-            idx_start = idx_after[0] + max_cal_points_after//4
-            idx_end = idx_start + max_cal_points_after//2
-            selection2 = [slice(None)]*(ndim-1) + \
-                [slice(idx_start, idx_end)]
-            lcmodel_cal[tuple(selection2)] = -1.0
-
-        if isNodded:
-            ntime = lcmodel_obs.shape[-1]
-            mask_nod1 = np.ones(ntime)
-            mask_nod1[ntime//2:] = 0.
-            mask_nod2 = np.ones(ntime)
-            mask_nod2[:ntime//2] = 0.
-            lcmodel_list = [lcmodel_obs*mask_nod1, lcmodel_obs*mask_nod2]
-            lcmodel_cal_list = [lcmodel_cal*mask_nod1, lcmodel_cal*mask_nod2]
-        else:
-            lcmodel_list = [lcmodel_obs]
-            lcmodel_cal_list = [lcmodel_cal]
-
-        self.model = SimpleNamespace()
-        self.model.light_curve = lc_model
-        self.model.transit_timing = [Tstart, Tend]
-        self.model.light_curve_interpolated = lcmodel_list
-        self.model.calibration_signal = lcmodel_cal_list
-        self.model.transittype = lc_model.par['transittype']
-
-    def select_regressors(self):
-        """
-        Select pixels which will be used as regressors.
-
-        Attributes
-        ----------
-        regressor_list : `list` of `int`
-            List of regressors, using the following list index:
-
-                - first index: [# nod]
-                - second index: [# valid pixel in extraction mask]
-                - third index: [0=pixel coord; 1=list of regressors]
-                - forth index: [0=coordinate wave direction;
-                  1=coordinate spatial direction]
-
-        Examples
-        --------
-        To setup the list of regressors for each data point on which the
-        exoplanet spectum will be based, execute the following command:
-
-        >>> tso.execute("select_regressors")
-
-        """
-        try:
-            spectral_trace = self.cpm.spectral_trace
-            median_position = self.cpm.median_position
-        except AttributeError:
-            raise AttributeError("No spectral trace or source position "
-                                 "found. Aborting setting regressors")
-        try:
-            data_in = self.observation.dataset
-        except AttributeError:
-            raise AttributeError("No Valid data found. "
-                                 "Aborting setting regressors")
-        try:
-            ExtractionMask = self.cpm.extraction_mask
-        except AttributeError:
-            raise AttributeError("No extraction mask found. "
-                                 "Aborting setting regressors")
-        try:
-            DeltaPix = int(self.cascade_parameters.cpm_deltapix)
-        except AttributeError:
-            raise AttributeError("The exclusion region is not defined. "
-                                 "Check the initialiation of the TSO object. "
-                                 "Aborting setting regressors")
-        try:
-            nrebin = int(self.cascade_parameters.cpm_nrebin)
-        except AttributeError:
-            raise AttributeError("The rebin factor regressors is not defined. "
-                                 "Check the initialiation of the TSO object. "
-                                 "Aborting setting regressors")
-        try:
-            cpm_use_pca = ast.literal_eval(self.cascade_parameters.cpm_use_pca)
-        except AttributeError:
-            warnings.warn("Use PCA switch not defined. "
-                          "Assuming direct regression model")
-            cpm_use_pca = False
-
-        dim = data_in.data.shape
-        regressor_list_nod = []
-        for extracton_mask in ExtractionMask:
-
-            if extracton_mask.ndim == 1:
-                extracton_mask = np.expand_dims(extracton_mask, axis=1)
-
-            # all pixels of interest defined by the extraction mask
-            idx_pixels = np.where(np.logical_not(extracton_mask))
-            # index in wavelength and spatial direction for pixels of interest
-            idx_all_wave = (idx_pixels[0][:])
-            idx_all_spatial = (idx_pixels[1][:])
-
-            # index of all pixels in the wavelength direction
-            idx_all = np.arange(dim[0])
-
-            regressor_list = []
-            # loop over all not masked data in the extraction window
-            for il, ir in zip(idx_all_wave, idx_all_spatial):
-
-                # define wavelength range to use for calibration
-                il_cal_min = max(il-DeltaPix, 0)
-                il_cal_max = min(il+DeltaPix, dim[0]-1)
-
-                if cpm_use_pca:
-                    idx_select = np.where(((idx_all_wave < il_cal_min) |
-                                           (idx_all_wave > il_cal_max)))
-                    regressor_list.append([(il, ir),
-                                           (idx_all_wave[idx_select],
-                                            idx_all_spatial[idx_select])])
-                else:
-                    idx_cal = idx_all[np.where(((idx_all < il_cal_min) |
-                                                (idx_all > il_cal_max)))]
-
-                    # trace at source position
-                    trace = np.rint(spectral_trace +
-                                    median_position).astype(int)
-                    trace = trace - (trace[il] - ir)
-                    trace = trace[idx_cal]
-
-                    # get all pixels following trace within Extraction Aperture
-                    index_in_aperture = \
-                        np.logical_not(extracton_mask[idx_cal, trace])
-                    trace = trace[index_in_aperture]
-                    idx_cal = idx_cal[index_in_aperture]
-
-                    # check if number of calibration pixels can be rebinned
-                    # by factor nrebin
-                    if (len(idx_cal) % nrebin) != 0:
-                        ncut = -(len(idx_cal) % nrebin)
-                        idx_cal = idx_cal[:ncut]
-                        trace = trace[:ncut]
-
-                    regressor_list.append([(il, ir), (idx_cal, trace)])
-
-            regressor_list_nod.append(regressor_list)
-
-        self.cpm.regressor_list = regressor_list_nod
-
-    @staticmethod
-    def get_design_matrix(cleaned_data_in, original_mask_in,
-                          regressor_selection, nrebin, clip=False,
-                          clip_pctl_time=0.00, clip_pctl_regressors=0.00):
-        """
-        Return the design matrix based on the data set itself.
-
-        Parameters
-        ----------
-        cleaned_data_in : `masked quantity`
-            time series data with bad pixels corrected
-        original_mask_in : `ndarray`
-            data mask before cleaning
-        regressor_selection : `list` of `int`
-            List of index values of the data used as regressors
-        nrebin : `int`
-            Rebinning value for regressions [LEAVE at 1!!]
-        clip : `bool`
-            If 'True` bad regressors will be clipped out of selection
-        clip_pctl_time : `float`
-            Percentile of 'worst' regressors to be cut out in the
-            time direction.
-        clip_pctl_regressors : `float`
-            Percentile of 'worst' regressors to be cut out in the
-            wavelegth direction.
-
-        Returns
-        -------
-        design_matrix
-            The design matrix used in the causal pixel regression model
-
-        """
-        dim = cleaned_data_in.data.shape
-        data_unit = cleaned_data_in.data.unit
-        (il, ir), (idx_cal, trace) = regressor_selection
-        ncal = len(idx_cal)
-        design_matrix = cleaned_data_in[idx_cal, trace, :].copy()
-        original_mask_design_matrix = \
-            original_mask_in[idx_cal, trace, :].copy()
-
-        if clip:
-            # clip the worst data along time axis
-            # number of good measurements at a given time
-            number_of_bad_data = np.sum(original_mask_design_matrix, axis=0)
-            idx_bad = np.argsort(number_of_bad_data)
-            nclip = np.rint(dim[-1]*clip_pctl_time).astype(int)
-            if nclip > 0:
-                idx_clip_time = idx_bad[-nclip:]
-                design_matrix.mask[:, idx_clip_time] = True
-
-            # clip the worst regressors
-            # number of good measurements for regressor.
-            number_of_bad_data = np.sum(original_mask_design_matrix, axis=1)
-            idx_bad = np.argsort(number_of_bad_data)
-            nclip = np.rint(dim[0]*clip_pctl_regressors).astype(int)
-            if nclip > 0:
-                idx_clip_regressor = idx_bad[-nclip:]
-                design_matrix.mask[idx_clip_regressor, :] = True
-
-        design_matrix = design_matrix.reshape(ncal//nrebin, nrebin, dim[-1], 1)
-        design_matrix = np.ma.median((np.ma.median(design_matrix, axis=3)),
-                                     axis=1)
-
-        design_matrix = np.ma.array(design_matrix.data*data_unit,
-                                    mask=design_matrix.mask)
-        return design_matrix
-
-    @staticmethod
-    def reshape_data(data_in):
-        """
-        Reshape the time series data to a uniform dimentional shape.
-
-        Parameters
-        ----------
-        data_in : `ndarray`
-
-        Returns
-        -------
-        data_out : `ndarray`
-        """
-        if isinstance(data_in, list):
-            data_list = []
-            for data in data_in:
-                dim = data.shape
-                ndim = data.ndim
-                if ndim == 2:
-                    data_out = np.ma.expand_dims(data, axis=1)
-                elif ndim == 4:
-                    data_out = np.ma.reshape(data,
-                                             (dim[0], dim[1], dim[2]*dim[3]))
-                else:
-                    data_out = data
-                data_list.append(data_out)
-            data_out = data_list
-        else:
-            dim = data_in.shape
-            ndim = data_in.ndim
-            if ndim == 2:
-                data_out = np.ma.expand_dims(data_in, axis=1)
-            elif ndim == 4:
-                data_out = np.ma.reshape(data_in,
-                                         (dim[0], dim[1], dim[2]*dim[3]))
-            else:
-                data_out = data_in
-        return data_out
-
-    def return_all_design_matrices(self, clip=False,
-                                   clip_pctl_time=0.00,
-                                   clip_pctl_regressors=0.00):
-        """
-        Return all design matrici for regression model.
-
-        Setup the regression matrix based on the sub set of the data slected
-        to be used as calibrators.
-
-        Parameters
-        ----------
-        clip : `bool`
-            default False
-        clip_pctl_time : `float`
-            Default `0.00`
-        clip_pctl_regressors : `float`
-            Default `0.00`
-
-        Attributes
-        ----------
-        design_matrix : `list' of `ndarray`
-            list with design matrici with the following index convention:
-
-                - first index: [# nods]
-                - second index : [# of valid pixels within extraction mask]
-                - third index : [0]
-
-        Raises
-        ------
-        AttributeError
-        """
-        try:
-            data_in = self.observation.dataset
-            cleaned_data_in = self.cpm.cleaned_data
-        except AttributeError:
-            raise AttributeError("No Valid data found. \
-                                 Aborting setting up of regression matrix")
-        try:
-            regressor_list_nods = self.cpm.regressor_list
-        except AttributeError:
-            raise AttributeError("No regressor selection list found. \
-                                 Aborting setting up of regression matrix")
-        try:
-            nrebin = int(self.cascade_parameters.cpm_nrebin)
-        except AttributeError:
-            raise AttributeError("The rebin factor regressors is not defined. \
-                                 Check the initialiation of the TSO object. \
-                                 Aborting setting regressors")
-
-        original_mask_data_use = self.reshape_data(data_in.data).mask
-        data_use = self.reshape_data(cleaned_data_in)
-        design_matrix_list_nod = []
-        for regressor_list in regressor_list_nods:
-            design_matrix_list = []
-            for regressor_selection in regressor_list:
-                regressor_matrix = \
-                    self.get_design_matrix(
-                        data_use, original_mask_data_use,
-                        regressor_selection,
-                        nrebin, clip=clip,
-                        clip_pctl_time=clip_pctl_time,
-                        clip_pctl_regressors=clip_pctl_regressors)
-                design_matrix_list.append([regressor_matrix])
-            design_matrix_list_nod.append(design_matrix_list)
-        self.cpm.design_matrix = design_matrix_list_nod
-
     def calibrate_timeseries(self):
         """
-        This is the main function which runs the regression model to
-        calibrate the input spectral light curve data and to extract the
-        planetary signal as function of wavelength.
+        Run the causal regression model.
+
+        To calibrate the input spectral light curve data and to extract the
+        planetary signal as function of wavelength a linear model is fit to
+        the lightcurve data for each wavelength.
 
         Attributes
         ----------
@@ -1930,893 +1521,174 @@ class TSOSuite:
 
         """
         try:
-            data_in = self.observation.dataset
-            data_in_clean = self.cpm.cleaned_dataset
+            verbose = bool(self.cascade_parameters.cascade_verbose)
         except AttributeError:
-            raise AttributeError("No Valid data found. \
-                                 Aborting time series calibration")
+            warnings.warn("Verbose flag not set, "
+                          "assuming it to be False.")
+            verbose = False
         try:
-            regressor_list_nods = self.cpm.regressor_list
+            dataset = self.observation.dataset_optimal_extracted
+            cleaned_dataset = self.observation.dataset_aperture_extracted
         except AttributeError:
-            raise AttributeError("No regressor selection list found. \
-                                 Aborting time series calibration")
+            try:
+                dataset = self.observation.dataset
+                cleaned_dataset = self.cpm.cleaned_dataset
+            except AttributeError:
+                raise AttributeError("No Valid data found. "
+                                     "Aborting time series calibration.")
         try:
-            ExtractionMask_nods = self.cpm.extraction_mask
+            useMultiProcesses = \
+                bool(self.cascade_parameters.
+                     cascade_use_multi_processes)
         except AttributeError:
-            raise AttributeError("No extraction mask found. \
-                                 Aborting time series calibration")
+            raise AttributeError("cascade_use_multi_processes flag not "
+                                 "set. Aborting time series calibration.")
         try:
-            nrebin = int(self.cascade_parameters.cpm_nrebin)
+            maxNumberOfCPUs = \
+                int(self.cascade_parameters.cascade_max_number_of_cpus)
         except AttributeError:
-            raise AttributeError("The rebin factor regressors is not defined. \
-                                 Check the initialiation of the TSO object. \
-                                 Aborting time series calibration")
+            raise AttributeError("cascade_max_number_of_cpus flag not set."
+                                 " Aborting time series calibration.")
         try:
-            add_offset = \
-                ast.literal_eval(self.cascade_parameters.cpm_add_constant)
-            add_time = ast.literal_eval(self.cascade_parameters.cpm_add_time)
-            add_position = \
-                ast.literal_eval(self.cascade_parameters.cpm_add_position)
-            add_calibration_signal = \
-                ast.literal_eval(self.cascade_parameters.
-                                 cpm_add_calibration_signal)
+            observations_id = self.cascade_parameters.observations_id
         except AttributeError:
-            raise AttributeError("The switches for aditional regression \
-                                 parameters are not defined. \
-                                 Check the initialiation of the TSO object. \
-                                 Aborting time series calibration")
+            raise AttributeError("No uniq id defined for observation "
+                                 "Aborting time series calibration.")
         try:
-            position = self.cpm.position
+            observations_target_name = \
+                self.cascade_parameters.observations_target_name
         except AttributeError:
-            raise AttributeError("No source position found \
-                                Aborting time series calibration")
+            raise AttributeError("No target name defined for observation. "
+                                 "Aborting time series calibration.")
+
+        print('Starting regression analysis')
+        start_time = time_module.time()
+
+        if not useMultiProcesses:
+
+            Controler = regressionControler(self.cascade_parameters, dataset,
+                                            cleaned_dataset)
+            Controler.run_regression_model(nchunks=1)
+            Controler.process_regression_fit()
+            Controler.post_process_regression_fit()
+            # iterators = Controler.get_regression_iterators()
+            fit_parameters = Controler.get_fit_parameters_from_server()
+            regularization = \
+                Controler.get_regularization_parameters_from_server()
+            control_parameters = Controler.get_control_parameters()
+            lightcurve_mode, lld_correction, lc_parameters =\
+                Controler.get_lightcurve_model()
+        else:
+            num_cpus = psutil.cpu_count(logical=True)
+            print('Number of CPUs: {}'.format(num_cpus))
+            cpus_use = int(np.max([np.min([maxNumberOfCPUs, num_cpus]), 4]))
+            print('Number of CPUs used: {}'.format(cpus_use))
+            print('Total number of workers: {}'.format(cpus_use-3))
+            ray.init(num_cpus=cpus_use, ignore_reinit_error=True)
+
+            rayControler = \
+                rayRegressionControler.remote(self.cascade_parameters,
+                                              dataset, cleaned_dataset)
+            nchunks = int(np.max([np.min([maxNumberOfCPUs, cpus_use-3]), 1]))
+            future = rayControler.run_regression_model.remote(nchunks=nchunks)
+            ray.get(future)
+            future = rayControler.process_regression_fit.remote()
+            ray.get(future)
+            future = rayControler.post_process_regression_fit.remote()
+            ray.get(future)
+            # iterators = ray.get(rayControler.get_regression_iterators.remote())
+            fit_parameters = \
+                ray.get(rayControler.get_fit_parameters_from_server.remote())
+            regularization = \
+                ray.get(rayControler.
+                        get_regularization_parameters_from_server.remote())
+            control_parameters = \
+                ray.get(rayControler.get_control_parameters.remote())
+            lightcurve_model, ld_correction, lc_parameters =\
+                ray.get(rayControler.get_lightcurve_model.remote())
+
+        elapsed_time = time_module.time() - start_time
+        print('elapsed time regression analysis: {}'.format(elapsed_time))
+
         try:
-            calibration_signal = self.model.calibration_signal
-            calibration_signal_depth = float(self.cascade_parameters.
-                                             cpm_calibration_signal_depth)
+            self.model
         except AttributeError:
-            raise AttributeError("No calibration signal defined \
-                                Aborting time series calibration")
-        try:
-            clip_pctl_time = \
-                float(self.cascade_parameters.cpm_clip_percentile_time)
-            clip_pctl_regressors = \
-                float(self.cascade_parameters.cpm_clip_percentile_regressors)
-        except AttributeError:
-            raise AttributeError("The clipping percentiles for the cleaning \
-                                 of the design matrix are not defined. \
-                                 Check the initialiation of the TSO object. \
-                                 Aborting time series calibration")
-        try:
-            lightcurve_model = self.model.light_curve_interpolated
-        except AttributeError:
-            raise AttributeError("No lightcurve model defined. \
-                                 Aborting time series calibration")
-        try:
-            cv_method = self.cascade_parameters.cpm_cv_method
-            reg_par = {"lam0": float(self.cascade_parameters.cpm_lam0),
-                       "lam1": float(self.cascade_parameters.cpm_lam1),
-                       "nlam": int(self.cascade_parameters.cpm_nlam)}
-        except AttributeError:
-            raise AttributeError("Regularization parameters not found. \
-                                 Aborting time series calibration")
-        try:
-            use_pca = ast.literal_eval(self.cascade_parameters.cpm_use_pca)
-        except AttributeError:
-            warnings.warn("Use PCA switch not defined. "
-                          "Assuming direct regression model")
-            use_pca = False
+            self.model = SimpleNamespace()
         finally:
-            if use_pca:
-                add_offset = True
-                try:
-                    number_of_pca_components = \
-                        int(self.cascade_parameters.
-                            cpm_number_of_pca_components)
-                except AttributeError:
-                    raise AttributeError("Number of PCA components need "
-                                         "to be set when using use_pca=True. "
-                                         "Aborting time series calibration")
-        try:
-            use_pca_filter = \
-               ast.literal_eval(self.cascade_parameters.cpm_use_pca_filter)
-        except AttributeError:
-            warnings.warn("Use PCA as filter switch not defined. "
-                          "Assuming no filtering direct regression model")
-            use_pca_filter = False
-        finally:
-            if use_pca_filter:
-                try:
-                    number_of_pca_components = \
-                        int(self.cascade_parameters.
-                            cpm_number_of_pca_components)
-                except AttributeError:
-                    raise AttributeError("Number of PCA components need "
-                                         "to be set when using "
-                                         "use_pca_filter=True. "
-                                         "Aborting time series calibration")
+            self.model.light_curve_interpolated = lightcurve_model
+            self.model.limbdarkning_correction = ld_correction
+            self.model.model_parameters = lc_parameters
+            self.model.transittype = lc_parameters['transittype']
 
-        # reshape input data to general 3D shape.
-        original_mask_data_use = self.reshape_data(data_in.data).mask
-        data_use = self.reshape_data(data_in_clean.data)
-        unc_use = self.reshape_data(data_in.uncertainty)
-        time_use = self.reshape_data(data_in.time)
-        position_use = self.reshape_data(position)
-        lightcurve_model_use = self.reshape_data(lightcurve_model)
-        calibration_signal_use = self.reshape_data(calibration_signal)
-        data_unit = data_use.data.unit
-        nlambda, nspatial, ntime = data_use.shape
-
-        # number of additional regressors
-        nadd = 1
-        if add_offset:
-            nadd += 1
-        if add_time:
-            nadd += 1
-        if add_position:
-            nadd += 1
-        if add_calibration_signal:
-            nadd += 1
-
-        # all detector area used to extract signal
-        Combined_ExtractionMask = reduce(lambda x, y: x*y, ExtractionMask_nods)
-
-        # create arrays to store results
-        data_driven_image = \
-            np.ma.array(np.zeros(shape=(nlambda, nspatial),
-                                 dtype=np.float64),
-                        mask=Combined_ExtractionMask)
-        error_data_driven_image = \
-            np.ma.array(np.zeros(shape=(nlambda, nspatial),
-                                 dtype=np.float64),
-                        mask=Combined_ExtractionMask)
-        calibration_image = \
-            np.ma.array(np.zeros(shape=(nlambda, nspatial),
-                                 dtype=np.float64),
-                        mask=Combined_ExtractionMask)
-        error_calibration_image = \
-            np.ma.array(np.zeros(shape=(nlambda, nspatial),
-                                 dtype=np.float64),
-                        mask=Combined_ExtractionMask)
-        optimal_regularization_parameter = \
-            np.ma.array(np.zeros(shape=(nlambda, nspatial),
-                                 dtype=np.float64),
-                        mask=Combined_ExtractionMask)
-        fitted_parameters = \
-            np.ma.array(np.zeros(shape=(nadd, nlambda, nspatial),
-                                 dtype=np.float64),
-                        mask=np.tile(Combined_ExtractionMask,
-                                     (nadd, 1, 1)))
-        error_fitted_parameters = \
-            np.ma.array(np.zeros(shape=(nadd, nlambda, nspatial),
-                                 dtype=np.float64),
-                        mask=np.tile(Combined_ExtractionMask,
-                                     (nadd, 1, 1)))
-        fitted_parameters_normed = \
-            np.ma.array(np.zeros(shape=(nlambda+nadd, nlambda, nspatial),
-                                 dtype=np.float64),
-                        mask=np.tile(Combined_ExtractionMask,
-                                     (nlambda+nadd, 1, 1)))
-        calibrated_time_series = \
-            np.ma.array(np.zeros(shape=(nlambda, nspatial, ntime),
-                                 dtype=np.float64),
-                        mask=np.tile(Combined_ExtractionMask.T,
-                                     (ntime, 1, 1)).T)
-        model_time_series = \
-            np.ma.array(np.zeros(shape=(nlambda, nspatial, ntime),
-                                 dtype=np.float64)*data_unit,
-                        mask=np.tile(Combined_ExtractionMask.T,
-                                     (ntime, 1, 1)).T)
-        residual_time_series = \
-            np.ma.array(np.zeros(shape=(nlambda, nspatial, ntime),
-                                 dtype=np.float64)*data_unit,
-                        mask=np.tile(Combined_ExtractionMask.T,
-                                     (ntime, 1, 1)).T)
-        AIC = np.ma.array(np.zeros(shape=(nlambda, nspatial),
-                                   dtype=np.float64),
-                          mask=Combined_ExtractionMask)
-
-        # loop over nods
-        for inod, (ExtractionMask, regressor_list) in \
-                enumerate(zip(ExtractionMask_nods, regressor_list_nods)):
-
-            # loop over pixels
-            # regressor list contains tuples ;isting pixel indx and
-            # the indici of the calibration pixels
-            iter_bad_reg = 0
-            max_iter_bad_reg = 1
-            do_iter_bad_regressor = True
-            while (iter_bad_reg <= max_iter_bad_reg) and do_iter_bad_regressor:
-                for regressor_selection in tqdm(regressor_list,
-                                                desc="Calibrating timeseries",
-                                                dynamic_ncols=True):
-                    (il, ir), (idx_cal, trace) = regressor_selection
-                    regressor_matrix = \
-                        self.get_design_matrix(
-                            data_use, original_mask_data_use,
-                            regressor_selection,
-                            nrebin, clip=True,
-                            clip_pctl_time=clip_pctl_time,
-                            clip_pctl_regressors=clip_pctl_regressors)
-                    # remove bad regressors
-                    idx_cut = np.all(regressor_matrix.mask, axis=1)
-                    idx_regressors_used = idx_cal[~idx_cut]
-                    regressor_matrix = regressor_matrix[~idx_cut, :]
-                    # add calibration signal to all regressors
-                    if add_calibration_signal:
-                        temp_cal = \
-                            np.tile(calibration_signal_use[inod][il, ir, :],
-                                    (regressor_matrix.shape[0], 1))
-                        temp_cal = np.ma.masked_greater(temp_cal, -1.0)
-                        regressor_matrix = regressor_matrix + \
-                            (np.ma.median(regressor_matrix *
-                                          calibration_signal_depth*temp_cal,
-                                          axis=1) * temp_cal.data.T).T * \
-                            regressor_matrix.data.unit
-
-                    # select data (y=signal, yerr = error signal)
-                    y = np.ma.array(data_use.data.value[il, ir, :],
-                                    mask=data_use.mask[il, ir, :])
-                    y.mask = original_mask_data_use[il, ir, :].copy()
-                    yerr = np.ma.array(unc_use.data.value[il, ir, :],
-                                       mask=unc_use.mask[il, ir, :])
-                    np.ma.set_fill_value(y, 0.0)
-                    np.ma.set_fill_value(yerr, 1.0e8)
-
-                    if add_calibration_signal:
-                        zcal = calibration_signal_use[inod][il, ir, :].copy()
-                        idx_temp = np.where(zcal > -1.0)
-                        temp_ma = np.ma.array(y*calibration_signal_depth*zcal)
-                        temp_ma.mask[idx_temp] = True
-                        y = y + np.ma.median(temp_ma)*zcal
-
-                    # select aditional regressors (x: orbital phase,
-                    # z: lightcurve model, r: source position)
-                    x = time_use[il, ir, :].data.value.copy()
-                    z = lightcurve_model_use[inod][il, ir, :].copy()
-                    r = position_use[il, ir, :].copy()
-
-                    # flag bad data in time and give low weight
-                    idx_bad_time = \
-                        np.logical_or(y.mask,
-                                      np.all(regressor_matrix.mask, axis=0))
-                    y.mask[idx_bad_time] = True
-                    yerr.mask[idx_bad_time] = True
-                    np.ma.set_fill_value(y, 0.0)
-                    np.ma.set_fill_value(yerr, np.ma.median(y)*1.e3)
-                    weights = 1.0/yerr.filled()**2
-
-                    # create design matrix using either the timeseries
-                    # directly or the PCA components
-                    # uses clean data
-                    design_matrix = regressor_matrix.data.value
-                    if (not use_pca) and (use_pca_filter):
-                        RS = RobustScaler(with_scaling=False)
-                        X_scaled = RS.fit_transform(design_matrix.T)
-                        pca = \
-                            PCA(n_components=np.min([number_of_pca_components,
-                                                     len(idx_regressors_used)]
-                                                    ),
-                                whiten=False, svd_solver='auto')
-                        Xtransformed = pca.fit_transform(X_scaled)
-                        Xback = pca.inverse_transform(Xtransformed)
-                        Xback = RS.inverse_transform(Xback)
-                        design_matrix = Xback.T
-                    # add other regressors: constant, time,
-                    # position along slit, lightcure model
-                    if add_offset:
-                        design_matrix = np.vstack((design_matrix,
-                                                   np.ones_like(x)))
-                    if add_time:
-                        design_matrix = np.vstack((design_matrix, x))
-                    if add_position:
-                        design_matrix = np.vstack((design_matrix, r))
-                    if add_calibration_signal:
-                        design_matrix = np.vstack((design_matrix, zcal))
-                    design_matrix = np.vstack((design_matrix, z)).T
-
-                    if use_pca:
-                        design_matrix_direct = design_matrix.copy()
-                        additional_components = \
-                            design_matrix.T[-nadd:, :].copy()
-                        design_matrix = regressor_matrix.data.value
-                        RS = RobustScaler(with_scaling=False)
-                        X_scaled = RS.fit_transform(design_matrix.T)
-                        pca = \
-                            PCA(n_components=np.min([number_of_pca_components,
-                                                     len(idx_regressors_used)
-                                                     ]),
-                                whiten=False, svd_solver='auto')
-                        Xtransformed = pca.fit_transform(X_scaled)
-                        design_matrix = Xtransformed.T
-                        design_matrix = np.vstack((design_matrix,
-                                                   additional_components)).T
-
-                    if np.any(~np.isfinite(design_matrix)):
-                        plt.imshow(design_matrix)
-                        plt.show()
-
-                    # solve linear Eq.
-                    P, Perr, opt_reg_par, pc_matrix_sle, Pnormed, _ = \
-                        solve_linear_equation(design_matrix,
-                                              y.filled(), weights,
-                                              cv_method=cv_method,
-                                              reg_par=reg_par,
-                                              degrees_of_freedom=2)
-
-                    # store results
-                    optimal_regularization_parameter.data[il, ir] = opt_reg_par
-                    if use_pca:
-                        # back transform
-                        par_trans = np.dot((pca.components_).T, P[:-nadd])
-                        par_trans2 = np.append(par_trans, P[-nadd:])
-                        par_trans_err = np.dot((pca.components_).T,
-                                               P[:-nadd]+Perr[:-nadd])
-                        par_trans_err2 = np.append(par_trans_err,
-                                                   P[-nadd:]+Perr[-nadd:])
-                        # constant offset always present as
-                        # first additional regr.
-                        par_trans2[-nadd] = par_trans2[-nadd] - \
-                            np.sum(RS.center_ * par_trans)
-                        par_trans_err2[-nadd] = par_trans_err2[-nadd] - \
-                            np.sum(RS.center_ * par_trans_err)
-                        fitted_parameters.data[:, il, ir] = par_trans2[-nadd:]
-                        error_fitted_parameters.data[:, il, ir] = \
-                            np.abs(par_trans2[-nadd:]-par_trans_err2[-nadd:])
-                        pc_matrix = \
-                            np.diag(1.0/np.linalg.norm(design_matrix_direct,
-                                                       axis=0))
-                        fitted_parameters_normed.\
-                            data[np.append(idx_regressors_used,
-                                           np.arange(-(nadd), 0)), il, ir] = \
-                            np.dot(np.linalg.inv(pc_matrix), par_trans2)
-                    else:
-                        fitted_parameters.data[:, il, ir] = P[len(P)-nadd:]
-                        error_fitted_parameters.data[:, il, ir] = \
-                            Perr[len(P)-nadd:]
-                        fitted_parameters_normed.\
-                            data[np.append(idx_regressors_used,
-                                           np.arange(-(nadd), 0)), il, ir] = \
-                            Pnormed
-
-                    model_time_series[il, ir, :] = \
-                        np.dot(design_matrix, P)*data_unit
-                    model_time_series.mask[il, ir, idx_bad_time] = True
-                    residual = (y.filled() - np.dot(design_matrix, P))*data_unit
-                    residual_time_series[il, ir, :] = \
-                        np.ma.array(residual, mask=y.mask)
-                    lnL = -0.5*np.sum(weights*(residual.value)**2)
-                    n_samples, n_params = design_matrix.shape
-                    AIC[il, ir] = akaike_info_criterion(lnL, n_params,
-                                                        n_samples)
-                    ##################################
-                    # calculate the spectrum!!!!!!!!!#
-                    ##################################
-                    # Here we only need to use the fittted model not the actual
-                    # data. First, define model fit without lightcurve model
-                    Ptemp = P.copy()
-                    if add_calibration_signal:
-                        Ptemp[-2:] = 0.0
-                    else:
-                        Ptemp[-1] = 0.0
-                    # Then calculate the calibrated normalized lightcurve
-                    # for eiter eclipse or transit
-                    if self.model.transittype == 'secondary':
-                        # eclipse is normalized to stellar flux
-                        calibrated_lightcurve = 1.0 - np.dot(design_matrix,
-                                                             Ptemp) / \
-                                                      np.dot(design_matrix, P)
-                    else:
-                        # transit is normalized to flux-baseline
-                        # outside transit
-                        calibrated_lightcurve = np.dot(design_matrix, P) / \
-                                                np.dot(design_matrix,
-                                                       Ptemp) - 1.0
-                    calibrated_lightcurve =\
-                        np.ma.masked_invalid(calibrated_lightcurve)
-                    calibrated_lightcurve.set_fill_value(0.0)
-                    calibrated_time_series.data[il, ir, :] = \
-                        calibrated_lightcurve.filled()
-                    # fit again for final normalized transit/eclipse depth
-                    if add_calibration_signal:
-                        final_lc_model = np.vstack([zcal, z]).T
-                    else:
-                        final_lc_model = z[:, None]
-
-                    P_final, Perr_final, opt_reg_par_final, _, _, _ = \
-                        solve_linear_equation(final_lc_model,
-                                              calibrated_lightcurve.filled(),
-                                              weights,
-                                              cv_method=cv_method,
-                                              reg_par=reg_par)
-                    # transit/eclipse signal
-                    data_driven_image.data[il, ir] = P_final[-1]
-                    # combine errors of lightcurve calibration and
-                    # transit/eclipse fit
-                    error_data_driven_image.data[il, ir] = \
-                        np.sqrt((Perr_final[-1])**2 +
-                                ((error_fitted_parameters.data[-1, il, ir] /
-                                  fitted_parameters.data[-1, il, ir]) *
-                                 data_driven_image.data[il, ir])**2)
-#                        Perr[-1] / (P[-1]/P_final[-1])
-                    # fit results to the injected calibration signal
-                    if add_calibration_signal:
-                        calibration_image.data[il, ir] = P_final[-2]
-                        # combine errors of lightcurve calibration and
-                        # transit/eclipse fit
-                        error_calibration_image.data[il, ir] = \
-                            np.sqrt((Perr_final[-2])**2 +
-                                    ((error_fitted_parameters.data[-2, il, ir] /
-                                      fitted_parameters.data[-2, il, ir]) *
-                                     calibration_image.data[il, ir])**2)
-                    # loop end pixels
-                idx_bad = \
-                    np.unravel_index(np.ma.argsort(AIC, endwith=False,
-                                                   axis=None)[::-1], AIC.shape)
-                nbad = int(np.ma.count(AIC, axis=None) * 0.00)
-                if (nbad > 0) and (iter_bad_reg < max_iter_bad_reg):
-                    bad_reg = list(zip(idx_bad[0][0:nbad], idx_bad[1][0:nbad]))
-                    # update regressor_list
-                    for ip, regressor_selection in enumerate(regressor_list):
-                        idx_good_reg = \
-                            [not (reg_indx in bad_reg)
-                             for reg_indx in zip(regressor_selection[1][0],
-                                                 regressor_selection[1][1])]
-                        regressor_list[ip][1] = \
-                            (regressor_selection[1][0][idx_good_reg],
-                             regressor_selection[1][1][idx_good_reg])
-                else:
-                    do_iter_bad_regressor = False
-                # loop end nods
-                iter_bad_reg += 1
-            # end while
         try:
             self.calibration_results
         except AttributeError:
             self.calibration_results = SimpleNamespace()
         finally:
-            self.calibration_results.parameters = fitted_parameters
-            self.calibration_results.error_parameters = error_fitted_parameters
-            self.calibration_results.fitted_parameters_normed = \
-                fitted_parameters_normed
+            self.calibration_results.regression_results = \
+                fit_parameters.regression_results
+            self.calibration_results.normed_fitted_spectra = \
+                fit_parameters.normed_fitted_spectrum
+            self.calibration_results.wavelength_normed_fitted_spectrum = \
+                fit_parameters.wavelength_normed_fitted_spectrum
+            self.calibration_results.mse = fit_parameters.fitted_mse
+            self.calibration_results.aic = fit_parameters.fitted_aic
+            self.calibration_results.dof = fit_parameters.degrees_of_freedom
+            self.calibration_results.model_time_series = \
+                fit_parameters.fitted_model
+            self.calibration_results.time_model = \
+                fit_parameters.fitted_time
+            self.calibration_results.baseline = fit_parameters.fitted_baseline
+            self.calibration_results.fitted_systematics_bootstrap = \
+                fit_parameters.fitted_systematics_bootstrap
+            self.calibration_results.residuals = \
+                fit_parameters.fit_residuals
             self.calibration_results.regularization = \
-                optimal_regularization_parameter
-            self.calibration_results.signal = data_driven_image
-            self.calibration_results.error_signal = error_data_driven_image
-            self.calibration_results.calibration_signal = calibration_image
-            self.calibration_results.error_calibration_signal = \
-                error_calibration_image
-            self.calibration_results.calibrated_time_series = \
-                calibrated_time_series
-            self.calibration_results.model_time_series = model_time_series
-            self.calibration_results.residual = residual_time_series
-            self.calibration_results.aic = AIC
+                np.array(regularization.optimal_alpha)
+
             print("Median regularization value: {}".
                   format(np.median(self.calibration_results.
-                                   regularization.data)))
+                                   regularization)))
             print("Median AIC value: {} ".
-                  format(np.median(self.calibration_results.aic.data)))
-
-    def extract_spectrum(self):
-        """
-        Extract the planetary spectrum from the calibrated light curve data
-
-        Attributes
-        ----------
-        exoplanet_spectrum : `SimpleNamespace`
-
-        Raises
-        ------
-        AttributeError
-
-        Examples
-        --------
-        To extract the exoplanet spectum from the calibrated signal,
-        execute the following command:
-
-        >>> tso.execute("extract_spectrum")
-
-        """
-        try:
-            add_calibration_signal = \
-                ast.literal_eval(self.cascade_parameters.
-                                 cpm_add_calibration_signal)
-        except AttributeError:
-            raise AttributeError("The switch for using a calibration \
-                                 signal is not defined. \
-                                 Check the initialiation of the TSO object. \
-                                 Aborting extraction of planetary spectrum")
-        if add_calibration_signal:
-            try:
-                cal_signal_depth = float(self.cascade_parameters.
-                                         cpm_calibration_signal_depth)
-            except AttributeError:
-                raise AttributeError("The the depth of the calibration \
-                                     signal is not defined. Check the \
-                                     initialiation of the TSO object. \
-                                     Aborting extraction of planetary \
-                                     spectrum")
-            try:
-                calibrated_cal_signal = self.calibration_results.\
-                    calibration_signal
-                calibrated_cal_signal_error = self.calibration_results.\
-                    error_calibration_signal
-            except AttributeError:
-                raise AttributeError("The the extracted calibration \
-                                     signal is not defined. Check the \
-                                     initialiation of the TSO object. \
-                                     Aborting extraction of planetary \
-                                     spectrum")
-        try:
-            calibrated_signal = self.calibration_results.signal
-            calibrated_error = self.calibration_results.error_signal
-            residual = self.calibration_results.residual
-            aic = self.calibration_results.aic
-            par_normed = self.calibration_results.fitted_parameters_normed
-        except AttributeError:
-            raise AttributeError("No calibrated data found. \
-                                 Aborting extraction of planetary spectrum")
-        try:
-            median_eclipse_depth = \
-                float(self.cascade_parameters.observations_median_signal)
-        except AttributeError:
-            raise AttributeError("No median signal depth defined. \
-                                 Aborting extraction of planetary spectrum")
-        try:
-            transittype = self.model.transittype
-        except AttributeError:
-            raise AttributeError("Type of observaton unknown. \
-                                 Aborting extraction of planetary spectrum")
-        try:
-            planet_radius = \
-                (u.Quantity(self.cascade_parameters.object_radius).to(u.m) /
-                 u.Quantity(self.cascade_parameters.
-                            object_radius_host_star).to(u.m))
-            planet_radius = planet_radius.decompose().value
-        except AttributeError:
-            raise AttributeError("Planet or Stellar radius not defined. \
-                                 Aborting extraction of planetary spectrum")
-        try:
-            stellar_temperature = \
-                (u.Quantity(self.cascade_parameters.
-                            object_temperature_host_star).to(u.K))
-            stellar_radius = \
-                (u.Quantity(self.cascade_parameters.
-                            object_radius_host_star).to(u.R_sun))
-        except AttributeError:
-            raise AttributeError("Stellar radius or temperature not defined. \
-                                 Aborting extraction of planetary spectrum")
-        try:
-            ramp_fitted_flag = self.observation.dataset.isRampFitted
-        except AttributeError:
-            raise AttributeError("type of data not properly set, \
-                                 or not consistent with spectral images or \
-                                 cubes. Aborting extraction of \
-                                 planetary spectrum")
-        try:
-            # for spectral images
-            extraction_weights = \
-                np.ma.mean(self.cpm.extraction_profile, axis=-1)
-            extraction_weigths_mask = \
-                np.ma.mean(self.cpm.extraction_profile_mask, axis=-1)
-            extraction_weights = extraction_weights / \
-                np.ma.sum(extraction_weights, axis=1, keepdims=True)
-        except AttributeError:
-            # for 1D spectra
-            extraction_weights = np.ones_like(calibrated_error)
-            extraction_weights = extraction_weights / \
-                np.ma.sum(extraction_weights, axis=1, keepdims=True)
-            extraction_weigths_mask = np.ones_like(calibrated_error)
-
-        calibrated_weighted_image = calibrated_signal/calibrated_error**2
-
-        extraction_mask = calibrated_signal.mask
-
-        ndim = self.observation.dataset.wavelength.data.ndim
-        wavelength_unit = self.observation.dataset.wavelength.data.unit
-        if not ramp_fitted_flag:
-            selection1 = [slice(None)]*(ndim-2)+[0, 0]
-        else:
-            selection1 = [slice(None)]*(ndim-1)+[0]
-        wavelength_image = \
-            np.ma.array(self.observation.dataset.wavelength.
-                        data.value[tuple(selection1)],
-                        mask=extraction_mask)
-        if wavelength_image.ndim == 1:
-            wavelength_image = wavelength_image[:, None]
-
-        npix, mpix = wavelength_image.shape
-
-        # mask_temp = np.logical_or(self.cpm.extraction_mask[0],
-        #                               calibrated_signal.mask)
-        # calibrated_signal.mask = mask_temp
-        # calibrated_error.mask = mask_temp
-        weighted_signal = np.ma.sum(extraction_weigths_mask *
-                                    calibrated_signal * extraction_weights /
-                                    calibrated_error**2, axis=1) / \
-            np.ma.sum(extraction_weigths_mask * extraction_weights *
-                      np.ma.ones((npix, mpix)) /
-                      calibrated_error**2, axis=1)
-
-        weighted_signal_error = np.ma.sum(extraction_weigths_mask *
-                                          extraction_weights**2, axis=1) / \
-            np.ma.sum(extraction_weigths_mask * extraction_weights *
-                      np.ma.ones((npix, mpix)) /
-                      calibrated_error**2, axis=1)
-        weighted_signal_error = np.ma.sqrt(weighted_signal_error)
-
-        weighted_signal_wavelength = \
-            np.ma.average(wavelength_image, axis=1,
-                          weights=(extraction_weigths_mask *
-                                   extraction_weights *
-                                   np.ma.ones((npix, mpix)) /
-                                   calibrated_error)**2)
-        nintegrations = residual.shape[-1]
-#        residual_unit = residual.data.unit
-#        residual_cube = np.ma.array(residual.data.value,
-#                                    mask = residual.mask)
-        weighted_residual = \
-            np.ma.average(residual, axis=1,
-                          weights=(np.tile((extraction_weigths_mask *
-                                            extraction_weights).T,
-                                           (nintegrations, 1, 1)).T *
-                                   np.ma.ones((npix, mpix, nintegrations)) /
-                                   np.tile(calibrated_error.copy().T,
-                                           (nintegrations, 1, 1)).T)**2)
-
-        weighted_normed_parameters = \
-            np.ma.average(par_normed, axis=2,
-                          weights=(np.tile(extraction_weigths_mask *
-                                           extraction_weights,
-                                           (par_normed.shape[0], 1, 1)) *
-                                   np.ma.ones(par_normed.shape) /
-                                   np.tile(calibrated_error.copy(),
-                                           (par_normed.shape[0], 1, 1)))**2)
-        weighted_aic = \
-            np.ma.average(aic, axis=1, weights=(extraction_weigths_mask *
-                                                extraction_weights *
-                                                np.ma.ones((npix, mpix)) /
-                                                calibrated_error)**2)
-
-        if add_calibration_signal:
-            # mask_temp = np.logical_or(self.cpm.extraction_mask[0],
-            #                           calibrated_cal_signal.mask)
-            # calibrated_cal_signal.mask = mask_temp
-            # calibrated_cal_signal_error.mask = mask_temp
-            weighted_cal_signal = np.ma.sum(calibrated_cal_signal *
-                                            extraction_weigths_mask *
-                                            extraction_weights /
-                                            calibrated_cal_signal_error**2,
-                                            axis=1) / \
-                np.ma.sum(extraction_weigths_mask * extraction_weights *
-                          np.ma.ones((npix, mpix)) /
-                          calibrated_cal_signal_error**2, axis=1)
-
-            weighted_cal_signal_error = np.ma.sum(extraction_weigths_mask *
-                                                  extraction_weights**2,
-                                                  axis=1) / \
-                np.ma.sum(extraction_weigths_mask * extraction_weights *
-                          np.ma.ones((npix, mpix)) /
-                          calibrated_cal_signal_error**2, axis=1)
-            weighted_cal_signal_error = np.ma.sqrt(weighted_cal_signal_error)
-
-#            weighted_cal_signal = \
-#                np.ma.average(calibrated_cal_signal, axis=1,
-#                              weights=(np.ma.ones((npix, mpix)) /
-#                                       calibrated_cal_signal_error)**2)
-
-#            weighted_cal_signal_error = np.ma.ones((npix)) / \
-#                np.ma.sum((np.ma.ones((npix, mpix)) /
-#                           calibrated_cal_signal_error)**2, axis=1)
-#            weighted_cal_signal_error = np.ma.sqrt(weighted_cal_signal_error)
-
-        if transittype == 'secondary':
-            # Eclipse
-            spectrum = (weighted_signal * (1.0 + median_eclipse_depth) +
-                        median_eclipse_depth)
-            error_spectrum = weighted_signal_error * \
-                (1.0 + median_eclipse_depth)
-
-            # Calibration
-            if add_calibration_signal:
-                scaled_weighted_cal_signal = \
-                    (weighted_cal_signal*(1.0+cal_signal_depth) +
-                     cal_signal_depth)
-                scaled_weighted_cal_signal_error = \
-                    (weighted_cal_signal_error *
-                     (1.0+cal_signal_depth))
-                calibration_correction = \
-                    (median_eclipse_depth - median_eclipse_depth /
-                     (scaled_weighted_cal_signal/cal_signal_depth))
-                calibration_correction_error = \
-                    (scaled_weighted_cal_signal_error /
-                     scaled_weighted_cal_signal)*(median_eclipse_depth /
-                                                  (scaled_weighted_cal_signal /
-                                                   cal_signal_depth))
-                spectrum = spectrum - calibration_correction
-                error_spectrum = np.sqrt(error_spectrum**2 +
-                                         calibration_correction_error**2)
-
-        else:
-            # transit
-            spectrum = (weighted_signal*(1.0 - planet_radius**2) +
-                        planet_radius**2)
-            error_spectrum = weighted_signal_error*(1.0 - planet_radius**2)
-
-            # Calibration
-            if add_calibration_signal:
-                scaled_weighted_cal_signal = \
-                    (weighted_cal_signal*(1.0-cal_signal_depth) +
-                     cal_signal_depth)
-                scaled_weighted_cal_signal_error = \
-                    (weighted_cal_signal_error *
-                     (1.0-cal_signal_depth))
-                calibration_correction = \
-                    (planet_radius**2 - planet_radius**2 /
-                     (scaled_weighted_cal_signal/cal_signal_depth))
-                calibration_correction_error = \
-                    (scaled_weighted_cal_signal_error /
-                     scaled_weighted_cal_signal)*(planet_radius**2 /
-                                                  (scaled_weighted_cal_signal /
-                                                   cal_signal_depth))
-                spectrum = spectrum - calibration_correction
-                error_spectrum = np.sqrt(error_spectrum**2 +
-                                         calibration_correction_error**2)
-
-        exoplanet_spectrum = \
-            SpectralData(wavelength=weighted_signal_wavelength,
-                         wavelength_unit=wavelength_unit,
-                         data=spectrum,
-                         uncertainty=error_spectrum,
-                         data_unit=u.dimensionless_unscaled)
-        exoplanet_spectrum.data_unit = u.percent
-        if add_calibration_signal:
-            calibration_correction_spectrum = \
-                SpectralData(wavelength=weighted_signal_wavelength,
-                             wavelength_unit=wavelength_unit,
-                             data=calibration_correction,
-                             uncertainty=calibration_correction_error,
-                             data_unit=u.dimensionless_unscaled)
-            calibration_correction_spectrum.data_unit = u.percent
-        if transittype == 'secondary':
-            brightness_temperature, error_brightness_temperature = \
-             convert_spectrum_to_brighness_temperature(
-                 exoplanet_spectrum.wavelength,
-                 exoplanet_spectrum.data,
-                 stellar_temperature,
-                 stellar_radius,
-                 planet_radius*stellar_radius,
-                 error=exoplanet_spectrum.uncertainty)
-            exoplanet_spectrum_in_brightnes_temperature = \
-                SpectralData(wavelength=exoplanet_spectrum.wavelength,
-                             wavelength_unit=wavelength_unit,
-                             data=brightness_temperature,
-                             uncertainty=error_brightness_temperature)
-            exoplanet_spectrum_in_brightnes_temperature.wavelength_unit = \
-                u.cm**-1
-            exoplanet_spectrum_in_brightnes_temperature.mask = \
-                ~np.isfinite(exoplanet_spectrum_in_brightnes_temperature.
-                             data.data)
+                  format(np.median(self.calibration_results.aic)))
         try:
             self.exoplanet_spectrum
         except AttributeError:
             self.exoplanet_spectrum = SimpleNamespace()
-        self.exoplanet_spectrum.weighted_image = calibrated_weighted_image
-        self.exoplanet_spectrum.weighted_residual = weighted_residual
-        self.exoplanet_spectrum.weighted_aic = weighted_aic
-        self.exoplanet_spectrum.weighted_normed_parameters = \
-            weighted_normed_parameters
-        self.exoplanet_spectrum.weighted_signal = weighted_signal
-        self.exoplanet_spectrum.spectrum = exoplanet_spectrum
-        if transittype == 'secondary':
+        finally:
+            self.exoplanet_spectrum.spectrum =\
+                fit_parameters.exoplanet_spectrum
+            self.exoplanet_spectrum.spectrum_bootstrap =\
+                fit_parameters.exoplanet_spectrum_bootstrap
+
+        if self.model.transittype == 'secondary':
+            RadiusPlanet = u.Quantity(self.cascade_parameters.object_radius)
+            StellarRadius = \
+                u.Quantity(self.cascade_parameters.object_radius_host_star)
+            StellarTemperature = \
+                u.Quantity(cascade_configuration.object_temperature_host_star)
+            brighness_temperature, error_brighness_temperature = \
+                convert_spectrum_to_brighness_temperature(
+                    self.exoplanet_spectrum.spectrum.wavelength,
+                    self.exoplanet_spectrum.spectrum.data,
+                    StellarTemperature=StellarTemperature,
+                    StellarRadius=StellarRadius,
+                    RadiusPlanet=RadiusPlanet,
+                    error=self.exoplanet_spectrum.spectrum.uncertainty)
+            exoplanet_spectrum_in_brightnes_temperature = \
+                SpectralData(
+                    wavelength=self.exoplanet_spectrum.spectrum.wavelength,
+                    data=brighness_temperature,
+                    uncertainty=error_brighness_temperature)
             self.exoplanet_spectrum.brightness_temperature = \
                 exoplanet_spectrum_in_brightnes_temperature
-        if add_calibration_signal:
-            self.exoplanet_spectrum.calibration_correction = \
-                calibration_correction_spectrum
-
-    def correct_extracted_spectrum(self):
-        """
-        Corrected extracted planet spectrum.
-
-        Make correction for non-uniform subtraction of transit signal due to
-        differences in the relative weighting of the regressors
-
-        Raises
-        ------
-        AttributeError
-
-        Examples
-        --------
-        To correct the extracted planetary signal for non-uniform
-        subtraction of an averige transit depth, execute the following command:
-
-        >>> tso.execute("correct_extracted_spectrum")
-
-        """
-        try:
-            median_eclipse_depth = \
-                float(self.cascade_parameters.observations_median_signal)
-        except AttributeError:
-            raise AttributeError("No median signal depth defined. \
-                                 Aborting correcting planetary spectrum")
-        try:
-            transittype = self.model.transittype
-        except AttributeError:
-            raise AttributeError("Type of observaton unknown. \
-                                 Aborting correcting planetary spectrum")
-        try:
-            planet_radius = \
-                (u.Quantity(self.cascade_parameters.object_radius).to(u.m) /
-                 u.Quantity(self.cascade_parameters.
-                            object_radius_host_star).to(u.m))
-            planet_radius = planet_radius.decompose().value
-        except AttributeError:
-            raise AttributeError("Planet or Stellar radius not defined. \
-                                 Aborting correcting planetary spectrum")
-        try:
-            results = self.exoplanet_spectrum
-        except AttributeError:
-            raise AttributeError("No planetery spectectrum defined \
-                                 Aborting correcting planetary spectrum")
-        try:
-            rcond_limit = float(self.cascade_parameters.
-                                cpm_relative_sig_value_limit)
-        except AttributeError:
-            rcond_limit = 1.e-2
-
-        ndim_reg, ndim_lam = \
-            self.exoplanet_spectrum.weighted_normed_parameters.shape
-        ndim_diff = ndim_reg - ndim_lam
-        W = (self.exoplanet_spectrum.
-             weighted_normed_parameters[:-ndim_diff, :] /
-             np.ma.sum(self.exoplanet_spectrum.
-                       weighted_normed_parameters[:-1, :], axis=0)).T
-        K = W - np.identity(W.shape[0])
-        K.set_fill_value(0.0)
-        weighted_signal = self.exoplanet_spectrum.weighted_signal.copy()
-        weighted_signal.set_fill_value(0.0)
-
-        # use approximate inverse as preconditioner
-        M = pinv2(K.filled(), rcond=0.001)
-
-        print("Correcting planet spectrum for non-uniform average "
-              "transit depth subtraction")
-        print("Condition numner K matrix: {}".format(cond(K.filled())))
-        print("Condition number pre-conditioned "
-              "K matrix: {}".format(cond(np.dot(M, K.filled()))))
-
-        # corrected_spectrum = lstsq(np.dot(M, K.filled()),
-        #                            np.dot(M, -weighted_signal.filled()),
-        #                            cond=rcond_limit)[0]
-        corrected_spectrum = lstsq(K.filled(),
-                                     -weighted_signal.filled(),
-                                     cond=rcond_limit)[0]
-
-        corrected_spectrum = corrected_spectrum - \
-            np.ma.median(corrected_spectrum)
-
-        if transittype == 'secondary':
-            # eclipse
-            corrected_spectrum = (corrected_spectrum *
-                                  (1.0 + median_eclipse_depth) +
-                                  median_eclipse_depth)
-        else:
-            # transit
-            corrected_spectrum = (corrected_spectrum *
-                                  (1.0 - planet_radius**2) +
-                                  planet_radius**2)
-
-        corrected_exoplanet_spectrum = \
-            SpectralData(wavelength=results.spectrum.wavelength,
-                         wavelength_unit=results.spectrum.wavelength_unit,
-                         data=corrected_spectrum,
-                         uncertainty=results.spectrum.uncertainty,
-                         data_unit=u.dimensionless_unscaled,
-                         mask=results.spectrum.mask)
-        corrected_exoplanet_spectrum.data_unit = u.percent
-        self.exoplanet_spectrum.corrected_spectrum = \
-            corrected_exoplanet_spectrum
+        ray.shutdown()
+        vrbs = Verbose()
+        vrbs.execute("calibrate_timeseries",
+                     exoplanet_spectrum=self.exoplanet_spectrum,
+                     calibration_results=self.calibration_results,
+                     model=self.model,
+                     dataset=dataset)
 
     def save_results(self):
         """
@@ -2869,350 +1741,61 @@ class TSOSuite:
         else:
             save_name_base = observations_target_name
 
-        t = Table()
-        mask = ~results.spectrum.data.mask
-        col = MaskedColumn(data=results.spectrum.wavelength[mask],
-                           unit=results.spectrum.wavelength_unit,
-                           name='Wavelength')
-        t.add_column(col)
-        col = MaskedColumn(data=results.spectrum.data[mask],
-                           unit=results.spectrum.data_unit,
-                           name='Flux')
-        t.add_column(col)
-        col = MaskedColumn(data=results.spectrum.uncertainty[mask],
-                           unit=results.spectrum.data_unit,
-                           name='Error')
-        t.add_column(col)
-        t.write(os.path.join(save_path,
-                             save_name_base+'_exoplanet_spectra.fits'),
-                format='fits', overwrite=True)
+        # t = Table()
+        # mask = ~results.spectrum.data.mask
+        # col = MaskedColumn(data=results.spectrum.wavelength[mask],
+        #                    unit=results.spectrum.wavelength_unit,
+        #                    name='Wavelength')
+        # t.add_column(col)
+        # col = MaskedColumn(data=results.spectrum.data[mask],
+        #                    unit=results.spectrum.data_unit,
+        #                    name='Flux')
+        # t.add_column(col)
+        # col = MaskedColumn(data=results.spectrum.uncertainty[mask],
+        #                    unit=results.spectrum.data_unit,
+        #                    name='Error')
+        # t.add_column(col)
+        # t.write(os.path.join(save_path,
+        #                      save_name_base+'_exoplanet_spectra.fits'),
+        #         format='fits', overwrite=True)
 
-        try:
-            t = Table()
-            mask = ~results.corrected_spectrum.data.mask
-            col = MaskedColumn(data=results.corrected_spectrum.wavelength[mask],
-                               unit=results.corrected_spectrum.wavelength_unit,
-                               name='Wavelength')
-            t.add_column(col)
-            col = MaskedColumn(data=results.corrected_spectrum.data[mask],
-                               unit=results.corrected_spectrum.data_unit,
-                               name='Flux')
-            t.add_column(col)
-            col = MaskedColumn(data=results.corrected_spectrum.uncertainty[mask],
-                               unit=results.corrected_spectrum.data_unit,
-                               name='Error')
-            t.add_column(col)
-            t.write(os.path.join(save_path, save_name_base +
-                                 '_corrected_exoplanet_spectra.fits'),
-                    format='fits', overwrite=True)
-        except AttributeError:
-            pass
+        # try:
+        #     t = Table()
+        #     mask = ~results.corrected_spectrum.data.mask
+        #     col = MaskedColumn(data=results.corrected_spectrum.wavelength[mask],
+        #                        unit=results.corrected_spectrum.wavelength_unit,
+        #                        name='Wavelength')
+        #     t.add_column(col)
+        #     col = MaskedColumn(data=results.corrected_spectrum.data[mask],
+        #                        unit=results.corrected_spectrum.data_unit,
+        #                        name='Flux')
+        #     t.add_column(col)
+        #     col = MaskedColumn(data=results.corrected_spectrum.uncertainty[mask],
+        #                        unit=results.corrected_spectrum.data_unit,
+        #                        name='Error')
+        #     t.add_column(col)
+        #     t.write(os.path.join(save_path, save_name_base +
+        #                          '_corrected_exoplanet_spectra.fits'),
+        #             format='fits', overwrite=True)
+        # except AttributeError:
+        #     pass
 
-        if transittype == 'secondary':
-            t = Table()
-            mask = ~results.brightness_temperature.data.mask
-            col = MaskedColumn(data=results.brightness_temperature.wavelength[mask],
-                               unit=results.brightness_temperature.
-                               wavelength_unit,
-                               name='Wavelength')
-            t.add_column(col)
-            col = MaskedColumn(data=results.brightness_temperature.data[mask],
-                               unit=results.brightness_temperature.data_unit,
-                               name='Flux')
-            t.add_column(col)
-            col = MaskedColumn(data=results.brightness_temperature.uncertainty[mask],
-                               unit=results.brightness_temperature.data_unit,
-                               name='Error')
-            t.add_column(col)
-            t.write(os.path.join(save_path, save_name_base +
-                                 '_exoplanet_brightness_temperature.fits'),
-                    format='fits', overwrite=True)
-
-    def plot_results(self):
-        """
-        Plot the planetary spectrum and fit residual.
-
-        Raises
-        ------
-        AttributeError
-            DESCRIPTION.
-
-        Returns
-        -------
-        None.
-
-        Examples
-        --------
-        To plot the planetary signal and other diadnostic plots, execute
-        the following command:
-
-        >>> tso.execute("plot_results")
-
-        """
-        np.warnings.filterwarnings('ignore')
-        try:
-            results = copy.deepcopy(self.exoplanet_spectrum)
-        except AttributeError:
-            raise AttributeError("No results defined \
-                                 Aborting plotting results")
-        try:
-            save_path = self.cascade_parameters.cascade_save_path
-            if not os.path.isabs(save_path):
-                save_path = os.path.join(cascade_default_save_path, save_path)
-            os.makedirs(save_path, exist_ok=True)
-        except AttributeError:
-            raise AttributeError("No save path defined\
-                                 Aborting plotting results")
-        try:
-            observations_id = self.cascade_parameters.observations_id
-        except AttributeError:
-            raise AttributeError("No uniq id defined for observation \
-                                 Aborting plotting results")
-        try:
-            observations_target_name = \
-                self.cascade_parameters.observations_target_name
-        except AttributeError:
-            print("No target name defined for observation. "
-                  "Aborting saving results")
-            raise
-        if observations_id not in observations_target_name:
-            save_name_base = observations_target_name+'_'+observations_id
-        else:
-            save_name_base = observations_target_name
-        try:
-            add_calibration_signal = \
-                ast.literal_eval(self.cascade_parameters.
-                                 cpm_add_calibration_signal)
-        except AttributeError:
-            raise AttributeError("The switch for using a calibration \
-                                 signal is not defined. \
-                                 Check the initialiation of the TSO object. \
-                                 Aborting plotting results")
-        try:
-            median_eclipse_depth = \
-                (float(self.cascade_parameters.observations_median_signal) *
-                 u.dimensionless_unscaled).to(u.percent)
-        except AttributeError:
-            raise AttributeError("No median signal depth defined. \
-                                 Aborting plotting results")
-        try:
-            transittype = self.model.transittype
-        except AttributeError:
-            raise AttributeError("Type of observaton unknown. \
-                                 Aborting plotting results")
-        try:
-            dataset = self.observation.dataset
-        except AttributeError:
-            raise AttributeError("No dataset found. "
-                                 "Aborting plotting results")
-
-        sns.set_context("talk", font_scale=1.5, rc={"lines.linewidth": 2.5})
-        sns.set_style("white", {"xtick.bottom": True, "ytick.left": True})
-
-        try:
-            residual_time_series = \
-                self.exoplanet_spectrum.weighted_residual.copy()
-        except AttributeError:
-            raise AttributeError("No weighted residual data found. "
-                                 "Aborting plotting results")
-        residual_unit = residual_time_series.data.unit
-        image_res = np.ma.array(residual_time_series.data,
-                                mask=residual_time_series.mask)
-        image_res.set_fill_value(np.nan)
-        image_res = image_res.filled().value
-        wave0 = dataset.wavelength
-        wavelength_unit = dataset.wavelength_unit
-        wave0_min = np.ma.min(wave0).data.value
-        wave0_max = np.ma.max(wave0).data.value
-        fig, ax = plt.subplots(figsize=(7, 6), dpi=72)
-        for item in ([ax.title, ax.xaxis.label, ax.yaxis.label] +
-                     ax.get_xticklabels() + ax.get_yticklabels()):
-            item.set_fontsize(20)
-        p = ax.imshow(image_res,
-                      origin='lower',
-                      cmap='hot',
-                      interpolation='nearest',
-                      aspect='auto',
-                      extent=[0, image_res.shape[1], wave0_min, wave0_max])
-        plt.colorbar(p, ax=ax).set_label("Residual ({})".format(residual_unit))
-        ax.set_xlabel("Integration Number")
-        ax.set_ylabel('Wavelength [{}]'.format(wavelength_unit))
-        ax.set_title('Residual Image')
-        plt.show()
-        fig.savefig(os.path.join(save_path,
-                                 save_name_base+'_residual_signal.png'),
-                    bbox_inches='tight')
-
-        if results.weighted_image.shape[1] <= 1:
-            fig, ax = plt.subplots(figsize=(7, 5), dpi=72)
-            ax.plot(results.spectrum.wavelength,
-                    np.ma.abs(results.weighted_image), lw=3)
-            ax.set_ylabel('| Signal * weight |')
-            ax.set_xlabel('Wavelength [{}]'.format(results.
-                                                   spectrum.wavelength_unit))
-            plt.show()
-        else:
-            fig, ax = plt.subplots(figsize=(6, 6), dpi=72)
-            cmap = plt.cm.gist_heat
-            cmap.set_bad('black', 1.)
-            p = ax.imshow(np.ma.abs(results.weighted_image),
-                          origin='lower', aspect='auto',
-                          cmap=cmap, interpolation='none', vmin=0, vmax=1000)
-            plt.colorbar(p, ax=ax).set_label("'| Signal * weight |'")
-            ax.set_xlabel('Pixel Number Spatial Direction')
-            ax.set_ylabel('Pixel Number Wavelength Direction')
-            plt.show()
-        fig.savefig(os.path.join(save_path,
-                                 save_name_base+'_weighted_signal.png'),
-                    bbox_inches='tight')
-
-        err_temp = np.ma.array(results.spectrum.uncertainty.data.value,
-                               mask=results.spectrum.uncertainty.mask)
-        wav_temp = np.ma.array(results.spectrum.wavelength.data.value,
-                               mask=results.spectrum.wavelength.mask)
-        flux_temp = np.ma.array(results.spectrum.data.data.value,
-                                mask=results.spectrum.data.mask)
-        try:
-            wav_temp_corrected = \
-                np.ma.array(results.corrected_spectrum.wavelength.data.value,
-                            mask=results.corrected_spectrum.wavelength.mask)
-            flux_temp_corrected = \
-                np.ma.array(results.corrected_spectrum.data.data.value,
-                            mask=results.corrected_spectrum.data.mask)
-            err_temp_correced = \
-                np.ma.array(results.corrected_spectrum.uncertainty.data.value,
-                            mask=results.corrected_spectrum.uncertainty.mask)
-        except AttributeError:
-            pass
-        fig, ax = plt.subplots(figsize=(7, 4), dpi=72)
-        ax.plot(results.spectrum.wavelength, results.spectrum.data,
-                lw=3, alpha=0.7, color='blue', zorder=7)
-        ax.errorbar(wav_temp, flux_temp, yerr=err_temp, zorder=7,
-                    fmt=".k", color='blue', lw=3, alpha=0.7, ecolor='blue',
-                    markerfacecolor='blue', markeredgecolor='blue',
-                    fillstyle='full', markersize=10, label='Not-Corrected')
-        try:
-            ax.plot(wav_temp_corrected, flux_temp_corrected,
-                    lw=3, alpha=0.7, color='green', zorder=8)
-            ax.errorbar(wav_temp_corrected, flux_temp_corrected,
-                        yerr=err_temp_correced, zorder=8,
-                        fmt=".k", color='green', lw=3, alpha=0.9,
-                        ecolor='green',
-                        markerfacecolor='green', markeredgecolor='green',
-                        fillstyle='full', markersize=10, label='Corrected')
-        except NameError:
-            pass
-        axes = plt.gca()
-        axes.set_xlim([0.95*np.ma.min(wav_temp), 1.05*np.ma.max(wav_temp)])
-        if transittype == 'secondary':
-            axes.set_ylim([0.00, 2.0*np.ma.median(flux_temp)])
-            ax.set_ylabel('Fplanet/Fstar [{}]'.format(results.
-                          spectrum.data_unit))
-        else:
-            axes.set_ylim([np.ma.median(flux_temp_corrected)/1.2,
-                           1.2*np.ma.median(flux_temp_corrected)])
-            ax.set_ylabel('Transit Depth [{}]'.format(results.
-                                                      spectrum.data_unit))
-        ax.set_xlabel('Wavelength [{}]'.format(results.
-                                               spectrum.wavelength_unit))
-        ax.legend(loc='lower left', fancybox=True, framealpha=1.0,
-                  ncol=2, mode="expand",
-                  bbox_to_anchor=(0, 0.95, 1, 0.2), shadow=True,
-                  handleheight=1.5, labelspacing=0.05,
-                  fontsize=13).set_zorder(11)
-        plt.show()
-        fig.savefig(os.path.join(save_path,
-                                 save_name_base+'_exoplanet_spectra.png'),
-                    bbox_inches='tight')
-
-        if transittype == 'secondary':
-            err_bt_temp = \
-             np.ma.array(results.brightness_temperature.uncertainty.data.value,
-                         mask=results.brightness_temperature.uncertainty.mask)
-            wav_bt_temp = \
-                np.ma.array(results.brightness_temperature.
-                            wavelength.data.value,
-                            mask=results.brightness_temperature.
-                            wavelength.mask)
-            flux_bt_temp = \
-                np.ma.array(results.brightness_temperature.data.data.value,
-                            mask=results.brightness_temperature.data.mask)
-
-            fig, ax = plt.subplots(figsize=(7, 4), dpi=72)
-            ax.plot(results.brightness_temperature.wavelength,
-                    results.brightness_temperature.data,
-                    lw=3, alpha=0.7, color='blue')
-            ax.errorbar(wav_bt_temp, flux_bt_temp, yerr=err_bt_temp,
-                        fmt=".k", color='blue', lw=3, alpha=0.7,
-                        ecolor='blue',
-                        markerfacecolor='blue', markeredgecolor='blue',
-                        fillstyle='full', markersize=10)
-            axes = plt.gca()
-            axes.set_xlim([0.95*np.ma.min(wav_bt_temp),
-                           1.05*np.ma.max(wav_bt_temp)])
-            axes.invert_xaxis()
-            axes.set_ylim([np.ma.median(flux_bt_temp)/1.5,
-                           1.5*np.ma.median(flux_bt_temp)])
-            ax.xaxis.set_major_locator(MaxNLocator(6))
-            ax.get_xaxis().set_major_formatter(ScalarFormatter())
-            ax.set_ylabel('Brightness Temperature [{}]'.format(results.
-                          brightness_temperature.data_unit))
-            ax.set_xlabel('Wavelength [{}]'.format(results.
-                          brightness_temperature.wavelength_unit))
-            plt.show()
-            fig.savefig(os.path.join(save_path,
-                                     save_name_base +
-                        '_exoplanet_brightness_temperature.png'),
-                        bbox_inches='tight')
-
-        if add_calibration_signal:
-            # Bug FIX for errorbar not having quantity support
-            wav_corr_temp = np.ma.array(results.calibration_correction.
-                                        wavelength.data.value, mask=results.
-                                        calibration_correction.mask)
-            cal_corr_temp = \
-                np.ma.array(results.calibration_correction.data.data.value,
-                            mask=results.calibration_correction.mask)
-            error_corr_temp = \
-                np.ma.array(results.calibration_correction.uncertainty.
-                            data.value,
-                            mask=results.calibration_correction.mask)
-
-            fig, ax = plt.subplots(figsize=(7, 4), dpi=72)
-            ax.plot(results.calibration_correction.wavelength,
-                    results.calibration_correction.data)
-            ax.errorbar(wav_corr_temp, cal_corr_temp,
-                        yerr=error_corr_temp)
-            axes = plt.gca()
-            axes.set_xlim([0.95*np.ma.min(wav_corr_temp),
-                           1.05*np.max(wav_corr_temp)])
-            axes.set_ylim([-1.0*np.ma.median(flux_temp),
-                           np.ma.median(flux_temp)])
-            ax.set_ylabel('Calibration correction [{}]'.format(results.
-                          calibration_correction.data_unit))
-            ax.set_xlabel('Wavelength [{}]'.format(results.
-                          calibration_correction.wavelength_unit))
-            plt.ioff()
-            plt.show()
-            fig.savefig(save_path+observations_id +
-                        '_calibration_correction.png', bbox_inches='tight')
-
-            snr_cal = (median_eclipse_depth.value - cal_corr_temp) / \
-                error_corr_temp
-            snr_signal = flux_temp / err_temp
-
-            with quantity_support():
-                fig, ax = plt.subplots(figsize=(7, 4), dpi=72)
-                ax.plot(results.spectrum.wavelength, snr_cal)
-                ax.plot(results.spectrum.wavelength, snr_signal)
-                axes = plt.gca()
-                axes.set_xlim([0.95*np.ma.min(wav_temp),
-                               1.05*np.ma.max(wav_temp)])
-                axes.set_ylim([0.0, 2.0*np.ma.median(snr_cal)])
-                ax.set_ylabel('SNR')
-                ax.set_xlabel('Wavelength [{}]'.format(results.
-                              calibration_correction.wavelength_unit))
-                plt.show()
-                fig.savefig(os.path.join(save_path, save_name_base +
-                            '_calibration_SNR.png'), bbox_inches='tight')
-        np.warnings.filterwarnings('default')
+        # if transittype == 'secondary':
+        #     t = Table()
+        #     mask = ~results.brightness_temperature.data.mask
+        #     col = MaskedColumn(data=results.brightness_temperature.wavelength[mask],
+        #                        unit=results.brightness_temperature.
+        #                        wavelength_unit,
+        #                        name='Wavelength')
+        #     t.add_column(col)
+        #     col = MaskedColumn(data=results.brightness_temperature.data[mask],
+        #                        unit=results.brightness_temperature.data_unit,
+        #                        name='Flux')
+        #     t.add_column(col)
+        #     col = MaskedColumn(data=results.brightness_temperature.uncertainty[mask],
+        #                        unit=results.brightness_temperature.data_unit,
+        #                        name='Error')
+        #     t.add_column(col)
+        #     t.write(os.path.join(save_path, save_name_base +
+        #                          '_exoplanet_brightness_temperature.fits'),
+        #             format='fits', overwrite=True)

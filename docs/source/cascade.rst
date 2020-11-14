@@ -13,9 +13,11 @@
 
    cascade.TSO
    cascade.cpm_model
+   cascade.build_archive
    cascade.data_model
    cascade.exoplanet_tools
    cascade.initialize
    cascade.instruments
    cascade.spectral_extraction
    cascade.utilities
+   cascade.verbose
