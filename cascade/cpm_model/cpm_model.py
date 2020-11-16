@@ -20,69 +20,190 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright (C) 2018  Jeroen Bouwman
+# Copyright (C) 2018, 2020  Jeroen Bouwman
 """
 The cpm_model module defines the solver and other functionality for the
 regression model used in causal pixel model.
 """
-from __future__ import print_function
-from __future__ import division
-from __future__ import unicode_literals
-from __future__ import absolute_import
+# from __future__ import print_function
+# from __future__ import division
+# from __future__ import unicode_literals
+# from __future__ import absolute_import
 import numpy as np
+from types import SimpleNamespace
 from scipy.linalg import svd
-from scipy import signal
-from sklearn.utils.extmath import svd_flip
+# from scipy import signal
+from scipy.linalg import solve_triangular
+from scipy.linalg import cholesky
+import astropy.units as u
+# from sklearn.utils.extmath import svd_flip
+from sklearn.decomposition import PCA
+from sklearn.preprocessing import StandardScaler
+from numba import jit
+import ray
+# import psutil
+import itertools
+from collections.abc import Iterable
+import ast
+# from tqdm import tqdm
+import time as time_module
+import copy
 
-__all__ = ['solve_linear_equation', 'return_PCR']
+from ..exoplanet_tools import lightcurve
+from ..data_model import SpectralData
+from cascade import __version__
+
+__all__ = ['ols',
+           'check_causality', 'select_regressors', 'return_design_matrix',
+           'log_likelihood', 'modified_AIC', 'create_regularization_matrix',
+           'return_lambda_grid', 'regressionDataServer',
+           'rayRegressionDataServer', 'regressionControler',
+           'rayRegressionControler', 'ridge', 'rayRidge',
+           'make_bootstrap_samples',
+           'regressionParameterServer', 'rayRegressionParameterServer',
+           'regressionWorker', 'rayRegressionWorker']
 
 
-def solve_linear_equation(design_matrix, data, weights=None, cv_method='gcv',
-                          reg_par={"lam0": 1.e-6, "lam1": 1.e2, "nlam": 60},
-                          feature_scaling='norm', degrees_of_freedom=None):
+def ols(design_matrix, data, covariance=None):
     """
-    Solve linear system using SVD with TIKHONOV regularization
+    Ordinary least squares.
 
     Parameters
     ----------
-    design_matrx : `ndarray` with 'ndim=2'
-        Design matrix
-    data : `ndarray`
-        Data
-    weights : `ndarray`
-        Weights used in the linear least square minimization
-    cv_method : (`'gvc'|'b95'|'B100'`)
-        Method used to find optimal regularization parameter which can be:
-
-           - 'gvc' :  Generizalize Cross Validation [RECOMMENDED!!!],
-           - 'b95' :  normalized cumulatative periodogram using 95% limit,
-           - 'B100':  normalized cumulatative periodogram
-    reg_par : `dict`
-        Parameter describing search grid to find optimal regularization
-        parameter lambda:
-
-          - 'lam0' : minimum lambda
-          - 'lam1' : maximum lambda,
-          - 'nlam' : number of grid points
-    feature_scaling : (`'norm'|None`)
-        if the value is set to 'norm' all features are normalized using L2
-        norm else no featue scaling is applied.
-    degrees_of_freedom : `int`
-        Effective  degrees_of_freedom, if set to None the value is calculated
-        from the dimensions of the imput arrays.
+    design_matrix : TYPE
+        DESCRIPTION.
+    data : TYPE
+        DESCRIPTION.
+    weights : TYPE, optional
+        DESCRIPTION. The default is None.
 
     Returns
     -------
-    fit_results : `tuple`
-        In case the feature_scaling is set to None, the tuble contains the
-        following parameters:
+    fit_parameters : TYPE
+        DESCRIPTION.
+    err_fit_parameters : TYPE
+        DESCRIPTION.
+    sigma_hat_sqr : TYPE
+        DESCRIPTION.
 
-            - (fit_parameters, err_fit_parameters, lam_reg)
+    Notes
+    -----
+    This routine solves the linear equation
 
-        else the following results are returned:
+    .. math:: A x = y
 
-            - (fit_parameters_scaled, err_fit_parameters_scaled, lam_reg,
-              pc_matrix, fit_parameters, err_fit_parameters)
+    by finding optimal solution \\^x by minimizing
+
+    .. math::
+        ||y-A*\hat{x}||^2
+
+    For details on the implementation see [1]_, [2]_, [3]_, [4]_
+
+    References
+    ----------
+    .. [1] PHD thesis by Diana Maria SIMA, "Regularization techniques in
+           Model Fitting and Parameter estimation", KU Leuven 2006
+    .. [2] Hogg et al 2010, "Data analysis recipies: Fitting a model to data"
+    .. [3] Rust & O'Leaary, "Residual periodograms for choosing regularization
+           parameters for ill-posed porblems"
+    .. [4] Krakauer et al "Using generalized cross-validationto select
+           parameters in inversions for regional carbon fluxes"
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> from cascade.cpm_model import solve_linear_equation
+    >>> A = np.array([[1, 0, -1], [0, 1, 0], [1, 0, 1], [1, 1, 0], [-1, 1, 0]])
+    >>> coef = np.array([4, 2, 7])
+    >>> b = np.dot(A, coef)
+    >>> b = b + np.random.normal(0.0, 0.01, size=b.size)
+    >>> results = solve_linear_equation(A, b)
+    >>> print(results)
+    """
+    if not isinstance(covariance, type(None)):
+        Gcovariance = cholesky(covariance, lower=True)
+        weighted_design_matrix = solve_triangular(Gcovariance, design_matrix,
+                                                  lower=True,
+                                                  check_finite=False)
+        data_weighted = solve_triangular(Gcovariance, data, lower=True,
+                                         check_finite=False)
+        scaling_matrix = np.diag(np.full(len(data_weighted),
+                                 1.0/np.mean(data_weighted)))
+        data_weighted = np.dot(scaling_matrix, data_weighted)
+        weighted_design_matrix = np.dot(scaling_matrix, weighted_design_matrix)
+    else:
+        weighted_design_matrix = design_matrix
+        data_weighted = data
+    dim_dm = weighted_design_matrix.shape
+    if dim_dm[0] - dim_dm[1] < 1:
+        AssertionError("Wrong dimensions of design matrix: \
+                                 more regressors as data; Aborting")
+
+    # First make SVD of design matrix A
+    U, sigma, VH = svd(weighted_design_matrix)
+
+    # residual_not_reg = (u[:,rnk:].dot(u[:,rnk:].T)).dot(y)
+    residual_not_reg = np.linalg.multi_dot([U[:, dim_dm[1]:],
+                                            U[:, dim_dm[1]:].T, data_weighted])
+
+    # calculate the filter factors
+    F = np.identity(sigma.shape[0])
+    Fsigma_inv = np.diag(1.0/sigma)
+
+    # Solution of the linear system
+    fit_parameters = np.linalg.multi_dot([VH.T, Fsigma_inv,
+                                          U.T[:dim_dm[1], :], data_weighted])
+
+    # calculate the general risidual vector (b-model), which can be caculated
+    # by using U1 (mxn) and U2 (mxm-n), with U=[U1,U2]
+    residual_reg = residual_not_reg + \
+        np.linalg.multi_dot([U[:, :dim_dm[1]], np.identity(dim_dm[1]) - F,
+                             U[:, :dim_dm[1]].T, data_weighted])
+
+    effective_degrees_of_freedom = (dim_dm[0] - dim_dm[1])
+    sigma_hat_sqr = np.dot(residual_reg.T, residual_reg) / \
+        effective_degrees_of_freedom
+
+    # calculate the errors on the fit parameters
+    err_fit_parameters = np.sqrt(sigma_hat_sqr *
+                                 np.diag(np.linalg.multi_dot([VH.T,
+                                                              Fsigma_inv**2,
+                                                              VH])))
+    return fit_parameters, err_fit_parameters, sigma_hat_sqr
+
+
+def ridge(input_regression_matrix, input_data, input_covariance,
+          input_delta, input_alpha):
+    """
+    Ridge regression.
+
+    Parameters
+    ----------
+    input_regression_matrix : TYPE
+        DESCRIPTION.
+    input_data : TYPE
+        DESCRIPTION.
+    input_covariance : TYPE
+        DESCRIPTION.
+    input_delta : TYPE
+        DESCRIPTION.
+    input_alpha : TYPE
+        DESCRIPTION.
+
+    Returns
+    -------
+    beta : TYPE
+        DESCRIPTION.
+    rss : TYPE
+        DESCRIPTION.
+    mse : TYPE
+        DESCRIPTION.
+    degrees_of_freedom : TYPE
+        DESCRIPTION.
+    model_unscaled : TYPE
+        DESCRIPTION.
+    optimal_regularization : TYPE
+        DESCRIPTION.
 
     Notes
     -----
@@ -95,21 +216,20 @@ def solve_linear_equation(design_matrix, data, weights=None, cv_method='gcv',
     .. math::
         ||y-A*\hat{x}||^2 + \lambda * ||\hat{x}||^2
 
-    For details on the implementation see [1]_, [2]_, [3]_, [4]_
+    For details on the implementation see [5]_, [6]_, [7]_, [8]_
 
     References
-    -----------
-    .. [1] PHD thesis by Diana Maria SIMA, "Regularization techniques in
+    ----------
+    .. [5] PHD thesis by Diana Maria SIMA, "Regularization techniques in
            Model Fitting and Parameter estimation", KU Leuven 2006
-    .. [2] Hogg et al 2010, "Data analysis recipies: Fitting a model to data"
-    .. [3] Rust & O'Leaary, "Residual periodograms for choosing regularization
+    .. [6] Hogg et al 2010, "Data analysis recipies: Fitting a model to data"
+    .. [7] Rust & O'Leaary, "Residual periodograms for choosing regularization
            parameters for ill-posed porblems"
-    .. [4] Krakauer et al "Using generalized cross-validationto select
+    .. [8] Krakauer et al "Using generalized cross-validationto select
            parameters in inversions for regional carbon fluxes"
 
     Examples
     --------
-
     >>> import numpy as np
     >>> from cascade.cpm_model import solve_linear_equation
     >>> A = np.array([[1, 0, -1], [0, 1, 0], [1, 0, 1], [1, 1, 0], [-1, 1, 0]])
@@ -120,195 +240,2164 @@ def solve_linear_equation(design_matrix, data, weights=None, cv_method='gcv',
     >>> print(results)
 
     """
-    if feature_scaling is not None:
-        # precondition regressors
-        if design_matrix.dtype != 'float64':
-            pc_matrix = \
-               np.diag(1.0/np.linalg.norm(design_matrix,
-                                          axis=0)).astype('float64')
-        else:
-            pc_matrix = np.diag(1.0/np.linalg.norm(design_matrix, axis=0))
-        pc_design_matrix = np.dot(design_matrix, pc_matrix)
+    n_data, n_parameter = input_regression_matrix.shape
+
+    # Get data and regression matrix
+    Gcovariance = cholesky(input_covariance, lower=True)
+    regression_matrix = solve_triangular(Gcovariance, input_regression_matrix,
+                                         lower=True, check_finite=False)
+    data = solve_triangular(Gcovariance, input_data, lower=True,
+                            check_finite=False)
+    scaling_matrix = np.diag(np.full(len(data),
+                                     1.0/np.mean(data)))
+    data = np.dot(scaling_matrix, data)
+    regression_matrix = np.dot(scaling_matrix, regression_matrix)
+
+    # Start of regression with SVD
+    U, D, Vh = svd(regression_matrix, full_matrices=False, check_finite=False,
+                   overwrite_a=True, lapack_driver='gesdd')
+    R = np.dot(U, np.diag(D))
+    delta = np.dot(np.dot(Vh, input_delta), Vh.T)
+    RY = np.dot(R.T, data)
+    unity_matrix_ndata = np.identity(n_data)
+
+    if isinstance(input_alpha, Iterable):
+        gcv_list = []
+        mse_list = []
+        # aicc_list = []
+        for alpha_try in input_alpha:
+            F = np.diag(D**2) + alpha_try*delta
+            G = cholesky(F, lower=True)
+            x = solve_triangular(G, R.T, lower=True, check_finite=False)
+            H = np.dot(x.T, x)
+
+            residual = np.dot(unity_matrix_ndata-H, data)
+            rss = np.dot(residual.T, residual)
+            degrees_of_freedom = np.trace(H)
+
+            mse = rss/(n_data-degrees_of_freedom)
+            gcv = n_data*(np.trace(unity_matrix_ndata-H))**-2 * rss
+            # aicc = n_data*np.log(rss) + 2*degrees_of_freedom + \
+            #     (2*degrees_of_freedom * (degrees_of_freedom+1)) / \
+            #     (n_data-degrees_of_freedom-1)
+            gcv_list.append(gcv)
+            mse_list.append(mse)
+            # aicc_list.append(aicc)
+        opt_idx = np.argmin(gcv_list)
+        optimal_regularization = input_alpha[opt_idx]
+        # optimal_aicc = aicc_list[opt_idx]
     else:
-        pc_matrix = np.identity(design_matrix.shape[1])
-    pc_design_matrix = np.dot(design_matrix, pc_matrix)
-    # add weights
-    if data.dtype != 'float64':
-        data = data.astype('float64')
-    if not isinstance(weights, type(None)):
-        weighted_pc_design_matrix = np.dot(np.diag(np.sqrt(weights)),
-                                           pc_design_matrix)
-        data_weighted = np.dot(np.diag(np.sqrt(weights)), data)
-    else:
-        weighted_pc_design_matrix = pc_design_matrix
-        data_weighted = data
+        optimal_regularization = input_alpha
+    # Solve linear system
+    F = np.diag(D**2) + optimal_regularization*delta
+    G = cholesky(F, lower=True)
+    x = solve_triangular(G, R.T, lower=True, check_finite=False)
+    H = np.dot(x.T, x)
 
-    # dimensions of Design matrix, first dimension is number of data points,
-    # second number of variables
-    dim_dm = weighted_pc_design_matrix.shape
-    if dim_dm[0] - dim_dm[1] < 1:
-        AssertionError("Wrong dimensions of design matrix: \
-                                 more regressors as data; Aborting")
+    x = solve_triangular(G, RY, lower=True, check_finite=False)
+    x = solve_triangular(G.T, x, lower=False, check_finite=False)
+    beta = np.dot(Vh.T, x)
 
-    # First make SVD of design matrix A
-    U, sigma, VH = svd(weighted_pc_design_matrix)
+    residual = np.dot(unity_matrix_ndata-H, data)
+    rss = np.dot(residual.T, residual)
+    degrees_of_freedom = np.trace(H)
+    mse = rss/(n_data-degrees_of_freedom)
+    aicc = n_data*np.log(rss) + 2*degrees_of_freedom + \
+        (2*degrees_of_freedom * (degrees_of_freedom+1)) / \
+        (n_data-degrees_of_freedom-1)
 
-    # residual_not_reg = (u[:,rnk:].dot(u[:,rnk:].T)).dot(y)
-    residual_not_reg = np.linalg.multi_dot([U[:, dim_dm[1]:],
-                                            U[:, dim_dm[1]:].T, data_weighted])
+    # model_optimal = np.dot(H, data)
+    model_unscaled = np.dot(input_regression_matrix, beta)
 
-    # we search optimal regularization by looping over grid
-    # make sure the range is properly set
-    lam_reg0 = reg_par["lam0"]  # lowest value of regularization parameter
-    lam_reg1 = reg_par["lam1"]   # highest
-    ngrid_lam = reg_par["nlam"]  # number of points in grid
-
-    # array to hold values of regularization parameter grid
-    delta_lam = np.abs(np.log10(lam_reg1) - np.log10(lam_reg0)) / (ngrid_lam-1)
-    lam_reg_array = 10**(np.log10(lam_reg0) +
-                         np.linspace(0, ngrid_lam-1, ngrid_lam)*delta_lam)
-    # can also specify this as powerlaw
-    # lam_reg_array = /
-    #    np.flipud(lam_reg1 * (10**-delta_lam)**np.arange(ngrid_lam))
-
-    gcv = []   # array to hold value of cross validation calculations
-    b95 = []   # array to hold normalized cumulative periodogram results (95%)
-    b100 = []  # array to hold normalized cumulative periodogram results (100%)
-
-    # loop over the grid of regularization parameter to find optimal value
-    for i in range(ngrid_lam):
-
-        # Filter factors, here we use the correct definition
-        # of the filter factor for ridge regression. In case of
-        # truncated SVD this has to be adapted.
-        F = np.diag(sigma**2/(sigma**2 + lam_reg_array[i]**2))
-
-        # calculate the general risidual vector (y-model), which can be
-        # caculated by using U1 (mxn) and U2 (mxm-n), with U=[U1,U2]
-        residual_reg = residual_not_reg + \
-            np.linalg.multi_dot([U[:, :dim_dm[1]], np.identity(dim_dm[1]) - F,
-                                 U[:, :dim_dm[1]].T, data_weighted])
-
-        # calculate the sum of squared errors
-        # (squared norm of the residual vector)
-        sigma_hat_sqr = np.dot(residual_reg.T, residual_reg) / \
-            (dim_dm[0] - dim_dm[1])
-
-        # effective number of free parameters
-        # here we use  modified version of the GCV to prevent under smoothing
-        par_modified = 2.0
-        Tlam = (dim_dm[0] - par_modified*np.trace(F))**2
-
-        # generalized cross validation function to minimize
-        gcv.append(sigma_hat_sqr / Tlam)
-
-        if cv_method != 'gcv':
-            # periodogram of residuls
-            nperseg = 2**(np.int(np.log2(residual_reg.shape[0])))
-            freq, p_residual_spec = \
-                signal.welch(residual_reg, fs=1.0, nperseg=nperseg,
-                             noverlap=(nperseg // 2),
-                             detrend=None, scaling='density')
-
-            # calculate normalized cumulatative periodogram
-            ncp = np.cumsum(p_residual_spec)
-            ncp = ncp/ncp[-1]
-            # set the 95% boundary according to KS
-            delta_ks = 1.358/np.sqrt(freq.shape[0]/2.0)
-            # Ideal pure white noise NCF
-            ideal_ncf = np.array(range(freq.shape[0])) / (freq.shape[0] - 1.0)
-            # check how many points outside 95% boundary
-            ntrue = np.count_nonzero(np.abs(ncp - ideal_ncf) > delta_ks)
-            b95.append(100.0 - 100.0 * ntrue / freq.shape[0])
-            # check difference from ideal white noise
-            b100.append(np.linalg.norm(ncp - ideal_ncf))
-
-    # find minimum of GCV and NCF functions (check for numerical noise)
-    gcv = np.asarray(gcv)
-    idx_min_gcv = np.where(np.abs(gcv / np.min(gcv) - 1) <
-                           np.finfo(gcv.dtype).eps)[0][-1]
-    if cv_method != 'gcv':
-        b95 = np.asarray(b95)
-        b100 = np.asarray(b100)
-        idx_min_ncp_b100 = np.where(np.abs(b100 / np.min(b100) - 1) <
-                                    np.finfo(b100.dtype).eps)[0][-1]
-        idx_min_ncp = np.where(b95 >= 95.0)[0]
-        # select largest posible value
-        if idx_min_ncp.size != 0:
-            idx_min_ncp = idx_min_ncp[-1]
-        else:
-            idx_min_ncp = 0
-
-    # select optimal regularization parameter
-    if cv_method == 'gcv':
-        lam_reg = lam_reg_array[idx_min_gcv]
-    elif cv_method == "b95":
-        lam_reg = lam_reg_array[idx_min_ncp]
-    elif cv_method == "b100":
-        lam_reg = lam_reg_array[idx_min_ncp_b100]
-
-    # calculate the filter factors
-    F = np.diag(sigma**2/(sigma**2 + lam_reg**2))
-    Fsigma_inv = np.diag(sigma/(sigma**2 + lam_reg**2))
-
-    # Solution of the linear system
-    fit_parameters = np.linalg.multi_dot([VH.T, Fsigma_inv,
-                                          U.T[:dim_dm[1], :], data_weighted])
-
-    # calculate the general risidual vector (b-model), which can be caculated
-    # by using U1 (mxn) and U2 (mxm-n), with U=[U1,U2]
-    residual_reg = residual_not_reg + \
-        np.linalg.multi_dot([U[:, :dim_dm[1]], np.identity(dim_dm[1]) - F,
-                             U[:, :dim_dm[1]].T, data_weighted])
-
-    # calculate the sum of squared errors (squared norm of the residual vector)
-    if degrees_of_freedom is not None:
-        effective_degrees_of_freedom = (dim_dm[0] - degrees_of_freedom)
-    else:
-        effective_degrees_of_freedom = (dim_dm[0] - dim_dm[1])
-    sigma_hat_sqr = np.dot(residual_reg.T, residual_reg) / \
-        effective_degrees_of_freedom
-# BUG FIX correct????????????????
-
-    # calculate the errors on the fit parameters
-    err_fit_parameters = np.sqrt(sigma_hat_sqr *
-                                 np.diag(np.linalg.multi_dot([VH.T,
-                                                              Fsigma_inv**2,
-                                                              VH])))
-
-    if feature_scaling is not None:
-        # remove preconditioning from fit parameters
-        fit_parameters_scaled = np.dot(pc_matrix, fit_parameters)
-        err_fit_parameters_scaled = np.dot(pc_matrix, err_fit_parameters)
-
-        # return fitted parameters, error on parameters and
-        # optimal regularization together with normed parameters
-        return (fit_parameters_scaled, err_fit_parameters_scaled, lam_reg,
-                pc_matrix, fit_parameters, err_fit_parameters)
-    else:
-        return (fit_parameters, err_fit_parameters, lam_reg)
+    return beta, rss, mse, degrees_of_freedom, model_unscaled, \
+        optimal_regularization, aicc
 
 
-def return_PCR(design_matrix, n_components=None, variance_prior_scaling=1.):
-    """ Perform principal component regression with marginalization.
-        To marginalize over the eigen-lightcurves we need to solve
-        x = (A.T V^(-1) A)^(-1) * (A.T V^(-1) y), where V = C + B.T Lambda B,
-        with B matrix containing the eigenlightcurves and lambda
-        the median squared amplitudes of the eigenlightcurves.
+rayRidge = ray.remote(num_returns=6)(ridge)
+
+
+def check_causality():
     """
-    if n_components is None:
-        n_components = design_matrix.shape[1]
+    Check if all data has a causal connection.
 
-    if design_matrix.dtype != 'float64':
-        design_matrix = design_matrix.astype('float64')
+    Returns
+    -------
+    causal_mask :  ndarray of 'bool'
+        DESCRIPTION.
 
-    U, S, V = svd(design_matrix, full_matrices=False)
-    U, V = svd_flip(U, V)
-    # If matrix is (time, pixels), then U zero dimension is also
-    # time dimension, 1st is eigenvector
+    """
+    causal_mask = True
+    return causal_mask
 
-    B = U[:, :n_components].copy()
-    lambdas = variance_prior_scaling * \
-        np.median(np.square(np.dot(B.T, design_matrix)), axis=1)
 
-    return B, lambdas
+def select_regressors(selection_mask, exclusion_distance):
+    """
+    Return list with indici of the regressors for each wavelength data point.
+
+    Parameters
+    ----------
+    selectionMask : 'ndarray' of 'bool'
+        DESCRIPTION.
+    exclusion_distance : 'int'
+        DESCRIPTION.
+
+    Returns
+    -------
+    regressors : TYPE
+        DESCRIPTION.
+
+    """
+    if selection_mask.ndim == 1:
+        selection_mask = np.expand_dims(selection_mask, axis=1)
+    used_data_index = \
+        [tuple(coord) for coord in np.argwhere(~selection_mask).tolist()]
+    all_data_index = list(np.where(~selection_mask))
+    ndatapoints = len(used_data_index)
+    regressor_list = []
+    for coord in used_data_index:
+        idx = np.abs(coord[0]-all_data_index[0]) >= exclusion_distance
+        regressor_list.append([coord, (all_data_index[0][idx],
+                                       all_data_index[1][idx]),
+                               ndatapoints])
+
+    return regressor_list
+
+
+def return_PCA(matrix, n_components):
+    """
+    Return PCA componentns of input matrix.
+
+    Parameters
+    ----------
+    matrix : TYPE
+        DESCRIPTION.
+    n_components : TYPE
+        DESCRIPTION.
+
+    Returns
+    -------
+    pca_matrix : TYPE
+        DESCRIPTION.
+    pca_back_transnformation : TYPE
+        DESCRIPTION.
+
+    """
+    pca = PCA(n_components=np.min([n_components, matrix.shape[0]]),
+              whiten=False, svd_solver='auto')
+    pca_matrix = pca.fit_transform(matrix.T).T
+    pca_scores = pca.components_.T
+    return pca_matrix, pca_scores
+
+
+# @jit(nopython=True, cache=True, parallel=True)
+def log_likelihood(data, covariance, model):
+    """
+    Calculate the log likelihood.
+
+    Parameters
+    ----------
+    data : TYPE
+        DESCRIPTION.
+    covariance : TYPE
+        DESCRIPTION.
+    model : TYPE
+        DESCRIPTION.
+
+    Returns
+    -------
+    lnL : TYPE
+        DESCRIPTION.
+    Note
+    2*np.sum(np.log(np.diag(np.linalg.cholesky(covariance))))
+
+    np.dot(np.dot((data-model), np.diag(weights)), (data-model))
+    """
+    ndata = len(data)
+    residual = data-model
+    # Cholesky decomposition and inversion:
+    G = cholesky(covariance, lower=True)
+#    S = np.linalg.inv(G)
+#    inverse_covariance = np.dot(S.T, S)
+    RG = solve_triangular(G, residual, lower=True, check_finite=False)
+    lnL = -0.5*(ndata*np.log(2.0*np.pi) +
+                2*np.sum(np.log(np.diag(G))) +
+                np.dot(RG.T, RG))
+#                np.dot(np.dot(residual, inverse_covariance), residual))
+    return lnL
+
+
+@jit(nopython=True, cache=True)
+def modified_AIC(lnL, n_data, n_parameters):
+    """
+    Calculate the modified AIC.
+
+    Parameters
+    ----------
+    lnL : TYPE
+        DESCRIPTION.
+    n_data : TYPE
+        DESCRIPTION.
+    n_parameters : TYPE
+        DESCRIPTION.
+
+    Returns
+    -------
+    AICc : TYPE
+        DESCRIPTION.
+
+    """
+    AIC = -2*lnL + 2*n_parameters
+    AICc = AIC + (2*n_parameters*(n_parameters+1))/(n_data-n_parameters-1)
+    return AICc
+
+
+def create_regularization_matrix(method, n_regressors, n_not_regularized):
+    """
+    Create regularization matrix.
+
+    Parameters
+    ----------
+    method : TYPE
+        DESCRIPTION.
+    n_regressors : TYPE
+        DESCRIPTION.
+    n_not_regularized : TYPE
+        DESCRIPTION.
+
+    Raises
+    ------
+    ValueError
+        DESCRIPTION.
+
+    Returns
+    -------
+    delta : TYPE
+        DESCRIPTION.
+
+    """
+    allowed_methods = ['value', 'derivative']
+    if method not in allowed_methods:
+        raise ValueError("regularization method not recognized. "
+                         "Allowd values are: {}".format(allowed_methods))
+    if method == 'value':
+        # regularization on value
+        delta = np.diag(np.zeros((n_regressors)))
+        delta[n_not_regularized:, n_not_regularized:] += \
+            np.diag(np.ones(n_regressors-n_not_regularized))
+    elif method == 'derivative':
+        # regularazation on derivative
+        delta_temp = np.diag(-np.ones(n_regressors-n_not_regularized-1), 1) +\
+            np.diag(-1*np.ones(n_regressors-n_not_regularized-1), -1) + \
+            np.diag(2*np.ones(n_regressors-n_not_regularized))
+        delta_temp[0, 0] = 1.0
+        delta_temp[-1, -1] = 1.0
+        delta = np.diag(np.zeros((n_regressors)))
+        delta[n_not_regularized:, n_not_regularized:] += delta_temp
+    return delta
+
+
+def return_lambda_grid(lambda_min, lambda_max, n_lambda):
+    """
+    Create grid for regularization parameters lambda.
+
+    Parameters
+    ----------
+    lambda_min : TYPE
+        DESCRIPTION.
+    lambda_max : TYPE
+        DESCRIPTION.
+    n_lambda : TYPE
+        DESCRIPTION.
+
+    Returns
+    -------
+    lambda_grid : TYPE
+        DESCRIPTION.
+
+    """
+    delta_lam = np.abs(np.log10(lambda_max)-np.log10(lambda_min))/(n_lambda-1)
+    lambda_grid = 10**(np.log10(lambda_min) +
+                       np.linspace(0, n_lambda-1, n_lambda)*delta_lam)
+    return lambda_grid
+
+
+def make_bootstrap_samples(ndata, nsamples):
+    """
+    Make sboortrap sample indicii.
+
+    Parameters
+    ----------
+    ndata : TYPE
+        DESCRIPTION.
+    nsamples : TYPE
+        DESCRIPTION.
+
+    Returns
+    -------
+    bootsptrap_indici : TYPE
+        DESCRIPTION.
+    non_common_indici : TYPE
+        DESCRIPTION.
+
+    """
+    all_indici = np.arange(ndata)
+    bootsptrap_indici = np.zeros((nsamples+1, ndata), dtype=int)
+    non_common_indici = []
+    bootsptrap_indici[0, :] = all_indici
+    non_common_indici.append(np.setxor1d(all_indici, all_indici))
+    for i in range(nsamples):
+        bootsptrap_indici[i+1, :] = np.sort(np.random.choice(ndata, ndata))
+        non_common_indici.append(np.setxor1d(all_indici,
+                                             bootsptrap_indici[i+1, :]))
+    return bootsptrap_indici, non_common_indici
+
+
+def return_design_matrix(data, selection_list):
+    """
+    Return the design matrix based on the data set itself.
+
+    Parameters
+    ----------
+    data : TYPE
+        DESCRIPTION.
+    selection_list : TYPE
+        DESCRIPTION.
+
+    Returns
+    -------
+    design_matrix : TYPE
+        DESCRIPTION.
+
+    """
+    (il, ir), (idx_cal, trace), nwave = selection_list
+    if data.ndim == 2:
+        data = data[:, np.newaxis, :].copy()
+    design_matrix = data[idx_cal, trace, :]
+    return design_matrix
+
+
+class regressionDataServer:
+    """
+    Class which provied all needed input daqta for the regression modeling.
+
+    The is class load the data and cleaned data to define for each
+    wavelength the timeseries data at that wavelength which will be
+    abalysed and the regressors which will be used for the analysis.
+    """
+
+    def __init__(self, dataset, regressor_dataset):
+
+        self.fit_dataset = copy.deepcopy(dataset)
+        self.regressor_dataset = copy.deepcopy(regressor_dataset)
+        self.RS = StandardScaler()
+
+    def sync_with_parameter_server(self, parameter_server_handle):
+        """
+        bla.
+
+        Parameters
+        ----------
+        parameter_server_handle : TYPE
+            DESCRIPTION.
+
+        Returns
+        -------
+        None.
+
+        """
+        self.cascade_configuration = \
+            parameter_server_handle.get_configuration()
+        self.regression_parameters = \
+            parameter_server_handle.get_regression_parameters()
+
+    def get_data_info(self):
+        """
+        bla.
+
+        Returns
+        -------
+        ndim : TYPE
+            DESCRIPTION.
+        shape : TYPE
+            DESCRIPTION.
+        ROI : TYPE
+            DESCRIPTION.
+
+        """
+        ndim = self.fit_dataset.data.ndim
+        shape = self.fit_dataset.data.shape
+        ROI = self.regressor_dataset.mask.any(axis=1)
+        data_unit = self.regressor_dataset.data_unit
+        wavelength_unit = self.regressor_dataset.wavelength_unit
+        time_unit = self.regressor_dataset.time_unit
+        time_bjd_zero = self.fit_dataset.time_bjd.data.flat[0]
+        data_product = self.fit_dataset.dataProduct
+        return ndim, shape, ROI, data_unit, wavelength_unit, time_unit, \
+            time_bjd_zero, data_product
+
+    def initialze_lightcurve_model(self):
+        """
+        bla.
+
+        Parameters
+        ----------
+        cascade_configuration : TYPE
+            DESCRIPTION.
+
+        Returns
+        -------
+        None.
+
+        """
+        self.lightcurve_model = lightcurve(self.cascade_configuration)
+        fit_lightcurve_model, fit_ld_correcton = \
+            self.lightcurve_model.interpolated_lc_model(self.fit_dataset,
+                                                        time_offset=0.0)
+        self.fit_lightcurve_model = fit_lightcurve_model
+        self.fit_ld_correcton = fit_ld_correcton
+
+    def get_lightcurve_model(self):
+        """
+        bla.
+
+        Returns
+        -------
+        TYPE
+            DESCRIPTION.
+
+        """
+        return (self.fit_lightcurve_model, self.fit_ld_correcton,
+                self.lightcurve_model.par)
+
+    def unpack_datasets(self):
+        """
+        bla.
+
+        Returns
+        -------
+        None.
+
+        """
+        self.unpack_regressor_dataset()
+        self.unpack_fit_dataset()
+
+    def unpack_regressor_dataset(self):
+        """
+        Unpack dataset containing data to be used as regressors.
+
+        Returns
+        -------
+        None.
+
+        """
+        self.regressor_data = \
+            self.regressor_dataset.return_masked_array('data')
+        np.ma.set_fill_value(self.regressor_data, 0.0)
+        # note we use the fit_dataset here as additional info is always
+        # attached to the main dataset, not the cleaned one.
+        for regressor in self.regression_parameters.additional_regressor_list:
+            setattr(self, 'regressor_'+regressor,
+                    self.fit_dataset.return_masked_array(regressor))
+
+    def unpack_fit_dataset(self):
+        """
+        Unpack dataset containing data to be fitted.
+
+        Returns
+        -------
+        None.
+
+        """
+        self.fit_data = self.fit_dataset.return_masked_array('data')
+        np.ma.set_fill_value(self.fit_data, 0.0)
+        self.fit_data_wavelength = \
+            self.fit_dataset.return_masked_array('wavelength')
+        self.fit_data_uncertainty = \
+            self.fit_dataset.return_masked_array('uncertainty')
+        np.ma.set_fill_value(self.fit_data_uncertainty, 1.e8)
+        self.fit_data_time = self.fit_dataset.return_masked_array('time')
+
+    @staticmethod
+    def select_regressors(data, selection, bootstrap_indici=None):
+        """
+        Return the design matrix based on the data set itself.
+
+        Parameters
+        ----------
+        data : TYPE
+            DESCRIPTION.
+        selection : TYPE
+            DESCRIPTION.
+        bootstrap_indici : TYPE, optional
+            DESCRIPTION. The default is None.
+
+        Returns
+        -------
+        design_matrix : TYPE
+            DESCRIPTION.
+        """
+        (_, _), (index_disp_regressors, index_cross_disp_regressors), _ = \
+            selection
+        if bootstrap_indici is None:
+            bootstrap_indici = np.arange(data.shape[-1])
+        if data.ndim == 2:
+            regressor_matrix = data[:, np.newaxis, :]
+        return \
+            regressor_matrix[index_disp_regressors,
+                             index_cross_disp_regressors, :][...,
+                                                             bootstrap_indici]
+
+    @staticmethod
+    def select_data(data, selection, bootstrap_indici=None):
+        """
+        Return the design matrix based on the data set itself.
+
+        Parameters
+        ----------
+        data : TYPE
+            DESCRIPTION.
+        selection : TYPE
+            DESCRIPTION.
+        bootstrap_indici : TYPE, optional
+            DESCRIPTION. The default is None.
+
+        Returns
+        -------
+        design_matrix : TYPE
+            DESCRIPTION.
+        """
+        (index_dispersion, index_cross_dispersion), (_, _), _ = \
+            selection
+        if bootstrap_indici is None:
+            bootstrap_indici = np.arange(data.shape[-1])
+        if data.ndim == 2:
+            selected_data = data[:, np.newaxis, :]
+        return selected_data[index_dispersion,
+                             index_cross_dispersion, :][..., bootstrap_indici]
+
+    def setup_regression_data(self, selection, bootstrap_indici=None):
+        """
+        Setupe the data which will be fitted.
+
+        Parameters
+        ----------
+        selection : TYPE
+            DESCRIPTION.
+        bootstrap_indici : TYPE, optional
+            DESCRIPTION. The default is None.
+
+        Returns
+        -------
+        None.
+
+        """
+        if bootstrap_indici is None:
+            bootstrap_indici = np.arange(self.fit_data.shape[-1])
+        selected_fit_data = \
+            self.select_data(self.fit_data, selection,
+                             bootstrap_indici=bootstrap_indici)
+        selected_fit_wavelength = \
+            self.select_data(self.fit_data_wavelength, selection,
+                             bootstrap_indici=bootstrap_indici)
+        selected_fit_wavelength = np.ma.median(selected_fit_wavelength)
+        selected_fit_time = \
+            self.select_data(self.fit_data_time, selection,
+                             bootstrap_indici=bootstrap_indici).data
+        #selected_fit_time = np.ma.median(selected_fit_time, axis=0)
+        selected_covariance = \
+            np.ma.diag(self.select_data(self.fit_data_uncertainty, selection,
+                                        bootstrap_indici=bootstrap_indici)**2)
+        selected_covariance.set_fill_value(1.e16)
+        self.regression_data_selection = \
+            (selected_fit_data.filled(), selected_fit_wavelength,
+             selected_fit_time, selected_covariance.filled())
+
+    def setup_regression_matrix(self, selection, bootstrap_indici=None):
+        """
+        Define the regression matrix.
+
+        Parameters
+        ----------
+        selection : TYPE
+            DESCRIPTION.
+        bootstrap_indici : TYPE, optional
+            DESCRIPTION. The default is None.
+
+        Returns
+        -------
+        None.
+
+        """
+        if bootstrap_indici is None:
+            bootstrap_indici = np.arange(self.regressor_data.shape[-1])
+        regression_matrix = \
+            self.select_regressors(self.regressor_data, selection,
+                                   bootstrap_indici=bootstrap_indici)
+        additional_regressors = []
+        for regressor in self.regression_parameters.additional_regressor_list:
+            additional_regressors.append(
+                self.select_data(getattr(self, 'regressor_'+regressor),
+                                 selection,
+                                 bootstrap_indici=bootstrap_indici)
+                                        )
+        n_additional = len(additional_regressors) + 2
+        regression_matrix = \
+            np.vstack(additional_regressors+[regression_matrix])
+        regression_matrix = self.RS.fit_transform(regression_matrix.T).T
+
+        lc = self.select_data(self.fit_lightcurve_model, selection,
+                              bootstrap_indici=bootstrap_indici)
+        intercept = np.ones_like(lc)
+        regression_matrix = np.vstack([intercept, lc, regression_matrix]).T
+
+        self.regression_matrix_selection = \
+            (regression_matrix, n_additional, self.RS.mean_, self.RS.scale_)
+
+    def get_regression_data(self, selection, bootstrap_indici=None):
+        """
+        Get all relevant data.
+
+        Parameters
+        ----------
+        selection : TYPE
+            DESCRIPTION.
+        bootstrap_indici : TYPE, optional
+            DESCRIPTION. The default is None.
+
+        Returns
+        -------
+        TYPE
+            DESCRIPTION.
+        TYPE
+            DESCRIPTION.
+
+        """
+        self.setup_regression_data(selection,
+                                   bootstrap_indici=bootstrap_indici)
+        self.setup_regression_matrix(selection,
+                                     bootstrap_indici=bootstrap_indici)
+        return self.regression_data_selection, self.regression_matrix_selection
+
+    def initialize_data_server(self, parameter_server_handle):
+        """
+        bla.
+
+        Parameters
+        ----------
+        parameter_server_handle : TYPE
+            DESCRIPTION.
+
+        Returns
+        -------
+        None.
+
+        """
+        self.sync_with_parameter_server(parameter_server_handle)
+        self.unpack_datasets()
+        self.initialze_lightcurve_model()
+
+
+@ray.remote
+class rayRegressionDataServer(regressionDataServer):
+    """Ray wrapper regressionDataServer class."""
+
+    def __init__(self, dataset, regressor_dataset):
+        super().__init__(dataset, regressor_dataset)
+
+    get_regression_data = \
+        ray.method(num_returns=2)(regressionDataServer.get_regression_data)
+    get_data_info = \
+        ray.method(num_returns=8)(regressionDataServer.get_data_info)
+    get_lightcurve_model =\
+        ray.method(num_returns=3)(regressionDataServer.get_lightcurve_model)
+
+    def sync_with_parameter_server(self, parameter_server_handle):
+        """
+        bla.
+
+        Parameters
+        ----------
+        parameter_server_handle : TYPE
+            DESCRIPTION.
+
+        Returns
+        -------
+        None.
+
+        """
+        self.cascade_configuration = \
+            ray.get(parameter_server_handle.get_configuration.remote())
+        self.regression_parameters = \
+            ray.get(parameter_server_handle.get_regression_parameters.remote())
+
+
+class regressionParameterServer:
+    """
+    Class which provied the parameter server for the regression modeling.
+
+    The is class contains all parameters needed for the regression analysis
+    and the fitted results.
+    """
+
+    def __init__(self, cascade_configuration):
+        self.cascade_configuration = cascade_configuration
+
+        self.cpm_parameters = SimpleNamespace()
+        self.initialize_regression_configuration()
+
+        self.data_parameters = SimpleNamespace()
+
+        self.regularization = SimpleNamespace()
+#        self.initialize_regularization()
+
+        self.fitted_parameters = SimpleNamespace()
+#        self.initialize_parameters()
+
+    def initialize_regression_configuration(self):
+        """
+        bla.
+
+        Returns
+        -------
+        None.
+
+        """
+        self.cpm_parameters.use_multi_processes =\
+            ast.literal_eval(
+                self.cascade_configuration.cascade_use_multi_processes)
+        self.cpm_parameters.max_number_of_cpus = \
+            ast.literal_eval(
+                self.cascade_configuration.cascade_max_number_of_cpus)
+        self.cpm_parameters.nwidth = \
+            ast.literal_eval(self.cascade_configuration.cpm_deltapix)
+        self.cpm_parameters.nboot = \
+            ast.literal_eval(self.cascade_configuration.cpm_nbootstrap)
+        self.cpm_parameters.regularization_method = \
+            self.cascade_configuration.cpm_regularization_method
+        self.cpm_parameters.alpha_min = \
+            ast.literal_eval(self.cascade_configuration.cpm_lam0)
+        self.cpm_parameters.alpha_max = \
+            ast.literal_eval(self.cascade_configuration.cpm_lam1)
+        self.cpm_parameters.n_alpha = \
+            ast.literal_eval(self.cascade_configuration.cpm_nlam)
+        self.cpm_parameters.add_time = \
+            ast.literal_eval(self.cascade_configuration.cpm_add_time)
+        self.cpm_parameters.add_position = \
+            ast.literal_eval(self.cascade_configuration.cpm_add_position)
+        additional_regressor_list = []
+        if self.cpm_parameters.add_time:
+            additional_regressor_list.append('time')
+        if self.cpm_parameters.add_position:
+            additional_regressor_list.append('position')
+        self.cpm_parameters.additional_regressor_list = \
+            additional_regressor_list
+        self.cpm_parameters.n_additional_regressors = \
+            2 + len(additional_regressor_list)
+
+    def get_regression_parameters(self):
+        """
+        bla.
+
+        Returns
+        -------
+        TYPE
+            DESCRIPTION.
+
+        """
+        return self.cpm_parameters
+
+    def get_configuration(self):
+        """
+        bla.
+
+        Returns
+        -------
+        TYPE
+            DESCRIPTION.
+
+        """
+        return self.cascade_configuration
+
+    def sync_with_data_server(self, data_server_handle):
+        """
+        bla.
+
+        Returns
+        -------
+        None.
+
+        """
+        ndim, shape, ROI, data_unit, wavelength_unit, time_unit, \
+            time_bjd_zero, data_product = data_server_handle.get_data_info()
+        self.data_parameters.ndim = ndim
+        self.data_parameters.shape = shape
+        self.data_parameters.ROI = ROI
+        self.data_parameters.max_spectral_points = \
+            np.sum(~self.data_parameters.ROI)
+        self.data_parameters.ncorrect = \
+            np.where(~self.data_parameters.ROI)[0][0]
+        self.data_parameters.data_unit = data_unit
+        self.data_parameters.wavelength_unit = wavelength_unit
+        self.data_parameters.time_unit = time_unit
+        self.data_parameters.time_bjd_zero = time_bjd_zero
+        self.data_parameters.data_product = data_product
+
+    def get_data_parameters(self):
+        """
+        bla.
+
+        Returns
+        -------
+        TYPE
+            DESCRIPTION.
+
+        """
+        return self.data_parameters
+
+    def initialize_regularization(self):
+        """
+        bla.
+
+        Returns
+        -------
+        None.
+
+        """
+        self.regularization.alpha_grid = \
+            return_lambda_grid(self.cpm_parameters.alpha_min,
+                               self.cpm_parameters.alpha_max,
+                               self.cpm_parameters.n_alpha)
+        self.regularization.optimal_alpha = \
+            list(np.repeat(self.regularization.alpha_grid[np.newaxis, :],
+                 self.data_parameters.max_spectral_points, axis=0))
+
+    def get_regularization(self):
+        """
+        bla.
+
+        Returns
+        -------
+        TYPE
+            DESCRIPTION.
+
+        """
+        return self.regularization
+
+    def update_optimal_regulatization(self, new_regularization):
+        """
+        bla.
+
+        Parameters
+        ----------
+        new_regularization : TYPE
+            DESCRIPTION.
+
+        Returns
+        -------
+        None.
+
+        """
+        for i_alpha, new_alpha in enumerate(new_regularization.optimal_alpha):
+            if isinstance(new_alpha, float):
+                self.regularization.optimal_alpha[i_alpha] = new_alpha
+
+    def initialize_parameters(self):
+        """
+        bla.
+
+        Returns
+        -------
+        None.
+
+        """
+        self.fitted_parameters.regression_results = \
+            np.zeros((self.cpm_parameters.nboot+1,
+                      self.data_parameters.max_spectral_points,
+                      self.data_parameters.max_spectral_points +
+                      self.cpm_parameters.n_additional_regressors))
+        self.fitted_parameters.fitted_spectrum = \
+            np.zeros((self.cpm_parameters.nboot+1,
+                      self.data_parameters.max_spectral_points))
+        self.fitted_parameters.wavelength_fitted_spectrum = \
+            np.zeros((self.cpm_parameters.nboot+1,
+                      self.data_parameters.max_spectral_points))
+        self.fitted_parameters.fitted_time = \
+            np.zeros((self.cpm_parameters.nboot+1,
+                      self.data_parameters.max_spectral_points,
+                      self.data_parameters.shape[-1]))
+        self.fitted_parameters.fitted_model = \
+            np.zeros((self.cpm_parameters.nboot+1,
+                      self.data_parameters.max_spectral_points,
+                      self.data_parameters.shape[-1]))
+        self.fitted_parameters.fitted_mse = \
+            np.zeros((self.cpm_parameters.nboot+1,
+                      self.data_parameters.max_spectral_points))
+        self.fitted_parameters.fitted_aic = \
+            np.zeros((self.cpm_parameters.nboot+1,
+                      self.data_parameters.max_spectral_points))
+        self.fitted_parameters.degrees_of_freedom = \
+            np.zeros((self.cpm_parameters.nboot+1,
+                      self.data_parameters.max_spectral_points))
+
+    def update_fitted_parameters(self, new_parameters):
+        """Apply new update and returns weights."""
+        fitted_parameters = copy.deepcopy(self.fitted_parameters)
+        fitted_parameters.regression_results += \
+            new_parameters.regression_results
+        fitted_parameters.fitted_spectrum += \
+            new_parameters.fitted_spectrum
+        fitted_parameters.wavelength_fitted_spectrum += \
+            new_parameters.wavelength_fitted_spectrum
+        fitted_parameters.fitted_time += \
+            new_parameters.fitted_time
+        fitted_parameters.fitted_model += \
+            new_parameters.fitted_model
+        fitted_parameters.fitted_mse += \
+            new_parameters.fitted_mse
+        fitted_parameters.fitted_aic += \
+            new_parameters.fitted_aic
+        fitted_parameters.degrees_of_freedom += \
+            new_parameters.degrees_of_freedom
+        self.fitted_parameters = fitted_parameters
+
+    def get_fitted_parameters(self):
+        """
+        bla.
+
+        Returns
+        -------
+        TYPE
+            DESCRIPTION.
+
+        """
+        return self.fitted_parameters
+
+    def add_new_parameters(self, new_parameters):
+        """
+        bla.
+
+        Parameters
+        ----------
+        new_parameters : TYPE
+            DESCRIPTION.
+
+        Returns
+        -------
+        None.
+
+        """
+        for key, value in new_parameters.items():
+            setattr(self.fitted_parameters, key, value)
+
+    def reset_parameters(self):
+        """
+        bla.
+
+        Returns
+        -------
+        None.
+
+        """
+        self.initialize_regularization()
+        self.initialize_parameters()
+
+    def initialize_parameter_server(self, data_server_handle):
+        """
+        bla.
+
+        Parameters
+        ----------
+        data_server_handle : TYPE
+            DESCRIPTION.
+
+        Returns
+        -------
+        None.
+
+        """
+        self.sync_with_data_server(data_server_handle)
+        self.reset_parameters()
+
+    def reset_parameter_server(self, cascade_configuration, data_server_handle):
+        """
+        bla.
+
+        Parameters
+        ----------
+        cascade_configuration : TYPE
+            DESCRIPTION.
+        data_server_handle : TYPE
+            DESCRIPTION.
+
+        Returns
+        -------
+        None.
+
+        """
+        self.cascade_configuration = cascade_configuration
+        self.initialize_regression_configuration()
+        self.initialize_parameter_server(data_server_handle)
+
+
+@ray.remote
+class rayRegressionParameterServer(regressionParameterServer):
+    """Ray wrapper regressionDataServer class."""
+
+    def __init__(self, cascade_configuration):
+        super().__init__(cascade_configuration)
+
+    def sync_with_data_server(self, data_server_handle):
+        """
+        bla.
+
+        Returns
+        -------
+        None.
+
+        """
+        ndim, shape, ROI, data_unit, wavelength_unit, time_unit, \
+            time_bjd_zero, data_product = ray.get(data_server_handle.get_data_info.remote())
+        self.data_parameters.ndim = ndim
+        self.data_parameters.shape = shape
+        self.data_parameters.ROI = ROI
+        self.data_parameters.max_spectral_points = \
+            np.sum(~self.data_parameters.ROI)
+        self.data_parameters.ncorrect = \
+            np.where(~self.data_parameters.ROI)[0][0]
+        self.data_parameters.data_unit = data_unit
+        self.data_parameters.wavelength_unit = wavelength_unit
+        self.data_parameters.time_unit = time_unit
+        self.data_parameters.time_bjd_zero = time_bjd_zero
+        self.data_parameters.data_product = data_product
+
+
+class regressionControler:
+    """
+    bla.
+
+    bla.
+    """
+
+    def __init__(self, cascade_configuration, dataset, regressor_dataset):
+        self.cascade_configuration = cascade_configuration
+        self.instantiate_parameter_server()
+        self.instantiate_data_server(dataset, regressor_dataset)
+        self.initialize_servers()
+        self.iterators = SimpleNamespace()
+
+    def instantiate_parameter_server(self):
+        """
+        bla.
+
+        Returns
+        -------
+        None.
+
+        """
+        self.parameter_server_handle = \
+            regressionParameterServer(self.cascade_configuration)
+
+    def instantiate_data_server(self, dataset, regressor_dataset):
+        """
+        bla.
+
+        Parameters
+        ----------
+        dataset : TYPE
+            DESCRIPTION.
+        regressor_dataset : TYPE
+            DESCRIPTION.
+
+        Returns
+        -------
+        None.
+
+        """
+        self.data_server_handle = \
+            regressionDataServer(dataset, regressor_dataset)
+
+    def initialize_servers(self):
+        """
+        bla.
+
+        Note that the order of initialization is important: Firts the data
+        server and then the parameter server.
+
+        Returns
+        -------
+        None.
+
+        """
+        self.data_server_handle.initialize_data_server(
+            self.parameter_server_handle)
+        self.parameter_server_handle.initialize_parameter_server(
+            self.data_server_handle)
+
+    def get_fit_parameters_from_server(self):
+        """
+        bla.
+
+        Returns
+        -------
+        TYPE
+            DESCRIPTION.
+
+        """
+        return self.parameter_server_handle.get_fitted_parameters()
+
+    def get_regularization_parameters_from_server(self):
+        """
+        bla.
+
+        Returns
+        -------
+        TYPE
+            DESCRIPTION.
+
+        """
+        return self.parameter_server_handle.get_regularization()
+
+    def get_control_parameters(self):
+        """
+        bla.
+
+        Returns
+        -------
+        control_parameters : TYPE
+            DESCRIPTION.
+
+        """
+        control_parameters = SimpleNamespace()
+        control_parameters.data_parameters = \
+            self.parameter_server_handle.get_data_parameters()
+        control_parameters.cpm_parameters = \
+            self.parameter_server_handle.get_regression_parameters()
+        return control_parameters
+
+    def get_lightcurve_model(self):
+        """
+        bla.
+
+        Returns
+        -------
+        TYPE
+            DESCRIPTION.
+
+        """
+        return self.data_server_handle.get_lightcurve_model()
+
+    def initialize_regression_iterators(self, nchunks=1):
+        """
+        bla.
+
+        Returns
+        -------
+        None.
+
+        """
+        cpm_parameters = self.parameter_server_handle.get_regression_parameters()
+        data_parameters = self.parameter_server_handle.get_data_parameters()
+        self.iterators.regressor_indici = \
+            select_regressors(data_parameters.ROI,
+                              cpm_parameters.nwidth)
+        self.iterators.bootsptrap_indici, _ = \
+            make_bootstrap_samples(data_parameters.shape[-1],
+                                   cpm_parameters.nboot)
+        self.iterators.combined_full_model_indici = itertools.product(
+            enumerate(self.iterators.bootsptrap_indici[:1]),
+            enumerate(self.iterators.regressor_indici))
+        self.iterators.n_iterators_full_model = \
+            data_parameters.max_spectral_points
+        self.iterators.combined_bootstrap_model_indici = itertools.product(
+                enumerate(self.iterators.bootsptrap_indici),
+                enumerate(self.iterators.regressor_indici))
+        self.iterators.n_iterators_bootstrap_model = \
+            data_parameters.max_spectral_points*(cpm_parameters.nboot+1)
+        self.chunk_iterators(nchunks=nchunks)
+
+    def get_regression_iterators(self):
+        """
+        bla.
+
+        Returns
+        -------
+        TYPE
+            DESCRIPTION.
+
+        """
+        return self.iterators
+
+    @staticmethod
+    def grouper_it(it, nchunks, number_of_iterators):
+        """
+        bla.
+
+        Parameters
+        ----------
+        it : TYPE
+            DESCRIPTION.
+        nchunks
+        number_of_iterators
+
+        Yields
+        ------
+        chunk_it : TYPE
+            DESCRIPTION.
+
+        """
+        chunk_size = number_of_iterators // nchunks
+        it = iter(it)
+        nchunks_times_it = itertools.tee(it, nchunks)
+        for i, sub_it in enumerate(nchunks_times_it):
+            start = 0+i*chunk_size
+            if i+1 == nchunks:
+                stop = number_of_iterators
+            else:
+                stop = chunk_size+i*chunk_size
+            chunk_it = itertools.islice(sub_it, start, stop)
+            yield list(chunk_it), stop-start  # BUG FIX RAY PICKLE
+
+    def chunk_iterators(self, nchunks=1):
+        """
+        bla.
+
+        Parameters
+        ----------
+        nchunk : TYPE, optional
+            DESCRIPTION. The default is 1.
+
+        Returns
+        -------
+        None.
+
+        """
+        chunked_full_model_iterator = list(
+            self.grouper_it(self.iterators.combined_full_model_indici,
+                            nchunks, self.iterators.n_iterators_full_model))
+        chunked_bootstrap_model_iterator = list(
+            self.grouper_it(self.iterators.combined_bootstrap_model_indici,
+                            nchunks,
+                            self.iterators.n_iterators_bootstrap_model))
+        self.iterators.chunked_full_model_iterator = \
+            chunked_full_model_iterator
+        self.iterators.chunked_bootstrap_model_iterator = \
+            chunked_bootstrap_model_iterator
+
+    def reset_fit_parameters(self):
+        """
+        bla.
+
+        Returns
+        -------
+        None.
+
+        """
+        self.parameter_server_handle.reset_parameters()
+
+    def add_fit_parameters_to_parameter_server(self, new_parameters):
+        """
+        bla.
+
+        Parameters
+        ----------
+        new_parameters : TYPE
+            DESCRIPTION.
+
+        Returns
+        -------
+        None.
+
+        """
+        self.parameter_server_handle.add_new_parameters(new_parameters)
+
+    @staticmethod
+    def get_data_chunck(data_server_handle, regression_selection,
+                        bootstrap_selection):
+        """
+        bla.
+
+        Parameters
+        ----------
+        data_server_handle : TYPE
+            DESCRIPTION.
+        regression_selection : TYPE
+            DESCRIPTION.
+        bootstrap_selection : TYPE
+            DESCRIPTION.
+
+        Returns
+        -------
+        regression_data_selection : TYPE
+            DESCRIPTION.
+        regression_matirx_selection : TYPE
+            DESCRIPTION.
+
+        """
+        regression_data_selection, regression_matirx_selection = \
+            data_server_handle.get_regression_data(
+                regression_selection,
+                bootstrap_indici=bootstrap_selection)
+        return regression_data_selection, regression_matirx_selection
+
+    def run_regression_model(self, nchunks=1):
+        """
+        bla.
+
+        Parameters
+        ----------
+        nchunks : TYPE, optional
+            DESCRIPTION. The default is 1.
+
+        Returns
+        -------
+        None.
+
+        """
+        # define the iterator chunks
+        self.initialize_regression_iterators(nchunks=nchunks)
+
+        # This launches workers on the full (non bootstraped) data set
+        # and determines the optimal regularization
+        initial_fit_parameters = \
+            copy.deepcopy(self.get_fit_parameters_from_server())
+        initial_regularization = \
+            self.get_regularization_parameters_from_server()
+        workers = [
+            regressionWorker(initial_fit_parameters,
+                             initial_regularization,
+                             iterator_chunk)
+            for iterator_chunk in self.iterators.chunked_full_model_iterator
+                  ]
+        futures = [w.async_update_loop(self.parameter_server_handle,
+                   self.data_server_handle) for w in workers]
+
+        # This launches workers on the bootstraped data set + original data
+        # and determines the fit parameters and error there on
+        updated_regularization = \
+            copy.deepcopy(self.get_regularization_parameters_from_server())
+        # re-initialize workers with optimal regularization
+        futures = [w.update_initial_parameters(initial_fit_parameters,
+                                               updated_regularization,
+                                               iterator_chunk)
+                   for w, iterator_chunk in zip(
+                       workers, self.iterators.chunked_bootstrap_model_iterator
+                                               )
+                   ]
+        # reset parameters on server for final run.
+        self.parameter_server_handle.reset_parameters()
+        futures = [w.async_update_loop(self.parameter_server_handle,
+                   self.data_server_handle) for w in workers]
+
+    def process_regression_fit(self):
+        """
+        bla.
+
+        Returns
+        -------
+        None.
+
+        """
+        fit_parameters = self.get_fit_parameters_from_server()
+        control_parameters = self.get_control_parameters()
+        lightcurve_model, ld_correction, lightcurve_parameters = \
+            self.get_lightcurve_model()
+
+        fitted_baseline_list = []
+        residuals_list = []
+        corrected_fitted_spectrum_list = []
+        normed_fitted_spectrum_list = []
+        error_normed_fitted_spectrum_list = []
+        wavelength_normed_fitted_spectrum_list = []
+        for (bootstrap_selection, models, fit_results,
+             spectrum) in zip(self.iterators.bootsptrap_indici,
+                              fit_parameters.fitted_model,
+                              fit_parameters.regression_results,
+                              fit_parameters.fitted_spectrum):
+
+            W1 = np.delete(
+                fit_results,
+                list(np.arange(
+                    control_parameters.cpm_parameters.n_additional_regressors
+                               )
+                     ), 1)
+            K = (np.identity(W1.shape[0]) - W1)
+            corrected_spectrum, _, _ = ols(K, spectrum)
+            corrected_fitted_spectrum_list.append(corrected_spectrum)
+
+            baseline_model = np.zeros(control_parameters.data_parameters.shape)
+            residual = np.zeros(control_parameters.data_parameters.shape)
+            lc_model = lightcurve_model[..., bootstrap_selection]
+            normed_spectrum = \
+                np.zeros((control_parameters.
+                          data_parameters.max_spectral_points))
+            error_normed_spectrum = \
+                np.zeros(control_parameters.
+                         data_parameters.max_spectral_points)
+            wavelength_normed_spectrum = \
+                np.zeros((control_parameters.
+                          data_parameters.max_spectral_points))
+            for ipixel, regression_selection in\
+                    enumerate(self.iterators.regressor_indici):
+                (il, _), (_, _), nwave = regression_selection
+                regression_data_selection, _ = \
+                    self.get_data_chunck(self.data_server_handle,
+                                         regression_selection,
+                                         bootstrap_selection)
+                data_unscaled, wavelength, phase, covariance = \
+                    regression_data_selection
+                lc = lc_model[il, :]
+                base = models[ipixel] - (corrected_spectrum)[ipixel]*lc
+                baseline_model[il, :] = base
+                residual[il, :] = data_unscaled - models[ipixel]
+
+                data_normed = data_unscaled/base
+                covariance_normed = covariance*np.diag(base**-2)
+                normed_depth, error_normed_depth, sigma_hat = \
+                    ols(lc[:, np.newaxis], data_normed-1.0,
+                        covariance=covariance_normed)
+
+                normed_spectrum[ipixel] = normed_depth
+                error_normed_spectrum[ipixel] = error_normed_depth
+                wavelength_normed_spectrum[ipixel] = wavelength
+
+            fitted_baseline_list.append(baseline_model)
+            residuals_list.append(residual)
+            normed_fitted_spectrum_list.append(normed_spectrum/ld_correction)
+            error_normed_fitted_spectrum_list.append(
+                error_normed_spectrum/ld_correction)
+            wavelength_normed_fitted_spectrum_list.append(
+                wavelength_normed_spectrum)
+
+        corrected_fitted_spectrum = np.array(corrected_fitted_spectrum_list)
+        fitted_baseline = np.array(fitted_baseline_list)
+        fit_residuals = np.array(residuals_list)
+        normed_fitted_spectrum = np.array(normed_fitted_spectrum_list)
+        error_normed_fitted_spectrum = \
+            np.array(error_normed_fitted_spectrum_list)
+        wavelength_normed_fitted_spectrum =\
+            np.array(wavelength_normed_fitted_spectrum_list)
+
+        prosessed_results = \
+            {'corrected_fitted_spectrum': corrected_fitted_spectrum,
+             'fitted_baseline': fitted_baseline,
+             'fit_residuals': fit_residuals,
+             'normed_fitted_spectrum': normed_fitted_spectrum,
+             'error_normed_fitted_spectrum': error_normed_fitted_spectrum,
+             'wavelength_normed_fitted_spectrum':
+                 wavelength_normed_fitted_spectrum}
+        self.add_fit_parameters_to_parameter_server(prosessed_results)
+
+    def post_process_regression_fit(self):
+        """
+        bla.
+
+        Returns
+        -------
+        None.
+
+        """
+        fit_parameters = self.get_fit_parameters_from_server()
+        control_parameters = self.get_control_parameters()
+        lightcurve_model, ld_correction, lightcurve_parameters = \
+            self.get_lightcurve_model()
+
+        sigma_cut = 3.0
+        bad_wavelength_mask = \
+            (fit_parameters.fitted_mse[0, :] >
+             np.median(fit_parameters.fitted_mse[0, :])*sigma_cut)
+
+        bad_wavelength_mask = \
+            np.repeat(bad_wavelength_mask[np.newaxis, :],
+                      control_parameters.cpm_parameters.nboot+1,
+                      axis=0)
+
+        normed_spectrum = \
+            np.ma.array(fit_parameters.normed_fitted_spectrum * 100.0,
+                        mask=bad_wavelength_mask)
+        error_normed_spectrum = \
+            np.ma.array(fit_parameters.error_normed_fitted_spectrum,
+                        mask=bad_wavelength_mask)
+        wavelength_normed_spectrum = \
+            np.ma.array(fit_parameters.wavelength_normed_fitted_spectrum,
+                        mask=bad_wavelength_mask)
+
+        if lightcurve_parameters['transittype'] == 'secondary':
+            from cascade.exoplanet_tools import transit_to_eclipse
+            normed_spectrum, error_normed_spectrum = \
+                transit_to_eclipse(normed_spectrum,
+                                   uncertainty=error_normed_spectrum)
+
+        # bootstraped normalized spectrum
+        mean_depth_bootstrap = np.ma.mean(normed_spectrum[1:, :], axis=1)
+        normed_spectrum_bootstrap = np.ma.mean(normed_spectrum[1:, :], axis=0)
+        error_normed_spectrum_bootstrap = \
+            np.ma.std((normed_spectrum[1:, :].T - mean_depth_bootstrap).T,
+                      axis=0)
+
+        # 95% confidense interval
+        n = len(mean_depth_bootstrap)
+        sort = sorted(mean_depth_bootstrap)
+        TD_min, TD, TD_max = \
+            (sort[int(n * 0.05)], sort[int(n * 0.5)], sort[int(n * 0.95)])
+
+        observing_time = control_parameters.data_parameters.time_bjd_zero
+        data_product = control_parameters.data_parameters.data_product
+        curent_data = time_module.localtime()
+        creation_time = '{}_{}_{}:{}_{}_{}'.format(curent_data.tm_year,
+                                                   curent_data.tm_mon,
+                                                   curent_data.tm_mday,
+                                                   curent_data.tm_hour,
+                                                   curent_data.tm_min,
+                                                   curent_data.tm_sec)
+        auxilary_data = {'TDDEPTH': [TD_min, TD, TD_max],
+                         'MODELRP': lightcurve_parameters['rp'],
+                         'MODELA': lightcurve_parameters['a'],
+                         'MODELINC': lightcurve_parameters['inc']*u.deg,
+                         'MODELECC': lightcurve_parameters['ecc'],
+                         'MODELW': lightcurve_parameters['w']*u.deg,
+                         'MODELEPH': lightcurve_parameters['t0'],
+                         'MODELPER': lightcurve_parameters['p'],
+                         'VERSION': __version__,
+                         'CREATIME': creation_time,
+                         'OBSTIME': observing_time,
+                         'DATAPROD': data_product}
+
+        wavelength_unit = control_parameters.data_parameters.wavelength_unit
+        data_unit = u.percent
+        exoplanet_spectrum = \
+            SpectralData(wavelength=wavelength_normed_spectrum[0, :],
+                         wavelength_unit=wavelength_unit,
+                         data=normed_spectrum[0, :],
+                         data_unit=data_unit,
+                         uncertainty=error_normed_spectrum[0, :],
+                         )
+        exoplanet_spectrum.add_auxilary(**auxilary_data)
+        exoplanet_spectrum_bootstrap = \
+            SpectralData(wavelength=wavelength_normed_spectrum[0, :],
+                         wavelength_unit=wavelength_unit,
+                         data=normed_spectrum_bootstrap,
+                         data_unit=data_unit,
+                         uncertainty=error_normed_spectrum_bootstrap,
+                         )
+        exoplanet_spectrum_bootstrap.add_auxilary(**auxilary_data)
+
+        nboot, nwave, ntime = fit_parameters.fitted_time.shape
+        uniq_time = fit_parameters.fitted_time[0, 0, :]
+        baseline_bootstrap = np.zeros((nwave, ntime))
+        error_baseline_bootstrap = np.zeros_like(baseline_bootstrap)
+        for it, time in enumerate(uniq_time):
+            for il in range(nwave):
+                idx = np.where(fit_parameters.fitted_time[1:, il, :] == time)
+                selection = \
+                    fit_parameters.fitted_baseline[idx[0]+1, il, idx[1]]
+                baseline_bootstrap[il, it] = np.mean(selection)
+                error_baseline_bootstrap[il, it] = np.std(selection)
+        time_baseline_bootstrap = uniq_time
+        wavelength_baseline_bootstrap = wavelength_normed_spectrum[0, :]
+        baseline_mask = exoplanet_spectrum_bootstrap.mask
+        baseline_mask = \
+            np.repeat(baseline_mask[:, np.newaxis],
+                      len(uniq_time),
+                      axis=1)
+
+        # baseline_zero = fit_parameters.fitted_baseline[0, ...]
+
+        from cascade.data_model import SpectralDataTimeSeries
+        data_unit = control_parameters.data_parameters.data_unit
+        time_unit = control_parameters.data_parameters.time_unit
+        fitted_systematics_bootstrap = SpectralDataTimeSeries(
+            wavelength=wavelength_baseline_bootstrap,
+            wavelength_unit=wavelength_unit,
+            data=baseline_bootstrap,
+            data_unit=data_unit,
+            uncertainty=error_baseline_bootstrap,
+            time=time_baseline_bootstrap,
+            time_unit=time_unit,
+            mask=baseline_mask)
+
+        post_prosessed_results = \
+            {'exoplanet_spectrum': exoplanet_spectrum,
+             'exoplanet_spectrum_bootstrap': exoplanet_spectrum_bootstrap,
+             'fitted_systematics_bootstrap': fitted_systematics_bootstrap}
+
+        self.add_fit_parameters_to_parameter_server(post_prosessed_results)
+
+
+@ray.remote
+class rayRegressionControler(regressionControler):
+    """Ray wrapper regressionDataServer class."""
+
+    def __init__(self, cascade_configuration, dataset, regressor_dataset):
+        super().__init__(cascade_configuration, dataset, regressor_dataset)
+
+    def instantiate_parameter_server(self):
+        """
+        bla.
+
+        Returns
+        -------
+        None.
+
+        """
+        self.parameter_server_handle = \
+            rayRegressionParameterServer.remote(self.cascade_configuration)
+
+    def instantiate_data_server(self, dataset, regressor_dataset):
+        """
+        bla.
+
+        Parameters
+        ----------
+        dataset : TYPE
+            DESCRIPTION.
+        regressor_dataset : TYPE
+            DESCRIPTION.
+
+        Returns
+        -------
+        None.
+
+        """
+        self.data_server_handle = \
+            rayRegressionDataServer.remote(dataset, regressor_dataset)
+
+    def initialize_servers(self):
+        """
+        bla.
+
+        Note that the order of initialization is important: Firts the data
+        server and then the parameter server.
+
+        Returns
+        -------
+        None.
+
+        """
+        ftr = self.data_server_handle.\
+            initialize_data_server.remote(self.parameter_server_handle)
+        ray.get(ftr)
+        ftr = self.parameter_server_handle.\
+            initialize_parameter_server.remote(self.data_server_handle)
+        ray.get(ftr)
+
+    def get_fit_parameters_from_server(self):
+        """
+        bla.
+
+        Returns
+        -------
+        TYPE
+            DESCRIPTION.
+
+        """
+        return ray.get(
+            self.parameter_server_handle.get_fitted_parameters.remote()
+                       )
+
+    def get_regularization_parameters_from_server(self):
+        """
+        bla.
+
+        Returns
+        -------
+        TYPE
+            DESCRIPTION.
+
+        """
+        return ray.get(
+            self.parameter_server_handle.get_regularization.remote()
+                       )
+
+    def get_control_parameters(self):
+        """
+        bla.
+
+        Returns
+        -------
+        control_parameters : TYPE
+            DESCRIPTION.
+
+        """
+        control_parameters = SimpleNamespace()
+        control_parameters.data_parameters = \
+            ray.get(self.parameter_server_handle.get_data_parameters.remote())
+        control_parameters.cpm_parameters = \
+            ray.get(
+                self.parameter_server_handle.get_regression_parameters.remote()
+                    )
+        return control_parameters
+
+    @ray.method(num_returns=3)
+    def get_lightcurve_model(self):
+        """
+        bla.
+
+        Returns
+        -------
+        TYPE
+            DESCRIPTION.
+
+        """
+        return ray.get(self.data_server_handle.get_lightcurve_model.remote())
+
+    def initialize_regression_iterators(self, nchunks=1):
+        """
+        bla.
+
+        Returns
+        -------
+        None.
+
+        """
+        cpm_parameters = \
+            ray.get(self.parameter_server_handle.get_regression_parameters.remote())
+        data_parameters = \
+            ray.get(self.parameter_server_handle.get_data_parameters.remote())
+        self.iterators.regressor_indici = \
+            select_regressors(data_parameters.ROI,
+                              cpm_parameters.nwidth)
+        self.iterators.bootsptrap_indici, _ = \
+            make_bootstrap_samples(data_parameters.shape[-1],
+                                   cpm_parameters.nboot)
+        self.iterators.combined_full_model_indici = itertools.product(
+            enumerate(self.iterators.bootsptrap_indici[:1]),
+            enumerate(self.iterators.regressor_indici))
+        self.iterators.n_iterators_full_model = \
+            data_parameters.max_spectral_points
+        self.iterators.combined_bootstrap_model_indici = itertools.product(
+                enumerate(self.iterators.bootsptrap_indici),
+                enumerate(self.iterators.regressor_indici))
+        self.iterators.n_iterators_bootstrap_model = \
+            data_parameters.max_spectral_points*(cpm_parameters.nboot+1)
+        self.chunk_iterators(nchunks=nchunks)
+
+    def reset_fit_parameters(self):
+        """
+        bla.
+
+        Returns
+        -------
+        None.
+
+        """
+        ray.get(self.parameter_server_handle.reset_parameters.remote())
+
+    @staticmethod
+    def get_data_chunck(data_server_handle, regression_selection,
+                        bootstrap_selection):
+        """
+        bla.
+
+        Parameters
+        ----------
+        data_server_handle : TYPE
+            DESCRIPTION.
+        regression_selection : TYPE
+            DESCRIPTION.
+        bootstrap_selection : TYPE
+            DESCRIPTION.
+
+        Returns
+        -------
+        regression_data_selection : TYPE
+            DESCRIPTION.
+        regression_matirx_selection : TYPE
+            DESCRIPTION.
+
+        """
+        regression_data_selection, regression_matirx_selection = \
+            ray.get(data_server_handle.get_regression_data.remote(
+                regression_selection,
+                bootstrap_indici=bootstrap_selection))
+        return regression_data_selection, regression_matirx_selection
+
+    def add_fit_parameters_to_parameter_server(self, new_parameters):
+        """
+        bla.
+
+        Parameters
+        ----------
+        new_parameters : TYPE
+            DESCRIPTION.
+
+        Returns
+        -------
+        None.
+
+        """
+        ray.get(
+            self.parameter_server_handle.
+            add_new_parameters.remote(new_parameters)
+                )
+
+    def run_regression_model(self, nchunks=1):
+        """
+        bla.
+
+        Parameters
+        ----------
+        nchunks : TYPE, optional
+            DESCRIPTION. The default is 1.
+
+        Returns
+        -------
+        None.
+
+        """
+        # define the iterator chunks
+        self.initialize_regression_iterators(nchunks=nchunks)
+
+        # This launches workers on the full (non bootstraped) data set
+        # and determines the optimal regularization
+        initial_fit_parameters = \
+            copy.deepcopy(self.get_fit_parameters_from_server())
+        initial_regularization = \
+            self.get_regularization_parameters_from_server()
+        workers = [
+            rayRegressionWorker.remote(initial_fit_parameters,
+                                       initial_regularization,
+                                       iterator_chunk)
+            for iterator_chunk in self.iterators.chunked_full_model_iterator
+                  ]
+        futures = [w.async_update_loop.remote(self.parameter_server_handle,
+                   self.data_server_handle) for w in workers]
+        ray.get(futures)
+        # This launches workers on the bootstraped data set + original data
+        # and determines the fit parameters and error there on
+        updated_regularization = \
+            copy.deepcopy(self.get_regularization_parameters_from_server())
+        # re-initialize workers with optimal regularization
+        futures = [w.update_initial_parameters.remote(initial_fit_parameters,
+                                                      updated_regularization,
+                                                      iterator_chunk)
+                   for w, iterator_chunk in zip(
+                       workers, self.iterators.chunked_bootstrap_model_iterator
+                                                )]
+        ray.get(futures)
+        # reset parameters on server for final run.
+        self.reset_fit_parameters()
+        futures = [w.async_update_loop.remote(self.parameter_server_handle,
+                   self.data_server_handle) for w in workers]
+        ray.get(futures)
+
+
+class regressionWorker:
+    """
+    bla.
+
+    bla
+    """
+
+    def __init__(self, initial_fit_parameters, initial_regularization,
+                 iterator_chunk):
+        self.fit_parameters = copy.deepcopy(initial_fit_parameters)
+        self.regularization = copy.deepcopy(initial_regularization)
+        self.iterator = iterator_chunk
+
+    def update_initial_parameters(self,
+                                  updated_fit_parameters,
+                                  updated_regularization,
+                                  updated_iterator_chunk):
+        """
+        bla.
+
+        Parameters
+        ----------
+        updated_fit_parameters : TYPE
+            DESCRIPTION.
+        updated_regularization : TYPE
+            DESCRIPTION.
+        updated_iterator_chunk : TYPE
+            DESCRIPTION.
+
+        Returns
+        -------
+        None.
+
+        """
+        self.fit_parameters = copy.deepcopy(updated_fit_parameters)
+        self.regularization = copy.deepcopy(updated_regularization)
+        self.iterator = updated_iterator_chunk
+
+    def compute_model(self, regression_selection, bootstrap_selection,
+                      data_server_handle, regularization_method, alpha):
+        """
+        bla.
+
+        Parameters
+        ----------
+        regression_selection : TYPE
+            DESCRIPTION.
+        bootstrap_selection : TYPE
+            DESCRIPTION.
+        data_server_handle : TYPE
+            DESCRIPTION.
+        regularization_method : TYPE
+            DESCRIPTION.
+        alpha : TYPE
+            DESCRIPTION.
+
+        Returns
+        -------
+        beta_optimal : TYPE
+            DESCRIPTION.
+        rss : TYPE
+            DESCRIPTION.
+        mse : TYPE
+            DESCRIPTION.
+        degrees_of_freedom : TYPE
+            DESCRIPTION.
+        model_unscaled : TYPE
+            DESCRIPTION.
+        alpha : TYPE
+            DESCRIPTION.
+
+        """
+        # Get data and regression matrix
+        regression_data_selection, regression_matirx_selection = \
+            self.get_data_chunck(data_server_handle, regression_selection,
+                                 bootstrap_selection)
+
+        data_unscaled, wavelength, phase, covariance = \
+            regression_data_selection
+        (regression_matrix_unscaled, n_additional, feature_mean,
+         feature_scale) = regression_matirx_selection
+
+        # create regularization matrix
+        n_data, n_parameter = regression_matrix_unscaled.shape
+        delta = create_regularization_matrix(regularization_method,
+                                             n_parameter,
+                                             n_additional)
+        # do ridge regression
+        (beta_optimal, rss, mse, degrees_of_freedom,
+         model_unscaled, alpha, aic) = \
+            ridge(regression_matrix_unscaled, data_unscaled,
+                  covariance, delta, alpha)
+
+        ################################################################
+        # scale coefficients back
+        ################################################################
+        beta_optimal[0] -= np.sum(beta_optimal[2:]*feature_mean /
+                                  feature_scale)
+        beta_optimal[2:] = beta_optimal[2:]/feature_scale
+
+        return (beta_optimal, rss, mse, degrees_of_freedom, model_unscaled,
+                alpha, aic, phase, wavelength)
+
+    @staticmethod
+    def get_data_chunck(data_server_handle, regression_selection,
+                        bootstrap_selection):
+        """
+        bla.
+
+        Parameters
+        ----------
+        data_server_handle : TYPE
+            DESCRIPTION.
+        regression_selection : TYPE
+            DESCRIPTION.
+        bootstrap_selection : TYPE
+            DESCRIPTION.
+
+        Returns
+        -------
+        regression_data_selection : TYPE
+            DESCRIPTION.
+        regression_matirx_selection : TYPE
+            DESCRIPTION.
+
+        """
+        regression_data_selection, regression_matirx_selection = \
+            data_server_handle.get_regression_data(
+                regression_selection,
+                bootstrap_indici=bootstrap_selection)
+        return regression_data_selection, regression_matirx_selection
+
+    @staticmethod
+    def get_regression_parameters(parameter_server_handle):
+        """
+        bla.
+
+        Parameters
+        ----------
+        parameter_server_handle : TYPE
+            DESCRIPTION.
+
+        Returns
+        -------
+        regularization_method : TYPE
+            DESCRIPTION.
+        n_additional : TYPE
+            DESCRIPTION.
+        ncorrect : TYPE
+            DESCRIPTION.
+
+        """
+        regression_par = parameter_server_handle.get_regression_parameters()
+        regularization_method = regression_par.regularization_method
+        n_additional = regression_par.n_additional_regressors
+        data_par = parameter_server_handle.get_data_parameters()
+        ncorrect = data_par.ncorrect
+        return regularization_method, n_additional, ncorrect
+
+    def update_parameters_on_server(self, parameter_server_handle):
+        """
+        bla.
+
+        Parameters
+        ----------
+        parameter_server_handle : TYPE
+            DESCRIPTION.
+
+        Returns
+        -------
+        None.
+
+        """
+        ftrs = parameter_server_handle.\
+            update_fitted_parameters(self.fit_parameters)
+        ftrs = parameter_server_handle.\
+            update_optimal_regulatization(self.regularization)
+
+    def async_update_loop(self, parameter_server_handle, data_server_handle):
+        """
+        bla.
+
+        Parameters
+        ----------
+        parameter_server_handle : TYPE
+            DESCRIPTION.
+        data_server_handle : TYPE
+            DESCRIPTION.
+
+        Returns
+        -------
+        None.
+
+        """
+        regularization_method, n_additional, ncorrect = \
+            self.get_regression_parameters(parameter_server_handle)
+
+        iterator_chunk, chunk_size = self.iterator
+        for (iboot, bootstrap_selection),\
+                (idata_point, regression_selection) in iterator_chunk:
+
+            (_, _), (index_disp_regressors, _), nwave = regression_selection
+
+            (beta_optimal, rss, mse, degrees_of_freedom, model_unscaled,
+             alpha, aic, phase, wavelength) = \
+                self.compute_model(regression_selection, bootstrap_selection,
+                                   data_server_handle, regularization_method,
+                                   self.regularization.optimal_alpha[idata_point])
+
+            self.regularization.optimal_alpha[idata_point] = alpha
+            self.fit_parameters.\
+                fitted_spectrum[iboot, idata_point] = beta_optimal[1]
+            self.fit_parameters.\
+                fitted_model[iboot, idata_point, :] = model_unscaled
+            self.fit_parameters.\
+                fitted_time[iboot, idata_point, :] = phase
+            self.fit_parameters.\
+                wavelength_fitted_spectrum[iboot, idata_point] = wavelength
+            self.fit_parameters.fitted_mse[iboot, idata_point] = mse
+            self.fit_parameters.fitted_aic[iboot, idata_point] = aic
+            self.fit_parameters.\
+                degrees_of_freedom[iboot, idata_point] = degrees_of_freedom
+            self.fit_parameters.\
+                regression_results[
+                    iboot, idata_point,
+                    index_disp_regressors+n_additional-ncorrect
+                                  ] = beta_optimal[n_additional:]
+            self.fit_parameters.\
+                regression_results[iboot, idata_point, 0:n_additional] = \
+                beta_optimal[0:n_additional]
+        self.update_parameters_on_server(parameter_server_handle)
+
+
+@ray.remote
+class rayRegressionWorker(regressionWorker):
+    """Ray wrapper regressionDataServer class."""
+
+    def __init__(self, initial_fit_parameters, initial_regularization,
+                 iterator_chunk):
+        super().__init__(initial_fit_parameters, initial_regularization,
+                         iterator_chunk)
+
+    @staticmethod
+    def get_data_chunck(data_server_handle, regression_selection,
+                        bootstrap_selection):
+        """
+        bla.
+
+        Parameters
+        ----------
+        data_server_handle : TYPE
+            DESCRIPTION.
+        regression_selection : TYPE
+            DESCRIPTION.
+        bootstrap_selection : TYPE
+            DESCRIPTION.
+
+        Returns
+        -------
+        regression_data_selection : TYPE
+            DESCRIPTION.
+        regression_matirx_selection : TYPE
+            DESCRIPTION.
+
+        """
+        regression_data_selection, regression_matirx_selection = \
+            ray.get(data_server_handle.get_regression_data.remote(
+                regression_selection,
+                bootstrap_indici=bootstrap_selection))
+        return regression_data_selection, regression_matirx_selection
+
+    @staticmethod
+    def get_regression_parameters(parameter_server_handle):
+        """
+        bla.
+
+        Parameters
+        ----------
+        parameter_server_handle : TYPE
+            DESCRIPTION.
+
+        Returns
+        -------
+        regularization_method : TYPE
+            DESCRIPTION.
+        n_additional : TYPE
+            DESCRIPTION.
+        ncorrect : TYPE
+            DESCRIPTION.
+
+        """
+        regression_par = \
+            ray.get(parameter_server_handle.get_regression_parameters.remote())
+        regularization_method = regression_par.regularization_method
+        n_additional = regression_par.n_additional_regressors
+        data_par = \
+            ray.get(parameter_server_handle.get_data_parameters.remote())
+        ncorrect = data_par.ncorrect
+        return regularization_method, n_additional, ncorrect
+
+    def update_parameters_on_server(self, parameter_server_handle):
+        """
+        bla.
+
+        Parameters
+        ----------
+        parameter_server_handle : TYPE
+            DESCRIPTION.
+
+        Returns
+        -------
+        None.
+
+        """
+        ftrs = parameter_server_handle.\
+            update_fitted_parameters.remote(self.fit_parameters)
+        ray.get(ftrs)
+        ftrs = parameter_server_handle.\
+            update_optimal_regulatization.remote(self.regularization)
+        ray.get(ftrs)

@@ -30,7 +30,7 @@ from functools import partial
 import collections
 import warnings
 import copy
-import os
+# import os
 from psutil import virtual_memory, cpu_count
 from tqdm import tqdm
 import multiprocessing as mp
@@ -41,7 +41,8 @@ from matplotlib import pyplot as plt
 import seaborn as sns
 from scipy import ndimage
 from scipy.ndimage import binary_dilation
-from skimage.feature import register_translation
+# from skimage.feature import register_translation
+from skimage.registration import phase_cross_correlation
 from astropy.convolution import convolve
 from astropy.convolution import Gaussian2DKernel
 from astropy.convolution import Kernel2D
@@ -60,6 +61,7 @@ import ray
 from ..data_model import SpectralDataTimeSeries
 from ..data_model import MeasurementDesc
 from ..data_model import AuxilaryInfoDesc
+from ..exoplanet_tools import SpectralModel
 
 __all__ = ['directional_filters', 'create_edge_mask',
            'determine_optimal_filter', 'define_image_regions_to_be_filtered',
@@ -76,7 +78,9 @@ __all__ = ['directional_filters', 'create_edge_mask',
            'determine_center_of_light_posision',
            'determine_absolute_cross_dispersion_position',
            'combine_scan_samples', 'sigma_clip_data',
-           'sigma_clip_data_cosmic', 'create_cleaned_dataset']
+           'sigma_clip_data_cosmic', 'create_cleaned_dataset',
+           'compressROI', 'compressSpectralTrace',
+           'compressDataset', 'correct_initial_wavelength_shift']
 
 
 def _round_up_to_odd_integer(value):
@@ -495,8 +499,10 @@ def filter_image_cube(data_in, Filters, ROIcube, enumeratedSubRegions,
             filteredImage[indices_poi[j[0]]] = j[2]
             filteredImageVariance[indices_poi[j[0]]] = j[3],
     else:
-        ncpus = ray.cluster_resources()['CPU']
-        chunksize = int(np.min([512, len(enumeratedSubRegions)//ncpus]))
+        ncpus =int(ray.cluster_resources()['CPU'])
+        chunksize = len(enumeratedSubRegions)//ncpus + 1
+        while chunksize > 256:
+            chunksize = chunksize//ncpus + 1
 
         data_id = ray.put(data_in)
         filters_id = ray.put(Filters)
@@ -532,7 +538,8 @@ def iterative_bad_pixel_flagging(dataset, ROIcube, Filters,
                                  enumeratedSubRegions, sigmaLimit=4.0,
                                  maxNumberOfIterations=12,
                                  fractionalAcceptanceLimit=0.005,
-                                 useMultiProcesses=True):
+                                 useMultiProcesses=True,
+                                 maxNumberOfCPUs=2):
     """
     Flag bad pixels.
 
@@ -559,6 +566,8 @@ def iterative_bad_pixel_flagging(dataset, ROIcube, Filters,
         which the iteration can be terminated.
     useMultiProcesses : 'bool' (optional|True)
         Use multiprocessing or not.
+    max_number_of_cpus : 'int' (optional|12)
+        Maximum number of CPU's which can be used.
 
     Returns
     -------
@@ -586,16 +595,22 @@ def iterative_bad_pixel_flagging(dataset, ROIcube, Filters,
 
     if useMultiProcesses:
         mem = virtual_memory()
-        num_cpus = int(cpu_count(logical=False))
+        ncpu = int(np.min([maxNumberOfCPUs,
+                           np.max([1, cpu_count(logical=True)//2])
+                           ])
+                   )
         mem_store = np.max([int(initialData.nbytes*3.0), int(1.1*78643200)])
-        mem_workers = int(initialData.nbytes*5.0)
+        mem_workers = np.max([int(initialData.nbytes*5.0), int(1.1*52428800)])
         if mem.available < (mem_store+mem_workers):
             warnings.warn("WARNING: Not enough memory for Ray to start. "
-                          "Required free memory: {} bytes".
-                          format(mem_store+mem_workers))
+                          "Required free memory: {} bytes "
+                          "Available: {} bytes".
+                          format(mem_store+mem_workers, mem.available))
         ray.disconnect()
-        ray.init(num_cpus=num_cpus, object_store_memory=mem_store,
-                 memory=mem_workers)
+#        ray.init(num_cpus=ncpu, object_store_memory=mem_store,
+#                 memory=mem_workers)
+# bug fix
+        ray.init(num_cpus=ncpu, object_store_memory=mem_store)
 
     numberOfFlaggedPixels = np.sum(~ROIcube & dataset.mask)
     tqdm.write('Initial bad pixel flagging. '
@@ -633,7 +648,6 @@ def iterative_bad_pixel_flagging(dataset, ROIcube, Filters,
 
     ray.disconnect()
     ray.shutdown()
-    os.system("ray stop")
 
     cleanedUncertainty = np.ma.array(dataset.uncertainty.data.value.copy(),
                                      mask=dataset.mask.copy())
@@ -791,7 +805,8 @@ def extract_spectrum(dataset, ROICube, extractionProfile=None, optimal=False,
         sns.set_context("talk", font_scale=1.5, rc={"lines.linewidth": 2.5})
         sns.set_style("white", {"xtick.bottom": True, "ytick.left": True})
         fig, ax0 = plt.subplots(figsize=(6, 6), nrows=1, ncols=1)
-        ax0.plot(extractedSpectra[1:8].T)
+        for iwave in range(1,8):   
+            ax0.plot(extractedSpectra[iwave, :])
         ax0.set_title('Extracted 1D spectral timeseries')
         ax0.set_xlabel('Integration #')
         ax0.set_ylabel('Flux [{}]'.format(dataset.data_unit))
@@ -954,8 +969,11 @@ def _determine_relative_source_shift(reference_image, image,
 
     # subpixel precision by oversampling image by upsampleFactor
     # returns shift, error and phase difference
+    # shift, _, _ = \
+    #     register_translation(ref_im, im, upsample_factor=upsampleFactor,
+    #                          space=space)
     shift, _, _ = \
-        register_translation(ref_im, im, upsample_factor=upsampleFactor,
+        phase_cross_correlation(ref_im, im, upsample_factor=upsampleFactor,
                              space=space)
     relativeImageShiftY = -shift[0]
     relativeImageShiftX = -shift[1]
@@ -1033,13 +1051,17 @@ def _determine_relative_rotation_and_scale(reference_image, referenceROI,
                                output_shape=None, multichannel=None,
                                AngleOversampling=AngleOversampling)
 
-    tparams = register_translation(warped_fft_ref_im, warped_fft_im,
+    # tparams = register_translation(warped_fft_ref_im, warped_fft_im,
+    #                                upsample_factor=upsampleFactor,
+    #                                space='real')
+    tparams = phase_cross_correlation(warped_fft_ref_im, warped_fft_im,
                                    upsample_factor=upsampleFactor,
                                    space='real')
+    
     shifts = tparams[0]
     # calculate rotation
     # note, only look for angles between +- 90 degrees,
-    # remove anu flip of 180 degrees due to search
+    # remove any flip of 180 degrees due to search
     shiftr, shiftc = shifts[:2]
     shiftr = shiftr/AngleOversampling
     if shiftr > 90.0:
@@ -1370,7 +1392,7 @@ def grouper(iterable, n, fillvalue=None):
 
 
 def joblib_loop(dataCube, ROICube=None, upsampleFactor=111,
-                AngleOversampling=2, nreference=6):
+                AngleOversampling=2, nreference=6, maxNumberOfCPUs=2):
     """
     Loop using joblib.
 
@@ -1387,6 +1409,7 @@ def joblib_loop(dataCube, ROICube=None, upsampleFactor=111,
     nreferences : 'int', optional
     upsampleFactor : 'int, optional
     AngleOversampling : 'int, optional
+    max_number_of_cpus : 'int', optionla
 
     Returns
     -------
@@ -1397,7 +1420,7 @@ def joblib_loop(dataCube, ROICube=None, upsampleFactor=111,
                    ROICube,
                    upsampleFactor=upsampleFactor,
                    AngleOversampling=AngleOversampling)
-    ncpu = np.min([12, np.max([1, mp.cpu_count()-2])])
+    ncpu = int(np.min([maxNumberOfCPUs, np.max([1, mp.cpu_count()-2])]))
     batch_size = np.min([ncpu, nreference])
     dfunc = joblib.delayed(func)
     with joblib.Parallel(n_jobs=-1, prefer="processes") as MP:
@@ -1406,7 +1429,7 @@ def joblib_loop(dataCube, ROICube=None, upsampleFactor=111,
                             desc=('Determining source rotation and '
                                   'positional shift between integrations'))
         for block in grouper(ITR, batch_size):
-            MPITR = MP(dfunc(i) for i in block)
+            MPITR = MP(dfunc(i) for i in block if i is not None)
             for (k, relativeSourcePosition) in enumerate(MPITR):
                 yield relativeSourcePosition
             progress_bar.update(k+1)
@@ -1416,7 +1439,7 @@ def joblib_loop(dataCube, ROICube=None, upsampleFactor=111,
 def register_telescope_movement(cleanedDataset, ROICube=None,  nreferences=6,
                                 mainReference=4, upsampleFactor=111,
                                 AngleOversampling=2, verbose=False,
-                                verboseSaveFile=None):
+                                verboseSaveFile=None, maxNumberOfCPUs=2):
     """
     Register the telescope movement.
 
@@ -1445,6 +1468,8 @@ def register_telescope_movement(cleanedDataset, ROICube=None,  nreferences=6,
         If true diagnostic plots will be generated. Default is False
     verboseSaveFile : 'str', optional
         If not None, verbose output will be saved to the specified file.
+    max_number_of_cpus : 'int', optional
+        Maxiumum bumber of cpu's to be used.
 
     Returns
     -------
@@ -1481,7 +1506,8 @@ def register_telescope_movement(cleanedDataset, ROICube=None,  nreferences=6,
         joblib_loop(dataUse, ROICube=ROICube,
                     upsampleFactor=upsampleFactor,
                     AngleOversampling=AngleOversampling,
-                    nreference=nreferences)
+                    nreference=nreferences,
+                    maxNumberOfCPUs=maxNumberOfCPUs)
     iteratorResults = [position for position in determinePositionIterator]
 
     referenceIndex = np.linspace(0, ntime-1, nreferences, dtype=int)
@@ -1634,6 +1660,46 @@ def determine_center_of_light_posision(cleanData, ROI=None, verbose=False,
     return total_light[idx_use], idx, COL[idx_use], ytrace, xtrace
 
 
+def correct_initial_wavelength_shift(referenceDataset, *otherDatasets):
+    """
+    Determine if there is an initial wavelength shift and correct.
+
+    Parameters
+    ----------
+    referenceDataset : TYPE
+        DESCRIPTION.
+    **otherDatasets : TYPE
+        DESCRIPTION.
+
+    Returns
+    -------
+    referenceDataset : Type
+        DESCRIPTION.
+    """
+    model_spectra = SpectralModel()
+    wave_shift, error_wave_shift = \
+        model_spectra.determine_wavelength_shift(referenceDataset)
+    referenceDataset.wavelength = referenceDataset.wavelength+wave_shift
+    referenceDataset.add_auxilary(wave_shift=wave_shift.to_string())
+    referenceDataset.add_auxilary(error_wave_shift=error_wave_shift.to_string())
+    otherDatasets_list = list(otherDatasets)
+    for i, dataset in enumerate(otherDatasets_list):
+        dataset.wavelength = dataset.wavelength+wave_shift
+        dataset.add_auxilary(wave_shift=wave_shift.to_string())
+        dataset.add_auxilary(error_wave_shift=error_wave_shift.to_string())
+        otherDatasets_list[i] = dataset
+    modeled_observations = \
+        [model_spectra.model_wavelength, model_spectra.model_observation]
+    corrected_observations = \
+        [model_spectra.corrected_wavelength, model_spectra.observation]
+    if len(otherDatasets_list) > 0:
+        return [referenceDataset] + otherDatasets_list, modeled_observations,\
+            corrected_observations
+    else:
+        return referenceDataset,  modeled_observations, \
+            corrected_observations
+
+
 def determine_absolute_cross_dispersion_position(cleanedDataset, initialTrace,
                                                  ROI=None,
                                                  verbose=False,
@@ -1767,7 +1833,7 @@ def correct_wavelength_for_source_movent(datasetIn, spectral_movement,
 
     correctedWavelength = dataset_out.return_masked_array('wavelength').copy()
     # no need for mask here as wavekength should be difined for all pixels
-    correctedWavelength =  correctedWavelength.data
+    correctedWavelength = correctedWavelength.data
 
     ntime = correctedWavelength.shape[-1]
     for it in range(ntime):
@@ -1800,9 +1866,11 @@ def correct_wavelength_for_source_movent(datasetIn, spectral_movement,
     dataset_out.isMovementCorrected = True
 
     if verbose:
-        wnew = np.ma.median(dataset_out.wavelength[1:8,
-                                                   :, :], axis=1)
-        wold = np.ma.median(datasetIn.wavelength[1:8, :, :],
+        wnew = dataset_out.return_masked_array('wavelength')
+        index_valid = np.ma.all(wnew[..., 0].mask, axis=1)
+        index_valid = ~index_valid.data
+        wnew = np.ma.median(wnew[index_valid, ...][1:8, ...], axis=1)
+        wold = np.ma.median(datasetIn.wavelength[index_valid, ...][1:8, ...],
                             axis=1)
         sns.set_context("talk", font_scale=1.5, rc={"lines.linewidth": 2.5})
         sns.set_style("white", {"xtick.bottom": True, "ytick.left": True})
@@ -2097,17 +2165,19 @@ def rebin_to_common_wavelength_grid(dataset, referenceIndex, nrebin=None,
     rebinnedDataset = SpectralDataTimeSeries(**dictTimeSeries)
 
     if verbose:
+        index_valid = np.ma.all(wavelength.mask, axis=1)
+        index_valid = ~index_valid.data
         sns.set_context("talk", font_scale=1.5, rc={"lines.linewidth": 2.5})
         sns.set_style("white", {"xtick.bottom": True, "ytick.left": True})
         fig, axes = plt.subplots(figsize=(10, 5), nrows=1, ncols=2)
         ax0, ax1 = axes.flatten()
         ax0.plot(rebinnedWavelength[1:6].T, zorder=5, lw=3)
-        ax0.plot(wavelength[2:7].T, color='gray', zorder=4)
+        ax0.plot(wavelength[index_valid, :][2:7].T, color='gray', zorder=4)
         ax0.set_ylabel('Wavelength [{}]'.format(dataset.wavelength_unit))
         ax0.set_xlabel('Integration #')
         ax0.set_title('Rebinned Wavelengths')
         ax1.plot(rebinnedSpectra[1:6].T, zorder=5, lw=3)
-        ax1.plot(spectra[2:7].T, color='gray', zorder=4)
+        ax1.plot(spectra[index_valid, :][2:7].T, color='gray', zorder=4)
         ax1.set_ylabel('Flux [{}]'.format(dataset.data_unit))
         ax1.set_xlabel('Integration #')
         ax1.set_title('Rebinned Signal')
@@ -2338,7 +2408,8 @@ def sigma_clip_data(datasetIn, sigma, nfilter):
         # add to mask
         newMask[filter_index] = np.ma.mask_or(newMask[filter_index], mask.T,
                                               shrink=False)
-    newMask = np.ma.mask_or(datasetIn.mask, newMask)
+
+    newMask = np.ma.mask_or(datasetIn.mask, newMask, shrink=False)
 
     # update mask and set flag
     datasetIn.mask = newMask
@@ -2430,3 +2501,110 @@ def create_cleaned_dataset(datasetIn, ROI, kernel, stdvKernelTime):
         isCleanedData=True)
 
     return cleanedDataset
+
+
+def compressROI(ROI, compressMask):
+    """
+    Remove masked wavelengths from ROI.
+
+    Parameters
+    ----------
+    ROI : TYPE
+        DESCRIPTION.
+    compressMask : TYPE
+        DESCRIPTION.
+
+    Returns
+    -------
+    compressedROI : TYPE
+        DESCRIPTION.
+
+    """
+    compressedROI = ROI[compressMask]
+    return compressedROI
+
+
+def compressSpectralTrace(spectralTrace, compressMask):
+    """
+    Remove masked wavelengths from spectral trace.
+
+    Parameters
+    ----------
+    spectralTrace : TYPE
+        DESCRIPTION.
+    compressMask : TYPE
+        DESCRIPTION.
+
+    Returns
+    -------
+    compressedsSpectralTrace : TYPE
+        DESCRIPTION.
+
+    """
+    compressedsSpectralTrace = spectralTrace.copy()
+    for key in compressedsSpectralTrace.keys():
+        compressedsSpectralTrace[key] = \
+           compressedsSpectralTrace[key][compressMask]
+    compressedsSpectralTrace['wavelength_pixel'] = \
+        compressedsSpectralTrace['wavelength_pixel'] - \
+        compressedsSpectralTrace['wavelength_pixel'][0]
+    return compressedsSpectralTrace
+
+
+def compressDataset(datasetIn, ROI):
+    """
+    Remove all flaged wavelengths from data set.
+
+    Parameters
+    ----------
+    datasetIn : TYPE
+        DESCRIPTION.
+    ROI : TYPE
+        DESCRIPTION.
+
+    Returns
+    -------
+    compressedDataset : TYPE
+        DESCRIPTION.
+
+    """
+    dataIn = datasetIn.return_masked_array('data').copy()
+    dataInShape = dataIn.shape
+    errorIn = datasetIn.return_masked_array('uncertainty').copy()
+    dataUnit = datasetIn.data_unit
+    waveIn = datasetIn.return_masked_array('wavelength').copy()
+    wavelengthUnit = datasetIn.wavelength_unit
+    timeIn = datasetIn.return_masked_array('time').copy()
+    timeUnit = datasetIn.time_unit
+
+    fullMask = \
+        np.ma.mask_or(dataIn.mask,
+                      np.repeat(ROI[..., np.newaxis],
+                                dataInShape[-1],
+                                axis=-1),
+                      shrink=False)
+    compressMask = ~fullMask.all(axis=tuple(np.arange(1, dataIn.ndim)))
+
+    dictTimeSeries = {}
+    for key in vars(datasetIn).keys():
+        if key[0] != "_":
+            if isinstance(vars(datasetIn)[key], MeasurementDesc):
+                dictTimeSeries[key] = \
+                    getattr(datasetIn, key)[compressMask, ...]
+            else:
+                # print('can be added withour rebin')
+                dictTimeSeries[key] = getattr(datasetIn, key)
+
+    dictTimeSeries['data'] = dataIn[compressMask, ...]
+    dictTimeSeries['data_unit'] = dataUnit
+    dictTimeSeries['uncertainty'] = errorIn[compressMask, ...]
+    dictTimeSeries['wavelength'] = waveIn[compressMask, ...]
+    dictTimeSeries['wavelength_unit'] = wavelengthUnit
+    dictTimeSeries['time'] = timeIn[compressMask, ...]
+    dictTimeSeries['time_unit'] = timeUnit
+
+    compressedDataset = \
+        SpectralDataTimeSeries(**dictTimeSeries)
+    return compressedDataset, compressMask
+
+

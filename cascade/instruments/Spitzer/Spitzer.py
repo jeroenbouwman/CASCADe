@@ -123,6 +123,7 @@ class SpitzerIRS(InstrumentBase):
 
     __valid_arrays = {'SL', 'LL'}
     __valid_orders = {'1', '2'}
+    __valid_filters = {'SL1', 'SL2', 'LL1', 'LL2'}
     __valid_data = {'SPECTRUM', 'SPECTRAL_IMAGE', 'SPECTRAL_DETECTOR_CUBE'}
     __valid_observing_strategy = {'STARING', 'NODDED'}
     __valid_data_products = {'droop', 'COE', 'FEPS', 'CAE'}
@@ -167,9 +168,11 @@ class SpitzerIRS(InstrumentBase):
 
     def get_instrument_setup(self):
         """Retrieve all parameters defining the instrument and data setup."""
+        inst_obs_name = cascade_configuration.instrument_observatory
         inst_inst_name = cascade_configuration.instrument
-        inst_mode = cascade_configuration.instrument_mode
-        inst_order = cascade_configuration.instrument_order
+        inst_filter = cascade_configuration.instrument_filter
+#        inst_mode = cascade_configuration.instrument_mode
+#        inst_order = cascade_configuration.instrument_order
         obj_period = \
             u.Quantity(cascade_configuration.object_period).to(u.day)
         obj_period = obj_period.value
@@ -206,6 +209,13 @@ class SpitzerIRS(InstrumentBase):
                              "check your init file for the following "
                              "valid types: {}. Aborting loading "
                              "data".format(self.__valid_observing_strategy))
+        if not (inst_filter in self.__valid_filters):
+            raise ValueError("Spectral filter not recognized, "
+                             "check your init file for the following "
+                             "valid types: {}. Aborting loading "
+                             "data".format(self.__valid_filters))
+        inst_mode = inst_filter[0:2]
+        inst_order = inst_filter[2]
         if not (inst_mode in self.__valid_arrays):
             raise ValueError("Instrument mode not recognized, "
                              "check your init file for the following "
@@ -221,7 +231,9 @@ class SpitzerIRS(InstrumentBase):
                              "check your init file for the following "
                              "valid types: {}. Aborting loading "
                              "data".format(self.__valid_data_products))
-        par = collections.OrderedDict(inst_inst_name=inst_inst_name,
+        par = collections.OrderedDict(inst_obs_name=inst_obs_name,
+                                      inst_inst_name=inst_inst_name,
+                                      inst_filter=inst_filter,
                                       inst_mode=inst_mode,
                                       inst_order=inst_order,
                                       obj_period=obj_period,
@@ -275,6 +287,7 @@ class SpitzerIRS(InstrumentBase):
             target_name = self.par['obs_target_name']
 
         path_to_files = os.path.join(self.par['obs_path'],
+                                     self.par['inst_obs_name'],
                                      self.par['inst_inst_name'],
                                      target_name,
                                      'SPECTRA/')
@@ -413,6 +426,7 @@ class SpitzerIRS(InstrumentBase):
             obsid = self.par['obs_id']
             target_name = self.par['obs_target_name']
         path_to_files = os.path.join(self.par['obs_path'],
+                                     self.par['inst_obs_name'],
                                      self.par['inst_inst_name'],
                                      target_name,
                                      'SPECTRAL_IMAGES/')

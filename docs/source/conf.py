@@ -20,13 +20,13 @@ sys.path.insert(0, os.path.abspath('../../'))
 # -- Project information -----------------------------------------------------
 
 project = 'CASCADe'
-copyright = '2019, Jeroen Bouwman'
+copyright = '2019, 2020 Jeroen Bouwman'
 author = 'Jeroen Bouwman'
 
 # The short X.Y version
-version = '0.9'
+version = '0.9.6'
 # The full version, including alpha/beta/rc tags
-release = '0.9 beta'
+release = '0.9.6'
 
 
 # -- General configuration ---------------------------------------------------
@@ -108,8 +108,11 @@ html_theme_options = {
      'logo_name': 'True',
     'show_related': 'True',
     'sidebar_collapse': 'True',
-    'show_relbars': 'True'
-}
+    'show_relbars': 'True',
+    'sidebar_width': '240px'}
+#    'page_width': 'auto',
+#    'body_max_width': 'auto'
+#}
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the

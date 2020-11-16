@@ -24,7 +24,7 @@
 """
 This module defines the data models for the CASCADe transit spectroscopy code
 """
-from weakref import WeakKeyDictionary
+#from weakref import WeakKeyDictionary
 import numpy as np
 import astropy.units as u
 
@@ -69,7 +69,8 @@ class UnitDesc:
 
     def __init__(self, keyname):
         self.default = None
-        self.values = WeakKeyDictionary()
+        #self.values = WeakKeyDictionary()
+        self.values = {}
         self.keyname = keyname
 
     def __get__(self, instance, owner):
@@ -146,7 +147,8 @@ class FlagDesc:
 
     def __init__(self, keyname):
         self.default = None
-        self.values = WeakKeyDictionary()
+        #self.values = WeakKeyDictionary()
+        self.values = {}
         self.keyname = keyname
 
     def __get__(self, instance, owner):
@@ -213,7 +215,8 @@ class AuxilaryInfoDesc:
 
     def __init__(self, keyname):
         self.default = None
-        self.values = WeakKeyDictionary()
+        #self.values = WeakKeyDictionary()
+        self.values = {}
         self.keyname = keyname
 
     def __get__(self, instance, owner):
@@ -281,7 +284,8 @@ class MeasurementDesc:
 
     def __init__(self, keyname):
         self.default = float("NaN")
-        self.values = WeakKeyDictionary()
+        #self.values = WeakKeyDictionary()
+        self.values = {}
         self.keyname = keyname
 
     def __get__(self, instance, owner):

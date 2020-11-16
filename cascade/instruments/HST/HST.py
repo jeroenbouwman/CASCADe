@@ -29,7 +29,7 @@ import collections
 import ast
 from types import SimpleNamespace
 import gc
-
+import warnings
 import numpy as np
 from astropy.io import fits
 import astropy.units as u
@@ -70,6 +70,8 @@ class HST(ObservatoryBase):
                 if cascade_configuration.instrument == 'WFC3':
                     factory = HSTWFC3()
                     self.par = factory.par
+                    cascade_configuration.telescope_collecting_area = \
+                        self.collecting_area
                     self.data = factory.data
                     self.spectral_trace = factory.spectral_trace
                     if self.par['obs_has_backgr']:
@@ -105,6 +107,17 @@ class HST(ObservatoryBase):
         return "SPACE"
 
     @property
+    def collecting_area(self):
+        """
+        Size of the collecting area of the telescope.
+
+        Returns
+        -------
+        4.525 m**2
+        """
+        return '4.525 m2'
+
+    @property
     def NAIF_ID(self):
         """
         NAIF ID of observatory.
@@ -134,18 +147,20 @@ class HSTWFC3(InstrumentBase):
     available:
 
        - detector subarrays : {'IRSUB128', 'IRSUB256', 'IRSUB512', 'GRISM128',
-         'GRISM256', 'GRISM512'}
-       - spectroscopic filters : {'G141'}
-       - imaging filters :  {'F139M', 'F132N', 'F167N', 'F126N'}
+         'GRISM256', 'GRISM512', 'GRISM1024'}
+       - spectroscopic filters : {'G141', 'G102'}
+       - imaging filters :  {'F139M', 'F132N', 'F167N', 'F126N', 'F130N',
+                             'F140W'}
        - data type : {'SPECTRUM', 'SPECTRAL_IMAGE', 'SPECTRAL_CUBE'}
        - observing strategy : {'STARING'}
        - data products : {'SPC', 'flt', 'COE'}
     """
 
     __valid_sub_array = {'IRSUB128', 'IRSUB256', 'IRSUB512', 'GRISM128',
-                         'GRISM256', 'GRISM512'}
-    __valid_spectroscopic_filter = {'G141'}
-    __valid_imaging_filter = {'F139M', 'F132N', 'F167N', 'F126N'}
+                         'GRISM256', 'GRISM512', 'GRISM1024'}
+    __valid_spectroscopic_filter = {'G141', 'G102'}
+    __valid_imaging_filter = {'F139M', 'F132N', 'F167N', 'F126N', 'F130N',
+                              'F140W'}
     __valid_beams = {'A'}
     __valid_data = {'SPECTRUM', 'SPECTRAL_IMAGE', 'SPECTRAL_CUBE'}
     __valid_observing_strategy = {'STARING', 'SCANNING'}
@@ -224,6 +239,7 @@ class HSTWFC3(InstrumentBase):
             error will be raised
         """
         # instrument parameters
+        inst_obs_name = cascade_configuration.instrument_observatory
         inst_inst_name = cascade_configuration.instrument
         inst_filter = cascade_configuration.instrument_filter
         inst_cal_filter = cascade_configuration.instrument_cal_filter
@@ -253,6 +269,25 @@ class HSTWFC3(InstrumentBase):
         obs_target_name = cascade_configuration.observations_target_name
         obs_has_backgr = ast.literal_eval(cascade_configuration.
                                           observations_has_background)
+        # processing
+        try:
+            proc_source_selection = \
+                cascade_configuration.processing_source_selection_method
+        except AttributeError:
+            proc_source_selection = 'nearest'
+        try:
+            proc_drop_samples = cascade_configuration.processing_drop_frames
+            proc_drop_samples = ast.literal_eval(proc_drop_samples)
+            for key, values in proc_drop_samples.items():
+                proc_drop_samples[key] = [int(i) for i in values]
+        except AttributeError:
+            proc_drop_samples = {'up': [-1], 'down': [-1]}
+        try:
+            proc_bits_not_to_flag = \
+                ast.literal_eval(cascade_configuration.
+                                 processing_bits_not_to_flag)
+        except AttributeError:
+            proc_bits_not_to_flag = [0, 12, 14]
         try:
             obs_uses_backgr_model = \
                 ast.literal_eval(cascade_configuration.
@@ -275,15 +310,15 @@ class HSTWFC3(InstrumentBase):
                      valid types: {}. Aborting loading \
                      data".format(self.__valid_observing_strategy))
         if not (inst_filter in self.__valid_spectroscopic_filter):
-            raise ValueError("Instrument spectroscopic filter not recognized, \
-                     check your init file for the following \
-                     valid types: {}. Aborting loading \
-                     data".format(self.__valid_spectroscopic_filter))
+            raise ValueError("Instrument spectroscopic filter not recognized, "
+                             "check your init file for the following "
+                             "valid types: {}. Aborting loading "
+                             "data".format(self.__valid_spectroscopic_filter))
         if not (inst_cal_filter in self.__valid_imaging_filter):
-            raise ValueError("Filter of calibration image not recognized, \
-                     check your init file for the following \
-                     valid types: {}. Aborting loading \
-                     data".format(self.__valid_imaging_filter))
+            raise ValueError("Filter of calibration image not recognized, "
+                             "check your init file for the following "
+                             "valid types: {}. Aborting loading "
+                             "data".format(self.__valid_imaging_filter))
         if not (inst_aperture in self.__valid_sub_array):
             raise ValueError("Spectroscopic subarray not recognized, \
                      check your init file for the following \
@@ -304,24 +339,29 @@ class HSTWFC3(InstrumentBase):
                      check your init file for the following \
                      valid types: {}. Aborting loading \
                      data".format(self.__valid_data_products))
-        par = collections.OrderedDict(inst_inst_name=inst_inst_name,
-                                      inst_filter=inst_filter,
-                                      inst_cal_filter=inst_cal_filter,
-                                      inst_aperture=inst_aperture,
-                                      inst_cal_aperture=inst_cal_aperture,
-                                      inst_beam=inst_beam,
-                                      obj_period=obj_period,
-                                      obj_ephemeris=obj_ephemeris,
-                                      obs_mode=obs_mode,
-                                      obs_data=obs_data,
-                                      obs_path=obs_path,
-                                      obs_cal_path=obs_cal_path,
-                                      obs_id=obs_id,
-                                      obs_cal_version=obs_cal_version,
-                                      obs_data_product=obs_data_product,
-                                      obs_target_name=obs_target_name,
-                                      obs_has_backgr=obs_has_backgr,
-                                      obs_uses_backgr_model=obs_uses_backgr_model)
+        par = collections.OrderedDict(
+            inst_obs_name=inst_obs_name,
+            inst_inst_name=inst_inst_name,
+            inst_filter=inst_filter,
+            inst_cal_filter=inst_cal_filter,
+            inst_aperture=inst_aperture,
+            inst_cal_aperture=inst_cal_aperture,
+            inst_beam=inst_beam,
+            obj_period=obj_period,
+            obj_ephemeris=obj_ephemeris,
+            obs_mode=obs_mode,
+            obs_data=obs_data,
+            obs_path=obs_path,
+            obs_cal_path=obs_cal_path,
+            obs_id=obs_id,
+            obs_cal_version=obs_cal_version,
+            obs_data_product=obs_data_product,
+            obs_target_name=obs_target_name,
+            obs_has_backgr=obs_has_backgr,
+            obs_uses_backgr_model=obs_uses_backgr_model,
+            proc_source_selection=proc_source_selection,
+            proc_drop_samp=proc_drop_samples,
+            proc_bits_not_to_flag=proc_bits_not_to_flag)
         if obs_has_backgr and not obs_uses_backgr_model:
             par.update({'obs_backgr_id': obs_backgr_id})
             par.update({'obs_backgr_target_name': obs_backgr_target_name})
@@ -362,6 +402,7 @@ class HSTWFC3(InstrumentBase):
             target_name = self.par['obs_target_name']
 
         path_to_files = os.path.join(self.par['obs_path'],
+                                     self.par['inst_obs_name'],
                                      self.par['inst_inst_name'],
                                      target_name,
                                      'SPECTRA/')
@@ -384,10 +425,14 @@ class HSTWFC3(InstrumentBase):
         wavelength_data = np.zeros((nwavelength, nintegrations))
         mask = np.ma.make_mask_none(spectral_data.shape)
         position = np.zeros((nintegrations))
+        dispersion_position = np.zeros((nintegrations))
+        angle = np.zeros((nintegrations))
+        scaling = np.zeros((nintegrations))
         time = np.zeros((nintegrations))
         scan_direction = np.zeros((nintegrations))
         sample_number = np.zeros((nintegrations))
         for im, spectral_data_file in enumerate(tqdm(data_files,
+                                                     desc="Loading Spectra",
                                                      dynamic_ncols=True)):
             # WARNING fits data is single precision!!
             spectrum = fits.getdata(spectral_data_file, ext=1)
@@ -398,6 +443,16 @@ class HSTWFC3(InstrumentBase):
                 mask[:, im] = spectrum['MASK']
             except KeyError:
                 pass
+            try:
+                dispersion_position[im] = fits.getval(spectral_data_file,
+                                                      "DISP_POS", ext=0)
+                angle[im] = fits.getval(spectral_data_file,
+                                        "ANGLE", ext=0)
+                scaling[im] = fits.getval(spectral_data_file,
+                                          "SCALE", ext=0)
+                hasOtherPos = True
+            except KeyError:
+                hasOtherPos = False
             try:
                 position[im] = fits.getval(spectral_data_file, "POSITION",
                                            ext=0)
@@ -432,6 +487,11 @@ class HSTWFC3(InstrumentBase):
         mask = mask[:, idx]
         data_files = [data_files[i] for i in idx]
         position = position[idx]
+        dispersion_position = dispersion_position[idx]
+        angle = angle[idx]
+        scaling = scaling[idx]
+        scan_direction = scan_direction[idx]
+        sample_number = sample_number[idx]
 
         try:
             medPos = fits.getval(data_files[0], "MEDPOS")
@@ -444,6 +504,13 @@ class HSTWFC3(InstrumentBase):
             hasPosUnit = True
         except KeyError:
             hasPosUnit = False
+        try:
+            dispPosUnit = fits.getval(data_files[0], "DPUNIT")
+            angleUnit = fits.getval(data_files[0], "AUNIT")
+            scaleUnit = fits.getval(data_files[0], "SUNIT")
+            hasOtherPosUnit = True
+        except KeyError:
+            hasOtherPosUnit = False
 
         if (not hasTimeBJD):
             # convert to BJD
@@ -515,6 +582,16 @@ class HSTWFC3(InstrumentBase):
         if hasMedPos:
             SpectralTimeSeries.median_position = medPos
             SpectralTimeSeries.median_position_unit = u.Unit(medPosUnit)
+        if hasOtherPosUnit & hasOtherPos:
+            SpectralTimeSeries.add_measurement(
+                disp_position=dispersion_position,
+                disp_position_unit=u.Unit(dispPosUnit))
+            SpectralTimeSeries.add_measurement(
+                angle=angle,
+                angle_unit=u.Unit(angleUnit))
+            SpectralTimeSeries.add_measurement(
+                scale=scaling,
+                scale_unit=u.Unit(scaleUnit))
         if hasScanDir:
             SpectralTimeSeries.scan_direction = list(scan_direction)
         if hasSampleNumber:
@@ -557,6 +634,7 @@ class HSTWFC3(InstrumentBase):
             target_name = self.par['obs_target_name']
 
         path_to_files = os.path.join(self.par['obs_path'],
+                                     self.par['inst_obs_name'],
                                      self.par['inst_inst_name'],
                                      target_name,
                                      'SPECTRAL_IMAGES/')
@@ -573,21 +651,36 @@ class HSTWFC3(InstrumentBase):
         spectral_image_cube = []
         spectral_image_unc_cube = []
         spectral_image_dq_cube = []
+        spectral_image_exposure_time = []
+        spectral_offset2 = []
+        spectral_offset1 = []
         time = []
         cal_time = []
         spectral_data_files = []
         calibration_data_files = []
-        for im, image_file in enumerate(tqdm(data_files, dynamic_ncols=True)):
+        cal_offset2 = []
+        cal_offset1 = []
+        spectral_data_nrptexp = []
+        for im, image_file in enumerate(tqdm(data_files,
+                                             desc="Loading Spectral Images",
+                                             dynamic_ncols=True)):
             with fits.open(image_file) as hdul:
                 instrument_fiter = hdul['PRIMARY'].header['FILTER']
+                instrument_aperture = hdul['PRIMARY'].header['APERTURE']
                 exptime = hdul['PRIMARY'].header['EXPTIME']
                 expstart = hdul['PRIMARY'].header['EXPSTART']
                 if instrument_fiter != self.par["inst_filter"]:
-                    if instrument_fiter == self.par["inst_cal_filter"]:
+                    if ((instrument_fiter == self.par["inst_cal_filter"]) and
+                            (instrument_aperture ==
+                             self.par["inst_cal_aperture"])):
                         calibration_image = hdul['SCI'].data
                         calibration_image_cube.append(calibration_image.copy())
                         calibration_data_files.append(image_file)
                         cal_time.append(expstart + 0.5*(exptime/(24.0*3600.0)))
+                        calOffset2 = hdul['PRIMARY'].header['POSTARG2']
+                        calOffset1 = hdul['PRIMARY'].header['POSTARG1']
+                        cal_offset2.append(calOffset2)
+                        cal_offset1.append(calOffset1)
                         del calibration_image
                     continue
                 spectral_image = hdul['SCI'].data
@@ -598,6 +691,13 @@ class HSTWFC3(InstrumentBase):
                 spectral_image_dq_cube.append(spectral_image_dq.copy())
                 spectral_data_files.append(image_file)
                 time.append(expstart + 0.5*(exptime/(24.0*3600.0)))
+                spectral_image_exposure_time.append(exptime)
+                Offset2 = hdul['PRIMARY'].header['POSTARG2']
+                Offset1 = hdul['PRIMARY'].header['POSTARG1']
+                spectral_offset2.append(Offset2)
+                spectral_offset1.append(Offset1)
+                nrptexp = hdul['PRIMARY'].header['NRPTEXP']
+                spectral_data_nrptexp.append(nrptexp)
 
         if len(spectral_image_cube) == 0:
             raise ValueError("No science data found for the \
@@ -611,11 +711,18 @@ class HSTWFC3(InstrumentBase):
         spectral_image_unc_cube = \
             np.array(spectral_image_unc_cube, dtype=np.float64)
         spectral_image_dq_cube = \
-            np.array(spectral_image_dq_cube, dtype=np.float64)
+            np.array(spectral_image_dq_cube, dtype=np.int64)
         calibration_image_cube = \
             np.array(calibration_image_cube, dtype=np.float64)
         time = np.array(time, dtype=np.float64)
         cal_time = np.array(cal_time, dtype=np.float64)
+        spectral_image_exposure_time = np.array(spectral_image_exposure_time,
+                                                dtype=np.float64)
+        spectral_offset1 = np.array(spectral_offset1, dtype=np.float64)
+        spectral_offset2 = np.array(spectral_offset2, dtype=np.float64)
+        cal_offset1 = np.array(cal_offset1, dtype=np.float64)
+        cal_offset2 = np.array(cal_offset2, dtype=np.float64)
+        spectral_data_nrptexp = np.array(spectral_data_nrptexp, dtype=np.int64)
 
         idx_time_sort = np.argsort(time)
         time = time[idx_time_sort]
@@ -624,18 +731,43 @@ class HSTWFC3(InstrumentBase):
         spectral_image_dq_cube = spectral_image_dq_cube[idx_time_sort, :, :]
         spectral_data_files = \
             list(np.array(spectral_data_files)[idx_time_sort])
+        spectral_image_exposure_time = \
+            spectral_image_exposure_time[idx_time_sort]
+        spectral_offset1 = spectral_offset1[idx_time_sort]
+        spectral_offset2 = spectral_offset2[idx_time_sort]
+        spectral_data_nrptexp = spectral_data_nrptexp[idx_time_sort]
+
+        # check for spurious longer exosures.
+        med_nrptexp = np.median(spectral_data_nrptexp)
+        idx_remove1 = spectral_data_nrptexp != med_nrptexp
+        median_exposure_time = np.median(spectral_image_exposure_time)
+        idx_remove2 = (spectral_image_exposure_time-0.01) > median_exposure_time
+# BUG FIX reversion
+        # idx_remove = idx_remove1 | idx_remove2
+        idx_remove = idx_remove2
+        spectral_image_exposure_time = \
+            spectral_image_exposure_time[~idx_remove]
+        time = time[~idx_remove]
+        spectral_image_cube = spectral_image_cube[~idx_remove, :, :]
+        spectral_image_unc_cube = spectral_image_unc_cube[~idx_remove, :, :]
+        spectral_image_dq_cube = spectral_image_dq_cube[~idx_remove, :, :]
+        spectral_data_files = \
+            list(np.array(spectral_data_files)[~idx_remove])
+        spectral_offset1 = spectral_offset1[~idx_remove]
+        spectral_offset2 = spectral_offset2[~idx_remove]
 
         idx_time_sort = np.argsort(cal_time)
         cal_time = cal_time[idx_time_sort]
         calibration_image_cube = calibration_image_cube[idx_time_sort]
         calibration_data_files = \
             list(np.array(calibration_data_files)[idx_time_sort])
+        cal_offset1 = cal_offset1[idx_time_sort]
+        cal_offset2 = cal_offset2[idx_time_sort]
 
         nintegrations, mpix, npix = spectral_image_cube.shape
         nintegrations_cal, ypix_cal, xpix_cal = calibration_image_cube.shape
 
-        mask = ((spectral_image_dq_cube != 0) &
-                (spectral_image_dq_cube != 8192))
+        mask = self. _create_mask_from_dq(spectral_image_dq_cube)
 
         # convert to BJD
         ra_target = fits.getval(spectral_data_files[0], "RA_TARG")
@@ -671,6 +803,13 @@ class HSTWFC3(InstrumentBase):
             cal_phase = cal_phase - 1.0
 
         self._define_convolution_kernel()
+# BUG FIX
+        offset_x = spectral_offset1
+        offset_y = spectral_offset2
+        cal_offset_x = cal_offset1
+        cal_offset_y = cal_offset2
+        self._determine_position_offset(offset_x, offset_y,
+                                        cal_offset_x, cal_offset_y)
         self._determine_source_position_from_cal_image(
                 calibration_image_cube, calibration_data_files)
         self._read_grism_configuration_files()
@@ -739,6 +878,7 @@ class HSTWFC3(InstrumentBase):
             target_name = self.par['obs_target_name']
 
         path_to_files = os.path.join(self.par['obs_path'],
+                                     self.par['inst_obs_name'],
                                      self.par['inst_inst_name'],
                                      target_name,
                                      'SPECTRAL_IMAGES/')
@@ -755,6 +895,7 @@ class HSTWFC3(InstrumentBase):
         spectral_image_unc_cube = []
         spectral_image_dq_cube = []
         spectral_sampling_time = []
+        spectral_image_number_of_samples = []
         time = []
         cal_time = []
         calibration_data_files = []
@@ -762,30 +903,53 @@ class HSTWFC3(InstrumentBase):
         spectral_data_files_out = []
         spectral_sample_number = []
         spectral_scan_directon = []
-        for im, image_file in enumerate(tqdm(data_files, dynamic_ncols=True)):
+        spectral_scan_length = []
+        spectral_scan_offset2 = []
+        spectral_scan_offset1 = []
+        cal_offset2 = []
+        cal_offset1 = []
+        spectral_data_nrptexp = []
+        for im, image_file in enumerate(tqdm(data_files,
+                                             desc="Loading Spectral Cubes",
+                                             dynamic_ncols=True)):
             with fits.open(image_file) as hdul:
                 instrument_fiter = hdul['PRIMARY'].header['FILTER']
+                instrument_aperture = hdul['PRIMARY'].header['APERTURE']
                 if instrument_fiter != self.par["inst_filter"]:
-                    if instrument_fiter == self.par["inst_cal_filter"]:
+                    if ((instrument_fiter == self.par["inst_cal_filter"]) and
+                            (instrument_aperture ==
+                             self.par["inst_cal_aperture"])):
                         image_file_flt = image_file.replace('_ima', '_flt')
                         with fits.open(image_file_flt) as hdul_cal:
                             calibration_image = hdul_cal['SCI'].data
                             exptime = hdul_cal['PRIMARY'].header['EXPTIME']
                             expstart = hdul_cal['PRIMARY'].header['EXPSTART']
+                            calOffset2 = hdul_cal['PRIMARY'].header['POSTARG2']
+                            calOffset1 = hdul_cal['PRIMARY'].header['POSTARG1']
                             calibration_image_cube.append(calibration_image.copy())
                             cal_time.append(expstart+0.5*exptime/(24.0*3600.0))
+                            cal_offset2.append(calOffset2)
+                            cal_offset1.append(calOffset1)
                         calibration_data_files.append(image_file_flt)
                     continue
                 isSparse = self._is_sparse_sequence(hdul)
                 cubeCalType = self._get_cube_cal_type(hdul)
                 nsamp = hdul['PRIMARY'].header['NSAMP']
+                exptime = hdul['PRIMARY'].header['EXPTIME']
+# BUG FIX
+                nrptexp = hdul['PRIMARY'].header['NRPTEXP']
+# BUG FIX       scanLeng = hdul['PRIMARY'].header['SCAN_LEN']
+                scanRate = hdul['PRIMARY'].header['SCAN_RAT']
+                scanOffset2 = hdul['PRIMARY'].header['POSTARG2']
+                scanOffset1 = hdul['PRIMARY'].header['POSTARG1']
+                scanAng = hdul['PRIMARY'].header['SCAN_ANG']
+                # paV3 = hdul['PRIMARY'].header['PA_V3']
+# BUG FIX
                 # The angle difference between “SCAN_ANG” and “PA_V3"
                 # determines if it is an up or down scan.
                 # For up scan, this angle is around +90 degrees (91.8),
                 # for down scan, this angle is around -90 degrees (-88.1).
-                scanAng = hdul['PRIMARY'].header['SCAN_ANG']
-                paV3 = hdul['PRIMARY'].header['PA_V3']
-                if scanAng - paV3 > 80:
+                if scanAng - 135.0 > 0:
                     isUpScan = True
                 else:
                     isUpScan = False
@@ -793,7 +957,17 @@ class HSTWFC3(InstrumentBase):
                     nsampMax = nsamp-2
                 else:
                     nsampMax = nsamp-1
+                sample_counter = 0
                 for isample in range(0, nsampMax):
+                    if isUpScan:
+                        # ramp data stored reversed in time
+                        if (nsampMax-1-isample) in \
+                                self.par['proc_drop_samp']['up']:
+                            continue
+                    else:
+                        if (nsampMax-1-isample) in \
+                                self.par['proc_drop_samp']['down']:
+                            continue
                     routtime = hdul[1+5*isample].header['ROUTTIME']
                     deltaTime = hdul[1+5*isample].header['DELTATIM']
                     if ((cubeCalType == 'COUNTS') |
@@ -821,9 +995,14 @@ class HSTWFC3(InstrumentBase):
                     spectral_image_cube.append(spectral_image.copy())
                     spectral_image_unc_cube.append(spectral_image_unc.copy())
                     spectral_image_dq_cube.append(spectral_image_dq.copy())
-                    spectral_sample_number.append(isample)
+                    spectral_data_nrptexp.append(nrptexp)
+                    spectral_sample_number.append(sample_counter)
                     spectral_scan_directon.append(isUpScan)
                     spectral_sampling_time.append(deltaTime)
+# BUG FIX           spectral_scan_length.append(scanLeng)
+                    spectral_scan_length.append(scanRate*exptime)
+                    spectral_scan_offset2.append(scanOffset2)
+                    spectral_scan_offset1.append(scanOffset1)
                     time.append(routtime - 0.5*deltaTime/86400.0)
                     image_file_sample = \
                         image_file.replace('_ima',
@@ -831,6 +1010,8 @@ class HSTWFC3(InstrumentBase):
                                            )
                     spectral_data_files_out.append(image_file_sample)
                     spectral_data_files_in.append(image_file)
+                    spectral_image_number_of_samples.append(nsampMax)
+                    sample_counter += 1
 
         if len(spectral_image_cube) == 0:
             raise ValueError("No science data found for the \
@@ -854,6 +1035,17 @@ class HSTWFC3(InstrumentBase):
             np.array(spectral_sample_number, dtype=np.int64)
         spectral_scan_directon = \
             np.array(spectral_scan_directon, dtype=np.int64)
+        spectral_image_number_of_samples = \
+            np.array(spectral_image_number_of_samples, dtype=np.int64)
+        spectral_scan_length = np.array(spectral_scan_length,
+                                        dtype=np.float64)
+        spectral_scan_offset2 = np.array(spectral_scan_offset2,
+                                         dtype=np.float64)
+        spectral_scan_offset1 = np.array(spectral_scan_offset1,
+                                         dtype=np.float64)
+        cal_offset1 = np.array(cal_offset1, dtype=np.int64)
+        cal_offset2 = np.array(cal_offset2, dtype=np.int64)
+        spectral_data_nrptexp = np.array(spectral_data_nrptexp, dtype=np.int64)
 
         idx_time_sort = np.argsort(time)
         time = time[idx_time_sort]
@@ -865,20 +1057,60 @@ class HSTWFC3(InstrumentBase):
             list(np.array(spectral_data_files_out)[idx_time_sort])
         spectral_sample_number = spectral_sample_number[idx_time_sort]
         spectral_scan_directon = spectral_scan_directon[idx_time_sort]
+        spectral_image_number_of_samples = \
+            spectral_image_number_of_samples[idx_time_sort]
+        spectral_scan_length = spectral_scan_length[idx_time_sort]
+        spectral_scan_offset2 = spectral_scan_offset2[idx_time_sort]
+        spectral_scan_offset1 = spectral_scan_offset1[idx_time_sort]
+        spectral_data_nrptexp = spectral_data_nrptexp[idx_time_sort]
+
+        med_nrptexp = np.median(spectral_data_nrptexp)
+        idx_remove1 = spectral_data_nrptexp != med_nrptexp
+        med_number_of_samples = np.median(spectral_image_number_of_samples)
+        idx_remove2 = spectral_image_number_of_samples > med_number_of_samples
+#        idx_remove = idx_remove1 | idx_remove2
+# BUG FIX reversion
+        idx_remove = idx_remove2
+        time = time[~idx_remove]
+        spectral_sampling_time = spectral_sampling_time[~idx_remove]
+        spectral_image_cube = spectral_image_cube[~idx_remove, :, :]
+        spectral_image_unc_cube = spectral_image_unc_cube[~idx_remove, :, :]
+        spectral_image_dq_cube = spectral_image_dq_cube[~idx_remove, :, :]
+        spectral_data_files_out = \
+            list(np.array(spectral_data_files_out)[~idx_remove])
+        spectral_sample_number = spectral_sample_number[~idx_remove]
+        spectral_scan_directon = spectral_scan_directon[~idx_remove]
+        spectral_scan_length = spectral_scan_length[~idx_remove]
+        spectral_scan_offset2 = spectral_scan_offset2[~idx_remove]
+        spectral_scan_offset1 = spectral_scan_offset1[~idx_remove]
 
         idx_time_sort = np.argsort(cal_time)
         cal_time = cal_time[idx_time_sort]
         calibration_image_cube = calibration_image_cube[idx_time_sort]
         calibration_data_files = \
             list(np.array(calibration_data_files)[idx_time_sort])
+        cal_offset1 = cal_offset1[idx_time_sort]
+        cal_offset2 = cal_offset2[idx_time_sort]
 
         nintegrations, mpix, npix = spectral_image_cube.shape
         nintegrations_cal, ypix_cal, xpix_cal = calibration_image_cube.shape
 
-        mask = ((spectral_image_dq_cube != 0) &
-                (spectral_image_dq_cube != 8192) &
-                (spectral_image_dq_cube != 2048) &
-                (spectral_image_dq_cube != 8192+2048))
+        # bits_not_to_flag = [0, 10, 12,14]
+        # bits_to_flag = []
+        # for ibit in range(1, 16):
+        #     if ibit not in bits_not_to_flag:
+        #         bits_to_flag.append(ibit)
+        # all_flag_values = np.unique(spectral_image_dq_cube)
+        # bit_select = np.zeros_like(all_flag_values, dtype='int')
+        # for ibit in bits_to_flag:
+        #     print((all_flag_values & (1 << (ibit - 1))))
+        #     bit_select = bit_select + (all_flag_values & (1 << (ibit - 1)))
+        # bit_select = bit_select.astype('bool')
+        # mask = np.zeros_like(spectral_image_dq_cube, dtype='bool')
+        # for iflag in all_flag_values[bit_select]:
+        #     mask = mask | (spectral_image_dq_cube == iflag)
+            
+        mask = self. _create_mask_from_dq(spectral_image_dq_cube)
 
         # convert to BJD
         ra_target = fits.getval(spectral_data_files_in[0], "RA_TARG")
@@ -915,6 +1147,11 @@ class HSTWFC3(InstrumentBase):
 
         # self._determine_relative_source_position(spectral_image_cube, mask)
         self._define_convolution_kernel()
+        self._determine_scan_offset(spectral_scan_offset1,
+                                    spectral_scan_offset2,
+                                    cal_offset1, cal_offset2,
+                                    spectral_scan_length,
+                                    spectral_scan_directon)
         self._determine_source_position_from_cal_image(
                 calibration_image_cube, calibration_data_files)
         self._read_grism_configuration_files()
@@ -953,6 +1190,112 @@ class HSTWFC3(InstrumentBase):
             self._get_background_cal_data()
             SpectralTimeSeries = self._fit_background(SpectralTimeSeries)
         return SpectralTimeSeries
+
+    def _create_mask_from_dq(self, dq_cube):
+        """
+        Create mask from DQ cube.
+
+        Parameters
+        ----------
+        dq_cube : TYPE
+            DESCRIPTION.
+
+        Returns
+        -------
+        mask : TYPE
+            DESCRIPTION.
+
+        Note
+        ----
+        Standard bit values not to flag are 0, 12 and 14.
+        Bit valiue 10 (blobs) is not set by default but can be selected not to
+        be flagged in case of problem.
+        """
+        bits_not_to_flag = self.par['proc_bits_not_to_flag']
+        bits_to_flag = []
+        for ibit in range(1, 16):
+            if ibit not in bits_not_to_flag:
+                bits_to_flag.append(ibit)
+        all_flag_values = np.unique(dq_cube)
+        bit_select = np.zeros_like(all_flag_values, dtype='int')
+        for ibit in bits_to_flag:
+            bit_select = bit_select + (all_flag_values & (1 << (ibit - 1)))
+        bit_select = bit_select.astype('bool')
+        mask = np.zeros_like(dq_cube, dtype='bool')
+        for iflag in all_flag_values[bit_select]:
+            mask = mask | (dq_cube == iflag)
+        return mask
+
+    def _determine_position_offset(self, scan_offset_x, scan_offset_y,
+                                   cal_offset_x, cal_offset_y):
+        """
+        Determine the scan offset.
+
+        Parameters
+        ----------
+        scan_offset_x : TYPE
+            DESCRIPTION.
+        scan_offset_y : TYPE
+            DESCRIPTION.
+
+        Returns
+        -------
+        None.
+
+        """
+        xc_offset = (np.mean(scan_offset_x)-np.mean(cal_offset_x))/0.135
+        #xc_offset = (-np.mean(cal_offset_x))/0.135
+        yc_offset = (np.mean(scan_offset_y)-np.mean(cal_offset_y))/0.121
+        try:
+            self.wfc3_cal
+        except AttributeError:
+            self.wfc3_cal = SimpleNamespace()
+        finally:
+            self.wfc3_cal.xc_offset = xc_offset
+            self.wfc3_cal.yc_offset = yc_offset
+        return
+
+    def _determine_scan_offset(self, scan_offset_x, scan_offset_y,
+                               cal_offset_x, cal_offset_y,
+                               scan_length, scan_directions):
+        """
+        Determine the scan offset.
+
+        Parameters
+        ----------
+        scan_offset_x : TYPE
+            DESCRIPTION.
+        scan_offset_y : TYPE
+            DESCRIPTION.
+        scan_length : TYPE
+            DESCRIPTION.
+        scan_directions : TYPE
+            DESCRIPTION.
+
+        Returns
+        -------
+        None.
+
+        """
+        xc_offset = (np.mean(scan_offset_x)-np.mean(cal_offset_x))/0.135
+        unique_directions = np.unique(scan_directions)
+        yc_temp = np.zeros_like(unique_directions)
+        for i, scan_direction in enumerate(unique_directions):
+            idx = (scan_directions == scan_direction)
+            if scan_direction == 0:
+                yc_temp[i] = np.mean(scan_offset_y[idx]+0.5*scan_length[idx])
+            else:
+                yc_temp[i] = np.mean(scan_offset_y[idx]-0.5*scan_length[idx])
+        yc_offset = (np.mean(yc_temp)-np.mean(cal_offset_y))/0.121
+        try:
+            self.wfc3_cal
+        except AttributeError:
+            self.wfc3_cal = SimpleNamespace()
+        finally:
+            self.wfc3_cal.xc_offset = xc_offset
+            self.wfc3_cal.yc_offset = yc_offset
+            self.wfc3_cal.scan_length = int(np.median(scan_length)/0.121) + 1
+        return
 
     @staticmethod
     def _get_cube_cal_type(hdul):
@@ -1014,6 +1357,8 @@ class HSTWFC3(InstrumentBase):
 
     def _define_convolution_kernel(self):
         """
+        Define convolution kernel.
+
         Define the instrument specific convolution kernel which will be used
         in the correction procedure of bad pixels.
         """
@@ -1032,26 +1377,46 @@ class HSTWFC3(InstrumentBase):
 
     def _define_region_of_interest(self):
         """
+        Define ROI.
+
         Defines region on detector which containes the intended target star.
         """
+        dim = self.data.data.shape
         if self.par["inst_beam"] == 'A':
-            wavelength_min = 0.98*1.082*u.micron
-            wavelength_max = 1.02*1.678*u.micron
-            # wavelength_min = 1.100*u.micron
-            # wavelength_max = 1.670*u.micron
+            if self.par['inst_filter'] == 'G141':
+                # BUG
+                if len(dim) <= 2:
+                    #wavelength_min = 1.02*1.082*u.micron
+                    #wavelength_max = 0.99*1.678*u.micron
+                    wavelength_min = 0.99*1.082*u.micron
+                    wavelength_max = 1.01*1.678*u.micron
+                else:
+                    wavelength_min = 0.98*1.082*u.micron
+                    wavelength_max = 1.02*1.678*u.micron
+            elif self.par['inst_filter'] == 'G102':
+                if len(dim) <= 2:
+                    wavelength_min = 1.02*0.8*u.micron
+                    wavelength_max = 0.99*1.15*u.micron
+                else:
+                    wavelength_min = 0.98*0.8*u.micron
+                    wavelength_max = 1.01*1.15*u.micron
             if self.par["obs_mode"] == 'STARING':
-                roi_width = 15
+                roi_width = 20
             elif self.par["obs_mode"] == 'SCANNING':
-                roi_width = 150
+                try:
+                    roi_width = self.wfc3_cal.scan_length+25
+                except AttributeError:
+                    roi_width = 150
             else:
-                roi_width = 15
+                roi_width = 20
+        else:
+            raise ValueError("Only beam A implemented")
         trace = self.spectral_trace.copy()
         mask_min = trace['wavelength'] > wavelength_min
         mask_max = trace['wavelength'] < wavelength_max
         mask_not_defined = trace['wavelength'] == 0.
         idx_min = int(np.min(trace['wavelength_pixel'].value[mask_min]))
         idx_max = int(np.max(trace['wavelength_pixel'].value[mask_max]))
-        dim = self.data.data.shape
         if len(dim) <= 2:
             roi = np.zeros((dim[0]), dtype=np.bool)
             roi[0:idx_min] = True
@@ -1104,18 +1469,22 @@ class HSTWFC3(InstrumentBase):
 
         calibration_file_name_flatfield = \
             os.path.join(self.par['obs_cal_path'],
+                         self.par['inst_obs_name'],
                          self.par['inst_inst_name'],
                          _applied_flatfields[self.par['inst_filter']])
         calibration_file_name_grism_flatfield = \
             os.path.join(self.par['obs_cal_path'],
+                         self.par['inst_obs_name'],
                          self.par['inst_inst_name'],
                          _grism_flatfields[self.par['inst_filter']])
         calibration_file_name_zodi = \
             os.path.join(self.par['obs_cal_path'],
+                         self.par['inst_obs_name'],
                          self.par['inst_inst_name'],
                          _zodi_cal_files[self.par['inst_filter']])
         calibration_file_name_helium = \
             os.path.join(self.par['obs_cal_path'],
+                         self.par['inst_obs_name'],
                          self.par['inst_inst_name'],
                          _helium_cal_files[self.par['inst_filter']])
         try:
@@ -1136,6 +1505,7 @@ class HSTWFC3(InstrumentBase):
         if self.par['inst_filter'] == 'G141':
             calibration_file_name_scattered = \
                 os.path.join(self.par['obs_cal_path'],
+                             self.par['inst_obs_name'],
                              self.par['inst_inst_name'],
                              _scattered_cal_files[self.par['inst_filter']])
             try:
@@ -1147,7 +1517,7 @@ class HSTWFC3(InstrumentBase):
                       "Aborting".format(calibration_file_name_scattered))
                 raise
         else:
-            scattered = None
+            scattered = 1.0
         try:
             flatfield = fits.getdata(calibration_file_name_flatfield,
                                      ext=0)[:-10, :-10]
@@ -1323,7 +1693,13 @@ class HSTWFC3(InstrumentBase):
             The position of the source in the acquisition images associated
             with the HST spectral timeseries observations.
         """
+        if self.par['proc_source_selection'] == 'nearest':
+            brightest = 10
+        else:
+            brightest = 1
         calibration_source_position = []
+        expected_calibration_source_position = []
+#        calibration_images = []
         for im, image_file in enumerate(calibration_data_files):
             with fits.open(image_file) as hdul:
                 ra_target = hdul['PRIMARY'].header['RA_TARG']
@@ -1337,17 +1713,34 @@ class HSTWFC3(InstrumentBase):
                 mean, median, std = \
                     sigma_clipped_stats(calibration_image_cube[im, :, :],
                                         sigma=3.0, maxiters=5)
+                source = 0
+                threshold = 50.
+                while source == 0:
+                    iraffind = IRAFStarFinder(fwhm=1.8,
+                                              threshold=threshold*std,
+                                              brightest=brightest)
+                    sources = iraffind(calibration_image_cube[im, :, :]-median)
+                    if sources is None:
+                        warnings.warn("No aquisition target found above "
+                                      "a threshold of {}".format(threshold))
+                        threshold = 0.9*threshold
+                        warnings.warn("Lowering  threshold to a value "
+                                      "of {}".format(threshold))
+                    else:
+                        source = 1
 
-                iraffind = IRAFStarFinder(fwhm=2.0, threshold=30.*std)
-
-                sources = iraffind(calibration_image_cube[im, :, :] - median)
+                sources = iraffind(calibration_image_cube[im, :, :]-median)
                 distances = \
                     np.sqrt((sources['xcentroid']-expexted_xcentroid)**2 +
                             (sources['ycentroid']-expected_ycentroid)**2)
                 idx_target = distances.argmin()
                 source_position = (sources[idx_target]['xcentroid'],
                                    sources[idx_target]['ycentroid'])
+                expected_source_position = \
+                    (expexted_xcentroid, expected_ycentroid)
                 calibration_source_position.append(source_position)
+                expected_calibration_source_position.\
+                    append(expected_source_position)
                 gc.collect()
 
         try:
@@ -1357,11 +1750,15 @@ class HSTWFC3(InstrumentBase):
         finally:
             self.wfc3_cal.calibration_source_position = \
                 calibration_source_position
+            self.wfc3_cal.expected_calibration_source_position = \
+                expected_calibration_source_position
+            self.wfc3_cal.calibration_images = \
+                calibration_image_cube
         return
 
     def _read_grism_configuration_files(self):
         """
-        Gets the relevant data from WFC3 configuration files.
+        Get the relevant data from the WFC3 configuration files.
 
         Attributes
         ----------
@@ -1378,6 +1775,7 @@ class HSTWFC3(InstrumentBase):
             calibration file.
         """
         calibration_file_name = os.path.join(self.par['obs_cal_path'],
+                                             self.par['inst_obs_name'],
                                              self.par['inst_inst_name'],
                                              self.par['inst_filter'] + '.' +
                                              self.par['inst_cal_filter']+'.V' +
@@ -1442,6 +1840,8 @@ class HSTWFC3(InstrumentBase):
 
     def _read_reference_pixel_file(self):
         """
+        Get the reference pixel.
+
         Read the calibration file containig the definition
         of the reference pixel appropriate for a given sub array and or filer
 
@@ -1452,6 +1852,7 @@ class HSTWFC3(InstrumentBase):
             wavelength calibration.
         """
         calibration_file_name = os.path.join(self.par['obs_cal_path'],
+                                             self.par['inst_obs_name'],
                                              self.par['inst_inst_name'],
                                              'wavelength_ref_pixel_' +
                                              self.par['inst_inst_name'].
@@ -1603,6 +2004,10 @@ class HSTWFC3(InstrumentBase):
         DLDP = self.wfc3_cal.DLDP
         reference_pixels = self.wfc3_cal.reference_pixels
         subarray_sizes = self.wfc3_cal.subarray_sizes
+        yc_offset = self.wfc3_cal.yc_offset
+        xc_offset = self.wfc3_cal.xc_offset
+        yc = yc + yc_offset
+        xc = xc + xc_offset
 
         wave_cal = \
             self._WFC3Dispersion(
@@ -1656,6 +2061,10 @@ class HSTWFC3(InstrumentBase):
         DLDP = self.wfc3_cal.DLDP
         reference_pixels = self.wfc3_cal.reference_pixels
         subarray_sizes = self.wfc3_cal.subarray_sizes
+        yc_offset = self.wfc3_cal.yc_offset
+        xc_offset = self.wfc3_cal.xc_offset
+        yc = yc + yc_offset
+        xc = xc + xc_offset
 
         trace = self._WFC3Trace(xc, yc, DYDX,
                                 xref=reference_pixels["XREF_IMAGE"],
@@ -1712,7 +2121,8 @@ class HSTWFC3(InstrumentBase):
 
         and
 
-           http://www.stsci.edu/hst/observatory/apertures/wfc3.html
+           http://www.stsci.edu/hst/instrumentation/wfc3/documentation/
+               grism-resources
 
         """
         # adjust position in case different subarrays are used.

@@ -38,6 +38,8 @@ CASCADEe used the following environment variables:
         Default path to where CASCADe saves output.
     CASCADE_INITIALIZATION_FILE_PATH:
         Default directory for CASCADe initialization files.
+    CASCADE_LOG_PATH:
+        Default directory for logfiles.
 
 Attributes:
 -----------
@@ -76,17 +78,35 @@ An example how the initilize module is used:
 import os
 import configparser
 import warnings
+import shutil
 
 from cascade import __path__
+from cascade import __version__
+from cascade.utilities import find
 
 __all__ = ['cascade_warnings',
            'cascade_default_path',
            'cascade_default_data_path',
            'cascade_default_save_path',
            'cascade_default_initialization_path',
+           'cascade_default_log_path',
            'generate_default_initialization',
            'configurator',
-           'cascade_configuration']
+           'cascade_configuration',
+           'reset_data',
+           'read_ini_files']
+
+__valid_environment_variables__ = ['CASCADE_WARNINGS',
+                                   'CASCADE_PATH',
+                                   'CASCADE_DATA_PATH',
+                                   'CASCADE_SAVE_PATH',
+                                   'CASCADE_INITIALIZATION_FILE_PATH',
+                                   'CASCADE_LOG_PATH']
+
+__flag_not_set__ = False
+
+__cascade_path = os.path.dirname(__path__[0])
+__cascade_data_path = os.path.join(__cascade_path, "data/")
 
 try:
     cascade_warnings = os.environ['CASCADE_WARNINGS']
@@ -96,30 +116,33 @@ try:
         warnings.simplefilter("default")
 except KeyError:
     cascade_warnings = 'on'
+    os.environ['CASCADE_WARNINGS'] = cascade_warnings
     warnings.simplefilter("default")
-    warnings.warn("CASCADE_WARNINGS environment variable not set.")
+    __flag_not_set__ = True
 
 try:
     cascade_default_path = os.environ['CASCADE_PATH']
 except KeyError:
     cascade_default_path = \
         os.path.dirname(__path__[0])
-    warnings.warn("CASCADE_PATH environment variable not set.")
-
+    os.environ['CASCADE_PATH'] = cascade_default_path
+    __flag_not_set__ = True
 try:
     cascade_default_data_path = \
-        os.environ['CASCADE_OBSERVATIONS']
+        os.environ['CASCADE_DATA_PATH']
 except KeyError:
     cascade_default_data_path = \
         os.path.join(cascade_default_path, "data/")
-    warnings.warn("CASCADE_OBSERVATIONS environment variable not set.")
+    os.environ['CASCADE_DATA_PATH'] = cascade_default_data_path
+    __flag_not_set__ = True
 
 try:
     cascade_default_save_path = os.environ['CASCADE_SAVE_PATH']
 except KeyError:
     cascade_default_save_path = \
         os.path.join(cascade_default_path, "examples/results/")
-    warnings.warn("CASCADE_SAVE_PATH environment variable not set.")
+    os.environ['CASCADE_SAVE_PATH'] = cascade_default_save_path
+    __flag_not_set__ = True
 
 try:
     cascade_default_initialization_path = \
@@ -127,9 +150,102 @@ try:
 except KeyError:
     cascade_default_initialization_path = \
         os.path.join(cascade_default_path, "examples/init_files/")
-    warnings.warn("CASCADE_INITIALIZATION_FILE_PATH environment variable "
-                  "not set.")
+    os.environ['CASCADE_INITIALIZATION_FILE_PATH'] = \
+        cascade_default_initialization_path
+    __flag_not_set__ = True
 
+try:
+    cascade_default_log_path = \
+        os.environ['CASCADE_LOG_PATH']
+except KeyError:
+    cascade_default_log_path = \
+        os.path.join(cascade_default_path, "examples/logs/")
+    os.environ['CASCADE_LOG_PATH'] = \
+        cascade_default_log_path
+    __flag_not_set__ = True
+
+if __flag_not_set__:
+    warnings.warn("One of the following environment variables: {} has not "
+                  "been set. Using default "
+                  "values".format(__valid_environment_variables__))
+
+
+def reset_data():
+    """
+    Reset all cascade data in non default directory tree.
+
+    Returns
+    -------
+    None.
+
+    """
+    new_path = os.path.join(cascade_default_data_path, 'calibration/')
+    if os.path.exists(new_path):
+        shutil.rmtree(new_path)
+    destination = shutil.copytree(os.path.join(__cascade_data_path,
+                                               'calibration/'), new_path)
+    print("Updated cascade data in directory: {}".format(destination))
+    new_path = os.path.join(cascade_default_data_path, 'exoplanet_data/')
+    if os.path.exists(new_path):
+        shutil.rmtree(new_path)
+    destination = shutil.copytree(os.path.join(__cascade_data_path,
+                                               'exoplanet_data/'), new_path)
+    print("Updated cascade data in directory: {}".format(destination))
+    new_path = os.path.join(cascade_default_data_path, 'archive_databases/')
+    cp_user_files=os.path.exists(new_path)
+    if cp_user_files:
+        user_files = find("user_processing_exceptions.ini", new_path)
+        temp_dir = os.path.join(cascade_default_data_path, "temp_dir_user/")
+        os.mkdir(temp_dir)
+        for i, file in enumerate(user_files):
+            sub_temp_dir = os.path.join(temp_dir, "{}/".format(i))
+            os.mkdir(sub_temp_dir)
+            shutil.copy(file, sub_temp_dir)
+        shutil.rmtree(new_path)
+    destination = shutil.copytree(os.path.join(__cascade_data_path,
+                                               'archive_databases/'), new_path)
+    if cp_user_files:
+        user_files2 = find("user_processing_exceptions.ini", temp_dir)
+        for file, file2 in zip(user_files, user_files2):
+            shutil.copy(file2, file)
+        shutil.rmtree(temp_dir)
+    print("Updated cascade data in directory: {}".format(destination))
+    new_path = os.path.join(cascade_default_data_path,
+                            'configuration_templates/')
+    if os.path.exists(new_path):
+        shutil.rmtree(new_path)
+    destination = \
+        shutil.copytree(os.path.join(__cascade_data_path,
+                                     'configuration_templates/'), new_path)
+    print("Updated cascade data in directory: {}".format(destination))
+    with open(os.path.join(cascade_default_data_path,
+                           '.cascade_data_version'), 'w') as f:
+        f.write("{}".format(__version__))
+
+
+__data_dirs = ['calibration/', 'exoplanet_data/', 'archive_databases/',
+               'configuration_templates/']
+
+if __cascade_data_path != cascade_default_data_path:
+    dir_present = True
+    for data_dir in __data_dirs:
+        dir_present = \
+            (dir_present &
+             os.path.isdir(os.path.join(cascade_default_data_path, data_dir)))
+    if not dir_present:
+        reset_data()
+    if not os.path.isfile(os.path.join(cascade_default_data_path,
+                                       '.cascade_data_version')):
+        print("No data version file found, resetting cascade data")
+        reset_data()
+    else:
+        with open(os.path.join(cascade_default_data_path,
+                           '.cascade_data_version'), 'r') as f:
+            data_version = f.read()
+        if data_version != __version__:
+            print("Data version older then current cascade version, "
+                  "resetting data")
+            reset_data()
 
 def generate_default_initialization(observatory='HST', data='SPECTRUM',
                                     mode='STARING', observation='TRANSIT'):
@@ -208,9 +324,10 @@ def generate_default_initialization(observatory='HST', data='SPECTRUM',
     os.makedirs(path, exist_ok=True)
 
     config = configparser.ConfigParser()
-
+    config.optionxform = str
     config['CASCADE'] = {'cascade_save_path': 'HD189733b_'+observation+'/',
-                         'cascade_useMultiProcesses': 'True',
+                         'cascade_use_multi_processes': 'True',
+                         'cascade_max_number_of_cpus': '6',
                          'cascade_verbose': 'True',
                          'cascade_save_verbose': 'True'}
 
@@ -219,7 +336,8 @@ def generate_default_initialization(observatory='HST', data='SPECTRUM',
             {'processing_sigma_filtering': '3.5',
              'processing_nfilter': '5',
              'processing_stdv_kernel_time_axis_filter': '0.4',
-             'processing_nextraction': '1'}
+             'processing_nextraction': '1',
+             'processing_determine_initial_wavelength_shift': 'False'}
     else:
         config['PROCESSING'] = \
             {'processing_sigma_filtering': '3.5',
@@ -232,7 +350,9 @@ def generate_default_initialization(observatory='HST', data='SPECTRUM',
              'processing_upsample_factor_movement':  '111',
              'processing_angle_oversampling_movement': '2',
              'processing_nextraction': '7',
-             'processing_rebin_factor_extract1d': '1.05'}
+             'processing_rebin_factor_extract1d': '1.05',
+             'processing_auto_adjust_rebin_factor_extract1d': 'True',
+             'processing_determine_initial_wavelength_shift': 'True'}
 
     config['CPM'] = {'cpm_cv_method': 'gcv',
                      'cpm_lam0': '1.0e-9',
@@ -253,7 +373,10 @@ def generate_default_initialization(observatory='HST', data='SPECTRUM',
                      'cpm_relative_sig_value_limit': '4.e-1'}
 
     config['MODEL'] = {'model_type': 'batman',
-                       'model_limb darkening': 'quadratic',
+                       'model_type_limb_darkening': 'exotethys',
+                       'model_limb_darkening': 'quadratic',
+                       'model_stellar_models_grid': 'Atlas_2000',
+                       'model_calculate_limb_darkening_from_model': 'False',
                        'model_limb_darkening_coeff': '[0.0, 0.0]',
                        'model_nphase_points': '10000',
                        'model_phase_range': '0.5'}
@@ -261,15 +384,14 @@ def generate_default_initialization(observatory='HST', data='SPECTRUM',
     if observatory == 'SPITZER':
         config['INSTRUMENT'] = {'instrument_observatory': observatory,
                                 'instrument': 'IRS',
-                                'instrument_mode': 'SL',
-                                'instrument_order': '1'}
+                                'instrument_filter': 'SL1'}
         config['OBSERVATIONS'] = \
             {'observations_type': observation,
              'observations_mode': mode,
              'observations_data': data,
-             'observations_path': 'data/SPITZER/',
+             'observations_path': 'data/',
              'observations_target_name': 'HD189733b',
-             'observations_cal_path': 'calibration/SPITZER/',
+             'observations_cal_path': 'calibration/',
              'observations_id': '',
              'observations_cal_version': 'S18.18.0',
              'observations_data_product': data_product,
@@ -289,9 +411,9 @@ def generate_default_initialization(observatory='HST', data='SPECTRUM',
             {'observations_type': observation,
              'observations_mode': mode,
              'observations_data': data,
-             'observations_path': 'data/HST/',
+             'observations_path': 'data/',
              'observations_target_name': 'HD189733b',
-             'observations_cal_path': 'calibration/HST/',
+             'observations_cal_path': 'calibration/',
              'observations_id': '',
              'observations_cal_version': '4.32',
              'observations_data_product': data_product,
@@ -319,7 +441,10 @@ def generate_default_initialization(observatory='HST', data='SPECTRUM',
                         'object_eccentricity': '0.0041',
                         'object_omega': '90.0 deg',
                         'object_period': '2.218575200 d',
-                        'object_ephemeris': '2454279.436714 d'}
+                        'object_ephemeris': '2454279.436714 d',
+                        'object_kmag': '5.54 Kmag',
+                        'object_metallicity_host_star': '0.03 dex',
+                        'object_logg_host_star': '4.56 dex(cm / s2)'}
     config['CATALOG'] = {'catalog_use_catalog': 'False',
                          'catalog_name': 'EXOPLANETS.ORG',
                          'catalog_update': 'True',
@@ -333,11 +458,11 @@ def generate_default_initialization(observatory='HST', data='SPECTRUM',
 
 def read_ini_files(*files):
     """
-    Read *.ini files using the configparser package.
+    Read .ini files using the configparser package.
 
     Parameters
     ----------
-    *files : 'list' of 'str'
+    files : 'list' of 'str'
         List of file names of initialization files to be read to initialize
         an instance of a TSO object.
 
@@ -371,6 +496,8 @@ class _Singleton(type):
 
 class configurator(object, metaclass=_Singleton):
     """
+    configurator class.
+
     This class defined the configuration singleton which will provide
     all parameters needed to run the CASCADe to all modules of the code.
     """
@@ -388,6 +515,8 @@ class configurator(object, metaclass=_Singleton):
 
     def reset(self):
         """
+        Reset configurator.
+
         If called, this function will remove all initialized parameters.
         """
         _dict_keys = list(self.__dict__.keys())

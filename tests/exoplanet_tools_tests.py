@@ -11,7 +11,7 @@ import cascade
 from cascade.exoplanet_tools import parse_database
 from cascade.exoplanet_tools import extract_exoplanet_data
 from cascade.exoplanet_tools import convert_spectrum_to_brighness_temperature
-from cascade.exoplanet_tools import lightcuve
+from cascade.exoplanet_tools import lightcurve
 from cascade.initialize import cascade_default_initialization_path
 from cascade.initialize import cascade_default_data_path
 from cascade.initialize import generate_default_initialization
@@ -31,12 +31,14 @@ class TestExoplanetsTools(unittest.TestCase):
         self.test_bt_unit = u.K
         self.path = cascade_default_data_path
         self.catalog_name = ['EXOPLANETS.ORG', "TEPCAT",
-                             "NASAEXOPLANETARCHIVE"]
+                             "NASAEXOPLANETARCHIVE", "EXOPLANETS_A"]
         self.catalog_dir = ["exoplanets.org", "tepcat",
-                            "NASAEXOPLANETARCHIVE"]
+                            "NASAEXOPLANETARCHIVE", "EXOPLANETS_A"]
         self.catalog_file_name = ["exoplanets.csv", "allplanets.csv",
-                                  "nasaexoplanetarchive.csv"]
-        self.test_system_name = ['HD 189733 b', 'HD_189733', 'HD 189733 b']
+                                  "nasaexoplanetarchive.csv",
+                                  "exoplanets_a.csv"]
+        self.test_system_name = ['HD 189733 b', 'HD_189733', 'HD 189733 b',
+                                 'HD 189733 b']
         self.test_search_radius = 1.0*u.arcminute
         self.path_init_files = cascade_default_initialization_path
 
@@ -111,9 +113,9 @@ class TestExoplanetsTools(unittest.TestCase):
         generate_default_initialization()
         cascade_param = \
             configurator(self.path_init_files+"cascade_default.ini")
-        lc_model = lightcuve()
+        lc_model = lightcurve(cascade_param)
         self.assertIsInstance(lc_model.par, collections.OrderedDict)
-        self.assertTrue('batman' in lc_model.valid_models)
+        self.assertTrue('batman' in lc_model._lightcurve__valid_models)
         self.assertIsInstance(lc_model.lc, tuple)
 
 
