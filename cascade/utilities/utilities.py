@@ -57,11 +57,6 @@ def write_spectra_to_fits(spectral_dataset, path, filename, header_meta):
         All auxilary data to be written to fits header.
     """
     os.makedirs(path, exist_ok=True)
-    table = QTable([spectral_dataset.return_masked_array('wavelength'),
-                    spectral_dataset.return_masked_array('data'),
-                    spectral_dataset.return_masked_array('uncertainty')],
-                   names=['Wavelength', 'Detph', 'Error Depth'])
-
     mask = spectral_dataset.mask
     table = QTable([spectral_dataset.wavelength.data.value[~mask] *
                     spectral_dataset.wavelength_unit,
@@ -69,7 +64,7 @@ def write_spectra_to_fits(spectral_dataset, path, filename, header_meta):
                     spectral_dataset.data_unit,
                     spectral_dataset.uncertainty.data.value[~mask] *
                     spectral_dataset.data_unit],
-                   names=['Wavelength', 'Detph', 'Error Depth']
+                   names=['Wavelength', 'Depth', 'Error Depth']
                    )
     table.write(os.path.join(path, filename),
                 format='fits', overwrite=True)
