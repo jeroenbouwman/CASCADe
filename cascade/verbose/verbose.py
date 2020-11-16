@@ -32,13 +32,10 @@ import warnings
 import numpy as np
 import astropy.units as u
 from matplotlib import pyplot as plt
-# from matplotlib.ticker import MaxNLocator, ScalarFormatter
 import seaborn as sns
 from skimage import exposure
-# from skimage import img_as_float
-# from ..initialize import cascade_default_data_path
-# from ..initialize import cascade_default_initialization_path
-# from ..initialize import cascade_default_path
+import statsmodels.distributions
+
 from ..initialize import cascade_default_save_path
 from ..initialize import cascade_configuration
 from ..exoplanet_tools import transit_to_eclipse
@@ -527,7 +524,6 @@ def calibrate_timeseries_verbose(*args, **kwargs):
     # ##################### CDF ###########################
     sns.set_context("talk", font_scale=2.0, rc={"lines.linewidth": 6.5})
     sns.set_style("white", {"xtick.bottom": True, "ytick.left": True})
-    import statsmodels.distributions
     ecdf = statsmodels.distributions.ECDF(mean_norm)
     fig, axes = plt.subplots(figsize=(18, 12), nrows=1, ncols=1, dpi=200)
     ax0 = axes

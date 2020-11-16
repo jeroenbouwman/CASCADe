@@ -35,6 +35,7 @@ dependencies:
   - joblib
   - pyfiglet
   - termcolor
+  - statsmodels
   - pip:
     - ray==1.0.0
     - batman-package==2.4.6
