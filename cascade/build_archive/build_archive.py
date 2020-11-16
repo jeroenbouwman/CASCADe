@@ -32,6 +32,7 @@ import configparser
 import shutil
 from ast import literal_eval
 import numpy as np
+import copy
 import requests
 from tqdm import tqdm
 import astropy.units as u
@@ -754,7 +755,7 @@ class IniFileParser:
                                            self.primary_exoplanet_catalog)
                 for key in config_dict.keys():
                     if key in self.namespace_dict.keys():
-                        config_dict[key] = self.namespace_dict[key].copy()
+                        config_dict[key] = copy.copy(self.namespace_dict[key])
             full_configuration_dict.update(config_dict.copy())
         init_file_parser = create_configuration(
             self.initialization_file_template,

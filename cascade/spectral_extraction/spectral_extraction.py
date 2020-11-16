@@ -1688,10 +1688,16 @@ def correct_initial_wavelength_shift(referenceDataset, *otherDatasets):
         dataset.add_auxilary(wave_shift=wave_shift.to_string())
         dataset.add_auxilary(error_wave_shift=error_wave_shift.to_string())
         otherDatasets_list[i] = dataset
+    modeled_observations = \
+        [model_spectra.model_wavelength, model_spectra.model_observation]
+    corrected_observations = \
+        [model_spectra.corrected_wavelength, model_spectra.observation]
     if len(otherDatasets_list) > 0:
-        return [referenceDataset] + otherDatasets_list
+        return [referenceDataset] + otherDatasets_list, modeled_observations,\
+            corrected_observations
     else:
-        return referenceDataset
+        return referenceDataset,  modeled_observations, \
+            corrected_observations
 
 
 def determine_absolute_cross_dispersion_position(cleanedDataset, initialTrace,

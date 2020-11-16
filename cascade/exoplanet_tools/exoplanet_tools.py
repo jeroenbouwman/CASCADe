@@ -2205,5 +2205,13 @@ class SpectralModel:
         wavelength_shift = np.mean(np.diff(wavelength)) * shift[0][0]
         error_wavelength_shift = np.mean(np.diff(wavelength)) * shift[1]
 
+        model_wavelength = np.ma.array(wavelength.data*wavelength_unit,
+                                       mask=wavelength.mask)
+        corrected_wavlength = np.ma.array((wavelength.data+wavelength_shift) *
+                                          wavelength_unit, mask=wavelength.mask)
+        self.model_wavelength = model_wavelength
+        self.model_observation = model_observation
+        self.corrected_wavelength = corrected_wavlength
+        self.observation = data/np.max(data)
         return (wavelength_shift*wavelength_unit,
                 error_wavelength_shift*wavelength_unit)

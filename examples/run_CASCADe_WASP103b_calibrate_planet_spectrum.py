@@ -63,33 +63,11 @@ tso.execute("subtract_background")
 # filter data and create cleaned dataset
 tso.execute("filter_dataset")
 
-# determine position of source from dataset in time
-tso.execute("determine_source_movement")
-
-# set the extraction area
-tso.execute("set_extraction_mask")
-
-# setup regressors
-tso.execute("select_regressors")
-
-# eclipse model
-tso.execute("define_eclipse_model")
-
-# create calibrated time series and derive planetary signal
+# run the regression model
 tso.execute("calibrate_timeseries")
 
-# extract planetary signal
-tso.execute("extract_spectrum")
-
-# correct the extracted planetary signal for non uniform
-#  subtraction of averige signal
-tso.execute("correct_extracted_spectrum")
-
-# save planetary signal
+# plot results
 tso.execute("save_results")
-
-# plot planetary signal
-tso.execute("plot_results")
 
 elapsed_time = time.time() - start_time
 print ('elapsed time:', elapsed_time)

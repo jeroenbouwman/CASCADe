@@ -37,7 +37,50 @@ import astropy.units as u
 from tqdm import tqdm
 
 __all__ = ['write_timeseries_to_fits', 'find', 'get_data_from_fits',
-           'spectres']
+           'spectres', 'write_spectra_to_fits']
+
+
+def write_spectra_to_fits(spectral_dataset, path, filename, header_meta):
+    """
+    Write spectra dataset object to fits files.
+
+    Parameters
+    ----------
+    data : 'ndarry' or 'cascade.data_model.SpectralDataTimeSeries'
+        The data cube which will be save to fits file. For each time step
+        a fits file will be generated.
+    path : 'str'
+        Path to the directory where the fits files will be saved.
+    filename: 'str' (optional)
+        file name of save fits file.
+    header_meta : 'dict'
+        All auxilary data to be written to fits header.
+    """
+    os.makedirs(path, exist_ok=True)
+    table = QTable([spectral_dataset.return_masked_array('wavelength'),
+                    spectral_dataset.return_masked_array('data'),
+                    spectral_dataset.return_masked_array('uncertainty')],
+                   names=['Wavelength', 'Detph', 'Error Depth'])
+
+    mask = spectral_dataset.mask
+    table = QTable([spectral_dataset.wavelength.data.value[~mask] *
+                    spectral_dataset.wavelength_unit,
+                    spectral_dataset.data.data.value[~mask] *
+                    spectral_dataset.data_unit,
+                    spectral_dataset.uncertainty.data.value[~mask] *
+                    spectral_dataset.data_unit],
+                   names=['Wavelength', 'Detph', 'Error Depth']
+                   )
+    table.write(os.path.join(path, filename),
+                format='fits', overwrite=True)
+
+    with fits.open(os.path.join(path, filename)) as hdul:
+        hdr = hdul[0].header
+        for key, value in header_meta.items():
+            hdr[key] = value
+        hdul[0].header = hdr
+        hdu_new = fits.HDUList([hdul[0], hdul[1]])
+        hdu_new.writeto(os.path.join(path, filename), overwrite=True)
 
 
 def write_timeseries_to_fits(data, path, additional_file_string=None,

@@ -62,34 +62,14 @@ tso.execute("subtract_background")
 # filter data and create cleaned dataset
 tso.execute("filter_dataset")
 
-# determine the relative movement from the input data.
-# In case of 1D spectra, positional data given in the fits header will be used.
-tso.execute("determine_source_movement")
+# check general wavelength solution for initial shift
+tso.execute("check_wavelength_solution")
 
-# set the extraction area
-tso.execute("set_extraction_mask")
-
-# setup regressors
-tso.execute("select_regressors")
-
-# eclipse model
-tso.execute("define_eclipse_model")
-
-# create calibrated time series and derive planetary signal
+# run the regression model
 tso.execute("calibrate_timeseries")
 
-# extract planetary signal
-tso.execute("extract_spectrum")
-
-# correct the extracted planetary signal for non uniform
-#  subtraction of averige signal
-tso.execute("correct_extracted_spectrum")
-
-# save planetary signal
+# plot results
 tso.execute("save_results")
-
-# plot planetary signal
-tso.execute("plot_results")
 
 elapsed_time = time.time() - start_time
 print('elapsed time:', elapsed_time)

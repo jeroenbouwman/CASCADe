@@ -296,6 +296,53 @@ def correct_wavelengths_verbose(*args, **kwargs):
     pass
 
 
+def check_wavelength_solution_verbose(*args, **kwargs):
+    """
+    Make verbose plots.
+
+    Returns
+    -------
+    None.
+
+    """
+    (verbose, save_verbose, save_path, save_name_base) = kwargs["verbose_par"]
+    if not verbose:
+        return
+    if "modeled_observations" not in kwargs.keys():
+        return
+    if "corrected_observations" not in kwargs.keys():
+        return
+    modeled_observations = kwargs["modeled_observations"]
+    corrected_observations = kwargs["corrected_observations"]
+
+    sns.set_context("talk", font_scale=2.0, rc={"lines.linewidth": 5.5})
+    sns.set_style("white", {"xtick.bottom": True, "ytick.left": True})
+
+    wavelength_unit = modeled_observations[0].data.unit
+
+    fig, axes = plt.subplots(figsize=(18, 12), nrows=1, ncols=1, dpi=200)
+    ax0 = axes
+    ax0.plot(modeled_observations[0],
+             modeled_observations[1], label='Model')
+    ax0.plot(corrected_observations[0],
+             corrected_observations[1], label='Corrected Observations')
+    ax0.plot(modeled_observations[0],
+             corrected_observations[1], label='Un-Corrected Observations')
+    ax0.set_xlabel('Wavelength [{}]'.format(wavelength_unit))
+    ax0.set_ylabel('Normalized Signal')
+    ax0.set_title("Comparison Model with Observed Mean Spectrum")
+    ax0.legend(loc='lower left', fancybox=True, framealpha=1.0,
+           ncol=1,
+           bbox_to_anchor=(0.2, 0.10, 1, 0.3), shadow=True,
+           handleheight=1.5, labelspacing=0.05,
+           fontsize=20).set_zorder(11)
+    plt.show()
+    if save_verbose:
+        fig.savefig(os.path.join(save_path, save_name_base +
+                                 "_check_wavelength_solution.png"),
+                    bbox_inches="tight")
+
+
 def set_extraction_mask_verbose(*args, **kwargs):
     """
     Make verbose plots.
@@ -696,6 +743,7 @@ class Verbose:
                 "filter_dataset": filter_dataset_verbose,
                 "determine_source_movement": determine_source_movement_verbose,
                 "correct_wavelengths": correct_wavelengths_verbose,
+                "check_wavelength_solution": check_wavelength_solution_verbose,
                 "set_extraction_mask": set_extraction_mask_verbose,
                 "extract_1d_spectra": extract_1d_spectra_verbose,
                 "calibrate_timeseries": calibrate_timeseries_verbose,

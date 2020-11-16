@@ -81,6 +81,7 @@ from ..spectral_extraction import rebin_to_common_wavelength_grid
 from ..spectral_extraction import compressROI
 from ..spectral_extraction import compressSpectralTrace
 from ..spectral_extraction import compressDataset
+from ..spectral_extraction import correct_initial_wavelength_shift
 from ..verbose import Verbose
 
 __all__ = ['TSOSuite']
@@ -1147,8 +1148,14 @@ class TSOSuite:
             return
 
         from cascade.spectral_extraction import correct_initial_wavelength_shift
-        cleanedDataset, dataset = \
+        (cleanedDataset, dataset), modeled_observations, \
+            corrected_observations = \
             correct_initial_wavelength_shift(cleanedDataset, dataset)
+
+        vrbs = Verbose()
+        vrbs.execute("check_wavelength_solution",
+                     modeled_observations=modeled_observations,
+                     corrected_observations=corrected_observations)
 
     def extract_1d_spectra(self):
         """
@@ -1409,12 +1416,11 @@ class TSOSuite:
             rebinnedApertureExtractedDataset.add_auxilary(
                 sample_number=datasetIn.sample_number)
 
-        from cascade.spectral_extraction import correct_initial_wavelength_shift
         (rebinnedOptimallyExtractedDataset,
-         rebinnedApertureExtractedDataset) = \
-            correct_initial_wavelength_shift(
-                rebinnedOptimallyExtractedDataset,
-                rebinnedApertureExtractedDataset)
+         rebinnedApertureExtractedDataset), \
+            modeled_observations, corrected_observations = \
+            correct_initial_wavelength_shift(rebinnedOptimallyExtractedDataset,
+                                             rebinnedApertureExtractedDataset)
 
         from cascade.spectral_extraction import combine_scan_samples
         if observationDataType == 'SPECTRAL_CUBE':
@@ -1521,12 +1527,6 @@ class TSOSuite:
 
         """
         try:
-            verbose = bool(self.cascade_parameters.cascade_verbose)
-        except AttributeError:
-            warnings.warn("Verbose flag not set, "
-                          "assuming it to be False.")
-            verbose = False
-        try:
             dataset = self.observation.dataset_optimal_extracted
             cleaned_dataset = self.observation.dataset_aperture_extracted
         except AttributeError:
@@ -1549,17 +1549,6 @@ class TSOSuite:
         except AttributeError:
             raise AttributeError("cascade_max_number_of_cpus flag not set."
                                  " Aborting time series calibration.")
-        try:
-            observations_id = self.cascade_parameters.observations_id
-        except AttributeError:
-            raise AttributeError("No uniq id defined for observation "
-                                 "Aborting time series calibration.")
-        try:
-            observations_target_name = \
-                self.cascade_parameters.observations_target_name
-        except AttributeError:
-            raise AttributeError("No target name defined for observation. "
-                                 "Aborting time series calibration.")
 
         print('Starting regression analysis')
         start_time = time_module.time()
@@ -1596,7 +1585,6 @@ class TSOSuite:
             ray.get(future)
             future = rayControler.post_process_regression_fit.remote()
             ray.get(future)
-            # iterators = ray.get(rayControler.get_regression_iterators.remote())
             fit_parameters = \
                 ray.get(rayControler.get_fit_parameters_from_server.remote())
             regularization = \
@@ -1645,6 +1633,8 @@ class TSOSuite:
                 fit_parameters.fit_residuals
             self.calibration_results.regularization = \
                 np.array(regularization.optimal_alpha)
+            self.calibration_results.used_control_parameters = \
+                control_parameters
 
             print("Median regularization value: {}".
                   format(np.median(self.calibration_results.
@@ -1726,14 +1716,20 @@ class TSOSuite:
         try:
             observations_id = self.cascade_parameters.observations_id
         except AttributeError:
-            print("No target name defined for observation. "
+            print("No target id defined for observation. "
                   "Aborting saving results")
             raise
+        try:
+            object_target_name = \
+                self.cascade_parameters.object_name
+        except AttributeError:
+            print("No object name defined for observation. "
+                  "Aborting saving results")
         try:
             observations_target_name = \
                 self.cascade_parameters.observations_target_name
         except AttributeError:
-            print("No uniq id defined for observation. "
+            print("No observation target name defined for observation. "
                   "Aborting saving results")
             raise
         if observations_id not in observations_target_name:
@@ -1741,61 +1737,29 @@ class TSOSuite:
         else:
             save_name_base = observations_target_name
 
-        # t = Table()
-        # mask = ~results.spectrum.data.mask
-        # col = MaskedColumn(data=results.spectrum.wavelength[mask],
-        #                    unit=results.spectrum.wavelength_unit,
-        #                    name='Wavelength')
-        # t.add_column(col)
-        # col = MaskedColumn(data=results.spectrum.data[mask],
-        #                    unit=results.spectrum.data_unit,
-        #                    name='Flux')
-        # t.add_column(col)
-        # col = MaskedColumn(data=results.spectrum.uncertainty[mask],
-        #                    unit=results.spectrum.data_unit,
-        #                    name='Error')
-        # t.add_column(col)
-        # t.write(os.path.join(save_path,
-        #                      save_name_base+'_exoplanet_spectra.fits'),
-        #         format='fits', overwrite=True)
+        from cascade.utilities import write_spectra_to_fits
 
-        # try:
-        #     t = Table()
-        #     mask = ~results.corrected_spectrum.data.mask
-        #     col = MaskedColumn(data=results.corrected_spectrum.wavelength[mask],
-        #                        unit=results.corrected_spectrum.wavelength_unit,
-        #                        name='Wavelength')
-        #     t.add_column(col)
-        #     col = MaskedColumn(data=results.corrected_spectrum.data[mask],
-        #                        unit=results.corrected_spectrum.data_unit,
-        #                        name='Flux')
-        #     t.add_column(col)
-        #     col = MaskedColumn(data=results.corrected_spectrum.uncertainty[mask],
-        #                        unit=results.corrected_spectrum.data_unit,
-        #                        name='Error')
-        #     t.add_column(col)
-        #     t.write(os.path.join(save_path, save_name_base +
-        #                          '_corrected_exoplanet_spectra.fits'),
-        #             format='fits', overwrite=True)
-        # except AttributeError:
-        #     pass
+        header_data = {'TDDEPTH': results.spectrum.TDDEPTH[1],
+                       'TDCL005': results.spectrum.TDDEPTH[0],
+                       'TDCL095': results.spectrum.TDDEPTH[2],
+                       'MODELRP': results.spectrum.MODELRP,
+                       'MODELA': results.spectrum.MODELA,
+                       'MODELINC': str(results.spectrum.MODELINC),
+                       'MODELECC': results.spectrum.MODELECC,
+                       'MODELW': str(results.spectrum.MODELW),
+                       'MODELEPH': str(results.spectrum.MODELEPH),
+                       'MODELPER': str(results.spectrum.MODELPER),
+                       'VERSION': results.spectrum.VERSION,
+                       'CREATIME': results.spectrum.CREATIME,
+                       'OBSTIME': str(results.spectrum.OBSTIME),
+                       'DATAPROD': results.spectrum.DATAPROD,
+                       'ID': observations_id,
+                       'NAME': object_target_name,
+                       'OBSTYPE': transittype}
 
-        # if transittype == 'secondary':
-        #     t = Table()
-        #     mask = ~results.brightness_temperature.data.mask
-        #     col = MaskedColumn(data=results.brightness_temperature.wavelength[mask],
-        #                        unit=results.brightness_temperature.
-        #                        wavelength_unit,
-        #                        name='Wavelength')
-        #     t.add_column(col)
-        #     col = MaskedColumn(data=results.brightness_temperature.data[mask],
-        #                        unit=results.brightness_temperature.data_unit,
-        #                        name='Flux')
-        #     t.add_column(col)
-        #     col = MaskedColumn(data=results.brightness_temperature.uncertainty[mask],
-        #                        unit=results.brightness_temperature.data_unit,
-        #                        name='Error')
-        #     t.add_column(col)
-        #     t.write(os.path.join(save_path, save_name_base +
-        #                          '_exoplanet_brightness_temperature.fits'),
-        #             format='fits', overwrite=True)
+        filename = save_name_base+'_exoplanet_spectrum.fits'
+        write_spectra_to_fits(results.spectrum, save_path, filename,
+                              header_data)
+        filename = save_name_base+'_bootstraped_exoplanet_spectrum.fits'
+        write_spectra_to_fits(results.spectrum_bootstrap, save_path,
+                              filename, header_data)

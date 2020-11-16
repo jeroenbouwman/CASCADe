@@ -1386,10 +1386,10 @@ class HSTWFC3(InstrumentBase):
             if self.par['inst_filter'] == 'G141':
                 # BUG
                 if len(dim) <= 2:
-                    wavelength_min = 1.02*1.082*u.micron
-                    wavelength_max = 0.99*1.678*u.micron
-                    wavelength_min = 0.98*1.082*u.micron
-                    wavelength_max = 0.99*1.678*u.micron
+                    #wavelength_min = 1.02*1.082*u.micron
+                    #wavelength_max = 0.99*1.678*u.micron
+                    wavelength_min = 0.99*1.082*u.micron
+                    wavelength_max = 1.01*1.678*u.micron
                 else:
                     wavelength_min = 0.98*1.082*u.micron
                     wavelength_max = 1.02*1.678*u.micron

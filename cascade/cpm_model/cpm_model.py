@@ -631,8 +631,9 @@ class regressionDataServer:
         wavelength_unit = self.regressor_dataset.wavelength_unit
         time_unit = self.regressor_dataset.time_unit
         time_bjd_zero = self.fit_dataset.time_bjd.data.flat[0]
+        data_product = self.fit_dataset.dataProduct
         return ndim, shape, ROI, data_unit, wavelength_unit, time_unit, \
-            time_bjd_zero
+            time_bjd_zero, data_product
 
     def initialze_lightcurve_model(self):
         """
@@ -906,7 +907,7 @@ class rayRegressionDataServer(regressionDataServer):
     get_regression_data = \
         ray.method(num_returns=2)(regressionDataServer.get_regression_data)
     get_data_info = \
-        ray.method(num_returns=7)(regressionDataServer.get_data_info)
+        ray.method(num_returns=8)(regressionDataServer.get_data_info)
     get_lightcurve_model =\
         ray.method(num_returns=3)(regressionDataServer.get_lightcurve_model)
 
@@ -1027,7 +1028,7 @@ class regressionParameterServer:
 
         """
         ndim, shape, ROI, data_unit, wavelength_unit, time_unit, \
-            time_bjd_zero = data_server_handle.get_data_info()
+            time_bjd_zero, data_product = data_server_handle.get_data_info()
         self.data_parameters.ndim = ndim
         self.data_parameters.shape = shape
         self.data_parameters.ROI = ROI
@@ -1039,6 +1040,7 @@ class regressionParameterServer:
         self.data_parameters.wavelength_unit = wavelength_unit
         self.data_parameters.time_unit = time_unit
         self.data_parameters.time_bjd_zero = time_bjd_zero
+        self.data_parameters.data_product = data_product
 
     def get_data_parameters(self):
         """
@@ -1254,7 +1256,7 @@ class rayRegressionParameterServer(regressionParameterServer):
 
         """
         ndim, shape, ROI, data_unit, wavelength_unit, time_unit, \
-            time_bjd_zero = ray.get(data_server_handle.get_data_info.remote())
+            time_bjd_zero, data_product = ray.get(data_server_handle.get_data_info.remote())
         self.data_parameters.ndim = ndim
         self.data_parameters.shape = shape
         self.data_parameters.ROI = ROI
@@ -1266,6 +1268,7 @@ class rayRegressionParameterServer(regressionParameterServer):
         self.data_parameters.wavelength_unit = wavelength_unit
         self.data_parameters.time_unit = time_unit
         self.data_parameters.time_bjd_zero = time_bjd_zero
+        self.data_parameters.data_product = data_product
 
 
 class regressionControler:
@@ -1738,6 +1741,7 @@ class regressionControler:
             (sort[int(n * 0.05)], sort[int(n * 0.5)], sort[int(n * 0.95)])
 
         observing_time = control_parameters.data_parameters.time_bjd_zero
+        data_product = control_parameters.data_parameters.data_product
         curent_data = time_module.localtime()
         creation_time = '{}_{}_{}:{}_{}_{}'.format(curent_data.tm_year,
                                                    curent_data.tm_mon,
@@ -1755,7 +1759,8 @@ class regressionControler:
                          'MODELPER': lightcurve_parameters['p'],
                          'VERSION': __version__,
                          'CREATIME': creation_time,
-                         'OBSTIME': observing_time}
+                         'OBSTIME': observing_time,
+                         'DATAPROD': data_product}
 
         wavelength_unit = control_parameters.data_parameters.wavelength_unit
         data_unit = u.percent
