@@ -545,7 +545,7 @@ def calibrate_timeseries_verbose(*args, **kwargs):
     plt.show()
     if save_verbose:
         fig.savefig(os.path.join(save_path, save_name_base +
-                                 "_calibrate_timeseries_pdf.png"),
+                                 "_calibrate_timeseries_cdf.png"),
                     bbox_inches="tight")
 
     # ############# QQ ######################
