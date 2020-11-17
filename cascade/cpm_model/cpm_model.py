@@ -1712,14 +1712,14 @@ class regressionControler:
                       axis=0)
 
         normed_spectrum = \
-            np.ma.array(fit_parameters.normed_fitted_spectrum,
-                        mask=bad_wavelength_mask)
+            np.ma.array(fit_parameters.normed_fitted_spectrum.copy(),
+                        mask=bad_wavelength_mask.copy())
         error_normed_spectrum = \
-            np.ma.array(fit_parameters.error_normed_fitted_spectrum,
-                        mask=bad_wavelength_mask)
+            np.ma.array(fit_parameters.error_normed_fitted_spectrum.copy(),
+                        mask=bad_wavelength_mask.copy())
         wavelength_normed_spectrum = \
-            np.ma.array(fit_parameters.wavelength_normed_fitted_spectrum,
-                        mask=bad_wavelength_mask)
+            np.ma.array(fit_parameters.wavelength_normed_fitted_spectrum.copy(),
+                        mask=bad_wavelength_mask.copy())
 
         if lightcurve_parameters['transittype'] == 'secondary':
             from cascade.exoplanet_tools import transit_to_eclipse

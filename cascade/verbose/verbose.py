@@ -476,8 +476,8 @@ def calibrate_timeseries_verbose(*args, **kwargs):
                   nboot+1,
                   axis=0)
 
-    normed_spectrum = np.ma.array(calibration_results.normed_fitted_spectra,
-                                  mask=bad_wavelength_mask)
+    normed_spectrum = np.ma.array(calibration_results.normed_fitted_spectra.copy(),
+                                  mask=bad_wavelength_mask.copy())
     if transittype == "secondary":
         normed_spectrum = transit_to_eclipse(normed_spectrum)
     normed_spectrum.data[...] = normed_spectrum.data*100
