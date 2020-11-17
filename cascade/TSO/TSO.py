@@ -32,35 +32,35 @@ import ast
 import copy
 import os
 import os.path
-from functools import reduce
+# from functools import reduce
 from types import SimpleNamespace
 import warnings
 import time as time_module
 import psutil
 import ray
 import numpy as np
-from scipy import interpolate
+# from scipy import interpolate
 from scipy import ndimage
-from numpy.linalg import cond
-from scipy.linalg import lstsq
-from scipy.linalg import pinv2
+# from numpy.linalg import cond
+# from scipy.linalg import lstsq
+# from scipy.linalg import pinv2
 import astropy.units as u
-from astropy.stats import akaike_info_criterion
-from astropy.table import MaskedColumn, Table
-from astropy.visualization import quantity_support
+# from astropy.stats import akaike_info_criterion
+# from astropy.table import MaskedColumn, Table
+# from astropy.visualization import quantity_support
 from matplotlib import pyplot as plt
-from matplotlib.ticker import MaxNLocator, ScalarFormatter
-import seaborn as sns
-from tqdm import tqdm
-from sklearn.preprocessing import RobustScaler
-from sklearn.decomposition import PCA
+# from matplotlib.ticker import MaxNLocator, ScalarFormatter
+# import seaborn as sns
+# from tqdm import tqdm
+# from sklearn.preprocessing import RobustScaler
+# from sklearn.decomposition import PCA
 from skimage.morphology import binary_dilation
 
 from ..cpm_model import regressionControler
 from ..cpm_model import rayRegressionControler
 from ..data_model import SpectralData
 from ..exoplanet_tools import convert_spectrum_to_brighness_temperature
-from ..exoplanet_tools import lightcurve
+# from ..exoplanet_tools import lightcurve
 from ..initialize import (cascade_configuration, configurator)
 from ..initialize import cascade_default_initialization_path
 from ..initialize import cascade_default_save_path
@@ -532,15 +532,17 @@ class TSOSuite:
             cleanedDataset = \
                 create_cleaned_dataset(datasetIn, ROI, kernel,
                                        stdv_kernel_time)
-
+# BUG FIX
+            if len(cleanedDataset.mask) == 1:
+                cleanedDataset.mask = np.ma.getmaskarray(cleanedDataset.data)
             self.cpm.cleaned_dataset = cleanedDataset
             if verbose:
-                lightcurve = \
+                obs_lightcurve = \
                     np.ma.sum(cleanedDataset.return_masked_array("data"),
                               axis=0)
                 time = cleanedDataset.return_masked_array("time").data[0, :]
                 fig, ax = plt.subplots(figsize=(10, 10))
-                ax.plot(time, lightcurve, '.')
+                ax.plot(time, obs_lightcurve, '.')
                 ax.set_xlabel('Orbital phase')
                 ax.set_ylabel('Total Signal')
                 ax.set_title('Cleaned data.')
@@ -1144,7 +1146,14 @@ class TSOSuite:
         except AttributeError:
             raise AttributeError("No valid data found. "
                                  "Aborting check wavelength solution")
+        try:
+            processing_determine_initial_wavelength_shift = ast.literal_eval(
+            self.cascade_parameters.processing_determine_initial_wavelength_shift)
+        except AttributeError:
+            processing_determine_initial_wavelength_shift = True
         if ndim > 2:
+            return
+        if not processing_determine_initial_wavelength_shift:
             return
 
         from cascade.spectral_extraction import correct_initial_wavelength_shift
@@ -1617,6 +1626,8 @@ class TSOSuite:
                 fit_parameters.regression_results
             self.calibration_results.normed_fitted_spectra = \
                 fit_parameters.normed_fitted_spectrum
+            self.calibration_results.corrected_fitted_spectrum = \
+                fit_parameters.corrected_fitted_spectrum
             self.calibration_results.wavelength_normed_fitted_spectrum = \
                 fit_parameters.wavelength_normed_fitted_spectrum
             self.calibration_results.mse = fit_parameters.fitted_mse

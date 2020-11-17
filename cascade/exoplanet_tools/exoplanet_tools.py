@@ -647,6 +647,9 @@ def convert_spectrum_to_brighness_temperature(wavelength: u.micron,
     error_brighness_temperature :
         (optional) Error on the spectrum in units of brightness temperature.
     """
+    import copy
+    wavelength = copy.deepcopy(wavelength)
+    contrast = copy.deepcopy(contrast)
     planet_temperature_grid = np.array([100.0 + 100.0*np.arange(38)]) * u.K
 
     contrast_grid = planck(np.tile(wavelength,

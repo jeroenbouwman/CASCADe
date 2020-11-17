@@ -1712,7 +1712,7 @@ class regressionControler:
                       axis=0)
 
         normed_spectrum = \
-            np.ma.array(fit_parameters.normed_fitted_spectrum * 100.0,
+            np.ma.array(fit_parameters.normed_fitted_spectrum,
                         mask=bad_wavelength_mask)
         error_normed_spectrum = \
             np.ma.array(fit_parameters.error_normed_fitted_spectrum,
@@ -1726,6 +1726,11 @@ class regressionControler:
             normed_spectrum, error_normed_spectrum = \
                 transit_to_eclipse(normed_spectrum,
                                    uncertainty=error_normed_spectrum)
+
+        # transfrom to percent by multiplying by 100.
+        # Note!!!!! this has to be done after transit_to_eclipse!!!!!
+        normed_spectrum.data[...] = normed_spectrum.data*100
+        error_normed_spectrum.data[...] = error_normed_spectrum.data*100
 
         # bootstraped normalized spectrum
         mean_depth_bootstrap = np.ma.mean(normed_spectrum[1:, :], axis=1)

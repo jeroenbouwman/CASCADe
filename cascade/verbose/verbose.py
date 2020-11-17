@@ -476,10 +476,11 @@ def calibrate_timeseries_verbose(*args, **kwargs):
                   nboot+1,
                   axis=0)
 
-    normed_spectrum = np.ma.array(calibration_results.normed_fitted_spectra *
-                                  100, mask=bad_wavelength_mask)
+    normed_spectrum = np.ma.array(calibration_results.normed_fitted_spectra,
+                                  mask=bad_wavelength_mask)
     if transittype == "secondary":
         normed_spectrum = transit_to_eclipse(normed_spectrum)
+    normed_spectrum.data[...] = normed_spectrum.data*100
     mean_norm = np.ma.mean(normed_spectrum[1:, :], axis=1)
 
     dx, bins = knuth_bin_width(mean_norm, return_bins=True)
@@ -667,11 +668,11 @@ def calibrate_timeseries_verbose(*args, **kwargs):
     uncal_data.mask = np.ma.logical_or(uncal_data.mask, systematics.mask)
     cal_data = uncal_data/systematics
 
-    TD_temp = TD*np.mean(model.limbdarkning_correction)
+    TD_temp = TD/100*np.mean(model.limbdarkning_correction)
     if transittype == 'secondary':
         from cascade.exoplanet_tools import eclipse_to_transit
         TD_temp = eclipse_to_transit(TD_temp)
-    model_lc = model.light_curve_interpolated[0, :]*(TD_temp/100) + 1
+    model_lc = model.light_curve_interpolated[0, :]*(TD_temp) + 1
 
     fig, axes = plt.subplots(figsize=(18, 12), nrows=1, ncols=1, dpi=200)
     ax0 = axes
