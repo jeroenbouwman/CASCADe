@@ -1263,8 +1263,10 @@ class batman_model:
 
         if InputParameter['transittype'] == "secondary":
             phase_zero = 0.5
+            fac=0.01
         else:
             phase_zero = 0.0
+            fac=None
         # model phase grid (t=phase)
         tmodel = np.linspace(phase_zero - 0.5*InputParameter['phase_range'],
                              phase_zero + 0.5*InputParameter['phase_range'],
@@ -1272,7 +1274,7 @@ class batman_model:
         # wavelength associated with model
         wmodel = np.array(limbdarkning_model.ld[0])
         # model
-        m = batman.TransitModel(params, tmodel,
+        m = batman.TransitModel(params, tmodel, fac=fac,
                                 transittype=InputParameter['transittype'])
 
         norm_lcmodel = np.zeros((len(limbdarkning_model.ld[1]), len(tmodel)))
@@ -1785,8 +1787,8 @@ class limbdarkning:
         elif InputParameter['limb_darkening_laws'] == 'nonlinear':
             ld_coefficients = [0.0, 0.0, 0.0, 0.0]
         else:
-            ld_coefficients = None
-        return ([None], [ld_coefficients])
+            ld_coefficients = [None]
+        return ld_coefficients
 
     def return_constant_limbdarkning_from_ini(self, InputParameter):
         """
