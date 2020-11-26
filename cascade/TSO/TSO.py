@@ -456,7 +456,7 @@ class TSOSuite:
             raise AttributeError("No observation data type set. "
                                  "Aborting filtering of data.")
         try:
-            verbose = bool(self.cascade_parameters.cascade_verbose)
+            verbose = ast.literal_eval(self.cascade_parameters.cascade_verbose)
         except AttributeError:
             warnings.warn("Verbose flag not set, assuming it to be False.")
             verbose = False
@@ -511,8 +511,8 @@ class TSOSuite:
                                      "Aborting filtering of data.")
             try:
                 useMultiProcesses = \
-                    bool(self.cascade_parameters.
-                         cascade_use_multi_processes)
+                    ast.literal_eval(self.cascade_parameters.
+                                     cascade_use_multi_processes)
             except AttributeError:
                 raise AttributeError("cascade_use_multi_processes flag not "
                                      "set. Aborting filtering of data.")
@@ -687,7 +687,7 @@ class TSOSuite:
 
         """
         try:
-            verbose = bool(self.cascade_parameters.cascade_verbose)
+            verbose = ast.literal_eval(self.cascade_parameters.cascade_verbose)
         except AttributeError:
             warnings.warn("Verbose flag not set, assuming it to be False.")
             verbose = False
@@ -894,7 +894,7 @@ class TSOSuite:
 
         """
         try:
-            verbose = bool(self.cascade_parameters.cascade_verbose)
+            verbose = ast.literal_eval(self.cascade_parameters.cascade_verbose)
         except AttributeError:
             warnings.warn("Verbose flag not set, assuming it to be False.")
             verbose = False
@@ -1120,7 +1120,7 @@ class TSOSuite:
 
         """
         try:
-            verbose = bool(self.cascade_parameters.cascade_verbose)
+            verbose = ast.literal_eval(self.cascade_parameters.cascade_verbose)
         except AttributeError:
             warnings.warn("Verbose flag not set, "
                           "assuming it to be False.")
@@ -1244,7 +1244,7 @@ class TSOSuite:
             return
 
         try:
-            verbose = bool(self.cascade_parameters.cascade_verbose)
+            verbose = ast.literal_eval(self.cascade_parameters.cascade_verbose)
         except AttributeError:
             warnings.warn("Verbose flag not set, assuming it to be False.")
             verbose = False
@@ -1312,8 +1312,8 @@ class TSOSuite:
                                  "Aborting extraction of 1d spectra.")
         try:
             autoAdjustRebinFactor = \
-                bool(self.cascade_parameters.
-                     processing_auto_adjust_rebin_factor_extract1d)
+                ast.literal_eval(self.cascade_parameters.
+                                 processing_auto_adjust_rebin_factor_extract1d)
         except AttributeError:
             raise AttributeError("The processing_auto_adjust_rebin_factor_"
                                  "extract1d configuration parameter is not "
@@ -1547,8 +1547,8 @@ class TSOSuite:
                                      "Aborting time series calibration.")
         try:
             useMultiProcesses = \
-                bool(self.cascade_parameters.
-                     cascade_use_multi_processes)
+                ast.literal_eval(self.cascade_parameters.
+                                 cascade_use_multi_processes)
         except AttributeError:
             raise AttributeError("cascade_use_multi_processes flag not "
                                  "set. Aborting time series calibration.")
