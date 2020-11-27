@@ -1736,15 +1736,16 @@ class regressionControler:
         error_normed_spectrum.data[...] = error_normed_spectrum.data*100
 
         # bootstraped normalized spectrum
-        mean_depth_bootstrap = np.ma.mean(normed_spectrum[1:, :], axis=1)
-        normed_spectrum_bootstrap = np.ma.mean(normed_spectrum[1:, :], axis=0)
+        from astropy.stats import mad_std
+        median_depth_bootstrap = np.ma.median(normed_spectrum[1:, :], axis=1)
+        normed_spectrum_bootstrap = np.ma.median(normed_spectrum[1:, :], axis=0)
         error_normed_spectrum_bootstrap = \
-            np.ma.std((normed_spectrum[1:, :].T - mean_depth_bootstrap).T,
-                      axis=0)
+            mad_std((normed_spectrum[1:, :].T - median_depth_bootstrap).T,
+                    axis=0, ignore_nan=True)
 
         # 95% confidense interval
-        n = len(mean_depth_bootstrap)
-        sort = sorted(mean_depth_bootstrap)
+        n = len(median_depth_bootstrap)
+        sort = sorted(median_depth_bootstrap)
         TD_min, TD, TD_max = \
             (sort[int(n * 0.05)], sort[int(n * 0.5)], sort[int(n * 0.95)])
 
