@@ -647,6 +647,9 @@ def convert_spectrum_to_brighness_temperature(wavelength: u.micron,
     error_brighness_temperature :
         (optional) Error on the spectrum in units of brightness temperature.
     """
+    import copy
+    wavelength = copy.deepcopy(wavelength)
+    contrast = copy.deepcopy(contrast)
     planet_temperature_grid = np.array([100.0 + 100.0*np.arange(38)]) * u.K
 
     contrast_grid = planck(np.tile(wavelength,
@@ -1260,8 +1263,10 @@ class batman_model:
 
         if InputParameter['transittype'] == "secondary":
             phase_zero = 0.5
+            fac=0.01
         else:
             phase_zero = 0.0
+            fac=None
         # model phase grid (t=phase)
         tmodel = np.linspace(phase_zero - 0.5*InputParameter['phase_range'],
                              phase_zero + 0.5*InputParameter['phase_range'],
@@ -1269,7 +1274,7 @@ class batman_model:
         # wavelength associated with model
         wmodel = np.array(limbdarkning_model.ld[0])
         # model
-        m = batman.TransitModel(params, tmodel,
+        m = batman.TransitModel(params, tmodel, fac=fac,
                                 transittype=InputParameter['transittype'])
 
         norm_lcmodel = np.zeros((len(limbdarkning_model.ld[1]), len(tmodel)))
@@ -1311,7 +1316,8 @@ class batman_model:
         inclination = \
             u.Quantity(self.cascade_configuration.object_inclination).to(u.deg)
         inclination = inclination.value
-        eccentricity = u.Quantity(self.cascade_configuration.object_eccentricity)
+        eccentricity = \
+            u.Quantity(self.cascade_configuration.object_eccentricity)
         eccentricity = eccentricity.value
         arg_of_periastron = \
             u.Quantity(self.cascade_configuration.object_omega).to(u.deg)
@@ -1330,7 +1336,8 @@ class batman_model:
         else:
             ttype = 'primary'
         nphase = int(self.cascade_configuration.model_nphase_points)
-        phase_range = u.Quantity(self.cascade_configuration.model_phase_range).value
+        phase_range = \
+            u.Quantity(self.cascade_configuration.model_phase_range).value
         par = collections.OrderedDict(rp=planet_radius,
                                       a=semi_major_axis,
                                       inc=inclination,
@@ -1361,7 +1368,8 @@ class batman_model:
             Raises error in case the observation type is not recognized.
         """
         catalog_name = self.cascade_configuration.catalog_name.strip()
-        catalog_update = ast.literal_eval(self.cascade_configuration.catalog_update)
+        catalog_update = \
+            ast.literal_eval(self.cascade_configuration.catalog_update)
         catalog = parse_database(catalog_name, update=catalog_update)
         target_name = self.cascade_configuration.object_name.strip()
         try:
@@ -1433,7 +1441,7 @@ class exotethys_model:
     .. [2] Morello et al. 2019, (arXiv:1908.09599)
     """
 
-    __valid_ld_laws = {'quadratic'}
+    __valid_ld_laws = {'quadratic', 'nonlinear'}
     __valid_model_grid = {'Atlas_2000', 'Phoenix_2012_13', 'Phoenix_2018'}
 
     def __init__(self, cascade_configuration):
@@ -1469,11 +1477,15 @@ class exotethys_model:
         passband = InputParameter['instrument'] + '_' +\
             InputParameter['instrument_filter']
 
+        if InputParameter['limb_darkening_laws'] == 'nonlinear':
+            ld_law = 'claret4'
+        else:
+            ld_law = InputParameter['limb_darkening_laws'] 
         dict1 = \
             {'output_path': [InputParameter['save_path']],
              'calculation_type': ['individual'],
              'stellar_models_grid': [InputParameter['stellar_models_grids']],
-             'limb_darkening_laws': [InputParameter['limb_darkening_laws']],
+             'limb_darkening_laws': [ld_law],
              'passbands': [passband],
              'wavelength_bins_path': [os.path.join(exotethys_data_path,
                                                    'wavelength_bins/')],
@@ -1495,7 +1507,7 @@ class exotethys_model:
         wl_bands = []
         for band in sub_dict.items():
             wl_bands.append(band[0].split('_')[-2:])
-            ld_coefficients.append(band[1]['quadratic']['coefficients'])
+            ld_coefficients.append(band[1][ld_law]['coefficients'])
         wl_bands = wl_bands[1:]
         ld_coefficients = ld_coefficients[1:]
         wl_bands = \
@@ -1523,7 +1535,8 @@ class exotethys_model:
         logg = u.function.Dex(self.cascade_configuration.object_logg_host_star,
                               u.function.DexUnit(logg_unit))
         logg = logg.to(u.dex(u.cm/u.s**2)).value
-        Tstar = u.Quantity(self.cascade_configuration.object_temperature_host_star)
+        Tstar = \
+            u.Quantity(self.cascade_configuration.object_temperature_host_star)
         Tstar = Tstar.to(u.K).value
         star_metallicity = \
             u.Quantity(self.cascade_configuration.object_metallicity_host_star)
@@ -1534,7 +1547,8 @@ class exotethys_model:
                      check your init file for the following \
                      valid models: {}. Aborting calculation of \
                      limbdarkning coefficients".format(self.__valid_ld_laws))
-        stellar_models_grids = self.cascade_configuration.model_stellar_models_grid
+        stellar_models_grids = \
+            self.cascade_configuration.model_stellar_models_grid
         if not (stellar_models_grids in self.__valid_model_grid):
             raise ValueError("Stellar model grid not recognized, \
                      check your init file for the following \
@@ -1548,16 +1562,17 @@ class exotethys_model:
         except AttributeError:
             raise AttributeError("No save path defined\
                                  Aborting defining limbdarkning model")
-        par = collections.OrderedDict(target_name=target_name,
-                                      instrument=instrument,
-                                      instrument_filter=instrument_filter,
-                                      logg=logg,
-                                      star_metallicity=star_metallicity,
-                                      Tstar=Tstar,
-                                      limb_darkening_laws=limb_darkening_laws,
-                                      stellar_models_grids=stellar_models_grids,
-                                      save_path=save_path
-                                      )
+        par = collections.OrderedDict(
+            target_name=target_name,
+            instrument=instrument,
+            instrument_filter=instrument_filter,
+            logg=logg,
+            star_metallicity=star_metallicity,
+            Tstar=Tstar,
+            limb_darkening_laws=limb_darkening_laws,
+            stellar_models_grids=stellar_models_grids,
+            save_path=save_path
+                                     )
         return par
 
     def return_par_from_db(self):
@@ -1578,7 +1593,8 @@ class exotethys_model:
             Raises error in case the observation type is not recognized.
         """
         catalog_name = self.cascade_configuration.catalog_name.strip()
-        catalog_update = ast.literal_eval(self.cascade_configuration.catalog_update)
+        catalog_update = \
+            ast.literal_eval(self.cascade_configuration.catalog_update)
         catalog = parse_database(catalog_name, update=catalog_update)
         target_name = self.cascade_configuration.object_name.strip()
         try:
@@ -1605,7 +1621,8 @@ class exotethys_model:
                      check your init file for the following \
                      valid models: {}. Aborting calculation of \
                      limbdarkning coefficients".format(self.__valid_ld_laws))
-        stellar_models_grids = self.cascade_configuration.model_stellar_models_grid
+        stellar_models_grids = \
+            self.cascade_configuration.model_stellar_models_grid
         if not (stellar_models_grids in self.__valid_model_grid):
             raise ValueError("Stellar model grid not recognized, \
                      check your init file for the following \
@@ -1677,7 +1694,7 @@ class limbdarkning:
     """
 
     __valid_models = {'exotethys'}
-    __valid_ld_laws = {'quadratic'}
+    __valid_ld_laws = {'quadratic', 'nonlinear'}
     __valid_ttypes = {'ECLIPSE', 'TRANSIT'}
     __factory_picker = {"exotethys": exotethys_model}
 
@@ -1767,9 +1784,11 @@ class limbdarkning:
         """
         if InputParameter['limb_darkening_laws'] == 'quadratic':
             ld_coefficients = [0.0, 0.0]
+        elif InputParameter['limb_darkening_laws'] == 'nonlinear':
+            ld_coefficients = [0.0, 0.0, 0.0, 0.0]
         else:
-            ld_coefficients = None
-        return ([None], [ld_coefficients])
+            ld_coefficients = [None]
+        return ld_coefficients
 
     def return_constant_limbdarkning_from_ini(self, InputParameter):
         """
@@ -2062,7 +2081,8 @@ class exotethys_stellar_model:
             Raises error in case the observation type is not recognized.
         """
         catalog_name = self.cascade_configuration.catalog_name.strip()
-        catalog_update = ast.literal_eval(self.cascade_configuration.catalog_update)
+        catalog_update = \
+            ast.literal_eval(self.cascade_configuration.catalog_update)
         catalog = parse_database(catalog_name, update=catalog_update)
         target_name = self.cascade_configuration.object_name.strip()
         try:
@@ -2207,8 +2227,9 @@ class SpectralModel:
 
         model_wavelength = np.ma.array(wavelength.data*wavelength_unit,
                                        mask=wavelength.mask)
-        corrected_wavlength = np.ma.array((wavelength.data+wavelength_shift) *
-                                          wavelength_unit, mask=wavelength.mask)
+        corrected_wavlength = \
+            np.ma.array((wavelength.data+wavelength_shift) *
+                        wavelength_unit, mask=wavelength.mask)
         self.model_wavelength = model_wavelength
         self.model_observation = model_observation
         self.corrected_wavelength = corrected_wavlength

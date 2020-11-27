@@ -34,3 +34,4 @@ time
 configobj
 validate
 exotethys
+statsmodels

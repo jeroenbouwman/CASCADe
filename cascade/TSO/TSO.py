@@ -32,35 +32,35 @@ import ast
 import copy
 import os
 import os.path
-from functools import reduce
+# from functools import reduce
 from types import SimpleNamespace
 import warnings
 import time as time_module
 import psutil
 import ray
 import numpy as np
-from scipy import interpolate
+# from scipy import interpolate
 from scipy import ndimage
-from numpy.linalg import cond
-from scipy.linalg import lstsq
-from scipy.linalg import pinv2
+# from numpy.linalg import cond
+# from scipy.linalg import lstsq
+# from scipy.linalg import pinv2
 import astropy.units as u
-from astropy.stats import akaike_info_criterion
-from astropy.table import MaskedColumn, Table
-from astropy.visualization import quantity_support
+# from astropy.stats import akaike_info_criterion
+# from astropy.table import MaskedColumn, Table
+# from astropy.visualization import quantity_support
 from matplotlib import pyplot as plt
-from matplotlib.ticker import MaxNLocator, ScalarFormatter
-import seaborn as sns
-from tqdm import tqdm
-from sklearn.preprocessing import RobustScaler
-from sklearn.decomposition import PCA
+# from matplotlib.ticker import MaxNLocator, ScalarFormatter
+# import seaborn as sns
+# from tqdm import tqdm
+# from sklearn.preprocessing import RobustScaler
+# from sklearn.decomposition import PCA
 from skimage.morphology import binary_dilation
 
 from ..cpm_model import regressionControler
 from ..cpm_model import rayRegressionControler
 from ..data_model import SpectralData
 from ..exoplanet_tools import convert_spectrum_to_brighness_temperature
-from ..exoplanet_tools import lightcurve
+# from ..exoplanet_tools import lightcurve
 from ..initialize import (cascade_configuration, configurator)
 from ..initialize import cascade_default_initialization_path
 from ..initialize import cascade_default_save_path
@@ -456,7 +456,7 @@ class TSOSuite:
             raise AttributeError("No observation data type set. "
                                  "Aborting filtering of data.")
         try:
-            verbose = bool(self.cascade_parameters.cascade_verbose)
+            verbose = ast.literal_eval(self.cascade_parameters.cascade_verbose)
         except AttributeError:
             warnings.warn("Verbose flag not set, assuming it to be False.")
             verbose = False
@@ -511,8 +511,8 @@ class TSOSuite:
                                      "Aborting filtering of data.")
             try:
                 useMultiProcesses = \
-                    bool(self.cascade_parameters.
-                         cascade_use_multi_processes)
+                    ast.literal_eval(self.cascade_parameters.
+                                     cascade_use_multi_processes)
             except AttributeError:
                 raise AttributeError("cascade_use_multi_processes flag not "
                                      "set. Aborting filtering of data.")
@@ -532,15 +532,17 @@ class TSOSuite:
             cleanedDataset = \
                 create_cleaned_dataset(datasetIn, ROI, kernel,
                                        stdv_kernel_time)
-
+# BUG FIX
+            if len(cleanedDataset.mask) == 1:
+                cleanedDataset.mask = np.ma.getmaskarray(cleanedDataset.data)
             self.cpm.cleaned_dataset = cleanedDataset
             if verbose:
-                lightcurve = \
+                obs_lightcurve = \
                     np.ma.sum(cleanedDataset.return_masked_array("data"),
                               axis=0)
                 time = cleanedDataset.return_masked_array("time").data[0, :]
                 fig, ax = plt.subplots(figsize=(10, 10))
-                ax.plot(time, lightcurve, '.')
+                ax.plot(time, obs_lightcurve, '.')
                 ax.set_xlabel('Orbital phase')
                 ax.set_ylabel('Total Signal')
                 ax.set_title('Cleaned data.')
@@ -685,7 +687,7 @@ class TSOSuite:
 
         """
         try:
-            verbose = bool(self.cascade_parameters.cascade_verbose)
+            verbose = ast.literal_eval(self.cascade_parameters.cascade_verbose)
         except AttributeError:
             warnings.warn("Verbose flag not set, assuming it to be False.")
             verbose = False
@@ -892,7 +894,7 @@ class TSOSuite:
 
         """
         try:
-            verbose = bool(self.cascade_parameters.cascade_verbose)
+            verbose = ast.literal_eval(self.cascade_parameters.cascade_verbose)
         except AttributeError:
             warnings.warn("Verbose flag not set, assuming it to be False.")
             verbose = False
@@ -976,8 +978,23 @@ class TSOSuite:
                             spectralMovement,
                             verbose=verbose,
                             verboseSaveFile=verboseSaveFile)
+                    # correct ROI for possibly beeing not rectangular
+                    # and make sure the mask of the cleaned data = ROI
+                    cleaned_data = cleanedDataset.return_masked_array('data')
+                    corrected_mask = np.all(cleaned_data.mask, axis=2)
+                    sub_mask = np.zeros((corrected_mask.shape[0]), dtype=bool)
+                    for i in corrected_mask.T:
+                        if not np.all(i):
+                            sub_mask[i] = True
+                    corrected_mask[sub_mask, ...] = True
+                    dim = cleaned_data.data.shape
+                    ndim = cleaned_data.data.ndim
+                    corrected_mask_cube = \
+                        np.tile(corrected_mask.T, (dim[-1],)+(1,)*(ndim-1)).T
+                    cleanedDataset.mask = corrected_mask_cube
                     self.cpm.cleaned_dataset = cleanedDataset
-
+                    self.observation.instrument_calibration.roi = \
+                        corrected_mask
             try:
                 filteredDataset = self.cpm.filtered_dataset
             except AttributeError:
@@ -1003,6 +1020,8 @@ class TSOSuite:
                             spectralMovement,
                             verbose=verbose,
                             verboseSaveFile=verboseSaveFile)
+                    corrected_mask = self.cpm.cleaned_dataset.mask
+                    filteredDataset.mask = corrected_mask
                     self.cpm.filtered_dataset = filteredDataset
 
     def set_extraction_mask(self):
@@ -1118,12 +1137,6 @@ class TSOSuite:
 
         """
         try:
-            verbose = bool(self.cascade_parameters.cascade_verbose)
-        except AttributeError:
-            warnings.warn("Verbose flag not set, "
-                          "assuming it to be False.")
-            verbose = False
-        try:
             savePathVerbose = self.cascade_parameters.cascade_save_path
             if not os.path.isabs(savePathVerbose):
                 savePathVerbose = os.path.join(cascade_default_save_path,
@@ -1144,10 +1157,17 @@ class TSOSuite:
         except AttributeError:
             raise AttributeError("No valid data found. "
                                  "Aborting check wavelength solution")
+        try:
+            processing_determine_initial_wavelength_shift = \
+                ast.literal_eval(self.cascade_parameters.
+                                 processing_determine_initial_wavelength_shift)
+        except AttributeError:
+            processing_determine_initial_wavelength_shift = True
         if ndim > 2:
             return
+        if not processing_determine_initial_wavelength_shift:
+            return
 
-        from cascade.spectral_extraction import correct_initial_wavelength_shift
         (cleanedDataset, dataset), modeled_observations, \
             corrected_observations = \
             correct_initial_wavelength_shift(cleanedDataset, dataset)
@@ -1235,7 +1255,7 @@ class TSOSuite:
             return
 
         try:
-            verbose = bool(self.cascade_parameters.cascade_verbose)
+            verbose = ast.literal_eval(self.cascade_parameters.cascade_verbose)
         except AttributeError:
             warnings.warn("Verbose flag not set, assuming it to be False.")
             verbose = False
@@ -1303,8 +1323,8 @@ class TSOSuite:
                                  "Aborting extraction of 1d spectra.")
         try:
             autoAdjustRebinFactor = \
-                bool(self.cascade_parameters.
-                     processing_auto_adjust_rebin_factor_extract1d)
+                ast.literal_eval(self.cascade_parameters.
+                                 processing_auto_adjust_rebin_factor_extract1d)
         except AttributeError:
             raise AttributeError("The processing_auto_adjust_rebin_factor_"
                                  "extract1d configuration parameter is not "
@@ -1355,7 +1375,7 @@ class TSOSuite:
             data_shape = optimallyExtractedDataset.data.shape
             rebinFactor = \
                 np.max([rebinFactor,
-                        data_shape[0]/(data_shape[-1]/nscanSamples-5)])
+                        data_shape[0]/((data_shape[-1]/nscanSamples)*0.9)])
         verboseSaveFile = 'rebin_to_common_wavelength_grid' + \
             '_optimally_extracted_data.png'
         verboseSaveFile = os.path.join(savePathVerbose, verboseSaveFile)
@@ -1538,8 +1558,8 @@ class TSOSuite:
                                      "Aborting time series calibration.")
         try:
             useMultiProcesses = \
-                bool(self.cascade_parameters.
-                     cascade_use_multi_processes)
+                ast.literal_eval(self.cascade_parameters.
+                                 cascade_use_multi_processes)
         except AttributeError:
             raise AttributeError("cascade_use_multi_processes flag not "
                                  "set. Aborting time series calibration.")
@@ -1617,6 +1637,8 @@ class TSOSuite:
                 fit_parameters.regression_results
             self.calibration_results.normed_fitted_spectra = \
                 fit_parameters.normed_fitted_spectrum
+            self.calibration_results.corrected_fitted_spectrum = \
+                fit_parameters.corrected_fitted_spectrum
             self.calibration_results.wavelength_normed_fitted_spectrum = \
                 fit_parameters.wavelength_normed_fitted_spectrum
             self.calibration_results.mse = fit_parameters.fitted_mse

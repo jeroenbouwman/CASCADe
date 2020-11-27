@@ -333,14 +333,16 @@ def generate_default_initialization(observatory='HST', data='SPECTRUM',
 
     if data == 'SPECTRUM':
         config['PROCESSING'] = \
-            {'processing_sigma_filtering': '3.5',
+            {'processing_compress_data':  'True',
+             'processing_sigma_filtering': '3.5',
              'processing_nfilter': '5',
              'processing_stdv_kernel_time_axis_filter': '0.4',
              'processing_nextraction': '1',
              'processing_determine_initial_wavelength_shift': 'False'}
     else:
         config['PROCESSING'] = \
-            {'processing_sigma_filtering': '3.5',
+            {'processing_compress_data':  'True',
+             'processing_sigma_filtering': '3.5',
              'processing_max_number_of_iterations_filtering': '15',
              'processing_fractional_acceptance_limit_filtering': '0.005',
              'processing_quantile_cut_movement': '0.1',
@@ -354,23 +356,16 @@ def generate_default_initialization(observatory='HST', data='SPECTRUM',
              'processing_auto_adjust_rebin_factor_extract1d': 'True',
              'processing_determine_initial_wavelength_shift': 'True'}
 
-    config['CPM'] = {'cpm_cv_method': 'gcv',
+    config['CPM'] = {
                      'cpm_lam0': '1.0e-9',
                      'cpm_lam1': '1.0e3',
                      'cpm_nlam': '150',
-                     'cpm_deltapix': '1',
-                     'cpm_nrebin': '1',
-                     'cpm_use_pca': 'False',
-                     'cpm_use_pca_filter': 'False',
-                     'cpm_number_of_pca_components': '39',
-                     'cpm_add_time': 'False',
-                     'cpm_add_postition': 'True',
-                     'cpm_add_calibration_signal': 'False',
-                     'cpm_calibration_signal_position': 'after',
-                     'cpm_clip_percentile_time': '0.00',
-                     'cpm_clip_percentile_regressors': '0.00',
-                     'cpm_calibration_signal_depth': '0.08',
-                     'cpm_relative_sig_value_limit': '4.e-1'}
+                     'cpm_deltapix': '7',
+                     'cpm_nbootstrap': '250',
+                     'cpm_regularization_method': 'value',
+                     'cpm_add_time': 'True',
+                     'cpm_add_postition': 'True'
+                     }
 
     config['MODEL'] = {'model_type': 'batman',
                        'model_type_limb_darkening': 'exotethys',

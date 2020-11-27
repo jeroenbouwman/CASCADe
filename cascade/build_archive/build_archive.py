@@ -159,7 +159,7 @@ def fill_system_parameters(name, catalogs, configuration,
         try:
             data_record = \
                 extract_exoplanet_data(catalogs[cat], name,
-                                       search_radius=2*u.arcsec)
+                                       search_radius=60*u.arcsec)
             no_match = False
         except (ValueError, KeyError) as error:
             print("No match in {}".format(cat))

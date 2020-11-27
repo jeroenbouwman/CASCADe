@@ -32,13 +32,10 @@ import warnings
 import numpy as np
 import astropy.units as u
 from matplotlib import pyplot as plt
-# from matplotlib.ticker import MaxNLocator, ScalarFormatter
 import seaborn as sns
 from skimage import exposure
-# from skimage import img_as_float
-# from ..initialize import cascade_default_data_path
-# from ..initialize import cascade_default_initialization_path
-# from ..initialize import cascade_default_path
+import statsmodels.distributions
+
 from ..initialize import cascade_default_save_path
 from ..initialize import cascade_configuration
 from ..exoplanet_tools import transit_to_eclipse
@@ -479,10 +476,11 @@ def calibrate_timeseries_verbose(*args, **kwargs):
                   nboot+1,
                   axis=0)
 
-    normed_spectrum = np.ma.array(calibration_results.normed_fitted_spectra *
-                                  100, mask=bad_wavelength_mask)
+    normed_spectrum = np.ma.array(calibration_results.normed_fitted_spectra.copy(),
+                                  mask=bad_wavelength_mask.copy())
     if transittype == "secondary":
         normed_spectrum = transit_to_eclipse(normed_spectrum)
+    normed_spectrum.data[...] = normed_spectrum.data*100
     mean_norm = np.ma.mean(normed_spectrum[1:, :], axis=1)
 
     dx, bins = knuth_bin_width(mean_norm, return_bins=True)
@@ -527,7 +525,6 @@ def calibrate_timeseries_verbose(*args, **kwargs):
     # ##################### CDF ###########################
     sns.set_context("talk", font_scale=2.0, rc={"lines.linewidth": 6.5})
     sns.set_style("white", {"xtick.bottom": True, "ytick.left": True})
-    import statsmodels.distributions
     ecdf = statsmodels.distributions.ECDF(mean_norm)
     fig, axes = plt.subplots(figsize=(18, 12), nrows=1, ncols=1, dpi=200)
     ax0 = axes
@@ -548,7 +545,7 @@ def calibrate_timeseries_verbose(*args, **kwargs):
     plt.show()
     if save_verbose:
         fig.savefig(os.path.join(save_path, save_name_base +
-                                 "_calibrate_timeseries_pdf.png"),
+                                 "_calibrate_timeseries_cdf.png"),
                     bbox_inches="tight")
 
     # ############# QQ ######################
@@ -671,11 +668,11 @@ def calibrate_timeseries_verbose(*args, **kwargs):
     uncal_data.mask = np.ma.logical_or(uncal_data.mask, systematics.mask)
     cal_data = uncal_data/systematics
 
-    TD_temp = TD*np.mean(model.limbdarkning_correction)
+    TD_temp = TD/100*np.mean(model.limbdarkning_correction)
     if transittype == 'secondary':
         from cascade.exoplanet_tools import eclipse_to_transit
         TD_temp = eclipse_to_transit(TD_temp)
-    model_lc = model.light_curve_interpolated[0, :]*(TD_temp/100) + 1
+    model_lc = model.light_curve_interpolated[0, :]*(TD_temp) + 1
 
     fig, axes = plt.subplots(figsize=(18, 12), nrows=1, ncols=1, dpi=200)
     ax0 = axes

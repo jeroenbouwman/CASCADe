@@ -331,6 +331,8 @@ class SpitzerIRS(InstrumentBase):
             position = np.zeros(spectral_data.shape[-1])
 
         idx = np.argsort(time)
+# BUG FIX?
+        idx = idx[25:]
         time = time[idx]
         spectral_data = spectral_data[:, idx]
         uncertainty_spectral_data = uncertainty_spectral_data[:, idx]

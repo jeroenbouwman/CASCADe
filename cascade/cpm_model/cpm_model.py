@@ -274,12 +274,15 @@ def ridge(input_regression_matrix, input_data, input_covariance,
             residual = np.dot(unity_matrix_ndata-H, data)
             rss = np.dot(residual.T, residual)
             degrees_of_freedom = np.trace(H)
-
-            mse = rss/(n_data-degrees_of_freedom)
-            gcv = n_data*(np.trace(unity_matrix_ndata-H))**-2 * rss
-            # aicc = n_data*np.log(rss) + 2*degrees_of_freedom + \
-            #     (2*degrees_of_freedom * (degrees_of_freedom+1)) / \
-            #     (n_data-degrees_of_freedom-1)
+            if (n_data-degrees_of_freedom) >= 1:
+                mse = rss/(n_data-degrees_of_freedom)
+                gcv = n_data*(np.trace(unity_matrix_ndata-H))**-2 * rss
+                # aicc = n_data*np.log(rss) + 2*degrees_of_freedom + \
+                #     (2*degrees_of_freedom * (degrees_of_freedom+1)) / \
+                #     (n_data-degrees_of_freedom-1)
+            else:
+                mse = 1.e16
+                gcv = 1.e16
             gcv_list.append(gcv)
             mse_list.append(mse)
             # aicc_list.append(aicc)
@@ -1712,14 +1715,14 @@ class regressionControler:
                       axis=0)
 
         normed_spectrum = \
-            np.ma.array(fit_parameters.normed_fitted_spectrum * 100.0,
-                        mask=bad_wavelength_mask)
+            np.ma.array(fit_parameters.normed_fitted_spectrum.copy(),
+                        mask=bad_wavelength_mask.copy())
         error_normed_spectrum = \
-            np.ma.array(fit_parameters.error_normed_fitted_spectrum,
-                        mask=bad_wavelength_mask)
+            np.ma.array(fit_parameters.error_normed_fitted_spectrum.copy(),
+                        mask=bad_wavelength_mask.copy())
         wavelength_normed_spectrum = \
-            np.ma.array(fit_parameters.wavelength_normed_fitted_spectrum,
-                        mask=bad_wavelength_mask)
+            np.ma.array(fit_parameters.wavelength_normed_fitted_spectrum.copy(),
+                        mask=bad_wavelength_mask.copy())
 
         if lightcurve_parameters['transittype'] == 'secondary':
             from cascade.exoplanet_tools import transit_to_eclipse
@@ -1727,16 +1730,22 @@ class regressionControler:
                 transit_to_eclipse(normed_spectrum,
                                    uncertainty=error_normed_spectrum)
 
+        # transfrom to percent by multiplying by 100.
+        # Note!!!!! this has to be done after transit_to_eclipse!!!!!
+        normed_spectrum.data[...] = normed_spectrum.data*100
+        error_normed_spectrum.data[...] = error_normed_spectrum.data*100
+
         # bootstraped normalized spectrum
-        mean_depth_bootstrap = np.ma.mean(normed_spectrum[1:, :], axis=1)
-        normed_spectrum_bootstrap = np.ma.mean(normed_spectrum[1:, :], axis=0)
+        from astropy.stats import mad_std
+        median_depth_bootstrap = np.ma.median(normed_spectrum[1:, :], axis=1)
+        normed_spectrum_bootstrap = np.ma.median(normed_spectrum[1:, :], axis=0)
         error_normed_spectrum_bootstrap = \
-            np.ma.std((normed_spectrum[1:, :].T - mean_depth_bootstrap).T,
-                      axis=0)
+            mad_std((normed_spectrum[1:, :].T - median_depth_bootstrap).T,
+                    axis=0, ignore_nan=True)
 
         # 95% confidense interval
-        n = len(mean_depth_bootstrap)
-        sort = sorted(mean_depth_bootstrap)
+        n = len(median_depth_bootstrap)
+        sort = sorted(median_depth_bootstrap)
         TD_min, TD, TD_max = \
             (sort[int(n * 0.05)], sort[int(n * 0.5)], sort[int(n * 0.95)])
 
