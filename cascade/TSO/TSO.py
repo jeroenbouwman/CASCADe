@@ -978,8 +978,23 @@ class TSOSuite:
                             spectralMovement,
                             verbose=verbose,
                             verboseSaveFile=verboseSaveFile)
+                    # correct ROI for possibly beeing not rectangular
+                    # and make sure the mask of the cleaned data = ROI
+                    cleaned_data = cleanedDataset.return_masked_array('data')
+                    corrected_mask = np.all(cleaned_data.mask, axis=2)
+                    sub_mask = np.zeros((corrected_mask.shape[0]), dtype=bool)
+                    for i in corrected_mask.T:
+                        if not np.all(i):
+                            sub_mask[i] = True
+                    corrected_mask[sub_mask, ...] = True
+                    dim = cleaned_data.data.shape
+                    ndim = cleaned_data.data.ndim
+                    corrected_mask_cube = \
+                        np.tile(corrected_mask.T, (dim[-1],)+(1,)*(ndim-1)).T
+                    cleanedDataset.mask = corrected_mask_cube
                     self.cpm.cleaned_dataset = cleanedDataset
-
+                    self.observation.instrument_calibration.roi = \
+                        corrected_mask
             try:
                 filteredDataset = self.cpm.filtered_dataset
             except AttributeError:
@@ -1005,6 +1020,8 @@ class TSOSuite:
                             spectralMovement,
                             verbose=verbose,
                             verboseSaveFile=verboseSaveFile)
+                    corrected_mask = self.cpm.cleaned_dataset.mask
+                    filteredDataset.mask = corrected_mask
                     self.cpm.filtered_dataset = filteredDataset
 
     def set_extraction_mask(self):
@@ -1120,12 +1137,6 @@ class TSOSuite:
 
         """
         try:
-            verbose = ast.literal_eval(self.cascade_parameters.cascade_verbose)
-        except AttributeError:
-            warnings.warn("Verbose flag not set, "
-                          "assuming it to be False.")
-            verbose = False
-        try:
             savePathVerbose = self.cascade_parameters.cascade_save_path
             if not os.path.isabs(savePathVerbose):
                 savePathVerbose = os.path.join(cascade_default_save_path,
@@ -1147,8 +1158,9 @@ class TSOSuite:
             raise AttributeError("No valid data found. "
                                  "Aborting check wavelength solution")
         try:
-            processing_determine_initial_wavelength_shift = ast.literal_eval(
-            self.cascade_parameters.processing_determine_initial_wavelength_shift)
+            processing_determine_initial_wavelength_shift = \
+                ast.literal_eval(self.cascade_parameters.
+                                 processing_determine_initial_wavelength_shift)
         except AttributeError:
             processing_determine_initial_wavelength_shift = True
         if ndim > 2:
@@ -1156,7 +1168,6 @@ class TSOSuite:
         if not processing_determine_initial_wavelength_shift:
             return
 
-        from cascade.spectral_extraction import correct_initial_wavelength_shift
         (cleanedDataset, dataset), modeled_observations, \
             corrected_observations = \
             correct_initial_wavelength_shift(cleanedDataset, dataset)
