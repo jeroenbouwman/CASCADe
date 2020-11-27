@@ -274,12 +274,15 @@ def ridge(input_regression_matrix, input_data, input_covariance,
             residual = np.dot(unity_matrix_ndata-H, data)
             rss = np.dot(residual.T, residual)
             degrees_of_freedom = np.trace(H)
-
-            mse = rss/(n_data-degrees_of_freedom)
-            gcv = n_data*(np.trace(unity_matrix_ndata-H))**-2 * rss
-            # aicc = n_data*np.log(rss) + 2*degrees_of_freedom + \
-            #     (2*degrees_of_freedom * (degrees_of_freedom+1)) / \
-            #     (n_data-degrees_of_freedom-1)
+            if (n_data-degrees_of_freedom) >= 1:
+                mse = rss/(n_data-degrees_of_freedom)
+                gcv = n_data*(np.trace(unity_matrix_ndata-H))**-2 * rss
+                # aicc = n_data*np.log(rss) + 2*degrees_of_freedom + \
+                #     (2*degrees_of_freedom * (degrees_of_freedom+1)) / \
+                #     (n_data-degrees_of_freedom-1)
+            else:
+                mse = 1.e16
+                gcv = 1.e16
             gcv_list.append(gcv)
             mse_list.append(mse)
             # aicc_list.append(aicc)
