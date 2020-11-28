@@ -1261,11 +1261,12 @@ class batman_model:
         params.u = limbdarkning_model.ld[1][0]
         params.limb_dark = limbdarkning_model.par['limb_darkening_laws']
 
-        impact_parameter = \
-            (((params.a*u.AU)/(params.rp*u.solRad)).decompose() *
-             np.cos(np.deg2rad(params.inc))).value
+        impact_parameter = params.a * np.cos(np.deg2rad(params.inc))
         if impact_parameter >= 1:
-            raise ValueError('Impact parameter larger then 1.')
+            raise ValueError('The value {} of the impact parameter is '
+                             'larger then 1. '
+                             'Aborting lightcurve '
+                             'modeling.'.format(impact_parameter))
 
         if InputParameter['transittype'] == "secondary":
             phase_zero = 0.5
