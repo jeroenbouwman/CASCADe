@@ -1261,12 +1261,18 @@ class batman_model:
         params.u = limbdarkning_model.ld[1][0]
         params.limb_dark = limbdarkning_model.par['limb_darkening_laws']
 
+        impact_parameter = \
+            (((params.a*u.AU)/(params.rp*u.solRad)).decompose() *
+             np.cos(np.deg2rad(params.inc))).value
+        if impact_parameter >= 1:
+            raise ValueError('Impact parameter larger then 1.')
+
         if InputParameter['transittype'] == "secondary":
             phase_zero = 0.5
-            fac=0.01
+            fac = 0.01
         else:
             phase_zero = 0.0
-            fac=None
+            fac = None
         # model phase grid (t=phase)
         tmodel = np.linspace(phase_zero - 0.5*InputParameter['phase_range'],
                              phase_zero + 0.5*InputParameter['phase_range'],
