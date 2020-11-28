@@ -481,7 +481,7 @@ def calibrate_timeseries_verbose(*args, **kwargs):
     if transittype == "secondary":
         normed_spectrum = transit_to_eclipse(normed_spectrum)
     normed_spectrum.data[...] = normed_spectrum.data*100
-    mean_norm = np.ma.mean(normed_spectrum[1:, :], axis=1)
+    mean_norm = np.ma.median(normed_spectrum[1:, :], axis=1)
 
     dx, bins = knuth_bin_width(mean_norm, return_bins=True)
     height, bin_edges = np.histogram(mean_norm, bins=bins, density=False)

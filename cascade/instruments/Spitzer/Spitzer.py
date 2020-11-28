@@ -332,7 +332,7 @@ class SpitzerIRS(InstrumentBase):
 
         idx = np.argsort(time)
 # BUG FIX?
-        idx = idx[25:]
+        idx = idx[35:]
         time = time[idx]
         spectral_data = spectral_data[:, idx]
         uncertainty_spectral_data = uncertainty_spectral_data[:, idx]
