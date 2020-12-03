@@ -37,6 +37,7 @@ import multiprocessing as mp
 import numba as nb
 import joblib
 from itertools import zip_longest
+import statsmodels.api as sm
 from matplotlib import pyplot as plt
 import seaborn as sns
 from scipy import ndimage
@@ -499,7 +500,7 @@ def filter_image_cube(data_in, Filters, ROIcube, enumeratedSubRegions,
             filteredImage[indices_poi[j[0]]] = j[2]
             filteredImageVariance[indices_poi[j[0]]] = j[3],
     else:
-        ncpus =int(ray.cluster_resources()['CPU'])
+        ncpus = int(ray.cluster_resources()['CPU'])
         chunksize = len(enumeratedSubRegions)//ncpus + 1
         while chunksize > 256:
             chunksize = chunksize//ncpus + 1
@@ -1643,7 +1644,13 @@ def determine_center_of_light_posision(cleanData, ROI=None, verbose=False,
     idx_use = np.ma.where(total_light > treshhold)[0]
     ytrace = np.arange(npix)
     idx = ytrace[idx_use]
-    z = np.polyfit(idx, COL[idx_use], orderTrace)
+    X = []
+    for i in range(orderTrace+1):
+        X.append(idx**i)
+    X = np.array(X).T
+    robust_fit = sm.RLM(COL[idx_use], X).fit()
+    z = robust_fit.params[::-1]
+    # z = np.polyfit(idx, COL[idx_use], orderTrace)
     f = np.poly1d(z)
     xtrace = f(ytrace)
 
