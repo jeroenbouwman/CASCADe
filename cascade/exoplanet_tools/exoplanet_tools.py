@@ -67,7 +67,7 @@ __all__ = ['Vmag', 'Kmag', 'Rho_jup', 'Rho_jup', 'kmag_to_jy', 'jy_to_kmag',
            'extract_exoplanet_data', 'lightcurve', 'batman_model',
            'masked_array_input', 'eclipse_to_transit', 'transit_to_eclipse',
            'exotethys_model', 'limbdarkning', 'exotethys_stellar_model',
-           'SpectralModel','rayLightcurve','rayLimbdarkning']
+           'SpectralModel', 'rayLightcurve', 'rayLimbdarkning']
 
 
 # enable cds to be able to use certain quantities defined in this system
@@ -1296,7 +1296,6 @@ class batman_model:
                 depth = params.rp**2
                 # make correction for limbdarkening
                 ld_correction[iwave] = (depth_lc/depth)
-                #lcmodel = lcmodel * ld_correction[iwave]
             norm_lcmodel[iwave, :] = lcmodel
         return wmodel, tmodel, norm_lcmodel, ld_correction
 
@@ -1487,7 +1486,7 @@ class exotethys_model:
         if InputParameter['limb_darkening_laws'] == 'nonlinear':
             ld_law = 'claret4'
         else:
-            ld_law = InputParameter['limb_darkening_laws'] 
+            ld_law = InputParameter['limb_darkening_laws']
         dict1 = \
             {'output_path': [InputParameter['save_path']],
              'calculation_type': ['individual'],
@@ -1712,7 +1711,8 @@ class limbdarkning:
             InputParameter = self.return_par()
             if (InputParameter['calculate'] and
                     not (InputParameter['ttype'] == 'secondary')):
-                factory = self.__factory_picker[InputParameter['model_type']](self.cascade_configuration)
+                factory = self.__factory_picker[InputParameter['model_type']
+                                                ](self.cascade_configuration)
                 self.ld = factory.ld
                 self.par = factory.par
             else:
@@ -2033,17 +2033,20 @@ class exotethys_stellar_model:
         instrument_filter = self.cascade_configuration.instrument_filter
         telescope_collecting_area = \
             u.Quantity(self.cascade_configuration.telescope_collecting_area)
-        logg_unit = re.split('\\((.*?)\\)',
-                             self.cascade_configuration.object_logg_host_star)[1]
+        logg_unit = \
+            re.split('\\((.*?)\\)',
+                     self.cascade_configuration.object_logg_host_star)[1]
         logg = u.function.Dex(self.cascade_configuration.object_logg_host_star,
                               u.function.DexUnit(logg_unit))
         logg = logg.to(u.dex(u.cm/u.s**2)).value
-        Tstar = u.Quantity(self.cascade_configuration.object_temperature_host_star)
+        Tstar = \
+            u.Quantity(self.cascade_configuration.object_temperature_host_star)
         Tstar = Tstar.to(u.K).value
         star_metallicity = \
             u.Quantity(self.cascade_configuration.object_metallicity_host_star)
         star_metallicity = star_metallicity.value
-        stellar_models_grids = self.cascade_configuration.model_stellar_models_grid
+        stellar_models_grids = \
+            self.cascade_configuration.model_stellar_models_grid
         if not (stellar_models_grids in self.__valid_model_grid):
             raise ValueError("Stellar model grid not recognized, \
                      check your init file for the following \
@@ -2109,7 +2112,8 @@ class exotethys_stellar_model:
         instrument_filter = self.cascade_configuration.instrument_filter
         telescope_collecting_area = \
             u.Quantity(self.cascade_configuration.telescope_collecting_area)
-        stellar_models_grids = self.cascade_configuration.model_stellar_models_grid
+        stellar_models_grids = \
+            self.cascade_configuration.model_stellar_models_grid
         if not (stellar_models_grids in self.__valid_model_grid):
             raise ValueError("Stellar model grid not recognized, \
                      check your init file for the following \
@@ -2137,9 +2141,7 @@ class exotethys_stellar_model:
 
 
 class SpectralModel:
-    """
-    Class defining stellar model and symulated observations.
-    """
+    """Class defining stellar model and symulated observations."""
 
     __valid_models = {'exotethys'}
     __factory_picker = {"exotethys": exotethys_stellar_model}
