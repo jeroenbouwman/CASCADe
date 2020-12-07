@@ -1742,6 +1742,13 @@ class TSOSuite:
                   "Aborting saving results")
             raise
         try:
+            observatory = self.cascade_parameters.instrument_observatory
+            instrument = self.cascade_parameters.instrument
+        except AttributeError:
+            print("No instrument or observatory defined. "
+                  "Aborting saving results")
+            raise        
+        try:
             object_target_name = \
                 self.cascade_parameters.object_name
         except AttributeError:
@@ -1776,6 +1783,8 @@ class TSOSuite:
                        'OBSTIME': str(results.spectrum.OBSTIME),
                        'DATAPROD': results.spectrum.DATAPROD,
                        'ID': observations_id,
+                       'FACILITY': observatory,
+                       'INSTRMNT': instrument,
                        'NAME': object_target_name,
                        'OBSTYPE': transittype}
 
