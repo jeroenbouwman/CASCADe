@@ -2130,9 +2130,19 @@ def rebin_to_common_wavelength_grid(dataset, referenceIndex, nrebin=None,
     uncertainty = dataset.return_masked_array('uncertainty')
     wavelength = dataset.return_masked_array('wavelength')
     time = dataset.return_masked_array('time')
+    
+    idx_min_good, idx_max_good = \
+        np.where(np.all(~wavelength.mask, axis=1))[0][[0,-1]]
+    min_wavelength = np.max(wavelength[idx_min_good])
+    max_wavelength = np.min(wavelength[idx_max_good])
+
+    referenceWavelength = np.sort(np.array(wavelength[1:-1, referenceIndex]))
+    idx_min_select = np.where(referenceWavelength >= min_wavelength)[0][0]
+    idx_max_select = np.where(referenceWavelength <= max_wavelength)[0][-1]
+    referenceWavelength = referenceWavelength[idx_min_select:idx_max_select]
 
     lr, ur = _define_band_limits(wavelength)
-    referenceWavelength = np.sort(np.array(wavelength[1:-1, referenceIndex]))
+    
     if nrebin is not None:
         referenceWavelength = \
             np.linspace(referenceWavelength[0+int(nrebin/2)],
