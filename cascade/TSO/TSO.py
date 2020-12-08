@@ -1585,7 +1585,7 @@ class TSOSuite:
             regularization = \
                 Controler.get_regularization_parameters_from_server()
             control_parameters = Controler.get_control_parameters()
-            lightcurve_mode, lld_correction, lc_parameters =\
+            lightcurve_model, ld_correction, lc_parameters =\
                 Controler.get_lightcurve_model()
         else:
             num_cpus = psutil.cpu_count(logical=True)
