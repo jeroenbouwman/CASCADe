@@ -1580,7 +1580,6 @@ class TSOSuite:
             Controler.run_regression_model(nchunks=1)
             Controler.process_regression_fit()
             Controler.post_process_regression_fit()
-            # iterators = Controler.get_regression_iterators()
             fit_parameters = Controler.get_fit_parameters_from_server()
             regularization = \
                 Controler.get_regularization_parameters_from_server()

@@ -70,21 +70,22 @@ def ols(design_matrix, data, covariance=None):
 
     Parameters
     ----------
-    design_matrix : TYPE
-        DESCRIPTION.
-    data : TYPE
-        DESCRIPTION.
-    weights : TYPE, optional
-        DESCRIPTION. The default is None.
+    design_matrix : 'numpy.ndarray'
+        The design or regression matrix used in the regression modeling
+    data : 'numpy.ndarray'
+        Vecor of data point to be modeled.
+    weights : 'numpy.ndarray', optional
+        Weights used in the regression. Typically the inverse of the
+        coveraice matrix. The default is None.
 
     Returns
     -------
-    fit_parameters : TYPE
-        DESCRIPTION.
-    err_fit_parameters : TYPE
-        DESCRIPTION.
-    sigma_hat_sqr : TYPE
-        DESCRIPTION.
+    fit_parameters : 'numpy.ndarray'
+        Linear regirssion parameters.
+    err_fit_parameters : 'numpy.ndarray'
+        Error estimate on the regression parameters.
+    sigma_hat_sqr : 'float'
+        Mean squared error.
 
     Notes
     -----
@@ -179,31 +180,33 @@ def ridge(input_regression_matrix, input_data, input_covariance,
 
     Parameters
     ----------
-    input_regression_matrix : TYPE
-        DESCRIPTION.
-    input_data : TYPE
-        DESCRIPTION.
-    input_covariance : TYPE
-        DESCRIPTION.
-    input_delta : TYPE
-        DESCRIPTION.
-    input_alpha : TYPE
-        DESCRIPTION.
+    input_regression_matrix : 'numpy.ndarray'
+        The design or regression matrix used in the regularized least square
+        fit.
+    input_data : 'numpy.ndarray'
+        Vector of data to be fit.
+    input_covariance : 'numpy.ndarray'
+        Covariacne matrix used as weight in the least quare fit.
+    input_delta : 'numpy.ndarray'
+        Regularization matrix. For ridge regression this is the unity matrix.
+    input_alpha : 'float' or 'numpy.ndarray'
+        Regularization strength.
 
     Returns
     -------
-    beta : TYPE
-        DESCRIPTION.
-    rss : TYPE
-        DESCRIPTION.
-    mse : TYPE
-        DESCRIPTION.
-    degrees_of_freedom : TYPE
-        DESCRIPTION.
-    model_unscaled : TYPE
-        DESCRIPTION.
-    optimal_regularization : TYPE
-        DESCRIPTION.
+    beta : 'numpy.ndarray'
+        Fitted regression parameters.
+    rss : 'float'
+        Sum of squared residuals.
+    mse : 'float'
+        Mean square error
+    degrees_of_freedom : 'float'
+        The effective degress of Freedo of the fit.
+    model_unscaled : 'numpy.ndarray'
+        The fitted regression model.
+    optimal_regularization : 'numpy.ndarray'
+        The optimal regularization strength determened by generalized cross
+        validation.
 
     Notes
     -----
@@ -326,8 +329,7 @@ def check_causality():
     Returns
     -------
     causal_mask :  ndarray of 'bool'
-        DESCRIPTION.
-
+        Mask of data which has good causal connection with other data.
     """
     causal_mask = True
     return causal_mask
@@ -340,14 +342,17 @@ def select_regressors(selection_mask, exclusion_distance):
     Parameters
     ----------
     selectionMask : 'ndarray' of 'bool'
-        DESCRIPTION.
+        Mask selection all data for which a regressor matrix have to be
+        constructed.
     exclusion_distance : 'int'
-        DESCRIPTION.
+        Minimum distance to data point within no data is selected to be used
+        as regressor.
 
     Returns
     -------
-    regressors : TYPE
-        DESCRIPTION.
+    regressor_list : 'list'
+        list of indicex pais of data index and indici of the data used as
+        regressors for the specified data point.
 
     """
     if selection_mask.ndim == 1:
@@ -372,17 +377,17 @@ def return_PCA(matrix, n_components):
 
     Parameters
     ----------
-    matrix : TYPE
-        DESCRIPTION.
-    n_components : TYPE
-        DESCRIPTION.
+    matrix : 'numpy.ndarray'
+        Input matrix for whcih the principal components are calculated.
+    n_components : 'int'
+        Number of PCA composnents.
 
     Returns
     -------
-    pca_matrix : TYPE
-        DESCRIPTION.
-    pca_back_transnformation : TYPE
-        DESCRIPTION.
+    pca_matrix : 'numpy.ndarray'
+        The principal components.
+    pca_back_transnformation : 'function'
+        The function which back-transforms the PC into the original matrix.
 
     """
     pca = PCA(n_components=np.min([n_components, matrix.shape[0]]),
@@ -1251,7 +1256,10 @@ class rayRegressionParameterServer(regressionParameterServer):
 
     def sync_with_data_server(self, data_server_handle):
         """
-        bla.
+        Synchronize with data server.
+
+        This method of the parameter server uses the handle to the dataserver
+        to synchronize the parameters defining the dataset.
 
         Returns
         -------
@@ -1276,9 +1284,12 @@ class rayRegressionParameterServer(regressionParameterServer):
 
 class regressionControler:
     """
-    bla.
+    The main server for the causal regression modeling.
 
-    bla.
+    This class defines the controler for the regression modeling. It starts the
+    data and parameter server and distributes the tasks to the workers. After
+    completion it processes all results and stores the extrcted planetary
+    spectra in spectral data format.
     """
 
     def __init__(self, cascade_configuration, dataset, regressor_dataset):
@@ -1290,7 +1301,7 @@ class regressionControler:
 
     def instantiate_parameter_server(self):
         """
-        bla.
+        Intstantiate the parameter server.
 
         Returns
         -------
@@ -1302,14 +1313,15 @@ class regressionControler:
 
     def instantiate_data_server(self, dataset, regressor_dataset):
         """
-        bla.
+        Instatiate the data server.
 
         Parameters
         ----------
-        dataset : TYPE
-            DESCRIPTION.
-        regressor_dataset : TYPE
-            DESCRIPTION.
+        dataset : 'cascade.data_model.data_model.SpectralDataTimeSeries'
+            The spectral timeseries dataset to be modeled.
+        regressor_dataset : 'cascade.data_model.data_model.SpectralDataTimeSeries'
+            The cleaned version of the spectral timeseries dataset used for
+            construnction the regression matrici.
 
         Returns
         -------
@@ -1321,7 +1333,7 @@ class regressionControler:
 
     def initialize_servers(self):
         """
-        bla.
+        Initialize both data as wel as the parameter server.
 
         Note that the order of initialization is important: Firts the data
         server and then the parameter server.
@@ -1338,19 +1350,20 @@ class regressionControler:
 
     def get_fit_parameters_from_server(self):
         """
-        bla.
+        Get the regression fit parameters from the parameter server.
 
         Returns
         -------
-        TYPE
-            DESCRIPTION.
+        fitted_parameters: 'simpleNamespace'
+            this namespace contrains all relevant fit parameters used in
+            the extraction and calibration of the planetary signal.
 
         """
         return self.parameter_server_handle.get_fitted_parameters()
 
     def get_regularization_parameters_from_server(self):
         """
-        bla.
+        Get the regularization parameters from the parameter server.
 
         Returns
         -------
@@ -1362,12 +1375,16 @@ class regressionControler:
 
     def get_control_parameters(self):
         """
-        bla.
+        Get the contraol parameters from the parameter server.
+
+        This function returns all relevant parameters needed to determine
+        the behaviour and settings of the regression modeling.
 
         Returns
         -------
-        control_parameters : TYPE
-            DESCRIPTION.
+        control_parameters : 'SimpleNamespace'
+            This namespace contrain all control parameters of the regression
+            model.
 
         """
         control_parameters = SimpleNamespace()
