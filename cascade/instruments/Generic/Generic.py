@@ -42,6 +42,8 @@ __all__ = ['Generic', 'GenericSpectrograph']
 
 class Generic(ObservatoryBase):
     """
+    Genericobservatory class.
+
     This observatory class defines the instuments and data handling for the
     spectropgraphs of a Generic observatory
     """
@@ -73,27 +75,29 @@ class Generic(ObservatoryBase):
 
     @property
     def name(self):
-        """Set to 'Generic'"""
+        """Set to 'Generic'."""
         return "Generic"
 
     @property
     def location(self):
-        """Set to 'UNKNOWN'"""
+        """Set to 'UNKNOWN'."""
         return "UNKNOWN"
 
     @property
     def NAIF_ID(self):
-        """Set to None"""
+        """Set to None."""
         return None
 
     @property
     def observatory_instruments(self):
-        """Returns {'GenericSpectrograph'}"""
+        """Return {'GenericSpectrograph'}."""
         return{"GenericSpectrograph"}
 
 
 class GenericSpectrograph(InstrumentBase):
     """
+    GenericSpectrograph class.
+
     This instrument class defines the properties for a Generic spectrograph on
     a generic observatory
 
@@ -122,9 +126,7 @@ class GenericSpectrograph(InstrumentBase):
 
     @property
     def name(self):
-        """
-        Name of the Generic instrument: 'GenericSpectrograph'
-        """
+        """Name of the Generic instrument: 'GenericSpectrograph'."""
         return "GenericSpectrograph"
 
     def load_data(self):
@@ -148,7 +150,7 @@ class GenericSpectrograph(InstrumentBase):
 
     def get_instrument_setup(self):
         """
-        Retrieve all relevant parameters defining the instrument and data setup
+        Retrieve relevant parameters defining the instrument and data setup.
 
         Returns
         -------
@@ -289,7 +291,7 @@ class GenericSpectrograph(InstrumentBase):
         else:
             phase = (time.value - self.par['obj_ephemeris']) / \
                 self.par['obj_period']
-        phase = phase - np.round(np.mean(phase)) # RG  issue 49
+        phase = phase - np.round(np.mean(phase))  # RG  issue 49
         if auxilary_dict['POSITION']['flag']:
             position = np.array(auxilary_dict['POSITION']['data'])
         else:
@@ -304,6 +306,13 @@ class GenericSpectrograph(InstrumentBase):
         data_files = [data_files[i] for i in idx]
         phase = phase[idx]
         position = position[idx]
+
+        idx = np.argsort(wavelength_data, axis=0)
+        wavelength_data = np.take_along_axis(wavelength_data, idx, axis=0)
+        spectral_data = np.take_along_axis(spectral_data, idx, axis=0)
+        uncertainty_spectral_data = \
+            np.take_along_axis(uncertainty_spectral_data, idx, axis=0)
+        mask = np.take_along_axis(mask, idx, axis=0)
 
         SpectralTimeSeries = \
             SpectralDataTimeSeries(wavelength=wavelength_data,
@@ -360,9 +369,7 @@ class GenericSpectrograph(InstrumentBase):
         return
 
     def get_spectral_trace(self):
-        """
-        Get spectral trace
-        """
+        """Get spectral trace."""
         dim = self.data.data.shape
         wave_pixel_grid = np.arange(dim[0]) * u.pix
         position_pixel_grid = np.zeros_like(wave_pixel_grid)

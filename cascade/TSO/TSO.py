@@ -1746,7 +1746,7 @@ class TSOSuite:
         except AttributeError:
             print("No instrument or observatory defined. "
                   "Aborting saving results")
-            raise        
+            raise
         try:
             object_target_name = \
                 self.cascade_parameters.object_name

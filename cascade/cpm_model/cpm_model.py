@@ -553,6 +553,7 @@ def make_bootstrap_samples(ndata, nsamples):
     non_common_indici = []
     bootsptrap_indici[0, :] = all_indici
     non_common_indici.append(np.setxor1d(all_indici, all_indici))
+    np.random.seed(1984)
     for i in range(nsamples):
         bootsptrap_indici[i+1, :] = np.sort(np.random.choice(ndata, ndata))
         non_common_indici.append(np.setxor1d(all_indici,
@@ -658,9 +659,14 @@ class regressionDataServer:
 
         """
         self.lightcurve_model = lightcurve(self.cascade_configuration)
+        try:
+            time_offset = \
+                ast.literal_eval(self.cascade_configuration.model_time_offset)
+        except AttributeError:
+            time_offset = 0.0
         fit_lightcurve_model, fit_ld_correcton = \
             self.lightcurve_model.interpolated_lc_model(self.fit_dataset,
-                                                        time_offset=0.0)
+                                                        time_offset=time_offset)
         self.fit_lightcurve_model = fit_lightcurve_model
         self.fit_ld_correcton = fit_ld_correcton
 

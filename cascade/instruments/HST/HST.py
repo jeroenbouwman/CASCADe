@@ -254,6 +254,7 @@ class HSTWFC3(InstrumentBase):
             u.Quantity(cascade_configuration.object_ephemeris).to(u.day)
         obj_ephemeris = obj_ephemeris.value
         # observation parameters
+        obs_type = cascade_configuration.observations_type
         obs_mode = cascade_configuration.observations_mode
         obs_data = cascade_configuration.observations_data
         obs_path = cascade_configuration.observations_path
@@ -349,6 +350,7 @@ class HSTWFC3(InstrumentBase):
             inst_beam=inst_beam,
             obj_period=obj_period,
             obj_ephemeris=obj_ephemeris,
+            obs_type=obs_type,
             obs_mode=obs_mode,
             obs_data=obs_data,
             obs_path=obs_path,
@@ -530,6 +532,23 @@ class HSTWFC3(InstrumentBase):
         phase = phase - np.int(np.max(phase))
         if np.max(phase) < 0.0:
             phase = phase + 1.0
+        phase = phase - np.rint(phase)
+        if self.par['obs_type'] == 'ECLIPSE':
+            phase[phase < 0] = phase[phase < 0] + 1.0
+        idx = np.argsort(phase)
+        phase = phase[idx]
+        time = time[idx]
+        spectral_data = spectral_data[:, idx]
+        uncertainty_spectral_data = uncertainty_spectral_data[:, idx]
+        wavelength_data = wavelength_data[:, idx]
+        mask = mask[:, idx]
+        data_files = [data_files[i] for i in idx]
+        position = position[idx]
+        dispersion_position = dispersion_position[idx]
+        angle = angle[idx]
+        scaling = scaling[idx]
+        scan_direction = scan_direction[idx]
+        sample_number = sample_number[idx]
 
         # set the units of the observations
         if ((self.par['obs_data_product'] == 'COE') |
@@ -738,8 +757,8 @@ class HSTWFC3(InstrumentBase):
         spectral_data_nrptexp = spectral_data_nrptexp[idx_time_sort]
 
         # check for spurious longer exosures.
-        med_nrptexp = np.median(spectral_data_nrptexp)
-        idx_remove1 = spectral_data_nrptexp != med_nrptexp
+        # med_nrptexp = np.median(spectral_data_nrptexp)
+        # idx_remove1 = spectral_data_nrptexp != med_nrptexp
         median_exposure_time = np.median(spectral_image_exposure_time)
         idx_remove2 = (spectral_image_exposure_time-0.01) > median_exposure_time
 # BUG FIX reversion
@@ -1109,7 +1128,7 @@ class HSTWFC3(InstrumentBase):
         # mask = np.zeros_like(spectral_image_dq_cube, dtype='bool')
         # for iflag in all_flag_values[bit_select]:
         #     mask = mask | (spectral_image_dq_cube == iflag)
-            
+
         mask = self. _create_mask_from_dq(spectral_image_dq_cube)
 
         # convert to BJD
@@ -1244,7 +1263,7 @@ class HSTWFC3(InstrumentBase):
 
         """
         xc_offset = (np.mean(scan_offset_x)-np.mean(cal_offset_x))/0.135
-        #xc_offset = (-np.mean(cal_offset_x))/0.135
+        # xc_offset = (-np.mean(cal_offset_x))/0.135
         yc_offset = (np.mean(scan_offset_y)-np.mean(cal_offset_y))/0.121
         try:
             self.wfc3_cal
@@ -1386,8 +1405,8 @@ class HSTWFC3(InstrumentBase):
             if self.par['inst_filter'] == 'G141':
                 # BUG
                 if len(dim) <= 2:
-                    #wavelength_min = 1.02*1.082*u.micron
-                    #wavelength_max = 0.99*1.678*u.micron
+                    # wavelength_min = 1.02*1.082*u.micron
+                    # wavelength_max = 0.99*1.678*u.micron
                     wavelength_min = 1.0*1.082*u.micron
                     wavelength_max = 1.01*1.678*u.micron
                 else:
@@ -1889,6 +1908,8 @@ class HSTWFC3(InstrumentBase):
     @staticmethod
     def _search_ref_pixel_cal_file(ptable, inst_aperture, inst_filter):
         """
+        Search for the reference pixel.
+
         Search the reference pixel calibration file for the reference pixel
         given the instrument aperture and filter.
 
@@ -1916,8 +1937,7 @@ class HSTWFC3(InstrumentBase):
 
         Notes
         -----
-        See also:
-            http://www.stsci.edu/hst/observatory/apertures/wfc3.html
+        See http://www.stsci.edu/hst/observatory/apertures/wfc3.html
 
         """
         ptable_aperture = \
@@ -2066,23 +2086,24 @@ class HSTWFC3(InstrumentBase):
         yc = yc + yc_offset
         xc = xc + xc_offset
 
-        trace = self._WFC3Trace(xc, yc, DYDX,
-                                xref=reference_pixels["XREF_IMAGE"],
-                                yref=reference_pixels["YREF_IMAGE"],
-                                xref_grism=reference_pixels["XREF_GRISM"],
-                                yref_grism=reference_pixels["YREF_GRISM"],
-                                subarray=subarray_sizes['cal_image_size'],
-                                subarray_grism=subarray_sizes['science_image_size'])
+        trace = self._WFC3Trace(
+            xc, yc, DYDX,
+            xref=reference_pixels["XREF_IMAGE"],
+            yref=reference_pixels["YREF_IMAGE"],
+            xref_grism=reference_pixels["XREF_GRISM"],
+            yref_grism=reference_pixels["YREF_GRISM"],
+            subarray=subarray_sizes['cal_image_size'],
+            subarray_grism=subarray_sizes['science_image_size'])
         trace = trace * u.pix
 
-        wavelength = \
-            self._WFC3Dispersion(xc, yc, DYDX, DLDP,
-                                 xref=reference_pixels["XREF_IMAGE"],
-                                 yref=reference_pixels["YREF_IMAGE"],
-                                 xref_grism=reference_pixels["XREF_GRISM"],
-                                 yref_grism=reference_pixels["YREF_GRISM"],
-                                 subarray=subarray_sizes['cal_image_size'],
-                                 subarray_grism=subarray_sizes['science_image_size'])
+        wavelength = self._WFC3Dispersion(
+            xc, yc, DYDX, DLDP,
+            xref=reference_pixels["XREF_IMAGE"],
+            yref=reference_pixels["YREF_IMAGE"],
+            xref_grism=reference_pixels["XREF_GRISM"],
+            yref_grism=reference_pixels["YREF_GRISM"],
+            subarray=subarray_sizes['cal_image_size'],
+            subarray_grism=subarray_sizes['science_image_size'])
 
         spectral_trace = \
             collections.OrderedDict(wavelength_pixel=wave_pixel_grid,
