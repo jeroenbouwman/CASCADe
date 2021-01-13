@@ -1559,7 +1559,7 @@ class exotethys_model:
             raise ValueError("Stellar model grid not recognized, \
                      check your init file for the following \
                      valid model grids: {}. Aborting calculation of \
-                     limbdarkning coefficients".format(self.__valid_model_grid))        
+                     limbdarkning coefficients".format(self.__valid_model_grid))
         try:
             save_path = self.cascade_configuration.cascade_save_path
             if not os.path.isabs(save_path):
@@ -1633,7 +1633,7 @@ class exotethys_model:
             raise ValueError("Stellar model grid not recognized, \
                      check your init file for the following \
                      valid model grids: {}. Aborting calculation of \
-                     limbdarkning coefficients".format(self.__valid_model_grid))        
+                     limbdarkning coefficients".format(self.__valid_model_grid))
         try:
             save_path = self.cascade_configuration.cascade_save_path
             if not os.path.isabs(save_path):
@@ -2051,7 +2051,7 @@ class exotethys_stellar_model:
             raise ValueError("Stellar model grid not recognized, \
                      check your init file for the following \
                      valid model grids: {}. Aborting calculation of \
-                     limbdarkning coefficients".format(self.__valid_model_grid))        
+                     limbdarkning coefficients".format(self.__valid_model_grid))
         try:
             save_path = self.cascade_configuration.cascade_save_path
             if not os.path.isabs(save_path):
@@ -2118,7 +2118,7 @@ class exotethys_stellar_model:
             raise ValueError("Stellar model grid not recognized, \
                      check your init file for the following \
                      valid model grids: {}. Aborting calculation of \
-                     limbdarkning coefficients".format(self.__valid_model_grid))        
+                     limbdarkning coefficients".format(self.__valid_model_grid))
         try:
             save_path = self.cascade_configuration.cascade_save_path
             if not os.path.isabs(save_path):
