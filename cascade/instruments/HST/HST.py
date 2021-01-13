@@ -923,6 +923,7 @@ class HSTWFC3(InstrumentBase):
         spectral_sample_number = []
         spectral_scan_directon = []
         spectral_scan_length = []
+        spectral_total_scan_length = []
         spectral_scan_offset2 = []
         spectral_scan_offset1 = []
         cal_offset2 = []
@@ -957,7 +958,7 @@ class HSTWFC3(InstrumentBase):
                 exptime = hdul['PRIMARY'].header['EXPTIME']
 # BUG FIX
                 nrptexp = hdul['PRIMARY'].header['NRPTEXP']
-# BUG FIX       scanLeng = hdul['PRIMARY'].header['SCAN_LEN']
+                scanLeng = hdul['PRIMARY'].header['SCAN_LEN']
                 scanRate = hdul['PRIMARY'].header['SCAN_RAT']
                 scanOffset2 = hdul['PRIMARY'].header['POSTARG2']
                 scanOffset1 = hdul['PRIMARY'].header['POSTARG1']
@@ -1018,7 +1019,7 @@ class HSTWFC3(InstrumentBase):
                     spectral_sample_number.append(sample_counter)
                     spectral_scan_directon.append(isUpScan)
                     spectral_sampling_time.append(deltaTime)
-# BUG FIX           spectral_scan_length.append(scanLeng)
+                    spectral_total_scan_length.append(scanLeng)
                     spectral_scan_length.append(scanRate*exptime)
                     spectral_scan_offset2.append(scanOffset2)
                     spectral_scan_offset1.append(scanOffset1)
@@ -1058,6 +1059,8 @@ class HSTWFC3(InstrumentBase):
             np.array(spectral_image_number_of_samples, dtype=np.int64)
         spectral_scan_length = np.array(spectral_scan_length,
                                         dtype=np.float64)
+        spectral_total_scan_length = np.array(spectral_total_scan_length,
+                                              dtype=np.float64)
         spectral_scan_offset2 = np.array(spectral_scan_offset2,
                                          dtype=np.float64)
         spectral_scan_offset1 = np.array(spectral_scan_offset1,
@@ -1079,6 +1082,7 @@ class HSTWFC3(InstrumentBase):
         spectral_image_number_of_samples = \
             spectral_image_number_of_samples[idx_time_sort]
         spectral_scan_length = spectral_scan_length[idx_time_sort]
+        spectral_total_scan_length = spectral_total_scan_length[idx_time_sort]
         spectral_scan_offset2 = spectral_scan_offset2[idx_time_sort]
         spectral_scan_offset1 = spectral_scan_offset1[idx_time_sort]
         spectral_data_nrptexp = spectral_data_nrptexp[idx_time_sort]
@@ -1100,6 +1104,7 @@ class HSTWFC3(InstrumentBase):
         spectral_sample_number = spectral_sample_number[~idx_remove]
         spectral_scan_directon = spectral_scan_directon[~idx_remove]
         spectral_scan_length = spectral_scan_length[~idx_remove]
+        spectral_total_scan_length = spectral_total_scan_length[~idx_remove]
         spectral_scan_offset2 = spectral_scan_offset2[~idx_remove]
         spectral_scan_offset1 = spectral_scan_offset1[~idx_remove]
 
@@ -1170,6 +1175,7 @@ class HSTWFC3(InstrumentBase):
                                     spectral_scan_offset2,
                                     cal_offset1, cal_offset2,
                                     spectral_scan_length,
+                                    spectral_total_scan_length,
                                     spectral_scan_directon)
         self._determine_source_position_from_cal_image(
                 calibration_image_cube, calibration_data_files)
@@ -1276,7 +1282,8 @@ class HSTWFC3(InstrumentBase):
 
     def _determine_scan_offset(self, scan_offset_x, scan_offset_y,
                                cal_offset_x, cal_offset_y,
-                               scan_length, scan_directions):
+                               scan_length, total_scan_length,
+                               scan_directions):
         """
         Determine the scan offset.
 
@@ -1286,8 +1293,10 @@ class HSTWFC3(InstrumentBase):
             DESCRIPTION.
         scan_offset_y : TYPE
             DESCRIPTION.
-        scan_length : TYPE
-            DESCRIPTION.
+        scan_length : 'ndarray'
+            Scan length covered during exposure.
+        total_scan_length:  'ndarray'
+            Total scan length.
         scan_directions : TYPE
             DESCRIPTION.
 
@@ -1301,10 +1310,11 @@ class HSTWFC3(InstrumentBase):
         yc_temp = np.zeros_like(unique_directions)
         for i, scan_direction in enumerate(unique_directions):
             idx = (scan_directions == scan_direction)
+            scan_length_diff = total_scan_length[idx] - scan_length[idx]
             if scan_direction == 0:
-                yc_temp[i] = np.mean(scan_offset_y[idx]+0.5*scan_length[idx])
+                yc_temp[i] = np.mean(scan_offset_y[idx]+0.5*scan_length[idx] + scan_length_diff)
             else:
-                yc_temp[i] = np.mean(scan_offset_y[idx]-0.5*scan_length[idx])
+                yc_temp[i] = np.mean(scan_offset_y[idx]-0.5*scan_length[idx] - scan_length_diff)
         yc_offset = (np.mean(yc_temp)-np.mean(cal_offset_y))/0.121
         try:
             self.wfc3_cal
