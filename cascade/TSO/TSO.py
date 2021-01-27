@@ -529,8 +529,9 @@ class TSOSuite:
             datasetOut = sigma_clip_data(datasetIn, sigma, nfilter)
             self.observation.dataset = datasetOut
             # clean data
+            ROIcube = np.tile(ROI.T, (ntime, 1)).T
             cleanedDataset = \
-                create_cleaned_dataset(datasetIn, ROI, kernel,
+                create_cleaned_dataset(datasetIn, ROIcube, kernel,
                                        stdv_kernel_time)
 # BUG FIX
             if len(cleanedDataset.mask) == 1:
@@ -1076,7 +1077,7 @@ class TSOSuite:
         """
         try:
             nExtractionWidth = \
-                int(self.cascade_parameters.processing_nextraction)
+                int(self.cascade_parameters.processing_nextraction) + 2
             if nExtractionWidth % 2 == 0:  # even
                 nExtractionWidth += 1
         except AttributeError:
@@ -1114,16 +1115,27 @@ class TSOSuite:
             self.cpm.extraction_mask = [ExtractionMask[..., 0]]
             return
         else:
+            # BUG FIX
+            # ExtractionMask = np.zeros(dim, dtype=bool)
+            #
+            # for itime, (image, pos) in enumerate(
+            #         zip(ExtractionMask.T, (position+medianPosition))):
+            #     image.T[:, np.round(spectralTrace['positional_pixel'].value +
+            #                         pos).astype(int)] = True
+            #     selim = np.zeros((nExtractionWidth, nExtractionWidth), dtype=bool)
+            #     selim[nExtractionWidth//2, :] = True
+            #     image_new = binary_dilation(image.T, selim)
+            #     ExtractionMask[..., itime] = ~image_new
             ExtractionMask = np.zeros(dim, dtype=bool)
-
-            for itime, (image, pos) in enumerate(
-                    zip(ExtractionMask.T, (position+medianPosition))):
-                image.T[:, np.round(spectralTrace['positional_pixel'].value +
-                                    pos).astype(int)] = True
-                selim = np.zeros((nExtractionWidth, nExtractionWidth))
-                selim[nExtractionWidth//2, :] = 1.0
-                image_new = binary_dilation(image.T, selim)
-                ExtractionMask[..., itime] = ~image_new
+            wave_index = np.arange(dim[0])
+            for itime, pos in enumerate(position+medianPosition):
+                image = np.zeros(dim[:-1], dtype=bool)
+                for i in range(nExtractionWidth):
+                    image[wave_index,
+                          np.round(spectralTrace['positional_pixel'].value +
+                                   pos).astype(int) +
+                          i-nExtractionWidth//2] = True
+                ExtractionMask[..., itime] = ~image
 
             self.cpm.extraction_mask = ExtractionMask
 
@@ -1340,11 +1352,12 @@ class TSOSuite:
                           "No verbose plots will be saved")
             savePathVerbose = None
 
-        # create extraction profile
-        extractionProfile = create_extraction_profile(filteredDataset)
-
         roiCube = np.tile(ROI.T, (dim[-1],) + (1,) * (ndim - 1)).T
         roiCube = roiCube | extractionMask
+
+        # create extraction profile
+        extractionProfile = create_extraction_profile(filteredDataset,
+                                                      ROI=roiCube)
 
         # extract the 1D spectra using both optimal extration as well as
         # aperture extraction

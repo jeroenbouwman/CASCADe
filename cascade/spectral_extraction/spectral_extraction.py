@@ -713,8 +713,9 @@ def create_extraction_profile(fiteredSpectralDataset, ROI=None):
     if ROI is None:
         dataUse = fiteredSpectralData
     else:
-        newMask = np.logical_or(fiteredSpectralData.mask, ROI)
-        dataUse = np.ma.array(fiteredSpectralData, mask=newMask)
+        # newMask = np.logical_or(fiteredSpectralData.mask, ROI)
+        newMask = fiteredSpectralData.mask | ROI
+        dataUse = np.ma.array(fiteredSpectralData.data, mask=newMask)
 
     spectralExtractionProfile = dataUse/np.sum(dataUse, axis=1, keepdims=True)
 
@@ -806,7 +807,7 @@ def extract_spectrum(dataset, ROICube, extractionProfile=None, optimal=False,
         sns.set_context("talk", font_scale=1.5, rc={"lines.linewidth": 2.5})
         sns.set_style("white", {"xtick.bottom": True, "ytick.left": True})
         fig, ax0 = plt.subplots(figsize=(6, 6), nrows=1, ncols=1)
-        for iwave in range(1,8):   
+        for iwave in range(1,8):
             ax0.plot(extractedSpectra[iwave, :])
         ax0.set_title('Extracted 1D spectral timeseries')
         ax0.set_xlabel('Integration #')
@@ -1058,7 +1059,7 @@ def _determine_relative_rotation_and_scale(reference_image, referenceROI,
     tparams = phase_cross_correlation(warped_fft_ref_im, warped_fft_im,
                                    upsample_factor=upsampleFactor,
                                    space='real')
-    
+
     shifts = tparams[0]
     # calculate rotation
     # note, only look for angles between +- 90 degrees,
@@ -2130,7 +2131,7 @@ def rebin_to_common_wavelength_grid(dataset, referenceIndex, nrebin=None,
     uncertainty = dataset.return_masked_array('uncertainty')
     wavelength = dataset.return_masked_array('wavelength')
     time = dataset.return_masked_array('time')
-    
+
     idx_min_good, idx_max_good = \
         np.where(np.all(~wavelength.mask, axis=1))[0][[0,-1]]
     min_wavelength = np.max(wavelength[idx_min_good])
@@ -2142,7 +2143,7 @@ def rebin_to_common_wavelength_grid(dataset, referenceIndex, nrebin=None,
     referenceWavelength = referenceWavelength[idx_min_select:idx_max_select]
 
     lr, ur = _define_band_limits(wavelength)
-    
+
     if nrebin is not None:
         referenceWavelength = \
             np.linspace(referenceWavelength[0+int(nrebin/2)],
@@ -2434,7 +2435,7 @@ def sigma_clip_data(datasetIn, sigma, nfilter):
     return datasetIn
 
 
-def create_cleaned_dataset(datasetIn, ROI, kernel, stdvKernelTime):
+def create_cleaned_dataset(datasetIn, ROIcube, kernel, stdvKernelTime):
     """
     Create a cleaned dataset to be used in regresion analysis.
 
@@ -2442,7 +2443,7 @@ def create_cleaned_dataset(datasetIn, ROI, kernel, stdvKernelTime):
     ----------
     datasetIn : 'SpectralDataTimeSeries'
         Input dataset
-    ROI : 'ndarray' of 'bool'
+    ROIcube : 'ndarray' of 'bool'
         Region of interest.
     kernel : 'ndarray'
         Instrument convolution kernel
@@ -2473,11 +2474,11 @@ def create_cleaned_dataset(datasetIn, ROI, kernel, stdvKernelTime):
         uncertaintyToBeCleaned = \
             np.ma.array(data_scaled2.T, mask=uncertaintyToBeCleaned.mask)
 
-    dataToBeCleaned[ROI] = 0.0
-    dataToBeCleaned.mask[ROI] = False
+    dataToBeCleaned[ROIcube] = 0.0
+    dataToBeCleaned.mask[ROIcube] = False
     dataToBeCleaned.set_fill_value(np.nan)
-    uncertaintyToBeCleaned[ROI] = 1.0
-    uncertaintyToBeCleaned.mask[ROI] = False
+    uncertaintyToBeCleaned[ROIcube] = 1.0
+    uncertaintyToBeCleaned.mask[ROIcube] = False
     uncertaintyToBeCleaned.set_fill_value(np.nan)
 
     kernel_size = kernel.shape[0]
@@ -2500,6 +2501,8 @@ def create_cleaned_dataset(datasetIn, ROI, kernel, stdvKernelTime):
         cleanedUncertainty = \
             RS2.inverse_transform(cleanedUncertainty.T).T
 
+#    cleanedData.mask = cleanedData.mask | ROI
+
     selection = tuple((ndim-1)*[0]+[Ellipsis])
 
     cleanedDataset = SpectralDataTimeSeries(
@@ -2507,6 +2510,7 @@ def create_cleaned_dataset(datasetIn, ROI, kernel, stdvKernelTime):
         wavelength_unit=datasetIn.wavelength_unit,
         data=cleanedData,
         data_unit=datasetIn.data_unit,
+        mask=ROIcube,
         time=datasetIn.time.data.value[selection],
         time_unit=datasetIn.time_unit,
         time_bjd=datasetIn.time_bjd.data.value[selection],

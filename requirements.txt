@@ -23,7 +23,7 @@ pytest=6.1.1
 tqdm=4.51.0
 joblib=0.17.0
 batman-package=2.4.6
-ray=1.0.0
+ray=1.1.0
 aiohttp
 psutil=5.7.2
 setproctitle=1.1.10
