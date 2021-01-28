@@ -1131,10 +1131,11 @@ class TSOSuite:
             for itime, pos in enumerate(position+medianPosition):
                 image = np.zeros(dim[:-1], dtype=bool)
                 for i in range(nExtractionWidth):
-                    image[wave_index,
-                          np.round(spectralTrace['positional_pixel'].value +
-                                   pos).astype(int) +
-                          i-nExtractionWidth//2] = True
+                    spatial_index = np.clip(
+                        np.round(spectralTrace['positional_pixel'].value +
+                                 pos).astype(int) + i-nExtractionWidth//2,
+                        0, dim[1]-1)
+                    image[wave_index, spatial_index] = True
                 ExtractionMask[..., itime] = ~image
 
             self.cpm.extraction_mask = ExtractionMask
