@@ -191,6 +191,14 @@ class GenericSpectrograph(InstrumentBase):
         except AttributeError:
             obs_data_product = ""
 
+        # cpm
+        try:
+            cpm_ncut_first_int = \
+               cascade_configuration.cpm_ncut_first_integrations
+            cpm_ncut_first_int = ast.literal_eval(cpm_ncut_first_int)
+        except AttributeError:
+            cpm_ncut_first_int = 0
+
         if not (obs_data in self.__valid_data):
             raise ValueError("Data type not recognized, \
                      check your init file for the following \
@@ -211,7 +219,8 @@ class GenericSpectrograph(InstrumentBase):
                                       obs_id=obs_id,
                                       obs_data_product=obs_data_product,
                                       obs_target_name=obs_target_name,
-                                      obs_has_backgr=obs_has_backgr)
+                                      obs_has_backgr=obs_has_backgr,
+                                      cpm_ncut_first_int=cpm_ncut_first_int)
         if obs_has_backgr:
             par.update({'obs_backgr_id': obs_backgr_id})
             par.update({'obs_backgr_target_name': obs_backgr_target_name})
@@ -297,7 +306,7 @@ class GenericSpectrograph(InstrumentBase):
         else:
             position = np.zeros(spectral_data.shape[-1])
 
-        idx = np.argsort(time)
+        idx = np.argsort(time)[self.par["cpm_ncut_first_int"]:]
         time = time[idx]
         spectral_data = spectral_data[:, idx]
         uncertainty_spectral_data = uncertainty_spectral_data[:, idx]

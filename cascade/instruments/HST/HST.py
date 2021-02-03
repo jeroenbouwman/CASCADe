@@ -289,6 +289,14 @@ class HSTWFC3(InstrumentBase):
                                  processing_bits_not_to_flag)
         except AttributeError:
             proc_bits_not_to_flag = [0, 12, 14]
+        # cpm
+        try:
+            cpm_ncut_first_int = \
+               cascade_configuration.cpm_ncut_first_integrations
+            cpm_ncut_first_int = ast.literal_eval(cpm_ncut_first_int)
+        except AttributeError:
+            cpm_ncut_first_int = 0
+        # background observations
         try:
             obs_uses_backgr_model = \
                 ast.literal_eval(cascade_configuration.
@@ -363,7 +371,8 @@ class HSTWFC3(InstrumentBase):
             obs_uses_backgr_model=obs_uses_backgr_model,
             proc_source_selection=proc_source_selection,
             proc_drop_samp=proc_drop_samples,
-            proc_bits_not_to_flag=proc_bits_not_to_flag)
+            proc_bits_not_to_flag=proc_bits_not_to_flag,
+            cpm_ncut_first_int=cpm_ncut_first_int)
         if obs_has_backgr and not obs_uses_backgr_model:
             par.update({'obs_backgr_id': obs_backgr_id})
             par.update({'obs_backgr_target_name': obs_backgr_target_name})
@@ -481,7 +490,7 @@ class HSTWFC3(InstrumentBase):
             except KeyError:
                 hasSampleNumber = False
 
-        idx = np.argsort(time)
+        idx = np.argsort(time)[self.par["cpm_ncut_first_int"]:]
         time = time[idx]
         spectral_data = spectral_data[:, idx]
         uncertainty_spectral_data = uncertainty_spectral_data[:, idx]
