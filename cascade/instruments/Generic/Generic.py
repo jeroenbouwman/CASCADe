@@ -30,6 +30,7 @@ from types import SimpleNamespace
 import numpy as np
 import astropy.units as u
 from astropy.convolution import Gaussian1DKernel
+from astropy.stats import sigma_clipped_stats
 
 from ...initialize import cascade_configuration
 from ...initialize import cascade_default_data_path
@@ -342,16 +343,31 @@ class GenericSpectrograph(InstrumentBase):
         SpectralTimeSeries.period = self.par['obj_period']
         SpectralTimeSeries.ephemeris = self.par['obj_ephemeris']
 
+        # make sure that the date units are as "standard" as posible
+        data_unit = (1.0*SpectralTimeSeries.data_unit).decompose().unit
+        SpectralTimeSeries.data_unit = data_unit
+        wave_unit = (1.0*SpectralTimeSeries.wavelength_unit).decompose().unit
+        SpectralTimeSeries.wavelength_unit = wave_unit
+        # To make the as standard as posible, by defaut change to
+        # mean nomalized data units and use micron as wavelength unit
+        mean_signal, _, _ = \
+            sigma_clipped_stats(SpectralTimeSeries.return_masked_array("data"),
+                                sigma=3, maxiters=10)
+        data_unit = u.Unit(mean_signal*SpectralTimeSeries.data_unit)
+        SpectralTimeSeries.data_unit = data_unit
+        SpectralTimeSeries.wavelength_unit = u.micron
+
         self._define_convolution_kernel()
 
         return SpectralTimeSeries
 
     def _define_convolution_kernel(self):
         """
-        Define the instrument specific convolution kernel which will be used
+        Define the instrument specific convolution kernel.
+
+        This function defines the convolution kernel which can be used
         in the correction procedure of bad pixels
         """
-
         kernel = Gaussian1DKernel(4.0, x_size=19)
 
         try:
