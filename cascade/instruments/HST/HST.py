@@ -1731,10 +1731,10 @@ class HSTWFC3(InstrumentBase):
             The position of the source in the acquisition images associated
             with the HST spectral timeseries observations.
         """
-        if self.par['proc_source_selection'] == 'nearest':
-            brightest = 10
-        else:
-            brightest = 1
+        # if self.par['proc_source_selection'] == 'nearest':
+        brightest = 10
+        # else:
+        #     brightest = 1
         calibration_source_position = []
         expected_calibration_source_position = []
 #        calibration_images = []
@@ -1771,7 +1771,15 @@ class HSTWFC3(InstrumentBase):
                 distances = \
                     np.sqrt((sources['xcentroid']-expexted_xcentroid)**2 +
                             (sources['ycentroid']-expected_ycentroid)**2)
-                idx_target = distances.argmin()
+                fluxes = sources['flux']
+                if self.par['proc_source_selection'] == 'nearest':
+                    idx_target = np.argsort(distances)[0]
+                elif self.par['proc_source_selection'] == 'second_nearest':
+                    idx_target = np.argsort(distances)[1]
+                elif self.par['proc_source_selection'] == 'second_brightest':
+                    idx_target = np.argsort(fluxes)[-2]
+                else:
+                    idx_target = np.argsort(fluxes)[-1]
                 source_position = (sources[idx_target]['xcentroid'],
                                    sources[idx_target]['ycentroid'])
                 expected_source_position = \
