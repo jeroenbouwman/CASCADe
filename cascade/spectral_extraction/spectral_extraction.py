@@ -607,7 +607,7 @@ def iterative_bad_pixel_flagging(dataset, ROIcube, Filters,
                           "Required free memory: {} bytes "
                           "Available: {} bytes".
                           format(mem_store+mem_workers, mem.available))
-        ray.disconnect()
+        # ray.disconnect()
 #        ray.init(num_cpus=ncpu, object_store_memory=mem_store,
 #                 memory=mem_workers)
 # bug fix
@@ -647,7 +647,7 @@ def iterative_bad_pixel_flagging(dataset, ROIcube, Filters,
                       "iteration steps might be advisable.".
                       format(numberOfFlaggedPixels-acceptanceLimit))
 
-    ray.disconnect()
+    #  ray.disconnect()
     ray.shutdown()
 
     cleanedUncertainty = np.ma.array(dataset.uncertainty.data.value.copy(),
@@ -2016,8 +2016,8 @@ def _define_band_limits(wave):
 def define_weights(lr0, ur0, lr, ur):
     nwave = lr.shape[0]
     nwave0 = lr0.shape[0]
-    weights = np.empty((nwave0, nwave), dtype=lr.dtype)
-    for it in nb.prange(nwave):
+    weights = np.zeros((nwave0, nwave), dtype=lr.dtype)
+    for it in nb.prange(nwave0):
         wlr0 = lr0[it]
         wur0 = ur0[it]
         weights[it, :] = overlap(wlr0, wur0, lr, ur)
@@ -2028,7 +2028,7 @@ def define_weights(lr0, ur0, lr, ur):
 def define_weights2(lr0, ur0, lr, ur):
     nwave, ntime = lr.shape
     nwave0 = lr0.shape[0]
-    weights = np.empty((nwave0, nwave, ntime), dtype=lr.dtype)
+    weights = np.zeros((nwave0, nwave, ntime), dtype=lr.dtype)
     for it in nb.prange(nwave0):
         wlr0 = lr0[it]
         wur0 = ur0[it]
