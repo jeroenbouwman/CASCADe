@@ -51,14 +51,13 @@ from scipy import interpolate
 import pandas
 import difflib
 import batman
-# from exotethys import sail
-# from exotethys import boats
 import ray
 
 from ..initialize import cascade_configuration
 from ..initialize import cascade_default_data_path
 from ..initialize import cascade_default_save_path
 from ..data_model import SpectralData
+
 
 __all__ = ['Vmag', 'Kmag', 'Rho_jup', 'Rho_jup', 'kmag_to_jy', 'jy_to_kmag',
            'surface_gravity', 'scale_height', 'transit_depth', 'planck',
@@ -2141,7 +2140,7 @@ class exotethys_stellar_model:
 
 
 class SpectralModel:
-    """Class defining stellar model and symulated observations."""
+    """Class defining stellar model and simulated observations."""
 
     __valid_models = {'exotethys'}
     __factory_picker = {"exotethys": exotethys_stellar_model}

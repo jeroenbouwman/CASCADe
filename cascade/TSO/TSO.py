@@ -32,40 +32,31 @@ import ast
 import copy
 import os
 import os.path
-# from functools import reduce
 from types import SimpleNamespace
 import warnings
 import time as time_module
 import psutil
 import ray
 import numpy as np
-# from scipy import interpolate
 from scipy import ndimage
-# from numpy.linalg import cond
-# from scipy.linalg import lstsq
-# from scipy.linalg import pinv2
 import astropy.units as u
-# from astropy.stats import akaike_info_criterion
-# from astropy.table import MaskedColumn, Table
-# from astropy.visualization import quantity_support
+from astropy.visualization import quantity_support
+from astropy.io import fits
+from astropy.io import ascii
 from matplotlib import pyplot as plt
-# from matplotlib.ticker import MaxNLocator, ScalarFormatter
-# import seaborn as sns
-# from tqdm import tqdm
-# from sklearn.preprocessing import RobustScaler
-# from sklearn.decomposition import PCA
-from skimage.morphology import binary_dilation
+import seaborn as sns
 
 from ..cpm_model import regressionControler
 from ..cpm_model import rayRegressionControler
 from ..data_model import SpectralData
 from ..exoplanet_tools import convert_spectrum_to_brighness_temperature
-# from ..exoplanet_tools import lightcurve
 from ..initialize import (cascade_configuration, configurator)
 from ..initialize import cascade_default_initialization_path
 from ..initialize import cascade_default_save_path
+from ..initialize import cascade_default_data_path
 from ..instruments import Observation
 from ..utilities import write_timeseries_to_fits
+from ..utilities import write_spectra_to_fits
 from ..spectral_extraction import define_image_regions_to_be_filtered
 from ..spectral_extraction import iterative_bad_pixel_flagging
 from ..spectral_extraction import directional_filters
@@ -82,9 +73,14 @@ from ..spectral_extraction import compressROI
 from ..spectral_extraction import compressSpectralTrace
 from ..spectral_extraction import compressDataset
 from ..spectral_extraction import correct_initial_wavelength_shift
+from ..spectral_extraction import _define_band_limits
+from ..spectral_extraction import _define_rebin_weights
+from ..spectral_extraction import _rebin_spectra
 from ..verbose import Verbose
 
-__all__ = ['TSOSuite']
+
+__all__ = ['TSOSuite',
+           'combine_observations']
 
 
 class TSOSuite:
@@ -1757,6 +1753,7 @@ class TSOSuite:
         try:
             observatory = self.cascade_parameters.instrument_observatory
             instrument = self.cascade_parameters.instrument
+            instrument_filter = self.cascade_parameters.instrument_filter
         except AttributeError:
             print("No instrument or observatory defined. "
                   "Aborting saving results")
@@ -1798,6 +1795,7 @@ class TSOSuite:
                        'ID': observations_id,
                        'FACILITY': observatory,
                        'INSTRMNT': instrument,
+                       'FILTER': instrument_filter,
                        'NAME': object_target_name,
                        'OBSTYPE': transittype}
 
@@ -1807,3 +1805,219 @@ class TSOSuite:
         filename = save_name_base+'_bootstraped_exoplanet_spectrum.fits'
         write_spectra_to_fits(results.spectrum_bootstrap, save_path,
                               filename, header_data)
+
+
+def combine_observations(target_name, observations_ids, path=None,
+                         verbose=True):
+    """
+    Combine with CASCADe calibrated individual observations into one spectrum.
+
+    Parameters
+    ----------
+    target_name : 'str'
+        DESCRIPTION.
+    observations_ids : 'list' of 'str'
+        DESCRIPTION.
+    path : 'str', optional
+        DESCRIPTION. The default is None.
+    verbose : 'bool', optional
+        DESCRIPTION. The default is True.
+
+    Returns
+    -------
+    None.
+
+    """
+    target_list = \
+        [target_name.strip()+'_'+obsid.strip() for obsid in observations_ids]
+
+    if path is None:
+        data_path = cascade_default_save_path
+    elif not os.path.isabs(path):
+        data_path = os.path.join(cascade_default_save_path, path)
+    else:
+        data_path = path
+
+    observations = {}
+    for target in target_list:
+        file_path = os.path.join(data_path, target)
+        file = target+"_bootstraped_exoplanet_spectrum.fits"
+        with fits.open(os.path.join(file_path, file)) as hdul:
+            SE = (hdul[0].header[' TDCL095']-hdul[0].header['TDDEPTH'])/2.0
+            TD = hdul[0].header['TDDEPTH']
+            observatory = hdul[0].header['FACILITY']
+            instrument = hdul[0].header['INSTRMNT']
+            instrument_filter = hdul[0].header['FILTER']
+            observation_type = hdul[0].header['OBSTYPE']
+            data_product = hdul[0].header['DATAPROD']
+            version = hdul[0].header['VERSION']
+            creation_time = hdul[0].header['CREATIME']
+            wave = np.ma.masked_invalid(np.array(hdul[1].data['Wavelength'],
+                                                 dtype=np.float64))
+            signal = np.ma.masked_invalid(np.array(hdul[1].data['Depth'],
+                                                   dtype=np.float64))
+            error = np.ma.masked_invalid(np.array(hdul[1].data['Error Depth'],
+                                                  dtype=np.float64))
+        wave.mask = signal.mask
+        observations[target] = {'TD': TD, 'SE': SE, 'wave': wave,
+                                'signal': signal,
+                                'error': error, 'observatory': observatory,
+                                'instrument': instrument,
+                                'instrument_filter': instrument_filter,
+                                'observation_type': observation_type,
+                                'data_product': data_product,
+                                'version': version,
+                                'creation_time': creation_time}
+
+    TD = 0
+    W = 0
+    for iobs, (keys, values) in enumerate(observations.items()):
+        TD += values['TD']*values['SE']**-2
+        W += values['SE']**-2
+    TD = TD/W
+    SE = np.sqrt(1.0/W)
+
+    wavelength_bins_path = \
+        os.path.join(cascade_default_data_path,
+                     "exoplanet_data/cascade/wavelength_bins")
+    wavelength_bins_file = \
+        (observations[target_list[0]]['observatory'] + '_' +
+         observations[target_list[0]]['instrument'] + '_' +
+         observations[target_list[0]]['instrument_filter'] +
+         '_wavelength_bins.txt')
+    wavelength_bins = ascii.read(os.path.join(wavelength_bins_path,
+                                              wavelength_bins_file))
+
+    lr0 = (wavelength_bins['lower limit'].data *
+           wavelength_bins['lower limit'].unit).to(u.micron).value
+    ur0 = (wavelength_bins['upper limit'].data *
+           wavelength_bins['upper limit'].unit).to(u.micron).value
+
+    rebinned_wavelength = 0.5*(ur0 + lr0)
+    rebinned_bin_size = ur0-lr0
+    rebinned_observations = {}
+    for keys, values in observations.items():
+        scaling = TD - values['TD']
+        lr, ur = _define_band_limits(values['wave'])
+        weights = _define_rebin_weights(lr0, ur0, lr, ur)
+        rebinned_signal, rebinned_error = \
+            _rebin_spectra(values['signal'] + scaling,
+                           values['error'], weights)
+        rebinned_observations[keys] = \
+            {'wave': rebinned_wavelength, 'signal': rebinned_signal,
+             'error': rebinned_error}
+
+    combined_wavelength = rebinned_wavelength
+    combined_wavelength_unit = u.micron
+    combined_bin_size = rebinned_bin_size
+    combined_spectrum = 0
+    weight_spectrum = 0
+    for keys, values in rebinned_observations.items():
+        combined_spectrum += values['signal']*values['error']**-2
+        weight_spectrum += values['error']**-2
+    combined_spectrum = combined_spectrum/weight_spectrum
+    combined_spectrum_unit = u.percent
+    combined_error = np.sqrt(1.0/weight_spectrum)
+
+    header_data = {'TDDEPTH': TD,
+                   'STDERRTD': SE,
+                   'VERSION': observations[target_list[0]]['version'],
+                   'CREATIME': observations[target_list[0]]['creation_time'],
+                   'DATAPROD': observations[target_list[0]]['data_product'],
+                   'OBSIDS': ','.join(observations_ids),
+                   'FACILITY': observations[target_list[0]]['observatory'],
+                   'INSTRMNT': observations[target_list[0]]['instrument'],
+                   'FILTER': observations[target_list[0]]['instrument_filter'],
+                   'NAME': target_name.strip(),
+                   'OBSTYPE': observations[target_list[0]]['observation_type']}
+
+    additional_data = {'wavelength_binsize': combined_bin_size,
+                       'wavelength_binsize_unit': combined_wavelength_unit}
+
+    combined_dataset = \
+        SpectralData(wavelength=combined_wavelength,
+                     wavelength_unit=combined_wavelength_unit,
+                     data=combined_spectrum,
+                     data_unit=combined_spectrum_unit,
+                     uncertainty=combined_error)
+
+    combined_dataset.add_measurement(**additional_data)
+    combined_dataset.add_auxilary(**header_data)
+
+    if header_data['OBSTYPE'] == 'primary':
+        observation_type = 'transit'
+    else:
+        observation_type = 'eclipse'
+
+    filename = target_name.strip() + '_' + header_data['FACILITY'] + '_' +\
+        header_data['INSTRMNT'] + '_' + header_data['FILTER'] +\
+        '_combined_'+observation_type+'_spectrum.fits'
+    save_path = os.path.join(cascade_default_save_path, target_name.strip())
+
+    write_spectra_to_fits(combined_dataset, save_path, filename,
+                          header_data)
+
+    if verbose:
+        sns.set_context("talk", font_scale=1.5, rc={"lines.linewidth": 2.5})
+        sns.set_style("white", {"xtick.bottom": True, "ytick.left": True})
+        base_filename = target_name.strip() + '_' + header_data['FACILITY'] + \
+            '_' + header_data['INSTRMNT'] + '_' + header_data['FILTER'] +\
+            '_combined_'+observation_type+'_spectrum'
+        with quantity_support():
+            fig, ax = plt.subplots(figsize=(8, 5))
+            for keys, values in rebinned_observations.items():
+                ax.plot(values['wave'], values['signal'], '.')
+            ax.axhline(TD, linestyle='dashed', color='black')
+            ax.fill_between([combined_wavelength[0]*0.95,
+                             combined_wavelength[-1]*1.05],
+                            TD-2*SE, TD+2*SE, color='g', alpha=0.1)
+            ax.set_ylabel('Depth [{}]'.format(u.percent))
+            ax.set_xlabel('Wavelength [{}]'.format(u.micron))
+            ax.axes.set_xlim([combined_wavelength[0]*0.95,
+                              combined_wavelength[-1]*1.05])
+            ax.axes.set_ylim([TD-9*SE, TD+9*SE])
+            plt.show()
+            fig.savefig(os.path.join(save_path, base_filename +
+                                     "_all_data.png"),
+                        bbox_inches="tight")
+
+        with quantity_support():
+            fig, ax = plt.subplots(figsize=(8, 5))
+            ax.axhline(TD, linestyle='dashed', color='black')
+            ax.fill_between([combined_wavelength[0]*0.95,
+                             combined_wavelength[-1]*1.05],
+                            TD-2*SE, TD+2*SE, color='g', alpha=0.1)
+            ax.plot(combined_wavelength, combined_spectrum, '.', markersize=20,
+                    color='brown', zorder=9)
+            ax.errorbar(combined_wavelength,
+                        combined_spectrum,
+                        yerr=combined_error,
+                        fmt=".", color='brown', lw=5, alpha=0.9,
+                        ecolor='brown', markerfacecolor='brown',
+                        markeredgecolor='brown', fillstyle='full',
+                        markersize=20,
+                        zorder=9, label='CASCADe spectrum')
+            ax.set_ylabel('Depth [{}]'.format(u.percent))
+            ax.set_xlabel('Wavelength [{}]'.format(u.micron))
+            ax.axes.set_xlim([combined_wavelength[0]*0.95,
+                              combined_wavelength[-1]*1.05])
+            ax.axes.set_ylim([TD-9*SE, TD+9*SE])
+            plt.show()
+            fig.savefig(os.path.join(save_path, base_filename +
+                                     ".png"),
+                        bbox_inches="tight")
+
+        with quantity_support():
+            fig, ax = plt.subplots(figsize=(8, 5))
+            ax.plot(combined_wavelength,
+                    combined_spectrum/combined_error,
+                    color='brown')
+            ax.axes.set_xlim([combined_wavelength[0]*0.95,
+                              combined_wavelength[-1]*1.05])
+            ax.axes.set_ylim([0, 1.5*np.max(combined_spectrum/combined_error)])
+            ax.set_ylabel('SNR')
+            ax.set_xlabel('Wavelength [{}]'.format(u.micron))
+            plt.show()
+            fig.savefig(os.path.join(save_path, base_filename +
+                                     "_snr.png"),
+                        bbox_inches="tight")

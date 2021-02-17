@@ -36,6 +36,7 @@ from astropy.table import QTable
 import astropy.units as u
 from tqdm import tqdm
 
+
 __all__ = ['write_timeseries_to_fits', 'find', 'get_data_from_fits',
            'spectres', 'write_spectra_to_fits']
 
@@ -66,6 +67,12 @@ def write_spectra_to_fits(spectral_dataset, path, filename, header_meta):
                     spectral_dataset.data_unit],
                    names=['Wavelength', 'Depth', 'Error Depth']
                    )
+    try:
+        table.add_column(spectral_dataset.wavelength_binsize.data.value[~mask] *
+                         spectral_dataset.wavelength_binsize_unit,
+                         name='Bin Size')
+    except AttributeError:
+        pass
     table.write(os.path.join(path, filename),
                 format='fits', overwrite=True)
 
@@ -288,6 +295,7 @@ def get_data_from_fits(data_files, data_list, auxilary_list):
 def spectres(new_spec_wavs, old_spec_wavs, spec_fluxes, spec_errs=None):
     """
     SpectRes: A fast spectral resampling function.
+
     Copyright (C) 2017  A. C. Carnall
     Function for resampling spectra (and optionally associated uncertainties)
     onto a new wavelength basis.
@@ -321,9 +329,7 @@ def spectres(new_spec_wavs, old_spec_wavs, spec_fluxes, spec_errs=None):
     resampled_errs : numpy.ndarray
         Array of uncertainties associated with fluxes in resampled_fluxes.
         Only returned if spec_errs was specified.
-
     """
-
     # Generate arrays of left hand side positions and widths for the
     # old and new bins
     spec_lhs = np.zeros(old_spec_wavs.shape[0])

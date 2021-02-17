@@ -42,7 +42,6 @@ from matplotlib import pyplot as plt
 import seaborn as sns
 from scipy import ndimage
 from scipy.ndimage import binary_dilation
-# from skimage.feature import register_translation
 from skimage.registration import phase_cross_correlation
 from astropy.convolution import convolve
 from astropy.convolution import Gaussian2DKernel
@@ -2627,5 +2626,3 @@ def compressDataset(datasetIn, ROI):
     compressedDataset = \
         SpectralDataTimeSeries(**dictTimeSeries)
     return compressedDataset, compressMask
-
-

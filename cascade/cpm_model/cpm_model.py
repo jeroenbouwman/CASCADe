@@ -25,27 +25,19 @@
 The cpm_model module defines the solver and other functionality for the
 regression model used in causal pixel model.
 """
-# from __future__ import print_function
-# from __future__ import division
-# from __future__ import unicode_literals
-# from __future__ import absolute_import
 import numpy as np
 from types import SimpleNamespace
 from scipy.linalg import svd
-# from scipy import signal
 from scipy.linalg import solve_triangular
 from scipy.linalg import cholesky
 import astropy.units as u
-# from sklearn.utils.extmath import svd_flip
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
 from numba import jit
 import ray
-# import psutil
 import itertools
 from collections.abc import Iterable
 import ast
-# from tqdm import tqdm
 import time as time_module
 import copy
 
