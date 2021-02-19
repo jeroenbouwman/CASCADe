@@ -1952,7 +1952,7 @@ def combine_observations(target_name, observations_ids, path=None,
     filename = target_name.strip() + '_' + header_data['FACILITY'] + '_' +\
         header_data['INSTRMNT'] + '_' + header_data['FILTER'] +\
         '_combined_'+observation_type+'_spectrum.fits'
-    save_path = os.path.join(cascade_default_save_path, target_name.strip())
+    save_path = os.path.join(data_path, target_name.strip())
 
     write_spectra_to_fits(combined_dataset, save_path, filename,
                           header_data)
