@@ -240,7 +240,7 @@ def return_exoplanet_catalogs(update=True):
     Parameters
     ----------
     update : 'bool'
-    DESCRIPTION Default is True, if True update the files csv 
+    DESCRIPTION Default is True, if True update the files csv
 
     Returns
     -------
@@ -381,13 +381,13 @@ def create_unique_ids(hst_data_catalog):
                     for inum, idx_select in enumerate(idx):
                         obs_ids_dir[idx_select] = \
                             obs_ids_dir[idx_select]+'_'+numeral[inum]
-        id_dict_visit = {}    
+        id_dict_visit = {}
         for visit, obs_id, obs_id_dir in zip(visits, obs_ids, obs_ids_dir):
            id_dict_visit[visit] = {'obs_id': obs_id, 'obs_id_dir': obs_id_dir}
         id_dict_all[planet] = id_dict_visit
     return id_dict_all
 
-            
+
 def return_header_info(data_file, cal_data_file):
     """
     Return all relavant parameters from fits data file header.
@@ -557,7 +557,8 @@ def save_observations(data_files, cal_data_files, parser,
         )
     os.makedirs(data_save_path, exist_ok=True)
 
-    if parser['OBSERVATIONS']['observations_mode'] == 'SCANNING':
+    # if parser['OBSERVATIONS']['observations_mode'] == 'SCANNING':
+    if parser['OBSERVATIONS']['observations_data'] == 'SPECTRAL_CUBE':
         data_files_to_download = data_files.copy()
     else:
         data_files_to_download = \
@@ -579,7 +580,8 @@ def save_observations(data_files, cal_data_files, parser,
             with open(os.path.join(data_save_path, datafile), 'wb') as file:
                 for chunk in df.iter_content(chunk_size=1024):
                     file.write(chunk)
-    if parser['OBSERVATIONS']['observations_mode'] == 'SCANNING':
+    # if parser['OBSERVATIONS']['observations_mode'] == 'SCANNING':
+    if parser['OBSERVATIONS']['observations_data'] == 'SPECTRAL_CUBE':
         data_files_to_download = \
             [file.replace('_flt', '_ima') for file in cal_data_files]
         for datafile in tqdm(data_files_to_download, dynamic_ncols=True,
