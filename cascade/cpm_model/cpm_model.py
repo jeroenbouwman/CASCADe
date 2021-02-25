@@ -1680,9 +1680,10 @@ class regressionControler:
 
             fitted_baseline_list.append(baseline_model)
             residuals_list.append(residual)
-            normed_fitted_spectrum_list.append(normed_spectrum/ld_correction)
+# BUG ??????
+            normed_fitted_spectrum_list.append(normed_spectrum)#/ld_correction)
             error_normed_fitted_spectrum_list.append(
-                error_normed_spectrum/ld_correction)
+                error_normed_spectrum)#/ld_correction)
             wavelength_normed_fitted_spectrum_list.append(
                 wavelength_normed_spectrum)
 

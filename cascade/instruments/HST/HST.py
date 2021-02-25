@@ -289,6 +289,11 @@ class HSTWFC3(InstrumentBase):
                                  processing_bits_not_to_flag)
         except AttributeError:
             proc_bits_not_to_flag = [0, 12, 14]
+        try:
+            proc_extend_roi = cascade_configuration.processing_extend_roi
+            proc_extend_roi = ast.literal_eval(proc_extend_roi)
+        except AttributeError:
+            proc_extend_roi = [1.0, 1.0]
         # cpm
         try:
             cpm_ncut_first_int = \
@@ -372,6 +377,7 @@ class HSTWFC3(InstrumentBase):
             proc_source_selection=proc_source_selection,
             proc_drop_samp=proc_drop_samples,
             proc_bits_not_to_flag=proc_bits_not_to_flag,
+            proc_extend_roi=proc_extend_roi,
             cpm_ncut_first_int=cpm_ncut_first_int)
         if obs_has_backgr and not obs_uses_backgr_model:
             par.update({'obs_backgr_id': obs_backgr_id})
@@ -1422,22 +1428,23 @@ class HSTWFC3(InstrumentBase):
         dim = self.data.data.shape
         if self.par["inst_beam"] == 'A':
             if self.par['inst_filter'] == 'G141':
-                # BUG
                 if len(dim) <= 2:
-                    # wavelength_min = 1.02*1.082*u.micron
-                    # wavelength_max = 0.99*1.678*u.micron
-                    wavelength_min = 1.0*1.082*u.micron
-                    wavelength_max = 1.01*1.678*u.micron
+                    wavelength_min = 1.082*u.micron
+                    wavelength_max = 1.695*u.micron
                 else:
-                    wavelength_min = 0.98*1.082*u.micron
-                    wavelength_max = 1.02*1.678*u.micron
+                    wavelength_min = \
+                        self.par['proc_extend_roi'][0]*1.058*u.micron
+                    wavelength_max = \
+                        self.par['proc_extend_roi'][1]*1.72*u.micron
             elif self.par['inst_filter'] == 'G102':
                 if len(dim) <= 2:
-                    wavelength_min = 1.02*0.8*u.micron
-                    wavelength_max = 0.99*1.15*u.micron
+                    wavelength_min = 0.816*u.micron
+                    wavelength_max = 1.14*u.micron
                 else:
-                    wavelength_min = 0.98*0.8*u.micron
-                    wavelength_max = 1.01*1.15*u.micron
+                    wavelength_min = \
+                        self.par['proc_extend_roi'][0]*0.78*u.micron
+                    wavelength_max = \
+                        self.par['proc_extend_roi'][1]*1.17*u.micron
             if self.par["obs_mode"] == 'STARING':
                 roi_width = 20
             elif self.par["obs_mode"] == 'SCANNING':

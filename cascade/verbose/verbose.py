@@ -667,8 +667,8 @@ def calibrate_timeseries_verbose(*args, **kwargs):
     uncal_data = dataset.return_masked_array('data').copy()
     uncal_data.mask = np.ma.logical_or(uncal_data.mask, systematics.mask)
     cal_data = uncal_data/systematics
-
-    TD_temp = TD/100*np.mean(model.limbdarkning_correction)
+# Bug Fix
+    TD_temp = TD/100  # *np.mean(model.limbdarkning_correction)
     if transittype == 'secondary':
         from cascade.exoplanet_tools import eclipse_to_transit
         TD_temp = eclipse_to_transit(TD_temp)

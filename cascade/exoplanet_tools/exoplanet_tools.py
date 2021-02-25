@@ -1295,7 +1295,8 @@ class batman_model:
                 depth = params.rp**2
                 # make correction for limbdarkening
                 ld_correction[iwave] = (depth_lc/depth)
-            norm_lcmodel[iwave, :] = lcmodel
+# BUG fix
+            norm_lcmodel[iwave, :] = lcmodel * ld_correction[iwave]
         return wmodel, tmodel, norm_lcmodel, ld_correction
 
     def return_par_from_ini(self):
