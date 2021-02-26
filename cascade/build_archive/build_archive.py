@@ -411,32 +411,39 @@ def return_header_info(data_file, cal_data_file):
 
     url_data_archive = \
         'https://mast.stsci.edu/portal/Download/file/HST/product/{0}'
+    headers = {"User-Agent": "Mozilla/5.0 (X11; CrOS x86_64 12871.102.0) \
+               AppleWebKit/537.36 (KHTML, like Gecko) Chrome/81.0.4044.141 \
+               Safari/537.36"}
 
     data_file_id = [file.split('_')[0] for file in [data_file, cal_data_file]]
     data_file_id = long_substr(data_file_id)
     temp_download_dir = os.path.join(cascade_default_data_path,
                                      "mastDownload_"+data_file_id+"/")
 
+    # session = requests.Session()
     os.makedirs(temp_download_dir, exist_ok=True)
-    df = requests.get(url_data_archive.format(data_file), stream=True)
+    df = requests.get(url_data_archive.format(data_file), stream=True,
+                      headers=headers)
     with open(os.path.join(temp_download_dir, data_file), 'wb') as file:
         for chunk in df.iter_content(chunk_size=1024):
             file.write(chunk)
     # urlretrieve(URL_DATA_ARCHIVE.format(data_file),
     #             os.path.join(TEMP_DOWNLOAD_DIR, data_file))
     header_info = {}
-    with fits.open(os.path.join(temp_download_dir, data_file)) as hdul:
+    with fits.open(os.path.join(temp_download_dir, data_file),
+                   ignore_missing_end=True) as hdul:
         for keyword in fits_keywords:
             header_info[keyword] = hdul['PRIMARY'].header[keyword]
-
-    df = requests.get(url_data_archive.format(cal_data_file), stream=True)
+    df = requests.get(url_data_archive.format(cal_data_file), stream=True,
+                      headers=headers)
     with open(os.path.join(temp_download_dir, cal_data_file), 'wb') as file:
         for chunk in df.iter_content(chunk_size=1024):
             file.write(chunk)
     # urlretrieve(URL_DATA_ARCHIVE.format(cal_data_file),
     #             os.path.join(TEMP_DOWNLOAD_DIR, cal_data_file))
     cal_header_info = {}
-    with fits.open(os.path.join(temp_download_dir, cal_data_file)) as hdul:
+    with fits.open(os.path.join(temp_download_dir, cal_data_file),
+                   ignore_missing_end=True) as hdul:
         for keyword in fits_keywords:
             cal_header_info[keyword] = hdul['PRIMARY'].header[keyword]
     # some house cleaning
