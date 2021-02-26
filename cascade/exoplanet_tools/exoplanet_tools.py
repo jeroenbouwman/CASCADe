@@ -319,6 +319,7 @@ exoplanets_table_units = collections.OrderedDict(
 
 exoplanets_a_table_units = collections.OrderedDict(
     NAME=u.dimensionless_unscaled,
+    NAME_LINK=u.dimensionless_unscaled,
     STARNAME=u.dimensionless_unscaled,
     ALTNAME=u.dimensionless_unscaled,
     RA=u.deg,
@@ -933,7 +934,7 @@ def parse_database(catalog_name, update=True):
     for ilist, input_csv_file in enumerate(input_csv_files):
         csv_file = pandas.read_csv(input_csv_file, low_memory=False,
                                    keep_default_na=False, comment='#',
-                                   skip_blank_lines=True,
+                                   skip_blank_lines=True, header=0,
                                    na_values=['', -1.0])
         table_temp = Table(masked=True).from_pandas(csv_file)
         if catalog_name in ["TEPCAT", "NASAEXOPLANETARCHIVE",
