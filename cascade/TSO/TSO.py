@@ -1898,11 +1898,12 @@ def combine_observations(target_name, observations_ids, path=None,
     rebinned_observations = {}
     for keys, values in observations.items():
         scaling = TD - values['TD']
-        lr, ur = _define_band_limits(values['wave'])
+        mask_use = ~values['signal'].mask
+        lr, ur = _define_band_limits(values['wave'][mask_use])
         weights = _define_rebin_weights(lr0, ur0, lr, ur)
         rebinned_signal, rebinned_error = \
-            _rebin_spectra(values['signal'] + scaling,
-                           values['error'], weights)
+            _rebin_spectra(values['signal'][mask_use] + scaling,
+                           values['error'][mask_use], weights)
         rebinned_observations[keys] = \
             {'wave': rebinned_wavelength, 'signal': rebinned_signal,
              'error': rebinned_error}

@@ -293,7 +293,7 @@ class HSTWFC3(InstrumentBase):
             proc_extend_roi = cascade_configuration.processing_extend_roi
             proc_extend_roi = ast.literal_eval(proc_extend_roi)
         except AttributeError:
-            proc_extend_roi = [1.0, 1.0]
+            proc_extend_roi = [1.0, 1.0, 1.0, 1.0]
         # cpm
         try:
             cpm_ncut_first_int = \
@@ -1429,8 +1429,10 @@ class HSTWFC3(InstrumentBase):
         if self.par["inst_beam"] == 'A':
             if self.par['inst_filter'] == 'G141':
                 if len(dim) <= 2:
-                    wavelength_min = 1.082*u.micron
-                    wavelength_max = 1.695*u.micron
+                    wavelength_min = \
+                        self.par['proc_extend_roi'][0]*1.1045*u.micron
+                    wavelength_max = \
+                        self.par['proc_extend_roi'][1]*1.667*u.micron
                 else:
                     wavelength_min = \
                         self.par['proc_extend_roi'][0]*1.058*u.micron
@@ -1438,8 +1440,10 @@ class HSTWFC3(InstrumentBase):
                         self.par['proc_extend_roi'][1]*1.72*u.micron
             elif self.par['inst_filter'] == 'G102':
                 if len(dim) <= 2:
-                    wavelength_min = 0.816*u.micron
-                    wavelength_max = 1.14*u.micron
+                    wavelength_min = \
+                        self.par['proc_extend_roi'][0]*0.816*u.micron
+                    wavelength_max = \
+                        self.par['proc_extend_roi'][1]*1.14*u.micron
                 else:
                     wavelength_min = \
                         self.par['proc_extend_roi'][0]*0.78*u.micron
@@ -1470,8 +1474,10 @@ class HSTWFC3(InstrumentBase):
         else:
             center_pix = int(np.mean(trace['positional_pixel'].
                                      value[idx_min:idx_max]))
-            min_idx_pix = center_pix - roi_width//2
-            max_idx_pix = center_pix + roi_width//2
+            min_idx_pix = center_pix - \
+                int((roi_width//2)*self.par['proc_extend_roi'][2])
+            max_idx_pix = center_pix + \
+                int((roi_width//2)*self.par['proc_extend_roi'][3])
             roi = np.ones((dim[:-1]), dtype=np.bool)
             roi[idx_min:idx_max, min_idx_pix:max_idx_pix] = False
         try:
