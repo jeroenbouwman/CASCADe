@@ -1425,7 +1425,6 @@ class HSTWFC3(InstrumentBase):
 
         Defines region on detector which containes the intended target star.
         """
-        print(self.par['proc_extend_roi'])
         dim = self.data.data.shape
         if self.par["inst_beam"] == 'A':
             if self.par['inst_filter'] == 'G141':
@@ -1444,7 +1443,7 @@ class HSTWFC3(InstrumentBase):
                     wavelength_min = \
                         self.par['proc_extend_roi'][0]*0.816*u.micron
                     wavelength_max = \
-                        self.par['proc_extend_roi'][1]*1.14*u.micron
+                        self.par['proc_extend_roi'][1]*1.1456*u.micron
                 else:
                     wavelength_min = \
                         self.par['proc_extend_roi'][0]*0.78*u.micron
