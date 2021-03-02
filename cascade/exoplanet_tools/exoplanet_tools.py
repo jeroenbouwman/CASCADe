@@ -1448,7 +1448,7 @@ class exotethys_model:
     .. [2] Morello et al. 2019, (arXiv:1908.09599)
     """
 
-    __valid_ld_laws = {'quadratic', 'nonlinear'}
+    __valid_ld_laws = {'linear', 'quadratic', 'nonlinear'}
     __valid_model_grid = {'Atlas_2000', 'Phoenix_2012_13', 'Phoenix_2018'}
 
     def __init__(self, cascade_configuration):
@@ -1701,7 +1701,7 @@ class limbdarkning:
     """
 
     __valid_models = {'exotethys'}
-    __valid_ld_laws = {'quadratic', 'nonlinear'}
+    __valid_ld_laws = {'linear', 'quadratic', 'nonlinear'}
     __valid_ttypes = {'ECLIPSE', 'TRANSIT'}
     __factory_picker = {"exotethys": exotethys_model}
 
@@ -1790,7 +1790,9 @@ class limbdarkning:
             DESCRIPTION.
 
         """
-        if InputParameter['limb_darkening_laws'] == 'quadratic':
+        if InputParameter['limb_darkening_laws'] == 'linear':
+            ld_coefficients = [0.0]
+        elif InputParameter['limb_darkening_laws'] == 'quadratic':
             ld_coefficients = [0.0, 0.0]
         elif InputParameter['limb_darkening_laws'] == 'nonlinear':
             ld_coefficients = [0.0, 0.0, 0.0, 0.0]
