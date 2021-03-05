@@ -1631,7 +1631,6 @@ class regressionControler:
                               fit_parameters.fitted_model,
                               fit_parameters.regression_results,
                               fit_parameters.fitted_spectrum):
-
             W1 = np.delete(
                 fit_results,
                 list(np.arange(
@@ -1639,6 +1638,7 @@ class regressionControler:
                                )
                      ), 1)
             K = (np.identity(W1.shape[0]) - W1)
+            # note spectrum is already corrected for LD using renormalized LC
             corrected_spectrum, _, _ = ols(K, spectrum)
             corrected_fitted_spectrum_list.append(corrected_spectrum)
 
@@ -1680,10 +1680,9 @@ class regressionControler:
 
             fitted_baseline_list.append(baseline_model)
             residuals_list.append(residual)
-# BUG ??????
-            normed_fitted_spectrum_list.append(normed_spectrum)#/ld_correction)
+            normed_fitted_spectrum_list.append(normed_spectrum)
             error_normed_fitted_spectrum_list.append(
-                error_normed_spectrum)#/ld_correction)
+                error_normed_spectrum)
             wavelength_normed_fitted_spectrum_list.append(
                 wavelength_normed_spectrum)
 
