@@ -25,27 +25,19 @@
 The cpm_model module defines the solver and other functionality for the
 regression model used in causal pixel model.
 """
-# from __future__ import print_function
-# from __future__ import division
-# from __future__ import unicode_literals
-# from __future__ import absolute_import
 import numpy as np
 from types import SimpleNamespace
 from scipy.linalg import svd
-# from scipy import signal
 from scipy.linalg import solve_triangular
 from scipy.linalg import cholesky
 import astropy.units as u
-# from sklearn.utils.extmath import svd_flip
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
 from numba import jit
 import ray
-# import psutil
 import itertools
 from collections.abc import Iterable
 import ast
-# from tqdm import tqdm
 import time as time_module
 import copy
 
@@ -70,21 +62,22 @@ def ols(design_matrix, data, covariance=None):
 
     Parameters
     ----------
-    design_matrix : TYPE
-        DESCRIPTION.
-    data : TYPE
-        DESCRIPTION.
-    weights : TYPE, optional
-        DESCRIPTION. The default is None.
+    design_matrix : 'numpy.ndarray'
+        The design or regression matrix used in the regression modeling
+    data : 'numpy.ndarray'
+        Vecor of data point to be modeled.
+    weights : 'numpy.ndarray', optional
+        Weights used in the regression. Typically the inverse of the
+        coveraice matrix. The default is None.
 
     Returns
     -------
-    fit_parameters : TYPE
-        DESCRIPTION.
-    err_fit_parameters : TYPE
-        DESCRIPTION.
-    sigma_hat_sqr : TYPE
-        DESCRIPTION.
+    fit_parameters : 'numpy.ndarray'
+        Linear regirssion parameters.
+    err_fit_parameters : 'numpy.ndarray'
+        Error estimate on the regression parameters.
+    sigma_hat_sqr : 'float'
+        Mean squared error.
 
     Notes
     -----
@@ -179,31 +172,33 @@ def ridge(input_regression_matrix, input_data, input_covariance,
 
     Parameters
     ----------
-    input_regression_matrix : TYPE
-        DESCRIPTION.
-    input_data : TYPE
-        DESCRIPTION.
-    input_covariance : TYPE
-        DESCRIPTION.
-    input_delta : TYPE
-        DESCRIPTION.
-    input_alpha : TYPE
-        DESCRIPTION.
+    input_regression_matrix : 'numpy.ndarray'
+        The design or regression matrix used in the regularized least square
+        fit.
+    input_data : 'numpy.ndarray'
+        Vector of data to be fit.
+    input_covariance : 'numpy.ndarray'
+        Covariacne matrix used as weight in the least quare fit.
+    input_delta : 'numpy.ndarray'
+        Regularization matrix. For ridge regression this is the unity matrix.
+    input_alpha : 'float' or 'numpy.ndarray'
+        Regularization strength.
 
     Returns
     -------
-    beta : TYPE
-        DESCRIPTION.
-    rss : TYPE
-        DESCRIPTION.
-    mse : TYPE
-        DESCRIPTION.
-    degrees_of_freedom : TYPE
-        DESCRIPTION.
-    model_unscaled : TYPE
-        DESCRIPTION.
-    optimal_regularization : TYPE
-        DESCRIPTION.
+    beta : 'numpy.ndarray'
+        Fitted regression parameters.
+    rss : 'float'
+        Sum of squared residuals.
+    mse : 'float'
+        Mean square error
+    degrees_of_freedom : 'float'
+        The effective degress of Freedo of the fit.
+    model_unscaled : 'numpy.ndarray'
+        The fitted regression model.
+    optimal_regularization : 'numpy.ndarray'
+        The optimal regularization strength determened by generalized cross
+        validation.
 
     Notes
     -----
@@ -326,8 +321,7 @@ def check_causality():
     Returns
     -------
     causal_mask :  ndarray of 'bool'
-        DESCRIPTION.
-
+        Mask of data which has good causal connection with other data.
     """
     causal_mask = True
     return causal_mask
@@ -340,14 +334,17 @@ def select_regressors(selection_mask, exclusion_distance):
     Parameters
     ----------
     selectionMask : 'ndarray' of 'bool'
-        DESCRIPTION.
+        Mask selection all data for which a regressor matrix have to be
+        constructed.
     exclusion_distance : 'int'
-        DESCRIPTION.
+        Minimum distance to data point within no data is selected to be used
+        as regressor.
 
     Returns
     -------
-    regressors : TYPE
-        DESCRIPTION.
+    regressor_list : 'list'
+        list of indicex pais of data index and indici of the data used as
+        regressors for the specified data point.
 
     """
     if selection_mask.ndim == 1:
@@ -372,17 +369,17 @@ def return_PCA(matrix, n_components):
 
     Parameters
     ----------
-    matrix : TYPE
-        DESCRIPTION.
-    n_components : TYPE
-        DESCRIPTION.
+    matrix : 'numpy.ndarray'
+        Input matrix for whcih the principal components are calculated.
+    n_components : 'int'
+        Number of PCA composnents.
 
     Returns
     -------
-    pca_matrix : TYPE
-        DESCRIPTION.
-    pca_back_transnformation : TYPE
-        DESCRIPTION.
+    pca_matrix : 'numpy.ndarray'
+        The principal components.
+    pca_back_transnformation : 'function'
+        The function which back-transforms the PC into the original matrix.
 
     """
     pca = PCA(n_components=np.min([n_components, matrix.shape[0]]),
@@ -548,6 +545,7 @@ def make_bootstrap_samples(ndata, nsamples):
     non_common_indici = []
     bootsptrap_indici[0, :] = all_indici
     non_common_indici.append(np.setxor1d(all_indici, all_indici))
+    np.random.seed(1984)
     for i in range(nsamples):
         bootsptrap_indici[i+1, :] = np.sort(np.random.choice(ndata, ndata))
         non_common_indici.append(np.setxor1d(all_indici,
@@ -596,7 +594,7 @@ class regressionDataServer:
 
     def sync_with_parameter_server(self, parameter_server_handle):
         """
-        bla.
+        Sync data server with the parameter server.
 
         Parameters
         ----------
@@ -640,7 +638,7 @@ class regressionDataServer:
 
     def initialze_lightcurve_model(self):
         """
-        bla.
+        Initialize the ligthcurve model.
 
         Parameters
         ----------
@@ -653,15 +651,20 @@ class regressionDataServer:
 
         """
         self.lightcurve_model = lightcurve(self.cascade_configuration)
+        try:
+            time_offset = \
+                ast.literal_eval(self.cascade_configuration.model_time_offset)
+        except AttributeError:
+            time_offset = 0.0
         fit_lightcurve_model, fit_ld_correcton = \
             self.lightcurve_model.interpolated_lc_model(self.fit_dataset,
-                                                        time_offset=0.0)
+                                                        time_offset=time_offset)
         self.fit_lightcurve_model = fit_lightcurve_model
         self.fit_ld_correcton = fit_ld_correcton
 
     def get_lightcurve_model(self):
         """
-        bla.
+        Get the lightcurve model.
 
         Returns
         -------
@@ -674,7 +677,7 @@ class regressionDataServer:
 
     def unpack_datasets(self):
         """
-        bla.
+        Unpack al datasets into masked arrays.
 
         Returns
         -------
@@ -883,7 +886,7 @@ class regressionDataServer:
 
     def initialize_data_server(self, parameter_server_handle):
         """
-        bla.
+        Initialize the data server.
 
         Parameters
         ----------
@@ -958,7 +961,7 @@ class regressionParameterServer:
 
     def initialize_regression_configuration(self):
         """
-        bla.
+        Initialize all regression control parameters.
 
         Returns
         -------
@@ -999,19 +1002,19 @@ class regressionParameterServer:
 
     def get_regression_parameters(self):
         """
-        bla.
+        Get all parameters controling the regression analysis.
 
         Returns
         -------
-        TYPE
-            DESCRIPTION.
-
+        'simpleNameSpace'
+            Name spcae holding all parameters controling the regression
+            analysis.
         """
         return self.cpm_parameters
 
     def get_configuration(self):
         """
-        bla.
+        Get the CASCADe configuration.
 
         Returns
         -------
@@ -1023,7 +1026,7 @@ class regressionParameterServer:
 
     def sync_with_data_server(self, data_server_handle):
         """
-        bla.
+        Sync the parameter server with the data server.
 
         Returns
         -------
@@ -1047,7 +1050,7 @@ class regressionParameterServer:
 
     def get_data_parameters(self):
         """
-        bla.
+        Get all parameters characterizing the data.
 
         Returns
         -------
@@ -1059,7 +1062,7 @@ class regressionParameterServer:
 
     def initialize_regularization(self):
         """
-        bla.
+        Initialize the regularization parameter test grid and results array.
 
         Returns
         -------
@@ -1076,7 +1079,7 @@ class regressionParameterServer:
 
     def get_regularization(self):
         """
-        bla.
+        Get the regularization parameters.
 
         Returns
         -------
@@ -1088,7 +1091,7 @@ class regressionParameterServer:
 
     def update_optimal_regulatization(self, new_regularization):
         """
-        bla.
+        Update the fitted optimal regularization strength.
 
         Parameters
         ----------
@@ -1106,7 +1109,7 @@ class regressionParameterServer:
 
     def initialize_parameters(self):
         """
-        bla.
+        Initialize the arrays holding the fit results.
 
         Returns
         -------
@@ -1165,7 +1168,7 @@ class regressionParameterServer:
 
     def get_fitted_parameters(self):
         """
-        bla.
+        Return the fitted parameters.
 
         Returns
         -------
@@ -1177,7 +1180,7 @@ class regressionParameterServer:
 
     def add_new_parameters(self, new_parameters):
         """
-        bla.
+        Add aditional fitted parameters.
 
         Parameters
         ----------
@@ -1194,7 +1197,7 @@ class regressionParameterServer:
 
     def reset_parameters(self):
         """
-        bla.
+        Reset all regression and regularization parameters.
 
         Returns
         -------
@@ -1206,7 +1209,7 @@ class regressionParameterServer:
 
     def initialize_parameter_server(self, data_server_handle):
         """
-        bla.
+        Initialize the parameter server.
 
         Parameters
         ----------
@@ -1223,7 +1226,7 @@ class regressionParameterServer:
 
     def reset_parameter_server(self, cascade_configuration, data_server_handle):
         """
-        bla.
+        Reset the parameter server.
 
         Parameters
         ----------
@@ -1251,7 +1254,10 @@ class rayRegressionParameterServer(regressionParameterServer):
 
     def sync_with_data_server(self, data_server_handle):
         """
-        bla.
+        Synchronize with data server.
+
+        This method of the parameter server uses the handle to the dataserver
+        to synchronize the parameters defining the dataset.
 
         Returns
         -------
@@ -1276,9 +1282,12 @@ class rayRegressionParameterServer(regressionParameterServer):
 
 class regressionControler:
     """
-    bla.
+    The main server for the causal regression modeling.
 
-    bla.
+    This class defines the controler for the regression modeling. It starts the
+    data and parameter server and distributes the tasks to the workers. After
+    completion it processes all results and stores the extrcted planetary
+    spectra in spectral data format.
     """
 
     def __init__(self, cascade_configuration, dataset, regressor_dataset):
@@ -1290,7 +1299,7 @@ class regressionControler:
 
     def instantiate_parameter_server(self):
         """
-        bla.
+        Intstantiate the parameter server.
 
         Returns
         -------
@@ -1302,14 +1311,15 @@ class regressionControler:
 
     def instantiate_data_server(self, dataset, regressor_dataset):
         """
-        bla.
+        Instatiate the data server.
 
         Parameters
         ----------
-        dataset : TYPE
-            DESCRIPTION.
-        regressor_dataset : TYPE
-            DESCRIPTION.
+        dataset : 'cascade.data_model.data_model.SpectralDataTimeSeries'
+            The spectral timeseries dataset to be modeled.
+        regressor_dataset : 'cascade.data_model.data_model.SpectralDataTimeSeries'
+            The cleaned version of the spectral timeseries dataset used for
+            construnction the regression matrici.
 
         Returns
         -------
@@ -1321,7 +1331,7 @@ class regressionControler:
 
     def initialize_servers(self):
         """
-        bla.
+        Initialize both data as wel as the parameter server.
 
         Note that the order of initialization is important: Firts the data
         server and then the parameter server.
@@ -1338,19 +1348,20 @@ class regressionControler:
 
     def get_fit_parameters_from_server(self):
         """
-        bla.
+        Get the regression fit parameters from the parameter server.
 
         Returns
         -------
-        TYPE
-            DESCRIPTION.
+        fitted_parameters: 'simpleNamespace'
+            this namespace contrains all relevant fit parameters used in
+            the extraction and calibration of the planetary signal.
 
         """
         return self.parameter_server_handle.get_fitted_parameters()
 
     def get_regularization_parameters_from_server(self):
         """
-        bla.
+        Get the regularization parameters from the parameter server.
 
         Returns
         -------
@@ -1362,12 +1373,16 @@ class regressionControler:
 
     def get_control_parameters(self):
         """
-        bla.
+        Get the contraol parameters from the parameter server.
+
+        This function returns all relevant parameters needed to determine
+        the behaviour and settings of the regression modeling.
 
         Returns
         -------
-        control_parameters : TYPE
-            DESCRIPTION.
+        control_parameters : 'SimpleNamespace'
+            This namespace contrain all control parameters of the regression
+            model.
 
         """
         control_parameters = SimpleNamespace()
@@ -1379,7 +1394,7 @@ class regressionControler:
 
     def get_lightcurve_model(self):
         """
-        bla.
+        Get the lightcurve model.
 
         Returns
         -------
@@ -1391,7 +1406,7 @@ class regressionControler:
 
     def initialize_regression_iterators(self, nchunks=1):
         """
-        bla.
+        Initialize the iterators required in the regression analysis.
 
         Returns
         -------
@@ -1420,7 +1435,7 @@ class regressionControler:
 
     def get_regression_iterators(self):
         """
-        bla.
+        Get all iterators used in the regression analysis.
 
         Returns
         -------
@@ -1433,7 +1448,7 @@ class regressionControler:
     @staticmethod
     def grouper_it(it, nchunks, number_of_iterators):
         """
-        bla.
+        Split iterator into chunks.
 
         Parameters
         ----------
@@ -1462,7 +1477,7 @@ class regressionControler:
 
     def chunk_iterators(self, nchunks=1):
         """
-        bla.
+        Split interators into chunks.
 
         Parameters
         ----------
@@ -1616,7 +1631,6 @@ class regressionControler:
                               fit_parameters.fitted_model,
                               fit_parameters.regression_results,
                               fit_parameters.fitted_spectrum):
-
             W1 = np.delete(
                 fit_results,
                 list(np.arange(
@@ -1624,6 +1638,7 @@ class regressionControler:
                                )
                      ), 1)
             K = (np.identity(W1.shape[0]) - W1)
+            # note spectrum is already corrected for LD using renormalized LC
             corrected_spectrum, _, _ = ols(K, spectrum)
             corrected_fitted_spectrum_list.append(corrected_spectrum)
 
@@ -1665,9 +1680,9 @@ class regressionControler:
 
             fitted_baseline_list.append(baseline_model)
             residuals_list.append(residual)
-            normed_fitted_spectrum_list.append(normed_spectrum/ld_correction)
+            normed_fitted_spectrum_list.append(normed_spectrum)
             error_normed_fitted_spectrum_list.append(
-                error_normed_spectrum/ld_correction)
+                error_normed_spectrum)
             wavelength_normed_fitted_spectrum_list.append(
                 wavelength_normed_spectrum)
 
@@ -2092,9 +2107,10 @@ class rayRegressionControler(regressionControler):
 
 class regressionWorker:
     """
-    bla.
+    regression worker class.
 
-    bla
+    This class defines the workers used in the regression analysis to
+    determine the systematics and transit model parameters.
     """
 
     def __init__(self, initial_fit_parameters, initial_regularization,
@@ -2108,16 +2124,16 @@ class regressionWorker:
                                   updated_regularization,
                                   updated_iterator_chunk):
         """
-        bla.
+        Update all parameters,
 
         Parameters
         ----------
-        updated_fit_parameters : TYPE
-            DESCRIPTION.
-        updated_regularization : TYPE
-            DESCRIPTION.
-        updated_iterator_chunk : TYPE
-            DESCRIPTION.
+        updated_fit_parameters : 'simpleNameSpace'
+            All parameters controling the regression model.
+        updated_regularization : 'simpleNameSpace'
+            All parameters controling the regularization.
+        updated_iterator_chunk : 'list'
+            Iterator chunck over data and bootstrap selections.
 
         Returns
         -------
@@ -2131,34 +2147,34 @@ class regressionWorker:
     def compute_model(self, regression_selection, bootstrap_selection,
                       data_server_handle, regularization_method, alpha):
         """
-        bla.
+        Compute the regression model.
 
         Parameters
         ----------
-        regression_selection : TYPE
+        regression_selection : 'list'
             DESCRIPTION.
-        bootstrap_selection : TYPE
+        bootstrap_selection : 'list'
             DESCRIPTION.
-        data_server_handle : TYPE
+        data_server_handle : 'regressionDataServer'
             DESCRIPTION.
-        regularization_method : TYPE
+        regularization_method : 'str'
             DESCRIPTION.
-        alpha : TYPE
+        alpha : 'float' or 'ndarray'
             DESCRIPTION.
 
         Returns
         -------
-        beta_optimal : TYPE
+        beta_optimal : 'ndarray'
             DESCRIPTION.
-        rss : TYPE
+        rss : 'float'
             DESCRIPTION.
-        mse : TYPE
+        mse : 'float'
             DESCRIPTION.
-        degrees_of_freedom : TYPE
+        degrees_of_freedom : 'float'
             DESCRIPTION.
-        model_unscaled : TYPE
+        model_unscaled : 'ndarray'
             DESCRIPTION.
-        alpha : TYPE
+        alpha : 'float'
             DESCRIPTION.
 
         """
@@ -2183,9 +2199,7 @@ class regressionWorker:
             ridge(regression_matrix_unscaled, data_unscaled,
                   covariance, delta, alpha)
 
-        ################################################################
         # scale coefficients back
-        ################################################################
         beta_optimal[0] -= np.sum(beta_optimal[2:]*feature_mean /
                                   feature_scale)
         beta_optimal[2:] = beta_optimal[2:]/feature_scale
@@ -2197,23 +2211,24 @@ class regressionWorker:
     def get_data_chunck(data_server_handle, regression_selection,
                         bootstrap_selection):
         """
-        bla.
+        Get a chanck of the data.
 
         Parameters
         ----------
-        data_server_handle : TYPE
+        data_server_handle : 'regressionDataDerver'
             DESCRIPTION.
-        regression_selection : TYPE
-            DESCRIPTION.
-        bootstrap_selection : TYPE
-            DESCRIPTION.
+        regression_selection : 'list'
+            List of indici defining the data to tbe modeld and the
+            corresponding data to tbe used as regressors.
+        bootstrap_selection : 'list'
+            List of indici defining the bootstrap selection.
 
         Returns
         -------
-        regression_data_selection : TYPE
-            DESCRIPTION.
+        regression_data_selection : 'ndarray'
+            Selection of data to be modeled
         regression_matirx_selection : TYPE
-            DESCRIPTION.
+            Selection of data used as regression matrix.
 
         """
         regression_data_selection, regression_matirx_selection = \
@@ -2225,22 +2240,24 @@ class regressionWorker:
     @staticmethod
     def get_regression_parameters(parameter_server_handle):
         """
-        bla.
+        Get regression controll parameters from parameter server.
 
         Parameters
         ----------
-        parameter_server_handle : TYPE
-            DESCRIPTION.
+        parameter_server_handle : regressionParameterServer
+            instance of the parameter server.
 
         Returns
         -------
-        regularization_method : TYPE
-            DESCRIPTION.
-        n_additional : TYPE
-            DESCRIPTION.
-        ncorrect : TYPE
-            DESCRIPTION.
-
+        regularization_method : 'str'
+            Method used to define regularization method. Default is 'value'
+        n_additional : 'int'
+            Number of additional regressors.
+        ncorrect : 'int'
+            Number of data points at the short wavelength side cut by the
+            region of interest compared to the full dataset. This parameter is
+            used to make sure the parameters are stored correctly in an array
+            with a size corresponding to the total data volume.
         """
         regression_par = parameter_server_handle.get_regression_parameters()
         regularization_method = regression_par.regularization_method
@@ -2251,12 +2268,12 @@ class regressionWorker:
 
     def update_parameters_on_server(self, parameter_server_handle):
         """
-        bla.
+        Update parameters on parameter server.
 
         Parameters
         ----------
-        parameter_server_handle : TYPE
-            DESCRIPTION.
+        parameter_server_handle : 'regressionParameterServer''
+            Instane of the parameter server class
 
         Returns
         -------
@@ -2270,14 +2287,14 @@ class regressionWorker:
 
     def async_update_loop(self, parameter_server_handle, data_server_handle):
         """
-        bla.
+        Regression loop over regressin and bootstrap selection.
 
         Parameters
         ----------
-        parameter_server_handle : TYPE
-            DESCRIPTION.
-        data_server_handle : TYPE
-            DESCRIPTION.
+        parameter_server_handle : 'regressionParameterServer'
+            Instance of the paramter server
+        data_server_handle : 'regressionDataServer'
+            Instance of the data server.
 
         Returns
         -------
@@ -2336,23 +2353,24 @@ class rayRegressionWorker(regressionWorker):
     def get_data_chunck(data_server_handle, regression_selection,
                         bootstrap_selection):
         """
-        bla.
+        Get a chanck of the data.
 
         Parameters
         ----------
-        data_server_handle : TYPE
+        data_server_handle : 'regressionDataDerver'
             DESCRIPTION.
-        regression_selection : TYPE
-            DESCRIPTION.
-        bootstrap_selection : TYPE
-            DESCRIPTION.
+        regression_selection : 'list'
+            List of indici defining the data to tbe modeld and the
+            corresponding data to tbe used as regressors.
+        bootstrap_selection : 'list'
+            List of indici defining the bootstrap selection.
 
         Returns
         -------
-        regression_data_selection : TYPE
-            DESCRIPTION.
+        regression_data_selection : 'ndarray'
+            Selection of data to be modeled
         regression_matirx_selection : TYPE
-            DESCRIPTION.
+            Selection of data used as regression matrix.
 
         """
         regression_data_selection, regression_matirx_selection = \
@@ -2364,22 +2382,24 @@ class rayRegressionWorker(regressionWorker):
     @staticmethod
     def get_regression_parameters(parameter_server_handle):
         """
-        bla.
+        Get regression controll parameters from parameter server.
 
         Parameters
         ----------
-        parameter_server_handle : TYPE
-            DESCRIPTION.
+        parameter_server_handle : regressionParameterServer
+            instance of the parameter server.
 
         Returns
         -------
-        regularization_method : TYPE
-            DESCRIPTION.
-        n_additional : TYPE
-            DESCRIPTION.
-        ncorrect : TYPE
-            DESCRIPTION.
-
+        regularization_method : 'str'
+            Method used to define regularization method. Default is 'value'
+        n_additional : 'int'
+            Number of additional regressors.
+        ncorrect : 'int'
+            Number of data points at the short wavelength side cut by the
+            region of interest compared to the full dataset. This parameter is
+            used to make sure the parameters are stored correctly in an array
+            with a size corresponding to the total data volume.
         """
         regression_par = \
             ray.get(parameter_server_handle.get_regression_parameters.remote())
@@ -2392,12 +2412,12 @@ class rayRegressionWorker(regressionWorker):
 
     def update_parameters_on_server(self, parameter_server_handle):
         """
-        bla.
+        Update parameters on parameter server.
 
         Parameters
         ----------
-        parameter_server_handle : TYPE
-            DESCRIPTION.
+        parameter_server_handle : 'regressionParameterServer''
+            Instane of the parameter server class
 
         Returns
         -------

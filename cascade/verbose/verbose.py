@@ -481,7 +481,7 @@ def calibrate_timeseries_verbose(*args, **kwargs):
     if transittype == "secondary":
         normed_spectrum = transit_to_eclipse(normed_spectrum)
     normed_spectrum.data[...] = normed_spectrum.data*100
-    mean_norm = np.ma.mean(normed_spectrum[1:, :], axis=1)
+    mean_norm = np.ma.median(normed_spectrum[1:, :], axis=1)
 
     dx, bins = knuth_bin_width(mean_norm, return_bins=True)
     height, bin_edges = np.histogram(mean_norm, bins=bins, density=False)
@@ -667,8 +667,8 @@ def calibrate_timeseries_verbose(*args, **kwargs):
     uncal_data = dataset.return_masked_array('data').copy()
     uncal_data.mask = np.ma.logical_or(uncal_data.mask, systematics.mask)
     cal_data = uncal_data/systematics
-
-    TD_temp = TD/100*np.mean(model.limbdarkning_correction)
+# Bug Fix
+    TD_temp = TD/100  # *np.mean(model.limbdarkning_correction)
     if transittype == 'secondary':
         from cascade.exoplanet_tools import eclipse_to_transit
         TD_temp = eclipse_to_transit(TD_temp)

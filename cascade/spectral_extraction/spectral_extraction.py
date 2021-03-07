@@ -37,11 +37,11 @@ import multiprocessing as mp
 import numba as nb
 import joblib
 from itertools import zip_longest
+import statsmodels.api as sm
 from matplotlib import pyplot as plt
 import seaborn as sns
 from scipy import ndimage
 from scipy.ndimage import binary_dilation
-# from skimage.feature import register_translation
 from skimage.registration import phase_cross_correlation
 from astropy.convolution import convolve
 from astropy.convolution import Gaussian2DKernel
@@ -499,7 +499,7 @@ def filter_image_cube(data_in, Filters, ROIcube, enumeratedSubRegions,
             filteredImage[indices_poi[j[0]]] = j[2]
             filteredImageVariance[indices_poi[j[0]]] = j[3],
     else:
-        ncpus =int(ray.cluster_resources()['CPU'])
+        ncpus = int(ray.cluster_resources()['CPU'])
         chunksize = len(enumeratedSubRegions)//ncpus + 1
         while chunksize > 256:
             chunksize = chunksize//ncpus + 1
@@ -606,7 +606,7 @@ def iterative_bad_pixel_flagging(dataset, ROIcube, Filters,
                           "Required free memory: {} bytes "
                           "Available: {} bytes".
                           format(mem_store+mem_workers, mem.available))
-        ray.disconnect()
+        # ray.disconnect()
 #        ray.init(num_cpus=ncpu, object_store_memory=mem_store,
 #                 memory=mem_workers)
 # bug fix
@@ -646,7 +646,7 @@ def iterative_bad_pixel_flagging(dataset, ROIcube, Filters,
                       "iteration steps might be advisable.".
                       format(numberOfFlaggedPixels-acceptanceLimit))
 
-    ray.disconnect()
+    #  ray.disconnect()
     ray.shutdown()
 
     cleanedUncertainty = np.ma.array(dataset.uncertainty.data.value.copy(),
@@ -712,8 +712,9 @@ def create_extraction_profile(fiteredSpectralDataset, ROI=None):
     if ROI is None:
         dataUse = fiteredSpectralData
     else:
-        newMask = np.logical_or(fiteredSpectralData.mask, ROI)
-        dataUse = np.ma.array(fiteredSpectralData, mask=newMask)
+        # newMask = np.logical_or(fiteredSpectralData.mask, ROI)
+        newMask = fiteredSpectralData.mask | ROI
+        dataUse = np.ma.array(fiteredSpectralData.data, mask=newMask)
 
     spectralExtractionProfile = dataUse/np.sum(dataUse, axis=1, keepdims=True)
 
@@ -805,7 +806,7 @@ def extract_spectrum(dataset, ROICube, extractionProfile=None, optimal=False,
         sns.set_context("talk", font_scale=1.5, rc={"lines.linewidth": 2.5})
         sns.set_style("white", {"xtick.bottom": True, "ytick.left": True})
         fig, ax0 = plt.subplots(figsize=(6, 6), nrows=1, ncols=1)
-        for iwave in range(1,8):   
+        for iwave in range(1,8):
             ax0.plot(extractedSpectra[iwave, :])
         ax0.set_title('Extracted 1D spectral timeseries')
         ax0.set_xlabel('Integration #')
@@ -1057,7 +1058,7 @@ def _determine_relative_rotation_and_scale(reference_image, referenceROI,
     tparams = phase_cross_correlation(warped_fft_ref_im, warped_fft_im,
                                    upsample_factor=upsampleFactor,
                                    space='real')
-    
+
     shifts = tparams[0]
     # calculate rotation
     # note, only look for angles between +- 90 degrees,
@@ -1643,7 +1644,13 @@ def determine_center_of_light_posision(cleanData, ROI=None, verbose=False,
     idx_use = np.ma.where(total_light > treshhold)[0]
     ytrace = np.arange(npix)
     idx = ytrace[idx_use]
-    z = np.polyfit(idx, COL[idx_use], orderTrace)
+    X = []
+    for i in range(orderTrace+1):
+        X.append(idx**i)
+    X = np.array(X).T
+    robust_fit = sm.RLM(COL[idx_use], X).fit()
+    z = robust_fit.params[::-1]
+    # z = np.polyfit(idx, COL[idx_use], orderTrace)
     f = np.poly1d(z)
     xtrace = f(ytrace)
 
@@ -2008,8 +2015,8 @@ def _define_band_limits(wave):
 def define_weights(lr0, ur0, lr, ur):
     nwave = lr.shape[0]
     nwave0 = lr0.shape[0]
-    weights = np.empty((nwave0, nwave), dtype=lr.dtype)
-    for it in nb.prange(nwave):
+    weights = np.zeros((nwave0, nwave), dtype=lr.dtype)
+    for it in nb.prange(nwave0):
         wlr0 = lr0[it]
         wur0 = ur0[it]
         weights[it, :] = overlap(wlr0, wur0, lr, ur)
@@ -2020,7 +2027,7 @@ def define_weights(lr0, ur0, lr, ur):
 def define_weights2(lr0, ur0, lr, ur):
     nwave, ntime = lr.shape
     nwave0 = lr0.shape[0]
-    weights = np.empty((nwave0, nwave, ntime), dtype=lr.dtype)
+    weights = np.zeros((nwave0, nwave, ntime), dtype=lr.dtype)
     for it in nb.prange(nwave0):
         wlr0 = lr0[it]
         wur0 = ur0[it]
@@ -2124,8 +2131,18 @@ def rebin_to_common_wavelength_grid(dataset, referenceIndex, nrebin=None,
     wavelength = dataset.return_masked_array('wavelength')
     time = dataset.return_masked_array('time')
 
-    lr, ur = _define_band_limits(wavelength)
+    idx_min_good, idx_max_good = \
+        np.where(np.all(~wavelength.mask, axis=1))[0][[0,-1]]
+    min_wavelength = np.max(wavelength[idx_min_good])
+    max_wavelength = np.min(wavelength[idx_max_good])
+
     referenceWavelength = np.sort(np.array(wavelength[1:-1, referenceIndex]))
+    idx_min_select = np.where(referenceWavelength >= min_wavelength)[0][0]
+    idx_max_select = np.where(referenceWavelength <= max_wavelength)[0][-1]
+    referenceWavelength = referenceWavelength[idx_min_select:idx_max_select]
+
+    lr, ur = _define_band_limits(wavelength)
+
     if nrebin is not None:
         referenceWavelength = \
             np.linspace(referenceWavelength[0+int(nrebin/2)],
@@ -2417,7 +2434,7 @@ def sigma_clip_data(datasetIn, sigma, nfilter):
     return datasetIn
 
 
-def create_cleaned_dataset(datasetIn, ROI, kernel, stdvKernelTime):
+def create_cleaned_dataset(datasetIn, ROIcube, kernel, stdvKernelTime):
     """
     Create a cleaned dataset to be used in regresion analysis.
 
@@ -2425,7 +2442,7 @@ def create_cleaned_dataset(datasetIn, ROI, kernel, stdvKernelTime):
     ----------
     datasetIn : 'SpectralDataTimeSeries'
         Input dataset
-    ROI : 'ndarray' of 'bool'
+    ROIcube : 'ndarray' of 'bool'
         Region of interest.
     kernel : 'ndarray'
         Instrument convolution kernel
@@ -2456,11 +2473,11 @@ def create_cleaned_dataset(datasetIn, ROI, kernel, stdvKernelTime):
         uncertaintyToBeCleaned = \
             np.ma.array(data_scaled2.T, mask=uncertaintyToBeCleaned.mask)
 
-    dataToBeCleaned[ROI] = 0.0
-    dataToBeCleaned.mask[ROI] = False
+    dataToBeCleaned[ROIcube] = 0.0
+    dataToBeCleaned.mask[ROIcube] = False
     dataToBeCleaned.set_fill_value(np.nan)
-    uncertaintyToBeCleaned[ROI] = 1.0
-    uncertaintyToBeCleaned.mask[ROI] = False
+    uncertaintyToBeCleaned[ROIcube] = 1.0
+    uncertaintyToBeCleaned.mask[ROIcube] = False
     uncertaintyToBeCleaned.set_fill_value(np.nan)
 
     kernel_size = kernel.shape[0]
@@ -2483,6 +2500,8 @@ def create_cleaned_dataset(datasetIn, ROI, kernel, stdvKernelTime):
         cleanedUncertainty = \
             RS2.inverse_transform(cleanedUncertainty.T).T
 
+#    cleanedData.mask = cleanedData.mask | ROI
+
     selection = tuple((ndim-1)*[0]+[Ellipsis])
 
     cleanedDataset = SpectralDataTimeSeries(
@@ -2490,6 +2509,7 @@ def create_cleaned_dataset(datasetIn, ROI, kernel, stdvKernelTime):
         wavelength_unit=datasetIn.wavelength_unit,
         data=cleanedData,
         data_unit=datasetIn.data_unit,
+        mask=ROIcube,
         time=datasetIn.time.data.value[selection],
         time_unit=datasetIn.time_unit,
         time_bjd=datasetIn.time_bjd.data.value[selection],
@@ -2606,5 +2626,3 @@ def compressDataset(datasetIn, ROI):
     compressedDataset = \
         SpectralDataTimeSeries(**dictTimeSeries)
     return compressedDataset, compressMask
-
-

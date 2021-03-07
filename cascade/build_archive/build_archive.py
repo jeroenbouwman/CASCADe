@@ -240,7 +240,7 @@ def return_exoplanet_catalogs(update=True):
     Parameters
     ----------
     update : 'bool'
-    DESCRIPTION Default is True, if True update the files csv 
+    DESCRIPTION Default is True, if True update the files csv
 
     Returns
     -------
@@ -381,13 +381,13 @@ def create_unique_ids(hst_data_catalog):
                     for inum, idx_select in enumerate(idx):
                         obs_ids_dir[idx_select] = \
                             obs_ids_dir[idx_select]+'_'+numeral[inum]
-        id_dict_visit = {}    
+        id_dict_visit = {}
         for visit, obs_id, obs_id_dir in zip(visits, obs_ids, obs_ids_dir):
            id_dict_visit[visit] = {'obs_id': obs_id, 'obs_id_dir': obs_id_dir}
         id_dict_all[planet] = id_dict_visit
     return id_dict_all
 
-            
+
 def return_header_info(data_file, cal_data_file):
     """
     Return all relavant parameters from fits data file header.
@@ -411,32 +411,39 @@ def return_header_info(data_file, cal_data_file):
 
     url_data_archive = \
         'https://mast.stsci.edu/portal/Download/file/HST/product/{0}'
+    headers = {"User-Agent": "Mozilla/5.0 (X11; CrOS x86_64 12871.102.0) \
+               AppleWebKit/537.36 (KHTML, like Gecko) Chrome/81.0.4044.141 \
+               Safari/537.36"}
 
     data_file_id = [file.split('_')[0] for file in [data_file, cal_data_file]]
     data_file_id = long_substr(data_file_id)
     temp_download_dir = os.path.join(cascade_default_data_path,
                                      "mastDownload_"+data_file_id+"/")
 
+    # session = requests.Session()
     os.makedirs(temp_download_dir, exist_ok=True)
-    df = requests.get(url_data_archive.format(data_file), stream=True)
+    df = requests.get(url_data_archive.format(data_file), stream=True,
+                      headers=headers)
     with open(os.path.join(temp_download_dir, data_file), 'wb') as file:
         for chunk in df.iter_content(chunk_size=1024):
             file.write(chunk)
     # urlretrieve(URL_DATA_ARCHIVE.format(data_file),
     #             os.path.join(TEMP_DOWNLOAD_DIR, data_file))
     header_info = {}
-    with fits.open(os.path.join(temp_download_dir, data_file)) as hdul:
+    with fits.open(os.path.join(temp_download_dir, data_file),
+                   ignore_missing_end=True) as hdul:
         for keyword in fits_keywords:
             header_info[keyword] = hdul['PRIMARY'].header[keyword]
-
-    df = requests.get(url_data_archive.format(cal_data_file), stream=True)
+    df = requests.get(url_data_archive.format(cal_data_file), stream=True,
+                      headers=headers)
     with open(os.path.join(temp_download_dir, cal_data_file), 'wb') as file:
         for chunk in df.iter_content(chunk_size=1024):
             file.write(chunk)
     # urlretrieve(URL_DATA_ARCHIVE.format(cal_data_file),
     #             os.path.join(TEMP_DOWNLOAD_DIR, cal_data_file))
     cal_header_info = {}
-    with fits.open(os.path.join(temp_download_dir, cal_data_file)) as hdul:
+    with fits.open(os.path.join(temp_download_dir, cal_data_file),
+                   ignore_missing_end=True) as hdul:
         for keyword in fits_keywords:
             cal_header_info[keyword] = hdul['PRIMARY'].header[keyword]
     # some house cleaning
@@ -557,7 +564,8 @@ def save_observations(data_files, cal_data_files, parser,
         )
     os.makedirs(data_save_path, exist_ok=True)
 
-    if parser['OBSERVATIONS']['observations_mode'] == 'SCANNING':
+    # if parser['OBSERVATIONS']['observations_mode'] == 'SCANNING':
+    if parser['OBSERVATIONS']['observations_data'] == 'SPECTRAL_CUBE':
         data_files_to_download = data_files.copy()
     else:
         data_files_to_download = \
@@ -579,7 +587,8 @@ def save_observations(data_files, cal_data_files, parser,
             with open(os.path.join(data_save_path, datafile), 'wb') as file:
                 for chunk in df.iter_content(chunk_size=1024):
                     file.write(chunk)
-    if parser['OBSERVATIONS']['observations_mode'] == 'SCANNING':
+    # if parser['OBSERVATIONS']['observations_mode'] == 'SCANNING':
+    if parser['OBSERVATIONS']['observations_data'] == 'SPECTRAL_CUBE':
         data_files_to_download = \
             [file.replace('_flt', '_ima') for file in cal_data_files]
         for datafile in tqdm(data_files_to_download, dynamic_ncols=True,

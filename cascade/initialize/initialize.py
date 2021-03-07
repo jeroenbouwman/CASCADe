@@ -79,6 +79,7 @@ import os
 import configparser
 import warnings
 import shutil
+import time
 
 from cascade import __path__
 from cascade import __version__
@@ -221,7 +222,7 @@ def reset_data():
     with open(os.path.join(cascade_default_data_path,
                            '.cascade_data_version'), 'w') as f:
         f.write("{}".format(__version__))
-
+    time.sleep(3.0)
 
 __data_dirs = ['calibration/', 'exoplanet_data/', 'archive_databases/',
                'configuration_templates/']
@@ -392,8 +393,7 @@ def generate_default_initialization(observatory='HST', data='SPECTRUM',
              'observations_data_product': data_product,
              'observations_has_background': hasBackground,
              'observations_background_id': '',
-             'observations_background_name': 'HD189733b',
-             'observations_median_signal': '0.04'}
+             'observations_background_name': 'HD189733b'}
     elif observatory == 'HST':
         config['INSTRUMENT'] = {'instrument_observatory': observatory,
                                 'instrument': 'WFC3',
@@ -413,8 +413,7 @@ def generate_default_initialization(observatory='HST', data='SPECTRUM',
              'observations_cal_version': '4.32',
              'observations_data_product': data_product,
              'observations_has_background': hasBackground,
-             'observations_uses_background_model': 'True',
-             'observations_median_signal': '0.01'}
+             'observations_uses_background_model': 'True'}
     else:
         config['INSTRUMENT'] = {'instrument_observatory': observatory,
                                 'instrument': 'GenericSpectrograph'}
@@ -424,8 +423,7 @@ def generate_default_initialization(observatory='HST', data='SPECTRUM',
                                   'observations_path': 'data/Generic',
                                   'observations_target_name': 'HD189733b',
                                   'observations_id': '',
-                                  'observations_has_background': 'False',
-                                  'observations_median_signal': '0.01'}
+                                  'observations_has_background': 'False'}
 
     config['OBJECT'] = {'object_name': 'HD 189733 b',
                         'object_radius': '1.151 Rjup',

@@ -51,14 +51,13 @@ from scipy import interpolate
 import pandas
 import difflib
 import batman
-# from exotethys import sail
-# from exotethys import boats
 import ray
 
 from ..initialize import cascade_configuration
 from ..initialize import cascade_default_data_path
 from ..initialize import cascade_default_save_path
 from ..data_model import SpectralData
+
 
 __all__ = ['Vmag', 'Kmag', 'Rho_jup', 'Rho_jup', 'kmag_to_jy', 'jy_to_kmag',
            'surface_gravity', 'scale_height', 'transit_depth', 'planck',
@@ -67,7 +66,7 @@ __all__ = ['Vmag', 'Kmag', 'Rho_jup', 'Rho_jup', 'kmag_to_jy', 'jy_to_kmag',
            'extract_exoplanet_data', 'lightcurve', 'batman_model',
            'masked_array_input', 'eclipse_to_transit', 'transit_to_eclipse',
            'exotethys_model', 'limbdarkning', 'exotethys_stellar_model',
-           'SpectralModel','rayLightcurve','rayLimbdarkning']
+           'SpectralModel', 'rayLightcurve', 'rayLimbdarkning']
 
 
 # enable cds to be able to use certain quantities defined in this system
@@ -320,6 +319,7 @@ exoplanets_table_units = collections.OrderedDict(
 
 exoplanets_a_table_units = collections.OrderedDict(
     NAME=u.dimensionless_unscaled,
+    NAME_LINK=u.dimensionless_unscaled,
     STARNAME=u.dimensionless_unscaled,
     ALTNAME=u.dimensionless_unscaled,
     RA=u.deg,
@@ -934,7 +934,7 @@ def parse_database(catalog_name, update=True):
     for ilist, input_csv_file in enumerate(input_csv_files):
         csv_file = pandas.read_csv(input_csv_file, low_memory=False,
                                    keep_default_na=False, comment='#',
-                                   skip_blank_lines=True,
+                                   skip_blank_lines=True, header=0,
                                    na_values=['', -1.0])
         table_temp = Table(masked=True).from_pandas(csv_file)
         if catalog_name in ["TEPCAT", "NASAEXOPLANETARCHIVE",
@@ -1261,12 +1261,19 @@ class batman_model:
         params.u = limbdarkning_model.ld[1][0]
         params.limb_dark = limbdarkning_model.par['limb_darkening_laws']
 
+        impact_parameter = params.a * np.cos(np.deg2rad(params.inc))
+        if impact_parameter >= 1:
+            raise ValueError('The value {} of the impact parameter is '
+                             'larger then 1. '
+                             'Aborting lightcurve '
+                             'modeling.'.format(impact_parameter))
+
         if InputParameter['transittype'] == "secondary":
             phase_zero = 0.5
-            fac=0.01
+            fac = 0.01
         else:
             phase_zero = 0.0
-            fac=None
+            fac = None
         # model phase grid (t=phase)
         tmodel = np.linspace(phase_zero - 0.5*InputParameter['phase_range'],
                              phase_zero + 0.5*InputParameter['phase_range'],
@@ -1289,8 +1296,7 @@ class batman_model:
                 depth = params.rp**2
                 # make correction for limbdarkening
                 ld_correction[iwave] = (depth_lc/depth)
-                #lcmodel = lcmodel * ld_correction[iwave]
-            norm_lcmodel[iwave, :] = lcmodel
+            norm_lcmodel[iwave, :] = lcmodel * ld_correction[iwave]
         return wmodel, tmodel, norm_lcmodel, ld_correction
 
     def return_par_from_ini(self):
@@ -1441,7 +1447,7 @@ class exotethys_model:
     .. [2] Morello et al. 2019, (arXiv:1908.09599)
     """
 
-    __valid_ld_laws = {'quadratic', 'nonlinear'}
+    __valid_ld_laws = {'linear', 'quadratic', 'nonlinear'}
     __valid_model_grid = {'Atlas_2000', 'Phoenix_2012_13', 'Phoenix_2018'}
 
     def __init__(self, cascade_configuration):
@@ -1480,7 +1486,7 @@ class exotethys_model:
         if InputParameter['limb_darkening_laws'] == 'nonlinear':
             ld_law = 'claret4'
         else:
-            ld_law = InputParameter['limb_darkening_laws'] 
+            ld_law = InputParameter['limb_darkening_laws']
         dict1 = \
             {'output_path': [InputParameter['save_path']],
              'calculation_type': ['individual'],
@@ -1553,7 +1559,7 @@ class exotethys_model:
             raise ValueError("Stellar model grid not recognized, \
                      check your init file for the following \
                      valid model grids: {}. Aborting calculation of \
-                     limbdarkning coefficients".format(self.__valid_model_grid))        
+                     limbdarkning coefficients".format(self.__valid_model_grid))
         try:
             save_path = self.cascade_configuration.cascade_save_path
             if not os.path.isabs(save_path):
@@ -1627,7 +1633,7 @@ class exotethys_model:
             raise ValueError("Stellar model grid not recognized, \
                      check your init file for the following \
                      valid model grids: {}. Aborting calculation of \
-                     limbdarkning coefficients".format(self.__valid_model_grid))        
+                     limbdarkning coefficients".format(self.__valid_model_grid))
         try:
             save_path = self.cascade_configuration.cascade_save_path
             if not os.path.isabs(save_path):
@@ -1694,7 +1700,7 @@ class limbdarkning:
     """
 
     __valid_models = {'exotethys'}
-    __valid_ld_laws = {'quadratic', 'nonlinear'}
+    __valid_ld_laws = {'linear', 'quadratic', 'nonlinear'}
     __valid_ttypes = {'ECLIPSE', 'TRANSIT'}
     __factory_picker = {"exotethys": exotethys_model}
 
@@ -1705,7 +1711,8 @@ class limbdarkning:
             InputParameter = self.return_par()
             if (InputParameter['calculate'] and
                     not (InputParameter['ttype'] == 'secondary')):
-                factory = self.__factory_picker[InputParameter['model_type']](self.cascade_configuration)
+                factory = self.__factory_picker[InputParameter['model_type']
+                                                ](self.cascade_configuration)
                 self.ld = factory.ld
                 self.par = factory.par
             else:
@@ -1782,7 +1789,9 @@ class limbdarkning:
             DESCRIPTION.
 
         """
-        if InputParameter['limb_darkening_laws'] == 'quadratic':
+        if InputParameter['limb_darkening_laws'] == 'linear':
+            ld_coefficients = [0.0]
+        elif InputParameter['limb_darkening_laws'] == 'quadratic':
             ld_coefficients = [0.0, 0.0]
         elif InputParameter['limb_darkening_laws'] == 'nonlinear':
             ld_coefficients = [0.0, 0.0, 0.0, 0.0]
@@ -2026,22 +2035,25 @@ class exotethys_stellar_model:
         instrument_filter = self.cascade_configuration.instrument_filter
         telescope_collecting_area = \
             u.Quantity(self.cascade_configuration.telescope_collecting_area)
-        logg_unit = re.split('\\((.*?)\\)',
-                             self.cascade_configuration.object_logg_host_star)[1]
+        logg_unit = \
+            re.split('\\((.*?)\\)',
+                     self.cascade_configuration.object_logg_host_star)[1]
         logg = u.function.Dex(self.cascade_configuration.object_logg_host_star,
                               u.function.DexUnit(logg_unit))
         logg = logg.to(u.dex(u.cm/u.s**2)).value
-        Tstar = u.Quantity(self.cascade_configuration.object_temperature_host_star)
+        Tstar = \
+            u.Quantity(self.cascade_configuration.object_temperature_host_star)
         Tstar = Tstar.to(u.K).value
         star_metallicity = \
             u.Quantity(self.cascade_configuration.object_metallicity_host_star)
         star_metallicity = star_metallicity.value
-        stellar_models_grids = self.cascade_configuration.model_stellar_models_grid
+        stellar_models_grids = \
+            self.cascade_configuration.model_stellar_models_grid
         if not (stellar_models_grids in self.__valid_model_grid):
             raise ValueError("Stellar model grid not recognized, \
                      check your init file for the following \
                      valid model grids: {}. Aborting calculation of \
-                     limbdarkning coefficients".format(self.__valid_model_grid))        
+                     limbdarkning coefficients".format(self.__valid_model_grid))
         try:
             save_path = self.cascade_configuration.cascade_save_path
             if not os.path.isabs(save_path):
@@ -2102,12 +2114,13 @@ class exotethys_stellar_model:
         instrument_filter = self.cascade_configuration.instrument_filter
         telescope_collecting_area = \
             u.Quantity(self.cascade_configuration.telescope_collecting_area)
-        stellar_models_grids = self.cascade_configuration.model_stellar_models_grid
+        stellar_models_grids = \
+            self.cascade_configuration.model_stellar_models_grid
         if not (stellar_models_grids in self.__valid_model_grid):
             raise ValueError("Stellar model grid not recognized, \
                      check your init file for the following \
                      valid model grids: {}. Aborting calculation of \
-                     limbdarkning coefficients".format(self.__valid_model_grid))        
+                     limbdarkning coefficients".format(self.__valid_model_grid))
         try:
             save_path = self.cascade_configuration.cascade_save_path
             if not os.path.isabs(save_path):
@@ -2130,9 +2143,7 @@ class exotethys_stellar_model:
 
 
 class SpectralModel:
-    """
-    Class defining stellar model and symulated observations.
-    """
+    """Class defining stellar model and simulated observations."""
 
     __valid_models = {'exotethys'}
     __factory_picker = {"exotethys": exotethys_stellar_model}

@@ -30,6 +30,7 @@ from types import SimpleNamespace
 import numpy as np
 import astropy.units as u
 from astropy.convolution import Gaussian1DKernel
+from astropy.stats import sigma_clipped_stats
 
 from ...initialize import cascade_configuration
 from ...initialize import cascade_default_data_path
@@ -42,6 +43,8 @@ __all__ = ['Generic', 'GenericSpectrograph']
 
 class Generic(ObservatoryBase):
     """
+    Genericobservatory class.
+
     This observatory class defines the instuments and data handling for the
     spectropgraphs of a Generic observatory
     """
@@ -73,27 +76,29 @@ class Generic(ObservatoryBase):
 
     @property
     def name(self):
-        """Set to 'Generic'"""
+        """Set to 'Generic'."""
         return "Generic"
 
     @property
     def location(self):
-        """Set to 'UNKNOWN'"""
+        """Set to 'UNKNOWN'."""
         return "UNKNOWN"
 
     @property
     def NAIF_ID(self):
-        """Set to None"""
+        """Set to None."""
         return None
 
     @property
     def observatory_instruments(self):
-        """Returns {'GenericSpectrograph'}"""
+        """Return {'GenericSpectrograph'}."""
         return{"GenericSpectrograph"}
 
 
 class GenericSpectrograph(InstrumentBase):
     """
+    GenericSpectrograph class.
+
     This instrument class defines the properties for a Generic spectrograph on
     a generic observatory
 
@@ -122,9 +127,7 @@ class GenericSpectrograph(InstrumentBase):
 
     @property
     def name(self):
-        """
-        Name of the Generic instrument: 'GenericSpectrograph'
-        """
+        """Name of the Generic instrument: 'GenericSpectrograph'."""
         return "GenericSpectrograph"
 
     def load_data(self):
@@ -148,7 +151,7 @@ class GenericSpectrograph(InstrumentBase):
 
     def get_instrument_setup(self):
         """
-        Retrieve all relevant parameters defining the instrument and data setup
+        Retrieve relevant parameters defining the instrument and data setup.
 
         Returns
         -------
@@ -189,6 +192,14 @@ class GenericSpectrograph(InstrumentBase):
         except AttributeError:
             obs_data_product = ""
 
+        # cpm
+        try:
+            cpm_ncut_first_int = \
+               cascade_configuration.cpm_ncut_first_integrations
+            cpm_ncut_first_int = ast.literal_eval(cpm_ncut_first_int)
+        except AttributeError:
+            cpm_ncut_first_int = 0
+
         if not (obs_data in self.__valid_data):
             raise ValueError("Data type not recognized, \
                      check your init file for the following \
@@ -209,7 +220,8 @@ class GenericSpectrograph(InstrumentBase):
                                       obs_id=obs_id,
                                       obs_data_product=obs_data_product,
                                       obs_target_name=obs_target_name,
-                                      obs_has_backgr=obs_has_backgr)
+                                      obs_has_backgr=obs_has_backgr,
+                                      cpm_ncut_first_int=cpm_ncut_first_int)
         if obs_has_backgr:
             par.update({'obs_backgr_id': obs_backgr_id})
             par.update({'obs_backgr_target_name': obs_backgr_target_name})
@@ -289,13 +301,13 @@ class GenericSpectrograph(InstrumentBase):
         else:
             phase = (time.value - self.par['obj_ephemeris']) / \
                 self.par['obj_period']
-        phase = phase - np.round(np.mean(phase)) # RG  issue 49
+        phase = phase - np.round(np.mean(phase))  # RG  issue 49
         if auxilary_dict['POSITION']['flag']:
             position = np.array(auxilary_dict['POSITION']['data'])
         else:
             position = np.zeros(spectral_data.shape[-1])
 
-        idx = np.argsort(time)
+        idx = np.argsort(time)[self.par["cpm_ncut_first_int"]:]
         time = time[idx]
         spectral_data = spectral_data[:, idx]
         uncertainty_spectral_data = uncertainty_spectral_data[:, idx]
@@ -304,6 +316,13 @@ class GenericSpectrograph(InstrumentBase):
         data_files = [data_files[i] for i in idx]
         phase = phase[idx]
         position = position[idx]
+
+        idx = np.argsort(wavelength_data, axis=0)
+        wavelength_data = np.take_along_axis(wavelength_data, idx, axis=0)
+        spectral_data = np.take_along_axis(spectral_data, idx, axis=0)
+        uncertainty_spectral_data = \
+            np.take_along_axis(uncertainty_spectral_data, idx, axis=0)
+        mask = np.take_along_axis(mask, idx, axis=0)
 
         SpectralTimeSeries = \
             SpectralDataTimeSeries(wavelength=wavelength_data,
@@ -324,16 +343,31 @@ class GenericSpectrograph(InstrumentBase):
         SpectralTimeSeries.period = self.par['obj_period']
         SpectralTimeSeries.ephemeris = self.par['obj_ephemeris']
 
+        # make sure that the date units are as "standard" as posible
+        data_unit = (1.0*SpectralTimeSeries.data_unit).decompose().unit
+        SpectralTimeSeries.data_unit = data_unit
+        wave_unit = (1.0*SpectralTimeSeries.wavelength_unit).decompose().unit
+        SpectralTimeSeries.wavelength_unit = wave_unit
+        # To make the as standard as posible, by defaut change to
+        # mean nomalized data units and use micron as wavelength unit
+        mean_signal, _, _ = \
+            sigma_clipped_stats(SpectralTimeSeries.return_masked_array("data"),
+                                sigma=3, maxiters=10)
+        data_unit = u.Unit(mean_signal*SpectralTimeSeries.data_unit)
+        SpectralTimeSeries.data_unit = data_unit
+        SpectralTimeSeries.wavelength_unit = u.micron
+
         self._define_convolution_kernel()
 
         return SpectralTimeSeries
 
     def _define_convolution_kernel(self):
         """
-        Define the instrument specific convolution kernel which will be used
+        Define the instrument specific convolution kernel.
+
+        This function defines the convolution kernel which can be used
         in the correction procedure of bad pixels
         """
-
         kernel = Gaussian1DKernel(4.0, x_size=19)
 
         try:
@@ -360,9 +394,7 @@ class GenericSpectrograph(InstrumentBase):
         return
 
     def get_spectral_trace(self):
-        """
-        Get spectral trace
-        """
+        """Get spectral trace."""
         dim = self.data.data.shape
         wave_pixel_grid = np.arange(dim[0]) * u.pix
         position_pixel_grid = np.zeros_like(wave_pixel_grid)
