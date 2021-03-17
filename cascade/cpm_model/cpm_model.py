@@ -657,8 +657,9 @@ class regressionDataServer:
         except AttributeError:
             time_offset = 0.0
         fit_lightcurve_model, fit_ld_correcton = \
-            self.lightcurve_model.interpolated_lc_model(self.fit_dataset,
-                                                        time_offset=time_offset)
+            self.lightcurve_model.interpolated_lc_model(
+                self.fit_dataset, time_offset=time_offset
+                                                        )
         self.fit_lightcurve_model = fit_lightcurve_model
         self.fit_ld_correcton = fit_ld_correcton
 
@@ -809,7 +810,6 @@ class regressionDataServer:
         selected_fit_time = \
             self.select_data(self.fit_data_time, selection,
                              bootstrap_indici=bootstrap_indici).data
-        #selected_fit_time = np.ma.median(selected_fit_time, axis=0)
         selected_covariance = \
             np.ma.diag(self.select_data(self.fit_data_uncertainty, selection,
                                         bootstrap_indici=bootstrap_indici)**2)
@@ -1224,7 +1224,8 @@ class regressionParameterServer:
         self.sync_with_data_server(data_server_handle)
         self.reset_parameters()
 
-    def reset_parameter_server(self, cascade_configuration, data_server_handle):
+    def reset_parameter_server(self, cascade_configuration,
+                               data_server_handle):
         """
         Reset the parameter server.
 
@@ -1265,7 +1266,8 @@ class rayRegressionParameterServer(regressionParameterServer):
 
         """
         ndim, shape, ROI, data_unit, wavelength_unit, time_unit, \
-            time_bjd_zero, data_product = ray.get(data_server_handle.get_data_info.remote())
+            time_bjd_zero, data_product = \
+            ray.get(data_server_handle.get_data_info.remote())
         self.data_parameters.ndim = ndim
         self.data_parameters.shape = shape
         self.data_parameters.ROI = ROI
@@ -1413,7 +1415,8 @@ class regressionControler:
         None.
 
         """
-        cpm_parameters = self.parameter_server_handle.get_regression_parameters()
+        cpm_parameters = \
+            self.parameter_server_handle.get_regression_parameters()
         data_parameters = self.parameter_server_handle.get_data_parameters()
         self.iterators.regressor_indici = \
             select_regressors(data_parameters.ROI,
@@ -1736,8 +1739,9 @@ class regressionControler:
             np.ma.array(fit_parameters.error_normed_fitted_spectrum.copy(),
                         mask=bad_wavelength_mask.copy())
         wavelength_normed_spectrum = \
-            np.ma.array(fit_parameters.wavelength_normed_fitted_spectrum.copy(),
-                        mask=bad_wavelength_mask.copy())
+            np.ma.array(
+                fit_parameters.wavelength_normed_fitted_spectrum.copy(),
+                mask=bad_wavelength_mask.copy())
 
         if lightcurve_parameters['transittype'] == 'secondary':
             from cascade.exoplanet_tools import transit_to_eclipse
@@ -1753,7 +1757,8 @@ class regressionControler:
         # bootstraped normalized spectrum
         from astropy.stats import mad_std
         median_depth_bootstrap = np.ma.median(normed_spectrum[1:, :], axis=1)
-        normed_spectrum_bootstrap = np.ma.median(normed_spectrum[1:, :], axis=0)
+        normed_spectrum_bootstrap = \
+            np.ma.median(normed_spectrum[1:, :], axis=0)
         error_normed_spectrum_bootstrap = \
             mad_std((normed_spectrum[1:, :].T - median_depth_bootstrap).T,
                     axis=0, ignore_nan=True)
@@ -1974,7 +1979,8 @@ class rayRegressionControler(regressionControler):
 
         """
         cpm_parameters = \
-            ray.get(self.parameter_server_handle.get_regression_parameters.remote())
+            ray.get(self.parameter_server_handle.
+                    get_regression_parameters.remote())
         data_parameters = \
             ray.get(self.parameter_server_handle.get_data_parameters.remote())
         self.iterators.regressor_indici = \
@@ -2124,7 +2130,7 @@ class regressionWorker:
                                   updated_regularization,
                                   updated_iterator_chunk):
         """
-        Update all parameters,
+        Update all parameters.
 
         Parameters
         ----------

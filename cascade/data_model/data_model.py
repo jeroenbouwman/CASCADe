@@ -456,7 +456,7 @@ class SpectralData(InstanceDescriptorMixin):
                 continue
             if any(isinstance(t, np.str) for t in value):
                 setattr(self, key, AuxilaryInfoDesc(key))
-                setattr(self, key, value)     
+                setattr(self, key, value)
                 continue
             if not hasattr(self, "_" + key + "_unit"):
                 # if unit is not explicitly given, set property
@@ -951,15 +951,15 @@ class SpectralDataTimeSeries(SpectralData):
             return np.ma.array(time_out, mask=self.mask)
         if attr == 'time_bjd':
             if (self.mask.shape == ()) or \
-               (self.mask.shape == self._time.shape):
-                time_out = self._time
+               (self.mask.shape == self._time_bjd.shape):
+                time_out = self._time_bjd
             else:
-                ntile = len(self._time.shape)
+                ntile = len(self._time_bjd.shape)
                 if ntile != 1:
                     raise ValueError("Unkwon time structure")
                 tiling = (self._data.shape[:-1]) + \
                     tuple(np.ones(ntile).astype(int))
-                time_out = np.tile(self._time, tiling)
+                time_out = np.tile(self._time_bjd, tiling)
             if time_out.shape == ():
                 return np.ma.array(np.array([time_out]), mask=self.mask)
             return np.ma.array(time_out, mask=self.mask)
