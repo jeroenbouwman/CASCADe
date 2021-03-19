@@ -1912,15 +1912,17 @@ class lightcurve:
 
         Parameters
         ----------
-        dataset : TYPE
-            DESCRIPTION.
+        dataset : 'cascade.data_model.SpectralDataTimeSeries'
+            Input dataset.
         time_offset : 'float'
-            (optional)
+            (optional) Offset in oribital phase.
 
         Returns
         -------
-        lcmodel_obs : TYPE
-            DESCRIPTION.
+        lcmodel_obs : 'ndarray'
+            Interpolated lightcurve model.
+        ld_correction_obs : 'ndarray'
+            Interposlated limbdarkening correction.
 
         """
         if len(self.lc[0]) == 1:
@@ -1943,6 +1945,33 @@ class lightcurve:
         lcmodel_obs[abs(lcmodel_obs) < tol] = 0.0
 
         return lcmodel_obs, ld_correction_obs
+
+    def return_mid_transit(self, dataset, time_offset=0.0):
+        """
+        Return the mid transit (eclipse) time of a dataset.
+
+        Parameters
+        ----------
+        dataset : 'cascade.data_model.SpectralDataTimeSeries'
+            Input dataset.
+        time_offset : 'float'
+            (optional) Offset in oribital phase.
+
+        Returns
+        -------
+        mid_transit_time : 'float'
+            Mid transit time of input dataset.
+
+        """
+        orbital_phase = dataset.return_masked_array('time')
+        time_bjd = dataset.return_masked_array('time_bjd')
+        f = interpolate.interp1d(
+            orbital_phase.mean(axis=tuple(range(orbital_phase.ndim - 1))),
+            time_bjd.mean(axis=tuple(range(orbital_phase.ndim - 1)))
+                                )
+        mid_transit_time = f([time_offset])
+
+        return mid_transit_time[0]
 
 
 @ray.remote

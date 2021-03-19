@@ -1621,7 +1621,7 @@ class TSOSuite:
                         get_regularization_parameters_from_server.remote())
             control_parameters = \
                 ray.get(rayControler.get_control_parameters.remote())
-            lightcurve_model, ld_correction, lc_parameters =\
+            lightcurve_model, ld_correction, lc_parameters, mid_transit_time =\
                 ray.get(rayControler.get_lightcurve_model.remote())
 
         elapsed_time = time_module.time() - start_time
@@ -1636,6 +1636,7 @@ class TSOSuite:
             self.model.limbdarkning_correction = ld_correction
             self.model.model_parameters = lc_parameters
             self.model.transittype = lc_parameters['transittype']
+            self.model.mid_transit_time = mid_transit_time
 
         try:
             self.calibration_results
@@ -1791,6 +1792,7 @@ class TSOSuite:
                        'VERSION': results.spectrum.VERSION,
                        'CREATIME': results.spectrum.CREATIME,
                        'OBSTIME': str(results.spectrum.OBSTIME),
+                       'MIDTTIME': str(results.spectrum.MIDTTIME),
                        'DATAPROD': results.spectrum.DATAPROD,
                        'ID': observations_id,
                        'FACILITY': observatory,

@@ -660,8 +660,13 @@ class regressionDataServer:
             self.lightcurve_model.interpolated_lc_model(
                 self.fit_dataset, time_offset=time_offset
                                                         )
+        mid_transit_time = \
+            self.lightcurve_model.return_mid_transit(
+                self.fit_dataset, time_offset=time_offset
+                                                     )
         self.fit_lightcurve_model = fit_lightcurve_model
         self.fit_ld_correcton = fit_ld_correcton
+        self.mid_transit_time = mid_transit_time
 
     def get_lightcurve_model(self):
         """
@@ -674,7 +679,7 @@ class regressionDataServer:
 
         """
         return (self.fit_lightcurve_model, self.fit_ld_correcton,
-                self.lightcurve_model.par)
+                self.lightcurve_model.par, self.mid_transit_time)
 
     def unpack_datasets(self):
         """
@@ -915,7 +920,7 @@ class rayRegressionDataServer(regressionDataServer):
     get_data_info = \
         ray.method(num_returns=8)(regressionDataServer.get_data_info)
     get_lightcurve_model =\
-        ray.method(num_returns=3)(regressionDataServer.get_lightcurve_model)
+        ray.method(num_returns=4)(regressionDataServer.get_lightcurve_model)
 
     def sync_with_parameter_server(self, parameter_server_handle):
         """
@@ -1620,8 +1625,8 @@ class regressionControler:
         """
         fit_parameters = self.get_fit_parameters_from_server()
         control_parameters = self.get_control_parameters()
-        lightcurve_model, ld_correction, lightcurve_parameters = \
-            self.get_lightcurve_model()
+        lightcurve_model, ld_correction, lightcurve_parameters, \
+            mid_transit_time = self.get_lightcurve_model()
 
         fitted_baseline_list = []
         residuals_list = []
@@ -1719,8 +1724,8 @@ class regressionControler:
         """
         fit_parameters = self.get_fit_parameters_from_server()
         control_parameters = self.get_control_parameters()
-        lightcurve_model, ld_correction, lightcurve_parameters = \
-            self.get_lightcurve_model()
+        lightcurve_model, ld_correction, lightcurve_parameters, \
+            mid_transit_time = self.get_lightcurve_model()
 
         sigma_cut = 3.0
         bad_wavelength_mask = \
@@ -1789,6 +1794,7 @@ class regressionControler:
                          'VERSION': __version__,
                          'CREATIME': creation_time,
                          'OBSTIME': observing_time,
+                         'MIDTTIME': mid_transit_time,
                          'DATAPROD': data_product}
 
         wavelength_unit = control_parameters.data_parameters.wavelength_unit
@@ -1956,7 +1962,7 @@ class rayRegressionControler(regressionControler):
                     )
         return control_parameters
 
-    @ray.method(num_returns=3)
+    @ray.method(num_returns=4)
     def get_lightcurve_model(self):
         """
         bla.
