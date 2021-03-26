@@ -1179,7 +1179,9 @@ class TSOSuite:
 
         (cleanedDataset, dataset), modeled_observations, \
             corrected_observations = \
-            correct_initial_wavelength_shift(cleanedDataset, dataset)
+            correct_initial_wavelength_shift(cleanedDataset,
+                                             cascade_configuration,
+                                             dataset)
 
         vrbs = Verbose()
         vrbs.execute("check_wavelength_solution",
@@ -1450,6 +1452,7 @@ class TSOSuite:
          rebinnedApertureExtractedDataset), \
             modeled_observations, corrected_observations = \
             correct_initial_wavelength_shift(rebinnedOptimallyExtractedDataset,
+                                             cascade_configuration,
                                              rebinnedApertureExtractedDataset)
 
         from cascade.spectral_extraction import combine_scan_samples

@@ -127,6 +127,7 @@ def load_data_verbose(*args, **kwargs):
         ax.set_xlabel("Wavelength")
         fig_name_extension = "b"
     ax.set_title("First Integration {}.".format(save_name_base))
+    plt.show()
     if save_verbose:
         fig.savefig(os.path.join(save_path, save_name_base +
                                  "_load_data_step_figure1{}.png".

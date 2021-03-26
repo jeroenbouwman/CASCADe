@@ -1667,13 +1667,16 @@ def determine_center_of_light_posision(cleanData, ROI=None, verbose=False,
     return total_light[idx_use], idx, COL[idx_use], ytrace, xtrace
 
 
-def correct_initial_wavelength_shift(referenceDataset, *otherDatasets):
+def correct_initial_wavelength_shift(referenceDataset, cascade_configuration,
+                                     *otherDatasets):
     """
     Determine if there is an initial wavelength shift and correct.
 
     Parameters
     ----------
     referenceDataset : TYPE
+        DESCRIPTION.
+    cascade_configuration : 'cascade.initialize.initialize.configurator'
         DESCRIPTION.
     **otherDatasets : TYPE
         DESCRIPTION.
@@ -1683,7 +1686,7 @@ def correct_initial_wavelength_shift(referenceDataset, *otherDatasets):
     referenceDataset : Type
         DESCRIPTION.
     """
-    model_spectra = SpectralModel()
+    model_spectra = SpectralModel(cascade_configuration)
     wave_shift, error_wave_shift = \
         model_spectra.determine_wavelength_shift(referenceDataset)
     referenceDataset.wavelength = referenceDataset.wavelength+wave_shift

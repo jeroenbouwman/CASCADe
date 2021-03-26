@@ -66,7 +66,8 @@ __all__ = ['Vmag', 'Kmag', 'Rho_jup', 'Rho_jup', 'kmag_to_jy', 'jy_to_kmag',
            'extract_exoplanet_data', 'lightcurve', 'batman_model',
            'masked_array_input', 'eclipse_to_transit', 'transit_to_eclipse',
            'exotethys_model', 'limbdarkning', 'exotethys_stellar_model',
-           'SpectralModel', 'rayLightcurve', 'rayLimbdarkning']
+           'SpectralModel', 'rayLightcurve', 'rayLimbdarkning',
+           'DilutionCorrection']
 
 
 # enable cds to be able to use certain quantities defined in this system
@@ -1984,7 +1985,11 @@ class rayLightcurve(lightcurve):
 
 class exotethys_stellar_model:
     """
-    Class defining stellar model and symulated observations using exotethys.
+    Class defining stellar model and simulated observations using exotethys.
+
+    This class usines the Exotethys package to read a stellar model from
+    a grid of stellar models and an instrument passband to create a
+    simple simulated spectrum of the observed star.
     """
 
     __valid_model_grid = {'Atlas_2000', 'Phoenix_2012_13', 'Phoenix_2018'}
@@ -2045,8 +2050,18 @@ class exotethys_stellar_model:
         model_wavelengths, model_fluxes = \
             boats.get_model_spectrum(InputParameter['stellar_models_grids'],
                                      params=params)
-
-        return wave_sens, sens, model_wavelengths, model_fluxes
+        if InputParameter['apply_dilution_correcton']:
+            params = [InputParameter['Tstar_dilution_object'] * u.K,
+                      InputParameter['logg_dilution_object'],
+                      InputParameter['star_metallicity_dilution_object']]
+            model_wavelengths_dilution_object, model_fluxes_dilution_object = \
+                boats.get_model_spectrum(
+                    InputParameter['stellar_models_grids'], params=params)
+        else:
+            model_wavelengths_dilution_object, model_fluxes_dilution_object = \
+                (None, None)
+        return wave_sens, sens, model_wavelengths, model_fluxes, \
+            model_wavelengths_dilution_object, model_fluxes_dilution_object
 
     def return_par_from_ini(self):
         """
@@ -2082,7 +2097,7 @@ class exotethys_stellar_model:
             raise ValueError("Stellar model grid not recognized, \
                      check your init file for the following \
                      valid model grids: {}. Aborting calculation of \
-                     limbdarkning coefficients".format(self.__valid_model_grid))
+                     stellar model".format(self.__valid_model_grid))
         try:
             save_path = self.cascade_configuration.cascade_save_path
             if not os.path.isabs(save_path):
@@ -2090,8 +2105,12 @@ class exotethys_stellar_model:
             os.makedirs(save_path, exist_ok=True)
         except AttributeError:
             raise AttributeError("No save path defined\
-                                 Aborting defining limbdarkning model")
-
+                                 Aborting defining stellar model")
+        try:
+            model_apply_dilution_correcton = ast.literal_eval(
+                self.cascade_configuration.model_apply_dilution_correcton)
+        except AttributeError:
+            model_apply_dilution_correcton = False
         par = collections.OrderedDict(
             instrument=instrument,
             instrument_filter=instrument_filter,
@@ -2100,8 +2119,35 @@ class exotethys_stellar_model:
             star_metallicity=star_metallicity,
             Tstar=Tstar,
             stellar_models_grids=stellar_models_grids,
-            save_path=save_path
+            save_path=save_path,
+            apply_dilution_correcton=model_apply_dilution_correcton
                                       )
+        if model_apply_dilution_correcton:
+            try:
+                Tstar_dilution_object = u.Quantity(
+                    self.cascade_configuration.dilution_temperature_star)
+                Tstar_dilution_object = Tstar_dilution_object.to(u.K).value
+                star_metallicity_dilution_object = u.Quantity(
+                    self.cascade_configuration.dilution_metallicity_star)
+                star_metallicity_dilution_object = \
+                    star_metallicity_dilution_object.value
+                logg_unit = \
+                    re.split('\\((.*?)\\)',
+                             self.cascade_configuration.dilution_logg_star)[1]
+                logg_dilution_object = u.function.Dex(
+                    self.cascade_configuration.dilution_logg_star,
+                    u.function.DexUnit(logg_unit))
+                logg_dilution_object = \
+                    logg_dilution_object.to(u.dex(u.cm/u.s**2)).value
+                par["Tstar_dilution_object"] = Tstar_dilution_object
+                par["star_metallicity_dilution_object"] = \
+                    star_metallicity_dilution_object
+                par["logg_dilution_object"] = logg_dilution_object
+            except AttributeError:
+                raise AttributeError("model_apply_dilution_correcton is True "
+                                     "but DILUTION parameters not properly "
+                                     "defined ."
+                                     "Aborting defining stellar model")
         return par
 
     def return_par_from_db(self):
@@ -2149,7 +2195,7 @@ class exotethys_stellar_model:
             raise ValueError("Stellar model grid not recognized, \
                      check your init file for the following \
                      valid model grids: {}. Aborting calculation of \
-                     limbdarkning coefficients".format(self.__valid_model_grid))
+                     stellar model".format(self.__valid_model_grid))
         try:
             save_path = self.cascade_configuration.cascade_save_path
             if not os.path.isabs(save_path):
@@ -2157,7 +2203,12 @@ class exotethys_stellar_model:
             os.makedirs(save_path, exist_ok=True)
         except AttributeError:
             raise AttributeError("No save path defined\
-                                 Aborting defining limbdarkning model")
+                                 Aborting defining stellar model")
+        try:
+            model_apply_dilution_correcton = ast.literal_eval(
+                self.cascade_configuration.model_apply_dilution_correcton)
+        except AttributeError:
+            model_apply_dilution_correcton = False
         par = collections.OrderedDict(
             instrument=instrument,
             instrument_filter=instrument_filter,
@@ -2166,8 +2217,35 @@ class exotethys_stellar_model:
             star_metallicity=star_metallicity,
             Tstar=Tstar,
             stellar_models_grids=stellar_models_grids,
-            save_path=save_path
+            save_path=save_path,
+            apply_dilution_correcton=model_apply_dilution_correcton
                                       )
+        if model_apply_dilution_correcton:
+            try:
+                Tstar_dilution_object = u.Quantity(
+                    self.cascade_configuration.dilution_temperature_star)
+                Tstar_dilution_object = Tstar_dilution_object.to(u.K).value
+                star_metallicity_dilution_object = u.Quantity(
+                    self.cascade_configuration.dilution_metallicity_star)
+                star_metallicity_dilution_object = \
+                    star_metallicity_dilution_object.value
+                logg_unit = \
+                    re.split('\\((.*?)\\)',
+                             self.cascade_configuration.dilution_logg_star)[1]
+                logg_dilution_object = u.function.Dex(
+                    self.cascade_configuration.dilution_logg_star,
+                    u.function.DexUnit(logg_unit))
+                logg_dilution_object = \
+                    logg_dilution_object.to(u.dex(u.cm/u.s**2)).value
+                par["Tstar_dilution_object"] = Tstar_dilution_object
+                par["star_metallicity_dilution_object"] = \
+                    star_metallicity_dilution_object
+                par["logg_dilution_object"] = logg_dilution_object
+            except AttributeError:
+                raise AttributeError("model_apply_dilution_correcton is True "
+                                     "but DILUTION parameters not properly "
+                                     "defined ."
+                                     "Aborting defining stellar model")
         return par
 
 
@@ -2177,7 +2255,7 @@ class SpectralModel:
     __valid_models = {'exotethys'}
     __factory_picker = {"exotethys": exotethys_stellar_model}
 
-    def __init__(self):
+    def __init__(self, cascade_configuration):
         self.cascade_configuration = cascade_configuration
         # check if cascade is initialized
         if self.cascade_configuration.isInitialized:
@@ -2276,3 +2354,144 @@ class SpectralModel:
         self.observation = data/np.max(data)
         return (wavelength_shift*wavelength_unit,
                 error_wavelength_shift*wavelength_unit)
+
+
+class DilutionCorrection:
+    """Class defining the dilution correction for an observation."""
+
+    __valid_models = {'exotethys'}
+    __factory_picker = {"exotethys": exotethys_stellar_model}
+
+    def __init__(self, cascade_configuration):
+        self.cascade_configuration = cascade_configuration
+        # check if cascade is initialized
+        if self.cascade_configuration.isInitialized:
+            InputParameter = self.return_par()
+            factory = self.__factory_picker[
+                InputParameter['model_type']
+                                            ](self.cascade_configuration)
+            self.sm = factory.sm
+            self.sm_par = factory.par
+            self.par = InputParameter
+            self.dc = self.calculate_dilution_correcetion()
+        else:
+            raise ValueError("CASCADe not initialized, \
+                                 aborting creation of lightcurve")
+
+    def return_par(self):
+        """
+        Return input parameters.
+
+        Raises
+        ------
+        ValueError
+            DESCRIPTION.
+
+        Returns
+        -------
+        par : TYPE
+            DESCRIPTION.
+
+        """
+        try:
+            apply_dilution_correcton = ast.literal_eval(
+                self.cascade_configuration.model_apply_dilution_correcton)
+        except AttributeError:
+            apply_dilution_correcton = False
+        model_type = self.cascade_configuration.model_type_limb_darkening
+        if not (model_type in self.__valid_models):
+            raise ValueError("Limbdarkning code not recognized, \
+                     check your init file for the following \
+                     valid packages: {}. Aborting calculation of \
+                     limbdarkning coefficients".format(self.__valid_models))
+        par = collections.OrderedDict(
+            apply_dilution_correcton=apply_dilution_correcton,
+            model_type=model_type
+                                    )
+        if apply_dilution_correcton:
+            try:
+                dilution_flux_ratio = ast.literal_eval(
+                    self.cascade_configuration.dilution_flux_ratio)
+                dilution_band_wavelength = u.Quantity(
+                    self.cascade_configuration.dilution_band_wavelength)
+                dilution_band_wavelength = \
+                    dilution_band_wavelength.to(u.micron).value
+                dilution_band_width = u.Quantity(
+                    self.cascade_configuration.dilution_band_width)
+                dilution_band_width = dilution_band_width.to(u.micron).value
+                dilution_wavelength_shift = u.Quantity(
+                    self.cascade_configuration.dilution_wavelength_shift)
+                dilution_wavelength_shift = \
+                    dilution_wavelength_shift.to(u.micron).value
+                par['dilution_flux_ratio'] = dilution_flux_ratio
+                par['dilution_band_wavelength'] = dilution_band_wavelength
+                par['dilution_band_width'] = dilution_band_width
+                par['dilution_wavelength_shift'] = dilution_wavelength_shift
+            except AttributeError:
+                raise AttributeError("model_apply_dilution_correcton is True "
+                                     "but DILUTION parameters not properly "
+                                     "defined ."
+                                     "Aborting DilutionCorrection")
+        return par
+
+    def calculate_dilution_correcetion(self):
+        """
+        Calcultate the dilution correction for the transit depth.
+
+        Returns
+        -------
+        wavelength_dilution_correcetion : 'ndarray'
+            Wavelength.
+        dilution_correcetion : 'ndarray'
+            Dilution corrction.
+
+        """
+        band_grid = np.array([self.par['dilution_band_wavelength'] -
+                              self.par['dilution_band_width']*0.5,
+                              self.par['dilution_band_wavelength'],
+                              self.par['dilution_band_wavelength'] +
+                              self.par['dilution_band_width']*0.5])
+        from cascade.utilities import spectres
+        band_flux_star = spectres(band_grid,
+                                  self.sm[2].to(u.micron).value,
+                                  self.sm[3].value)
+        band_flux_star_dilution = spectres(band_grid,
+                                           self.sm[4].to(u.micron).value,
+                                           self.sm[5].value)
+
+        model_ratio = band_flux_star_dilution[1]/band_flux_star[1]
+
+        spectrum_star_rebin = spectres(self.sm[0].value,
+                                       self.sm[2].to(u.micron).value,
+                                       self.sm[3].value)*self.sm[3].unit
+        sim_target = (spectrum_star_rebin*self.sm[1]).decompose()
+        scaling = np.max(sim_target)
+        sim_target = sim_target/scaling
+
+        spectrum_star_dilution_rebin = \
+            spectres(self.sm[0].value,
+                     self.sm[4].to(u.micron).value,
+                     self.sm[5].value)*self.sm[5].unit
+        wavelength_dilution_correcetion = self.sm[0]
+        dilution_correcetion = (
+            spectrum_star_dilution_rebin*self.sm[1]).decompose()
+        dilution_correcetion = (
+            dilution_correcetion / scaling*self.par['dilution_flux_ratio'] /
+            model_ratio) + 1.0
+        return wavelength_dilution_correcetion, dilution_correcetion
+
+    def interpolated_dc_model(self, dataset):
+        """
+        Interpolate dilution correction to observed wavelengths.
+
+        Parameters
+        ----------
+        dataset : TYPE
+            DESCRIPTION.
+
+        Returns
+        -------
+        None.
+
+        """
+        return
