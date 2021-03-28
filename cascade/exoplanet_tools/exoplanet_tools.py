@@ -53,11 +53,10 @@ import difflib
 import batman
 import ray
 
-from ..initialize import cascade_configuration
+# from ..initialize import cascade_configuration
 from ..initialize import cascade_default_data_path
 from ..initialize import cascade_default_save_path
 from ..data_model import SpectralData
-
 
 __all__ = ['Vmag', 'Kmag', 'Rho_jup', 'Rho_jup', 'kmag_to_jy', 'jy_to_kmag',
            'surface_gravity', 'scale_height', 'transit_depth', 'planck',
@@ -2319,23 +2318,38 @@ class SpectralModel:
             DESCRIPTION.
 
         """
+        from skimage.registration import phase_cross_correlation
+        from ..spectral_extraction import _define_band_limits
+        from ..spectral_extraction import _define_rebin_weights
+        from ..spectral_extraction import _rebin_spectra
+
         if not self.calculatate_shift:
             return 0.0, 0.0
         data = np.mean(dataset.return_masked_array('data'), axis=-1)
         wavelength = np.mean(dataset.return_masked_array('wavelength'),
                              axis=-1)
         wavelength_unit = dataset.wavelength_unit
-        from ..utilities import spectres
-        sens = spectres(wavelength, self.sm[0].to(wavelength_unit).value,
-                        self.sm[1].value)*self.sm[1].unit
 
-        spectrum_star = spectres(wavelength,
-                                 self.sm[2].to(wavelength_unit).value,
-                                 self.sm[3].value) * self.sm[3].unit
+        lr0, ur0 = _define_band_limits(wavelength)
+        lr, ur = _define_band_limits(self.sm[0].to(wavelength_unit).value)
+        weights = _define_rebin_weights(lr0, ur0, lr, ur)
+        sens, _ = \
+            _rebin_spectra(self.sm[1].value,
+                           np.ones_like(self.sm[1].value),
+                           weights)
+        sens = sens*self.sm[1].unit
+
+        lr, ur = _define_band_limits(self.sm[2].to(wavelength_unit).value)
+        weights = _define_rebin_weights(lr0, ur0, lr, ur)
+        spectrum_star, _ = \
+            _rebin_spectra(self.sm[3].value,
+                           np.ones_like(self.sm[3].value),
+                           weights)
+        spectrum_star = spectrum_star*self.sm[3].unit
+
         model_observation = (spectrum_star * sens).decompose()
         model_observation = model_observation/np.max(model_observation)
 
-        from skimage.registration import phase_cross_correlation
         shift = phase_cross_correlation(model_observation[:, np.newaxis],
                                         (data/np.max(data))[:, np.newaxis],
                                         upsample_factor=11, space='real',
@@ -2376,7 +2390,7 @@ class DilutionCorrection:
             self.dc = self.calculate_dilution_correcetion()
         else:
             raise ValueError("CASCADe not initialized, \
-                                 aborting creation of lightcurve")
+                                 aborting creation of dilution correction")
 
     def return_par(self):
         """
@@ -2446,38 +2460,60 @@ class DilutionCorrection:
             Dilution corrction.
 
         """
+        from ..spectral_extraction import _define_band_limits
+        from ..spectral_extraction import _define_rebin_weights
+        from ..spectral_extraction import _rebin_spectra
+
+        if not self.par['apply_dilution_correcton']:
+            return np.array([None]), np.array([1])
         band_grid = np.array([self.par['dilution_band_wavelength'] -
                               self.par['dilution_band_width']*0.5,
                               self.par['dilution_band_wavelength'],
                               self.par['dilution_band_wavelength'] +
                               self.par['dilution_band_width']*0.5])
-        from cascade.utilities import spectres
-        band_flux_star = spectres(band_grid,
-                                  self.sm[2].to(u.micron).value,
-                                  self.sm[3].value)
-        band_flux_star_dilution = spectres(band_grid,
-                                           self.sm[4].to(u.micron).value,
-                                           self.sm[5].value)
 
+        lr0, ur0 = _define_band_limits(band_grid)
+        lr, ur = _define_band_limits(self.sm[2].to(u.micron).value)
+        weights = _define_rebin_weights(lr0, ur0, lr, ur)
+        band_flux_star, _ = \
+            _rebin_spectra(self.sm[3].value,
+                           np.ones_like(self.sm[3].value),
+                           weights)
+        lr, ur = _define_band_limits(self.sm[4].to(u.micron).value)
+        weights = _define_rebin_weights(lr0, ur0, lr, ur)
+        band_flux_star_dilution, _ = \
+            _rebin_spectra(self.sm[5].value,
+                           np.ones_like(self.sm[5].value),
+                           weights)
         model_ratio = band_flux_star_dilution[1]/band_flux_star[1]
 
-        spectrum_star_rebin = spectres(self.sm[0].value,
-                                       self.sm[2].to(u.micron).value,
-                                       self.sm[3].value)*self.sm[3].unit
-        sim_target = (spectrum_star_rebin*self.sm[1]).decompose()
+        lr0, ur0 = _define_band_limits(self.sm[0].value)
+        lr, ur = _define_band_limits(self.sm[2].to(u.micron).value)
+        weights = _define_rebin_weights(lr0, ur0, lr, ur)
+        spectrum_star_rebin, _ = \
+            _rebin_spectra(self.sm[3].value,
+                           np.ones_like(self.sm[3].value),
+                           weights)
+        spectrum_star_rebin = spectrum_star_rebin*self.sm[3].unit
+        sim_target = (spectrum_star_rebin*self.sm[1]).decompose().value
         scaling = np.max(sim_target)
         sim_target = sim_target/scaling
 
+        lr, ur = _define_band_limits(self.sm[4].to(u.micron).value)
+        weights = _define_rebin_weights(lr0, ur0, lr, ur)
+        spectrum_star_dilution_rebin, _ = \
+            _rebin_spectra(self.sm[5].value,
+                           np.ones_like(self.sm[5].value),
+                           weights)
         spectrum_star_dilution_rebin = \
-            spectres(self.sm[0].value,
-                     self.sm[4].to(u.micron).value,
-                     self.sm[5].value)*self.sm[5].unit
+            spectrum_star_dilution_rebin*self.sm[5].unit
+        sim_target_dilution = \
+            (spectrum_star_dilution_rebin*self.sm[1]).decompose().value
+        sim_target_dilution = sim_target_dilution/scaling * \
+            (self.par['dilution_flux_ratio']/model_ratio)
+
         wavelength_dilution_correcetion = self.sm[0]
-        dilution_correcetion = (
-            spectrum_star_dilution_rebin*self.sm[1]).decompose()
-        dilution_correcetion = (
-            dilution_correcetion / scaling*self.par['dilution_flux_ratio'] /
-            model_ratio) + 1.0
+        dilution_correcetion = (sim_target_dilution/(sim_target+1.e-5)) + 1.0
         return wavelength_dilution_correcetion, dilution_correcetion
 
     def interpolated_dc_model(self, dataset):
@@ -2494,4 +2530,21 @@ class DilutionCorrection:
         None.
 
         """
-        return
+        from ..spectral_extraction import _define_band_limits
+        from ..spectral_extraction import _define_rebin_weights
+        from ..spectral_extraction import _rebin_spectra
+
+        wavelength = dataset.return_masked_array('wavelength')
+        nwave, ntime = wavelength.shape
+        if len(self.dc[0]) == 1:
+            dc_obs = np.ones_like(wavelength)
+        else:
+            dc_obs = np.zeros_like(wavelength)
+            for it in range(ntime):
+                lr0, ur0 = _define_band_limits(np.array(wavelength[:, it]))
+                lr, ur = _define_band_limits(self.dc[0])
+                weights = _define_rebin_weights(lr0, ur0, lr, ur)
+                dc_temp, _ = _rebin_spectra(
+                    self.dc[1], np.ones_like(self.dc[1]), weights)
+                dc_obs[:, it] = dc_temp
+        return dc_obs
