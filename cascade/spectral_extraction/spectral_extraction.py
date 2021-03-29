@@ -806,7 +806,7 @@ def extract_spectrum(dataset, ROICube, extractionProfile=None, optimal=False,
         sns.set_context("talk", font_scale=1.5, rc={"lines.linewidth": 2.5})
         sns.set_style("white", {"xtick.bottom": True, "ytick.left": True})
         fig, ax0 = plt.subplots(figsize=(6, 6), nrows=1, ncols=1)
-        for iwave in range(1,8):
+        for iwave in range(1, 8):
             ax0.plot(extractedSpectra[iwave, :])
         ax0.set_title('Extracted 1D spectral timeseries')
         ax0.set_xlabel('Integration #')
@@ -975,7 +975,7 @@ def _determine_relative_source_shift(reference_image, image,
     #                          space=space)
     shift, _, _ = \
         phase_cross_correlation(ref_im, im, upsample_factor=upsampleFactor,
-                             space=space)
+                                space=space)
     relativeImageShiftY = -shift[0]
     relativeImageShiftX = -shift[1]
     return relativeImageShiftY, relativeImageShiftX
@@ -1056,8 +1056,8 @@ def _determine_relative_rotation_and_scale(reference_image, referenceROI,
     #                                upsample_factor=upsampleFactor,
     #                                space='real')
     tparams = phase_cross_correlation(warped_fft_ref_im, warped_fft_im,
-                                   upsample_factor=upsampleFactor,
-                                   space='real')
+                                      upsample_factor=upsampleFactor,
+                                      space='real')
 
     shifts = tparams[0]
     # calculate rotation
@@ -1939,19 +1939,26 @@ def define_limits(wave):
     ur : 'ndarray'
         upper band limits
     """
-    wd = np.empty(wave.shape, dtype=wave.dtype)
-    wd[1:] = np.diff(wave)*0.5
-    wd[0] = wd[1]
-    ur = wave+wd
-    lr = np.roll(ur, 1)
-    lr[0] = wave[0]-wd[0]
+    lr = np.empty(wave.shape, dtype=wave.dtype)
+    ur = np.empty(wave.shape, dtype=wave.dtype)
+    wd = np.diff(wave)*0.5
+    ur[0:-1] = wave[0:-1] + wd
+    ur[-1] = wave[-1] + wd[-1]
+    lr[1:] = wave[1:] - wd
+    lr[0] = wave[0] - wd[0]
+    # wd = np.empty(wave.shape, dtype=wave.dtype)
+    # wd[1:] = np.diff(wave)*0.5
+    # wd[0] = wd[1]
+    # ur = wave+wd
+    # lr = np.roll(ur, 1)
+    # lr[0] = wave[0]-wd[0]
     return (lr, ur)
 
 
 @nb.jit(nopython=True, cache=True)
 def define_limits2(wave):
     """
-    Define the band for each spectroscopic wavelength.
+    Define the band for each spectroscopic wavelength for timeseries data.
 
     Parameters
     ----------
@@ -2135,7 +2142,7 @@ def rebin_to_common_wavelength_grid(dataset, referenceIndex, nrebin=None,
     time = dataset.return_masked_array('time')
 
     idx_min_good, idx_max_good = \
-        np.where(np.all(~wavelength.mask, axis=1))[0][[0,-1]]
+        np.where(np.all(~wavelength.mask, axis=1))[0][[0, -1]]
     min_wavelength = np.max(wavelength[idx_min_good])
     max_wavelength = np.min(wavelength[idx_max_good])
 

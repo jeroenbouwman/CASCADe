@@ -1624,7 +1624,8 @@ class TSOSuite:
                         get_regularization_parameters_from_server.remote())
             control_parameters = \
                 ray.get(rayControler.get_control_parameters.remote())
-            lightcurve_model, ld_correction, lc_parameters, mid_transit_time =\
+            lightcurve_model, ld_correction, dilution_correction, \
+                lc_parameters, mid_transit_time =\
                 ray.get(rayControler.get_lightcurve_model.remote())
 
         elapsed_time = time_module.time() - start_time
@@ -1637,6 +1638,7 @@ class TSOSuite:
         finally:
             self.model.light_curve_interpolated = lightcurve_model
             self.model.limbdarkning_correction = ld_correction
+            self.model.dilution_correction = dilution_correction
             self.model.model_parameters = lc_parameters
             self.model.transittype = lc_parameters['transittype']
             self.model.mid_transit_time = mid_transit_time

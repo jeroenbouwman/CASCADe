@@ -656,7 +656,7 @@ class regressionDataServer:
                 ast.literal_eval(self.cascade_configuration.model_time_offset)
         except AttributeError:
             time_offset = 0.0
-        fit_lightcurve_model, fit_ld_correcton = \
+        fit_lightcurve_model, fit_ld_correcton, fit_dilution_correction = \
             self.lightcurve_model.interpolated_lc_model(
                 self.fit_dataset, time_offset=time_offset
                                                         )
@@ -666,6 +666,7 @@ class regressionDataServer:
                                                      )
         self.fit_lightcurve_model = fit_lightcurve_model
         self.fit_ld_correcton = fit_ld_correcton
+        self.fit_dilution_correction = fit_dilution_correction
         self.mid_transit_time = mid_transit_time
 
     def get_lightcurve_model(self):
@@ -679,6 +680,7 @@ class regressionDataServer:
 
         """
         return (self.fit_lightcurve_model, self.fit_ld_correcton,
+                self.fit_dilution_correction,
                 self.lightcurve_model.par, self.mid_transit_time)
 
     def unpack_datasets(self):
@@ -920,7 +922,7 @@ class rayRegressionDataServer(regressionDataServer):
     get_data_info = \
         ray.method(num_returns=8)(regressionDataServer.get_data_info)
     get_lightcurve_model =\
-        ray.method(num_returns=4)(regressionDataServer.get_lightcurve_model)
+        ray.method(num_returns=5)(regressionDataServer.get_lightcurve_model)
 
     def sync_with_parameter_server(self, parameter_server_handle):
         """
@@ -1625,7 +1627,8 @@ class regressionControler:
         """
         fit_parameters = self.get_fit_parameters_from_server()
         control_parameters = self.get_control_parameters()
-        lightcurve_model, ld_correction, lightcurve_parameters, \
+        lightcurve_model, ld_correction, dilution_correction, \
+            lightcurve_parameters, \
             mid_transit_time = self.get_lightcurve_model()
 
         fitted_baseline_list = []
@@ -1682,8 +1685,8 @@ class regressionControler:
                     ols(lc[:, np.newaxis], data_normed-1.0,
                         covariance=covariance_normed)
 
-                normed_spectrum[ipixel] = normed_depth
-                error_normed_spectrum[ipixel] = error_normed_depth
+                normed_spectrum[ipixel] = normed_depth*dilution_correction[il, 0]
+                error_normed_spectrum[ipixel] = error_normed_depth*dilution_correction[il, 0]
                 wavelength_normed_spectrum[ipixel] = wavelength
 
             fitted_baseline_list.append(baseline_model)
@@ -1724,7 +1727,8 @@ class regressionControler:
         """
         fit_parameters = self.get_fit_parameters_from_server()
         control_parameters = self.get_control_parameters()
-        lightcurve_model, ld_correction, lightcurve_parameters, \
+        lightcurve_model, ld_correction, dilution_correction, \
+            lightcurve_parameters, \
             mid_transit_time = self.get_lightcurve_model()
 
         sigma_cut = 3.0
@@ -1962,7 +1966,7 @@ class rayRegressionControler(regressionControler):
                     )
         return control_parameters
 
-    @ray.method(num_returns=4)
+    @ray.method(num_returns=5)
     def get_lightcurve_model(self):
         """
         bla.

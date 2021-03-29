@@ -66,7 +66,7 @@ __all__ = ['Vmag', 'Kmag', 'Rho_jup', 'Rho_jup', 'kmag_to_jy', 'jy_to_kmag',
            'masked_array_input', 'eclipse_to_transit', 'transit_to_eclipse',
            'exotethys_model', 'limbdarkning', 'exotethys_stellar_model',
            'SpectralModel', 'rayLightcurve', 'rayLimbdarkning',
-           'DilutionCorrection']
+           'DilutionCorrection', 'rayDilutionCorrection']
 
 
 # enable cds to be able to use certain quantities defined in this system
@@ -1313,11 +1313,14 @@ class batman_model:
         """
         planet_radius = \
             (u.Quantity(self.cascade_configuration.object_radius).to(u.m) /
-             u.Quantity(self.cascade_configuration.object_radius_host_star).to(u.m))
+             u.Quantity(self.cascade_configuration.
+                        object_radius_host_star).to(u.m))
         planet_radius = planet_radius.decompose().value
         semi_major_axis = \
-            (u.Quantity(self.cascade_configuration.object_semi_major_axis).to(u.m) /
-             u.Quantity(self.cascade_configuration.object_radius_host_star).to(u.m))
+            (u.Quantity(self.cascade_configuration.
+                        object_semi_major_axis).to(u.m) /
+             u.Quantity(self.cascade_configuration.
+                        object_radius_host_star).to(u.m))
         semi_major_axis = semi_major_axis.decompose().value
         inclination = \
             u.Quantity(self.cascade_configuration.object_inclination).to(u.deg)
@@ -1332,7 +1335,8 @@ class batman_model:
             u.Quantity(self.cascade_configuration.object_ephemeris).to(u.day)
         orbital_period = \
             u.Quantity(self.cascade_configuration.object_period).to(u.day)
-        if not (self.cascade_configuration.observations_type in self.__valid_ttypes):
+        if not (self.cascade_configuration.observations_type in
+                self.__valid_ttypes):
             raise ValueError("Observations type not recognized, \
                      check your init file for the following \
                      valid types: {}. Aborting creation of \
@@ -1403,7 +1407,8 @@ class batman_model:
         orbital_period = (system_info[0]['PER'].quantity[0]).to(u.day)
         orbital_period = orbital_period.value
 
-        if not (self.cascade_configuration.observations_type in self.__valid_ttypes):
+        if not (self.cascade_configuration.observations_type in
+                self.__valid_ttypes):
             raise ValueError("Observations type not recognized, \
                      check your init file for the following \
                      valid types: {}. Aborting creation of \
@@ -1413,7 +1418,8 @@ class batman_model:
         else:
             ttype = 'primary'
         nphase = int(self.cascade_configuration.model_nphase_points)
-        phase_range = u.Quantity(self.cascade_configuration.model_phase_range).value
+        phase_range = \
+            u.Quantity(self.cascade_configuration.model_phase_range).value
         par = collections.OrderedDict(rp=planet_radius,
                                       a=semi_major_axis,
                                       inc=inclination,
@@ -1559,7 +1565,8 @@ class exotethys_model:
             raise ValueError("Stellar model grid not recognized, \
                      check your init file for the following \
                      valid model grids: {}. Aborting calculation of \
-                     limbdarkning coefficients".format(self.__valid_model_grid))
+                     limbdarkning \
+                     coefficients".format(self.__valid_model_grid))
         try:
             save_path = self.cascade_configuration.cascade_save_path
             if not os.path.isabs(save_path):
@@ -1633,7 +1640,8 @@ class exotethys_model:
             raise ValueError("Stellar model grid not recognized, \
                      check your init file for the following \
                      valid model grids: {}. Aborting calculation of \
-                     limbdarkning coefficients".format(self.__valid_model_grid))
+                     limbdarkning \
+                     coefficients".format(self.__valid_model_grid))
         try:
             save_path = self.cascade_configuration.cascade_save_path
             if not os.path.isabs(save_path):
@@ -1689,7 +1697,8 @@ class limbdarkning:
     >>> import cascade
     >>> cascade.initialize.generate_default_initialization()
     >>> path = cascade.initialize.default_initialization_path
-    >>> cascade_param = cascade.initialize.configurator(path+"cascade_default.ini")
+    >>> cascade_param = \
+            cascade.initialize.configurator(path+"cascade_default.ini")
 
     Define  the limbdarkning model specified in the .ini file
 
@@ -1739,7 +1748,8 @@ class limbdarkning:
 
         """
         calculatate_ld_coefficients_flag = ast.literal_eval(
-            self.cascade_configuration.model_calculate_limb_darkening_from_model)
+            self.cascade_configuration.
+            model_calculate_limb_darkening_from_model)
         model_type = self.cascade_configuration.model_type_limb_darkening
         if not (model_type in self.__valid_models):
             raise ValueError("Limbdarkning code not recognized, \
@@ -1754,7 +1764,8 @@ class limbdarkning:
                      limbdarkning coefficients".format(self.__valid_ld_laws))
         limb_darkening_coeff = ast.literal_eval(
             self.cascade_configuration.model_limb_darkening_coeff)
-        if not (self.cascade_configuration.observations_type in self.__valid_ttypes):
+        if not (self.cascade_configuration.observations_type in
+                self.__valid_ttypes):
             raise ValueError("Observations type not recognized, \
                      check your init file for the following \
                      valid types: {}. Aborting creation of \
@@ -1862,7 +1873,8 @@ class lightcurve:
     >>> import cascade
     >>> cascade.initialize.generate_default_initialization()
     >>> path = cascade.initialize.default_initialization_path
-    >>> cascade_param = cascade.initialize.configurator(path+"cascade_default.ini")
+    >>> cascade_param = \
+            cascade.initialize.configurator(path+"cascade_default.ini")
 
     Define  the ligthcurve model specified in the .ini file
 
@@ -1891,6 +1903,8 @@ class lightcurve:
         if self.cascade_configuration.isInitialized:
             # check if model is implemented and pick model
             self.limbdarkning_model = limbdarkning(self.cascade_configuration)
+            self.dilution_correction = \
+                DilutionCorrection(self.cascade_configuration)
             if self.cascade_configuration.model_type in self.__valid_models:
                 if self.cascade_configuration.model_type == 'batman':
                     factory = batman_model(self.cascade_configuration,
@@ -1944,7 +1958,10 @@ class lightcurve:
         tol = 1.e-16
         lcmodel_obs[abs(lcmodel_obs) < tol] = 0.0
 
-        return lcmodel_obs, ld_correction_obs
+        dc_obs = self.dilution_correction.interpolated_dc_model(dataset)
+        # lcmodel_obs = lcmodel_obs / dc_obs.data
+
+        return lcmodel_obs, ld_correction_obs, dc_obs.data
 
     def return_mid_transit(self, dataset, time_offset=0.0):
         """
@@ -1976,7 +1993,7 @@ class lightcurve:
 
 @ray.remote
 class rayLightcurve(lightcurve):
-    """Ray wrapper regressionDataServer class."""
+    """Ray wrapper lightcurve class."""
 
     def __init__(self, cascade_configuration):
         super().__init__(cascade_configuration)
@@ -2472,6 +2489,17 @@ class DilutionCorrection:
                               self.par['dilution_band_wavelength'] +
                               self.par['dilution_band_width']*0.5])
 
+        wavelength_shift = self.par['dilution_wavelength_shift']
+        wavelength_sensitivity = self.sm[0].to(u.micron)
+        sensitivity = self.sm[1]
+        if wavelength_shift != 0.0:
+            wavelength_sensitivity = np.hstack(
+                [wavelength_sensitivity[0]-np.abs(wavelength_shift)*u.micron,
+                 wavelength_sensitivity, wavelength_sensitivity[-1] +
+                 np.abs(wavelength_shift)*u.micron])
+            sensitivity = np.hstack([0.0*sensitivity.unit, sensitivity,
+                                     0.0*sensitivity.unit])
+
         lr0, ur0 = _define_band_limits(band_grid)
         lr, ur = _define_band_limits(self.sm[2].to(u.micron).value)
         weights = _define_rebin_weights(lr0, ur0, lr, ur)
@@ -2487,7 +2515,7 @@ class DilutionCorrection:
                            weights)
         model_ratio = band_flux_star_dilution[1]/band_flux_star[1]
 
-        lr0, ur0 = _define_band_limits(self.sm[0].value)
+        lr0, ur0 = _define_band_limits(wavelength_sensitivity.value)
         lr, ur = _define_band_limits(self.sm[2].to(u.micron).value)
         weights = _define_rebin_weights(lr0, ur0, lr, ur)
         spectrum_star_rebin, _ = \
@@ -2495,9 +2523,9 @@ class DilutionCorrection:
                            np.ones_like(self.sm[3].value),
                            weights)
         spectrum_star_rebin = spectrum_star_rebin*self.sm[3].unit
-        sim_target = (spectrum_star_rebin*self.sm[1]).decompose().value
+        sim_target = (spectrum_star_rebin*sensitivity).decompose().value
         scaling = np.max(sim_target)
-        sim_target = sim_target/scaling
+        sim_target = (sim_target/scaling)[1:-1]
 
         lr, ur = _define_band_limits(self.sm[4].to(u.micron).value)
         weights = _define_rebin_weights(lr0, ur0, lr, ur)
@@ -2508,11 +2536,16 @@ class DilutionCorrection:
         spectrum_star_dilution_rebin = \
             spectrum_star_dilution_rebin*self.sm[5].unit
         sim_target_dilution = \
-            (spectrum_star_dilution_rebin*self.sm[1]).decompose().value
+            (spectrum_star_dilution_rebin*sensitivity).decompose().value
         sim_target_dilution = sim_target_dilution/scaling * \
             (self.par['dilution_flux_ratio']/model_ratio)
 
-        wavelength_dilution_correcetion = self.sm[0]
+        f = interpolate.interp1d(wavelength_sensitivity.value +
+                                 wavelength_shift,
+                                 sim_target_dilution)
+        wavelength_dilution_correcetion = wavelength_sensitivity[1:-1]
+        sim_target_dilution = f(wavelength_dilution_correcetion.value)
+
         dilution_correcetion = (sim_target_dilution/(sim_target+1.e-5)) + 1.0
         return wavelength_dilution_correcetion, dilution_correcetion
 
@@ -2548,3 +2581,11 @@ class DilutionCorrection:
                     self.dc[1], np.ones_like(self.dc[1]), weights)
                 dc_obs[:, it] = dc_temp
         return dc_obs
+
+
+@ray.remote
+class rayDilutionCorrection(DilutionCorrection):
+    """Ray wrapper DilutionCorrection class."""
+
+    def __init__(self, cascade_configuration):
+        super().__init__(cascade_configuration)
