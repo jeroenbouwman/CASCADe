@@ -454,7 +454,7 @@ class SpectralData(InstanceDescriptorMixin):
                 setattr(self, key, AuxilaryInfoDesc(key))
                 setattr(self, key, value)
                 continue
-            if any(isinstance(t, np.str) for t in value):
+            if any(isinstance(t, str) for t in value):
                 setattr(self, key, AuxilaryInfoDesc(key))
                 setattr(self, key, value)
                 continue

@@ -85,6 +85,17 @@ class Generic(ObservatoryBase):
         return "UNKNOWN"
 
     @property
+    def collecting_area(self):
+        """
+        Size of the collecting area of the telescope.
+
+        Returns
+        -------
+        UNKNOWN
+        """
+        return 'UNKNOWN'
+
+    @property
     def NAIF_ID(self):
         """Set to None."""
         return None

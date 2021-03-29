@@ -94,6 +94,17 @@ class Spitzer(ObservatoryBase):
         return "SPACE"
 
     @property
+    def collecting_area(self):
+        """
+        Size of the collecting area of the telescope.
+
+        Returns
+        -------
+        0.64 m**2
+        """
+        return '0.64 m2'
+
+    @property
     def NAIF_ID(self):
         """NAIF_ID of the observatory."""
         return -79

@@ -33,6 +33,7 @@ import numpy as np
 import os
 import re
 import ast
+import warnings
 import urllib
 import collections
 import gc
@@ -2093,8 +2094,12 @@ class exotethys_stellar_model:
         """
         instrument = self.cascade_configuration.instrument
         instrument_filter = self.cascade_configuration.instrument_filter
-        telescope_collecting_area = \
-            u.Quantity(self.cascade_configuration.telescope_collecting_area)
+        try:
+            telescope_collecting_area = \
+                u.Quantity(self.cascade_configuration.telescope_collecting_area)
+        except AttributeError:
+            warnings.warn("Warning: telescope collecting area not defined.")
+            telescope_collecting_area = 1.0*u.m**2
         logg_unit = \
             re.split('\\((.*?)\\)',
                      self.cascade_configuration.object_logg_host_star)[1]
@@ -2203,8 +2208,12 @@ class exotethys_stellar_model:
         star_metallicity = star_metallicity.value
         instrument = self.cascade_configuration.instrument
         instrument_filter = self.cascade_configuration.instrument_filter
-        telescope_collecting_area = \
-            u.Quantity(self.cascade_configuration.telescope_collecting_area)
+        try:
+            telescope_collecting_area = \
+                u.Quantity(self.cascade_configuration.telescope_collecting_area)
+        except AttributeError:
+            warnings.warn("Warning: telescope collecting area not defined.")
+            telescope_collecting_area = 1.0*u.m**2
         stellar_models_grids = \
             self.cascade_configuration.model_stellar_models_grid
         if not (stellar_models_grids in self.__valid_model_grid):
