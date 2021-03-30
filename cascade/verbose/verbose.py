@@ -673,7 +673,8 @@ def calibrate_timeseries_verbose(*args, **kwargs):
     if transittype == 'secondary':
         from cascade.exoplanet_tools import eclipse_to_transit
         TD_temp = eclipse_to_transit(TD_temp)
-    model_lc = np.mean(model.light_curve_interpolated/model.dilution_correction*TD_temp, axis=0) + 1
+    model_lc = np.mean(model.light_curve_interpolated /
+                       model.dilution_correction*TD_temp, axis=0) + 1
 
     fig, axes = plt.subplots(figsize=(18, 12), nrows=1, ncols=1, dpi=200)
     ax0 = axes

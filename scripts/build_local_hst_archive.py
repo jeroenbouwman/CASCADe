@@ -284,6 +284,7 @@ def built_local_hst_archive(init_path, data_path, save_path, no_warnings,
     # All configuration files for the different sections in the
     # initialization files
     OBJECT_CONFIGURATION_FILE = 'object.conf'
+    DILUTION_CONFIGURATION_FILE = 'dilution.conf'
     CATALOG_CONFIGURATION_FILE = 'catalog.conf'
     CASCADE_CONFIGURATION_FILE = 'cascade.conf'
     PROCESSING_CONFIGURATION_FILE = 'processing.conf'
@@ -381,7 +382,7 @@ def built_local_hst_archive(init_path, data_path, save_path, no_warnings,
         # get or calculate all parameters needed for the observations and
         # instrument sections in the .ini file
 #        OBS_ID = long_substr(data_file_id)
-        
+
         OBS_ID = OBS_ID_DICT[PLANET_NAME][visit]['obs_id']
         OBS_ID_DIR = OBS_ID_DICT[PLANET_NAME][visit]['obs_id_dir']
 
@@ -428,7 +429,8 @@ def built_local_hst_archive(init_path, data_path, save_path, no_warnings,
 
         # create list with the configuration files to use
         configuration_file_list = [OBJECT_CONFIGURATION_FILE,
-                                   CATALOG_CONFIGURATION_FILE]
+                                   CATALOG_CONFIGURATION_FILE,
+                                   DILUTION_CONFIGURATION_FILE]
 
         # create initialization file parser object
         IFP = \

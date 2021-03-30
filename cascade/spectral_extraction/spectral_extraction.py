@@ -19,7 +19,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright (C) 2018, 2019, 2020  Jeroen Bouwman
+# Copyright (C) 2018, 2019, 2020, 2021  Jeroen Bouwman
 """
 This Module defines spectral extraction functionality used in cascade
 """
@@ -30,11 +30,9 @@ from functools import partial
 import collections
 import warnings
 import copy
-# import os
 from psutil import virtual_memory, cpu_count
 from tqdm import tqdm
 import multiprocessing as mp
-import numba as nb
 import joblib
 from itertools import zip_longest
 import statsmodels.api as sm
@@ -62,6 +60,9 @@ from ..data_model import SpectralDataTimeSeries
 from ..data_model import MeasurementDesc
 from ..data_model import AuxilaryInfoDesc
 from ..exoplanet_tools import SpectralModel
+from ..utilities import _define_band_limits
+from ..utilities import _define_rebin_weights
+from ..utilities import _rebin_spectra
 
 __all__ = ['directional_filters', 'create_edge_mask',
            'determine_optimal_filter', 'define_image_regions_to_be_filtered',
@@ -73,7 +74,6 @@ __all__ = ['directional_filters', 'create_edge_mask',
            '_determine_relative_rotation_and_scale', '_derotate_image',
            '_pad_to_size', '_pad_region_of_interest_to_square',
            'correct_wavelength_for_source_movent',
-           '_define_band_limits', '_define_rebin_weights', '_rebin_spectra',
            'rebin_to_common_wavelength_grid',
            'determine_center_of_light_posision',
            'determine_absolute_cross_dispersion_position',
@@ -1894,217 +1894,6 @@ def correct_wavelength_for_source_movent(datasetIn, spectral_movement,
         if verboseSaveFile is not None:
             fig.savefig(verboseSaveFile, bbox_inches='tight')
     return dataset_out
-
-
-@nb.vectorize(["float64(int64,int64,int64,int64)",
-               "float32(float32, float32, float32, float32)",
-              "float64(float64, float64, float64, float64)"])
-def overlap(min1, max1, min2, max2):
-    """
-    Determine the overlap between two intervals.
-
-    Parameters
-    ----------
-    min1 : 'float'
-        minimum interval 1
-    max1 : 'float'
-        maximum interval 1
-    min2 : 'float'
-        minimum interval 2
-    max2 : 'float'
-        maximum interval 2
-
-    Returns
-    -------
-    overlap : 'float'
-        overlapping range
-    """
-    return max(0, min(max1, max2) - max(min1, min2))
-
-
-@nb.jit(nopython=True, cache=True)
-def define_limits(wave):
-    """
-    Define the band for each spectroscopic wavelength.
-
-    Parameters
-    ----------
-    wave : 'ndarray'
-         Wavelengths (1D array)
-
-    Returns
-    -------
-    lr : 'ndarray'
-        lower band limits
-    ur : 'ndarray'
-        upper band limits
-    """
-    lr = np.empty(wave.shape, dtype=wave.dtype)
-    ur = np.empty(wave.shape, dtype=wave.dtype)
-    wd = np.diff(wave)*0.5
-    ur[0:-1] = wave[0:-1] + wd
-    ur[-1] = wave[-1] + wd[-1]
-    lr[1:] = wave[1:] - wd
-    lr[0] = wave[0] - wd[0]
-    # wd = np.empty(wave.shape, dtype=wave.dtype)
-    # wd[1:] = np.diff(wave)*0.5
-    # wd[0] = wd[1]
-    # ur = wave+wd
-    # lr = np.roll(ur, 1)
-    # lr[0] = wave[0]-wd[0]
-    return (lr, ur)
-
-
-@nb.jit(nopython=True, cache=True)
-def define_limits2(wave):
-    """
-    Define the band for each spectroscopic wavelength for timeseries data.
-
-    Parameters
-    ----------
-    wave : 'ndarray'
-         Wavelengths (2D array)
-
-    Returns
-    -------
-    lr : 'ndarray'
-        lower band limits
-    ur : 'ndarray'
-        upper band limits
-    """
-    nwave, ntime = wave.shape
-    ur = np.empty((nwave, ntime), dtype=wave.dtype)
-    lr = np.empty((nwave, ntime), dtype=wave.dtype)
-    w = np.empty((nwave), dtype=wave.dtype)
-    for it in nb.prange(ntime):
-        w[:] = wave[:, it]
-        ls, us = define_limits(w)
-        ur[:, it] = us
-        lr[:, it] = ls
-    return (lr, ur)
-
-
-def _define_band_limits(wave):
-    """
-    Define the limits of the rebin intervals.
-
-    Parameters
-    ----------
-    wave : 'ndarray' of 'float'
-        Wavelengths (1D or 2D array)
-
-    Returns
-    -------
-    limits : 'tuple'
-        lower and upper band limits
-
-    Raises
-    ------
-    TypeError
-        When the input wavelength array has more than 2 dimensions
-    ValueError
-        When the wavelength is not defined for each data point
-    """
-    if isinstance(wave, np.ma.core.MaskedArray):
-        waveUse = wave.data
-    else:
-        waveUse = wave
-    if (not np.all(np.isfinite(waveUse))) | np.any(waveUse <= 0.0):
-        raise ValueError("Wavelength not defined for each data point. " +
-                         "Stopping rebin")
-    ndim = wave.ndim
-    if ndim == 1:
-        return define_limits(waveUse)
-    elif ndim == 2:
-        return define_limits2(waveUse)
-    else:
-        raise TypeError("input wavelength array can have at most 2 dimensions")
-
-
-@nb.jit(nopython=True, cache=True)
-def define_weights(lr0, ur0, lr, ur):
-    nwave = lr.shape[0]
-    nwave0 = lr0.shape[0]
-    weights = np.zeros((nwave0, nwave), dtype=lr.dtype)
-    for it in nb.prange(nwave0):
-        wlr0 = lr0[it]
-        wur0 = ur0[it]
-        weights[it, :] = overlap(wlr0, wur0, lr, ur)
-    return weights
-
-
-@nb.jit(nopython=True, cache=True)
-def define_weights2(lr0, ur0, lr, ur):
-    nwave, ntime = lr.shape
-    nwave0 = lr0.shape[0]
-    weights = np.zeros((nwave0, nwave, ntime), dtype=lr.dtype)
-    for it in nb.prange(nwave0):
-        wlr0 = lr0[it]
-        wur0 = ur0[it]
-        weights[it, :, :] = overlap(wlr0, wur0, lr.T, ur.T).T
-    return weights
-
-
-def _define_rebin_weights(lr0, ur0, lr, ur):
-    """
-    Define the weights used in spectral rebin.
-
-    Define the summation weights (i.e. the fractions of the original intervals
-    used in the new interval after rebinning)
-
-    Parameters
-    ----------
-    lr0 : 'ndarray'
-        lower limits wavelength band of new wavelength grid
-    ur0 : 'ndarray'
-        upper limits wavelength band of new wavelength grid
-    lr : 'ndarray'
-        lower limits
-    ur : 'ndarray'
-        upper limits
-
-    Returns
-    -------
-    weights : 'ndarray' of 'float'
-        Summation weights used to rebin to new wavelength grid
-    Raises
-    ------
-    TypeError
-       When the input wavelength array has more than 2 dimensions.
-    """
-    ndim = lr.ndim
-    if ndim == 1:
-        return define_weights(lr0, ur0, lr, ur)
-    elif ndim == 2:
-        return define_weights2(lr0, ur0, lr, ur)
-    else:
-        raise TypeError("input wavelength array can have at most 2 dimensions")
-
-
-def _rebin_spectra(spectra, errors, weights):
-    """
-    Rebin spectra.
-
-    Parameters
-    ----------
-    spectra : 'ndarray'
-        Input spectral data values
-    errors: 'ndarray'
-        Input error on spectral data values
-    weights: 'ndarray'
-        rebin weights
-
-    Returns
-    -------
-    newSpectra: 'ndarray'
-        Output spectra
-    newErrors: 'ndarray'
-        Output error
-    """
-    norm = np.sum(weights, axis=1)
-    newSpectra = np.sum(weights*spectra, axis=1)/norm
-    newErrors = np.sqrt(np.sum(weights**2*errors**2, axis=1)/norm**2)
-    return newSpectra, newErrors
 
 
 def rebin_to_common_wavelength_grid(dataset, referenceIndex, nrebin=None,

@@ -20,7 +20,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright (C) 2018, 2020  Jeroen Bouwman
+# Copyright (C) 2018, 2020, 2021  Jeroen Bouwman
 
 """
 The TSO module is the main module of the CASCADe package.
@@ -46,17 +46,19 @@ from astropy.io import ascii
 from matplotlib import pyplot as plt
 import seaborn as sns
 
-from ..cpm_model import regressionControler
-from ..cpm_model import rayRegressionControler
-from ..data_model import SpectralData
-from ..exoplanet_tools import convert_spectrum_to_brighness_temperature
 from ..initialize import (cascade_configuration, configurator)
 from ..initialize import cascade_default_initialization_path
 from ..initialize import cascade_default_save_path
 from ..initialize import cascade_default_data_path
-from ..instruments import Observation
 from ..utilities import write_timeseries_to_fits
 from ..utilities import write_spectra_to_fits
+from ..utilities import _define_band_limits
+from ..utilities import _define_rebin_weights
+from ..utilities import _rebin_spectra
+from ..verbose import Verbose
+from ..data_model import SpectralData
+from ..exoplanet_tools import convert_spectrum_to_brighness_temperature
+from ..instruments import Observation
 from ..spectral_extraction import define_image_regions_to_be_filtered
 from ..spectral_extraction import iterative_bad_pixel_flagging
 from ..spectral_extraction import directional_filters
@@ -73,11 +75,8 @@ from ..spectral_extraction import compressROI
 from ..spectral_extraction import compressSpectralTrace
 from ..spectral_extraction import compressDataset
 from ..spectral_extraction import correct_initial_wavelength_shift
-from ..spectral_extraction import _define_band_limits
-from ..spectral_extraction import _define_rebin_weights
-from ..spectral_extraction import _rebin_spectra
-from ..verbose import Verbose
-
+from ..cpm_model import regressionControler
+from ..cpm_model import rayRegressionControler
 
 __all__ = ['TSOSuite',
            'combine_observations']
@@ -529,7 +528,6 @@ class TSOSuite:
             cleanedDataset = \
                 create_cleaned_dataset(datasetIn, ROIcube, kernel,
                                        stdv_kernel_time)
-# BUG FIX
             if len(cleanedDataset.mask) == 1:
                 cleanedDataset.mask = np.ma.getmaskarray(cleanedDataset.data)
             self.cpm.cleaned_dataset = cleanedDataset
@@ -1111,17 +1109,6 @@ class TSOSuite:
             self.cpm.extraction_mask = [ExtractionMask[..., 0]]
             return
         else:
-            # BUG FIX
-            # ExtractionMask = np.zeros(dim, dtype=bool)
-            #
-            # for itime, (image, pos) in enumerate(
-            #         zip(ExtractionMask.T, (position+medianPosition))):
-            #     image.T[:, np.round(spectralTrace['positional_pixel'].value +
-            #                         pos).astype(int)] = True
-            #     selim = np.zeros((nExtractionWidth, nExtractionWidth), dtype=bool)
-            #     selim[nExtractionWidth//2, :] = True
-            #     image_new = binary_dilation(image.T, selim)
-            #     ExtractionMask[..., itime] = ~image_new
             ExtractionMask = np.zeros(dim, dtype=bool)
             wave_index = np.arange(dim[0])
             for itime, pos in enumerate(position+medianPosition):
@@ -1822,13 +1809,14 @@ def combine_observations(target_name, observations_ids, path=None,
     Parameters
     ----------
     target_name : 'str'
-        DESCRIPTION.
+        Name of the target.
     observations_ids : 'list' of 'str'
-        DESCRIPTION.
+        Unique idensifier for each observations to be combined.
     path : 'str', optional
-        DESCRIPTION. The default is None.
+        Path to data. The default is None.
     verbose : 'bool', optional
-        DESCRIPTION. The default is True.
+        Flag, if True, will cause CASCAde to produce verbose output (plots).
+        The default is True.
 
     Returns
     -------

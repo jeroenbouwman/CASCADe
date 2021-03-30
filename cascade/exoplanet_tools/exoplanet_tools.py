@@ -20,7 +20,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright (C) 2018, 2019  Jeroen Bouwman
+# Copyright (C) 2018, 2019, 2021  Jeroen Bouwman
 """
 Exoplanet Tools Module.
 
@@ -54,10 +54,12 @@ import difflib
 import batman
 import ray
 
-# from ..initialize import cascade_configuration
 from ..initialize import cascade_default_data_path
 from ..initialize import cascade_default_save_path
 from ..data_model import SpectralData
+from ..utilities import _define_band_limits
+from ..utilities import _define_rebin_weights
+from ..utilities import _rebin_spectra
 
 __all__ = ['Vmag', 'Kmag', 'Rho_jup', 'Rho_jup', 'kmag_to_jy', 'jy_to_kmag',
            'surface_gravity', 'scale_height', 'transit_depth', 'planck',
@@ -1987,7 +1989,10 @@ class lightcurve:
             orbital_phase.mean(axis=tuple(range(orbital_phase.ndim - 1))),
             time_bjd.mean(axis=tuple(range(orbital_phase.ndim - 1)))
                                 )
-        mid_transit_time = f([time_offset])
+        if self.par['transittype'] == 'primary':
+            mid_transit_time = f([time_offset])
+        else:
+            mid_transit_time = f([time_offset+0.5])
 
         return mid_transit_time[0]
 
@@ -2095,8 +2100,8 @@ class exotethys_stellar_model:
         instrument = self.cascade_configuration.instrument
         instrument_filter = self.cascade_configuration.instrument_filter
         try:
-            telescope_collecting_area = \
-                u.Quantity(self.cascade_configuration.telescope_collecting_area)
+            telescope_collecting_area = u.Quantity(
+                self.cascade_configuration.telescope_collecting_area)
         except AttributeError:
             warnings.warn("Warning: telescope collecting area not defined.")
             telescope_collecting_area = 1.0*u.m**2
@@ -2209,8 +2214,8 @@ class exotethys_stellar_model:
         instrument = self.cascade_configuration.instrument
         instrument_filter = self.cascade_configuration.instrument_filter
         try:
-            telescope_collecting_area = \
-                u.Quantity(self.cascade_configuration.telescope_collecting_area)
+            telescope_collecting_area = u.Quantity(
+                self.cascade_configuration.telescope_collecting_area)
         except AttributeError:
             warnings.warn("Warning: telescope collecting area not defined.")
             telescope_collecting_area = 1.0*u.m**2
@@ -2345,9 +2350,9 @@ class SpectralModel:
 
         """
         from skimage.registration import phase_cross_correlation
-        from ..spectral_extraction import _define_band_limits
-        from ..spectral_extraction import _define_rebin_weights
-        from ..spectral_extraction import _rebin_spectra
+        # from ..spectral_extraction import _define_band_limits
+        # from ..spectral_extraction import _define_rebin_weights
+        # from ..spectral_extraction import _rebin_spectra
 
         if not self.calculatate_shift:
             return 0.0, 0.0
@@ -2486,9 +2491,9 @@ class DilutionCorrection:
             Dilution corrction.
 
         """
-        from ..spectral_extraction import _define_band_limits
-        from ..spectral_extraction import _define_rebin_weights
-        from ..spectral_extraction import _rebin_spectra
+        # from ..spectral_extraction import _define_band_limits
+        # from ..spectral_extraction import _define_rebin_weights
+        # from ..spectral_extraction import _rebin_spectra
 
         if not self.par['apply_dilution_correcton']:
             return np.array([None]), np.array([1])
@@ -2572,9 +2577,9 @@ class DilutionCorrection:
         None.
 
         """
-        from ..spectral_extraction import _define_band_limits
-        from ..spectral_extraction import _define_rebin_weights
-        from ..spectral_extraction import _rebin_spectra
+        # from ..spectral_extraction import _define_band_limits
+        # from ..spectral_extraction import _define_rebin_weights
+        # from ..spectral_extraction import _rebin_spectra
 
         wavelength = dataset.return_masked_array('wavelength')
         nwave, ntime = wavelength.shape

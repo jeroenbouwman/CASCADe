@@ -362,6 +362,7 @@ def generate_default_initialization(observatory='HST', data='SPECTRUM',
                      'cpm_lam1': '1.0e3',
                      'cpm_nlam': '150',
                      'cpm_deltapix': '7',
+                     'cpm_ncut_first_integrations': '10',
                      'cpm_nbootstrap': '250',
                      'cpm_regularization_method': 'value',
                      'cpm_add_time': 'True',
@@ -375,7 +376,8 @@ def generate_default_initialization(observatory='HST', data='SPECTRUM',
                        'model_calculate_limb_darkening_from_model': 'False',
                        'model_limb_darkening_coeff': '[0.0, 0.0]',
                        'model_nphase_points': '10000',
-                       'model_phase_range': '0.5'}
+                       'model_phase_range': '0.5',
+                       'model_apply_dilution_correcton': 'False'}
 
     if observatory == 'SPITZER':
         config['INSTRUMENT'] = {'instrument_observatory': observatory,
@@ -442,6 +444,13 @@ def generate_default_initialization(observatory='HST', data='SPECTRUM',
                          'catalog_name': 'EXOPLANETS.ORG',
                          'catalog_update': 'True',
                          'catalog_search_radius': '1 arcmin'}
+    config['DILUTION'] = {'dilution_temperature_star': '3700.0 K',
+                          'dilution_metallicity_star': '0.32 dex',
+                          'dilution_logg_star': '5.0 dex(cm / s2)',
+                          'dilution_flux_ratio': '0.0692',
+                          'dilution_band_wavelength': '1.32 micron',
+                          'dilution_band_width': '0.1 micron',
+                          'dilution_wavelength_shift': '0.02 micron'}
 
     with open(path + 'cascade_default.ini', 'w') as configfile:
         config.write(configfile)
