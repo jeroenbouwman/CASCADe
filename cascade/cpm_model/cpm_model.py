@@ -20,7 +20,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright (C) 2018, 2020  Jeroen Bouwman
+# Copyright (C) 2018, 2020, 2021  Jeroen Bouwman
 """
 The cpm_model module defines the solver and other functionality for the
 regression model used in causal pixel model.
@@ -1326,7 +1326,7 @@ class regressionControler:
         ----------
         dataset : 'cascade.data_model.data_model.SpectralDataTimeSeries'
             The spectral timeseries dataset to be modeled.
-        regressor_dataset : 'cascade.data_model.data_model.SpectralDataTimeSeries'
+        regressor_dataset : 'cascade.data_model.SpectralDataTimeSeries'
             The cleaned version of the spectral timeseries dataset used for
             construnction the regression matrici.
 
@@ -1483,7 +1483,7 @@ class regressionControler:
             else:
                 stop = chunk_size+i*chunk_size
             chunk_it = itertools.islice(sub_it, start, stop)
-            yield list(chunk_it), stop-start  # BUG FIX RAY PICKLE
+            yield list(chunk_it), stop-start
 
     def chunk_iterators(self, nchunks=1):
         """
@@ -1685,8 +1685,10 @@ class regressionControler:
                     ols(lc[:, np.newaxis], data_normed-1.0,
                         covariance=covariance_normed)
 
-                normed_spectrum[ipixel] = normed_depth*dilution_correction[il, 0]
-                error_normed_spectrum[ipixel] = error_normed_depth*dilution_correction[il, 0]
+                normed_spectrum[ipixel] = \
+                    normed_depth*dilution_correction[il, 0]
+                error_normed_spectrum[ipixel] = \
+                    error_normed_depth*dilution_correction[il, 0]
                 wavelength_normed_spectrum[ipixel] = wavelength
 
             fitted_baseline_list.append(baseline_model)
