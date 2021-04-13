@@ -20,9 +20,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 # Copyright (C) 2018, 2019, 2020, 2021  Jeroen Bouwman
-"""
-This Module defines spectral extraction functionality used in cascade
-"""
+"""Module defining the spectral extraction functionality used in cascade."""
 
 import numpy as np
 import math

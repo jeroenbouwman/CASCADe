@@ -21,9 +21,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 # Copyright (C) 2018, 2021  Jeroen Bouwman
-"""
-This Module defines some utility functions used in cascade
-"""
+"""Module defiing utility functions used in cascade."""
 
 import os
 import glob

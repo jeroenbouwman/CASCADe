@@ -20,9 +20,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 # Copyright (C) 2018, 2019, 2021  Jeroen Bouwman
-"""
-HST Observatory and Instruments specific module of the CASCADe package
-"""
+"""HST Observatory and Instruments specific module of the CASCADe package."""
 
 import os
 import collections
@@ -1102,13 +1100,13 @@ class HSTWFC3(InstrumentBase):
         spectral_scan_offset1 = spectral_scan_offset1[idx_time_sort]
         spectral_data_nrptexp = spectral_data_nrptexp[idx_time_sort]
 
-        med_nrptexp = np.median(spectral_data_nrptexp)
-        idx_remove1 = spectral_data_nrptexp != med_nrptexp
+        # med_nrptexp = np.median(spectral_data_nrptexp)
+        # idx_remove1 = spectral_data_nrptexp != med_nrptexp
         med_number_of_samples = np.median(spectral_image_number_of_samples)
-        idx_remove2 = spectral_image_number_of_samples > med_number_of_samples
+        idx_remove = spectral_image_number_of_samples > med_number_of_samples
 #        idx_remove = idx_remove1 | idx_remove2
 # BUG FIX reversion
-        idx_remove = idx_remove2
+        # idx_remove = idx_remove2
         time = time[~idx_remove]
         spectral_sampling_time = spectral_sampling_time[~idx_remove]
         spectral_image_cube = spectral_image_cube[~idx_remove, :, :]

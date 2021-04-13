@@ -24,6 +24,7 @@
 
 """
 The TSO module is the main module of the CASCADe package.
+
 The classes defined in this module define the time series object and
 all routines acting upon the TSO instance to extract the spectrum of the
 transiting exoplanet.
@@ -1584,7 +1585,8 @@ class TSOSuite:
             regularization = \
                 Controler.get_regularization_parameters_from_server()
             control_parameters = Controler.get_control_parameters()
-            lightcurve_model, ld_correction, lc_parameters =\
+            lightcurve_model, ld_correction, dilution_correction, \
+                lc_parameters, mid_transit_time =\
                 Controler.get_lightcurve_model()
         else:
             num_cpus = psutil.cpu_count(logical=True)
