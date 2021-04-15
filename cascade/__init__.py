@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*
 """
-CASCADe init file
+CASCADe init file.
 
-@author: bouwman
+@author: Jeroen Bouwman
 """
 
 __version__ = "1.0.2"

@@ -3,15 +3,15 @@ channels:
   - defaults
   - conda-forge
 dependencies:
-  - python=3.8.5
-  - ipython=7.20.0
-  - pip=20.3.3
+  - python=3.8.8
+  - ipython=7.22.0
+  - pip=21.0.1
   - qt=5.9.7
   - numpy=1.19.2
-  - scipy=1.6.0
-  - matplotlib=3.3.2
+  - scipy=1.6.2
+  - matplotlib=3.3.4
   - seaborn
-  - astropy=4.2
+  - astropy=4.2.1
   - jplephem=2.15
   - photutils
   - astroquery
@@ -23,7 +23,7 @@ dependencies:
   - setuptools
   - cython
   - networkx
-  - pytest=6.2.2
+  - pytest=6.2.3
   - tqdm
   - libgcc-ng
   - libgfortran-ng

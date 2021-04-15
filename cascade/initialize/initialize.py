@@ -20,7 +20,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright (C) 2018  Jeroen Bouwman
+# Copyright (C) 2018, 2021  Jeroen Bouwman
 """
 CASCADe initialization module.
 
@@ -41,8 +41,8 @@ CASCADEe used the following environment variables:
     CASCADE_LOG_PATH:
         Default directory for logfiles.
 
-Attributes:
------------
+Attributes
+----------
 cascade_default_path : 'str'
     CASCADe default path
 cascade_default_data_path : 'str'
