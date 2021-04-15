@@ -25,8 +25,6 @@ dependencies:
   - networkx
   - pytest=6.2.3
   - tqdm
-  - libgcc-ng
-  - libgfortran-ng
   - numba
   - aiohttp
   - psutil
@@ -38,5 +36,5 @@ dependencies:
   - statsmodels
   - pip:
     - ray==1.2.0
-    - batman-package==2.4.6
+    - batman-package==2.4.7
     - git+https://github.com/ucl-exoplanets/ExoTETHyS.git@master
