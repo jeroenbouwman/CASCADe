@@ -385,10 +385,13 @@ def calibrate_timeseries_verbose(*args, **kwargs):
         return
     if "dataset" not in kwargs.keys():
         return
+    if "cleaned_dataset" not in kwargs.keys():
+        return
     exoplanet_spectrum = kwargs["exoplanet_spectrum"]
     calibration_results = kwargs["calibration_results"]
     model = kwargs["model"]
     dataset = kwargs["dataset"]
+    cleaned_dataset = kwargs["cleaned_dataset"]
 
     #######################################
     #  Fit quality and regularization
@@ -624,10 +627,13 @@ def calibrate_timeseries_verbose(*args, **kwargs):
     sns.set_style("white", {"xtick.bottom": True, "ytick.left": True})
     residual_unit = dataset.data.data.unit
     calibration_mask = calibration_results.fitted_systematics_bootstrap.mask
+    roi_cube = cleaned_dataset.data.mask
     image_res = \
         np.ma.array(calibration_results.
-                    residuals[0, ...]*residual_unit,
-                    mask=np.ma.logical_or(dataset.mask, calibration_mask))
+                    residuals[0, ~np.all(roi_cube, axis=1), ...]*residual_unit,
+                    mask=np.ma.logical_or(
+                        dataset.mask[~np.all(roi_cube, axis=1), ...],
+                        calibration_mask))
     image_res.set_fill_value(np.nan)
     image_res = image_res.filled().value
     wave0 = dataset.wavelength.copy()
@@ -665,7 +671,9 @@ def calibrate_timeseries_verbose(*args, **kwargs):
     systematics_model = calibration_results.fitted_systematics_bootstrap
     systematics = systematics_model.return_masked_array('data')
     time_systematics = systematics_model.return_masked_array('time')
-    uncal_data = dataset.return_masked_array('data').copy()
+    uncal_data = \
+        dataset.return_masked_array('data').copy()[~np.all(roi_cube,
+                                                           axis=1), ...]
     uncal_data.mask = np.ma.logical_or(uncal_data.mask, systematics.mask)
     cal_data = uncal_data/systematics
 # Bug Fix

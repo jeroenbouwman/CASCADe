@@ -974,23 +974,34 @@ class TSOSuite:
                             spectralMovement,
                             verbose=verbose,
                             verboseSaveFile=verboseSaveFile)
-                    # correct ROI for possibly beeing not rectangular
-                    # and make sure the mask of the cleaned data = ROI
+
+                    # fix for issue 82
                     cleaned_data = cleanedDataset.return_masked_array('data')
-                    corrected_mask = np.all(cleaned_data.mask, axis=2)
-                    sub_mask = np.zeros((corrected_mask.shape[0]), dtype=bool)
-                    for i in corrected_mask.T:
-                        if not np.all(i):
-                            sub_mask[i] = True
-                    corrected_mask[sub_mask, ...] = True
-                    dim = cleaned_data.data.shape
-                    ndim = cleaned_data.data.ndim
-                    corrected_mask_cube = \
-                        np.tile(corrected_mask.T, (dim[-1],)+(1,)*(ndim-1)).T
-                    cleanedDataset.mask = corrected_mask_cube
+                    roi_cube = cleaned_data.mask.copy()
+                    nw, nx, nt = cleaned_data.shape
+                    corrected_mask = \
+                        ~((np.sum(cleaned_data.mask, axis=2) == 0) |
+                          (np.sum(cleaned_data.mask, axis=2) == nt))
+                    corrected_mask = np.tile(corrected_mask.T, (nt, 1, 1)).T
+                    corrected_mask = np.ma.logical_or(roi_cube, corrected_mask)
+                    cleanedDataset.mask = corrected_mask
+                    # # correct ROI for possibly beeing not rectangular
+                    # # and make sure the mask of the cleaned data = ROI
+                    # cleaned_data = cleanedDataset.return_masked_array('data')
+                    # corrected_mask = np.all(cleaned_data.mask, axis=2)
+                    # sub_mask = np.zeros((corrected_mask.shape[0]), dtype=bool)
+                    # for i in corrected_mask.T:
+                    #     if not np.all(i):
+                    #         sub_mask[i] = True
+                    # corrected_mask[sub_mask, ...] = True
+                    # dim = cleaned_data.data.shape
+                    # ndim = cleaned_data.data.ndim
+                    # corrected_mask_cube = \
+                    #     np.tile(corrected_mask.T, (dim[-1],)+(1,)*(ndim-1)).T
+                    # cleanedDataset.mask = corrected_mask_cube
                     self.cpm.cleaned_dataset = cleanedDataset
                     self.observation.instrument_calibration.roi = \
-                        corrected_mask
+                        corrected_mask[..., 0]
             try:
                 filteredDataset = self.cpm.filtered_dataset
             except AttributeError:
@@ -1329,6 +1340,12 @@ class TSOSuite:
                                  "extract1d configuration parameter is not "
                                  "defined. Aborting extraction of 1d spectra.")
         try:
+            processing_determine_initial_wavelength_shift = \
+                ast.literal_eval(self.cascade_parameters.
+                                 processing_determine_initial_wavelength_shift)
+        except AttributeError:
+            processing_determine_initial_wavelength_shift = True
+        try:
             savePathVerbose = self.cascade_parameters.cascade_save_path
             if not os.path.isabs(savePathVerbose):
                 savePathVerbose = os.path.join(cascade_default_save_path,
@@ -1436,12 +1453,14 @@ class TSOSuite:
             rebinnedApertureExtractedDataset.add_auxilary(
                 sample_number=datasetIn.sample_number)
 
-        (rebinnedOptimallyExtractedDataset,
-         rebinnedApertureExtractedDataset), \
-            modeled_observations, corrected_observations = \
-            correct_initial_wavelength_shift(rebinnedOptimallyExtractedDataset,
-                                             cascade_configuration,
-                                             rebinnedApertureExtractedDataset)
+        if processing_determine_initial_wavelength_shift:
+            (rebinnedOptimallyExtractedDataset,
+             rebinnedApertureExtractedDataset), \
+                modeled_observations, corrected_observations = \
+                correct_initial_wavelength_shift(
+                    rebinnedOptimallyExtractedDataset,
+                    cascade_configuration,
+                    rebinnedApertureExtractedDataset)
 
         from cascade.spectral_extraction import combine_scan_samples
         if observationDataType == 'SPECTRAL_CUBE':
@@ -1704,7 +1723,8 @@ class TSOSuite:
                      exoplanet_spectrum=self.exoplanet_spectrum,
                      calibration_results=self.calibration_results,
                      model=self.model,
-                     dataset=dataset)
+                     dataset=dataset,
+                     cleaned_dataset=cleaned_dataset)
 
     def save_results(self):
         """

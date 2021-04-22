@@ -1928,10 +1928,11 @@ def rebin_to_common_wavelength_grid(dataset, referenceIndex, nrebin=None,
     wavelength = dataset.return_masked_array('wavelength')
     time = dataset.return_masked_array('time')
 
-    idx_min_good, idx_max_good = \
-        np.where(np.all(~wavelength.mask, axis=1))[0][[0, -1]]
-    min_wavelength = np.max(wavelength[idx_min_good])
-    max_wavelength = np.min(wavelength[idx_max_good])
+    # A pixel row (time) does not have the same wavelength in time
+    # Need to find the miximum-lowest or minimum-higest wavelength for a
+    # proper rebinning.
+    min_wavelength = np.ma.min(np.ma.max(wavelength, axis=-1))
+    max_wavelength = np.ma.max(np.ma.min(wavelength, axis=-1))
 
     referenceWavelength = np.sort(np.array(wavelength[1:-1, referenceIndex]))
     idx_min_select = np.where(referenceWavelength >= min_wavelength)[0][0]

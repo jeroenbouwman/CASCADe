@@ -612,9 +612,12 @@ class SpitzerIRS(InstrumentBase):
         """
         # order mask
         order_mask_file_name = \
-            self.par['obs_cal_path']+self.par['obs_cal_version']+'/' + \
-            'IRSX_'+self.par['inst_mode']+'_' + \
-            self.par['obs_cal_version']+'_cal.omask.fits'
+            os.path.join(self.par['obs_cal_path'],
+                         self.par['inst_obs_name'],
+                         self.par['inst_inst_name'],
+                         self.par['obs_cal_version'],
+                         'IRSX_'+self.par['inst_mode']+'_' +
+                         self.par['obs_cal_version']+'_cal.omask.fits')
         order_masks = fits.getdata(order_mask_file_name, ext=0)
 
         if self.par['inst_order'] == '1':
@@ -678,9 +681,12 @@ class SpitzerIRS(InstrumentBase):
             return spectral_trace
 
         wave_cal_name = \
-            self.par['obs_cal_path']+self.par['obs_cal_version'] + \
-            '/'+'IRSX_'+self.par['inst_mode']+'_' + \
-            self.par['obs_cal_version']+'_cal.wavsamp.tbl'
+            os.path.join(self.par['obs_cal_path'],
+                         self.par['inst_obs_name'],
+                         self.par['inst_inst_name'],
+                         self.par['obs_cal_version'],
+                         'IRSX_'+self.par['inst_mode']+'_' +
+                         self.par['obs_cal_version']+'_cal.wavsamp.tbl')
         wavesamp = ascii.read(wave_cal_name)
         order = wavesamp['order']
 
@@ -959,9 +965,12 @@ class SpitzerIRS(InstrumentBase):
             return spectral_trace
 
         wave_cal_name = \
-            self.par['obs_cal_path']+self.par['obs_cal_version'] + \
-            '/'+'IRSX_'+self.par['inst_mode']+'_' + \
-            self.par['obs_cal_version']+'_cal.wavsamp.tbl'
+            os.path.join(self.par['obs_cal_path'],
+                         self.par['inst_obs_name'],
+                         self.par['inst_inst_name'],
+                         self.par['obs_cal_version'],
+                         'IRSX_'+self.par['inst_mode']+'_' +
+                         self.par['obs_cal_version']+'_cal.wavsamp.tbl')
         wavesamp = ascii.read(wave_cal_name)
         order = wavesamp['order']
 
