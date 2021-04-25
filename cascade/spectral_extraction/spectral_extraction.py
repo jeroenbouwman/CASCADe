@@ -772,6 +772,15 @@ def extract_spectrum(dataset, ROICube, extractionProfile=None, optimal=False,
             np.ma.sum(mask, axis=1)
 
     uncertaintyExtractedSpectra = np.sqrt(varianceExtractedSpectra)
+    # As the canculations are done independently, the masks might be different
+    # which causes problems when compressing rows. Make sure the final
+    # mask is identical. This fixes bug #82
+    new_mask = np.ma.logical_or(uncertaintyExtractedSpectra.mask,
+                                extractedSpectra.mask)
+    new_mask = np.ma.logical_or(new_mask, wavelengthExtractedSpectrum.mask)
+    extractedSpectra.mask = new_mask
+    uncertaintyExtractedSpectra.mask = new_mask
+    wavelengthExtractedSpectrum.mask = new_mask
     extractedSpectra = np.ma.asanyarray(np.ma.compress_rows(extractedSpectra))
     uncertaintyExtractedSpectra = \
         np.ma.asanyarray(np.ma.compress_rows(uncertaintyExtractedSpectra))

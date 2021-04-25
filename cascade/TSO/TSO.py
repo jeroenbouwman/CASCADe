@@ -975,7 +975,8 @@ class TSOSuite:
                             verbose=verbose,
                             verboseSaveFile=verboseSaveFile)
 
-                    # fix for issue 82
+                    # fix for issue 82, make sure that a pixel row is
+                    # difined for all times or else entierly flagged.
                     cleaned_data = cleanedDataset.return_masked_array('data')
                     roi_cube = cleaned_data.mask.copy()
                     nw, nx, nt = cleaned_data.shape
@@ -985,20 +986,7 @@ class TSOSuite:
                     corrected_mask = np.tile(corrected_mask.T, (nt, 1, 1)).T
                     corrected_mask = np.ma.logical_or(roi_cube, corrected_mask)
                     cleanedDataset.mask = corrected_mask
-                    # # correct ROI for possibly beeing not rectangular
-                    # # and make sure the mask of the cleaned data = ROI
-                    # cleaned_data = cleanedDataset.return_masked_array('data')
-                    # corrected_mask = np.all(cleaned_data.mask, axis=2)
-                    # sub_mask = np.zeros((corrected_mask.shape[0]), dtype=bool)
-                    # for i in corrected_mask.T:
-                    #     if not np.all(i):
-                    #         sub_mask[i] = True
-                    # corrected_mask[sub_mask, ...] = True
-                    # dim = cleaned_data.data.shape
-                    # ndim = cleaned_data.data.ndim
-                    # corrected_mask_cube = \
-                    #     np.tile(corrected_mask.T, (dim[-1],)+(1,)*(ndim-1)).T
-                    # cleanedDataset.mask = corrected_mask_cube
+
                     self.cpm.cleaned_dataset = cleanedDataset
                     self.observation.instrument_calibration.roi = \
                         corrected_mask[..., 0]
