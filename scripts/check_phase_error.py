@@ -1,26 +1,218 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+"""
+===============
+check_phase_error.py
+===============
+
+This code computes and compares the error phase between different catalogs.
+The error phase informs if a catalog gives better ephemerids and period values. The lower the value of the error phase,
+the more likely it is that the value of the ephemeris and the period is better.
+
+The code reads the parameters of the catalogs and writes the relevant parameters in an excel file
+(one sheet per catalog). last sheets are dedicated to the comparison of the error phase and ephemerids values.
+
+Usage:
+python check_phase_error.py
+
+Returns
+One excel file with several sheets
+
+Author:
+  Raphael Peralta <raphael.peralta@cea.fr>
+Year: 2020
+"""
+
 import os
 import pandas as pd
 import numpy as np
 import astropy.units as u
 
-from scripts.write_parameters_for_ini_files import get_catalogue
-from scripts.write_parameters_for_ini_files import reformat_nasa_exoplanet_archive_data
-from scripts.write_parameters_for_ini_files import reformat_exoplanets_a_data
-from scripts.write_parameters_for_ini_files import reformat_exoplanets_org_data
-from scripts.write_parameters_for_ini_files import reformat_tepcat_data
-from scripts.write_parameters_for_ini_files import merge_catalogue
-from scripts.write_parameters_for_ini_files import remove_binary_name
-from scripts.write_parameters_for_ini_files import remove_space
-from scripts.write_parameters_for_ini_files import write_diff
+
+def replace_nan_values(values_to_check, values_to_replace):
+    """
+    Replace missing values in a catalog with the corresponding value in another catalog.
+    TODO
+
+    Parameters
+    ----------
+    values_to_check:
+        DESCRIPTION.
+    values_to_replace:
+        DESCRIPTION.
+
+    Returns
+    -------
+    new_values :
+        DESCRIPTION.
+
+    """
+    new_values = np.asarray(values_to_check)
+    for i in range(new_values.size):
+        if np.isnan(values_to_check[i]):
+            new_values[i] = values_to_replace[i]
+    return new_values
+
+
+def remove_space(object_names):
+    """
+    Remove spaces in planet names.
+
+    Parameters
+    ----------
+    object_names : list of string of characters
+        planet names
+
+    Returns
+    -------
+    new_name : list of string of characters
+        planet names without spaces.
+
+    """
+    new_name = np.asarray(object_names)
+    for i in range(new_name.size):
+        if not pd.isna(object_names[i]):
+            new_name[i] = (''.join(new_name[i].split(' ')))
+            new_name[i] = (''.join(new_name[i].split('_')))
+    return new_name
+
+
+def remove_binary_name(object_names):
+    """
+    Remove letter corresponding to binary system in planet names.
+
+    Parameters
+    ----------
+    object_names : list of string of characters
+        planet names
+
+    Returns
+    -------
+    new_name : list of string of characters
+        planet names without binary letters
+    """
+    new_name = np.asarray(object_names)
+    for i in range(new_name.size):
+        if not pd.isna(new_name[i]):
+            new_name[i] = new_name[i].replace(' (AB) ', '')
+            new_name[i] = new_name[i].replace(' A ', '')
+            new_name[i] = new_name[i].replace(' B ', '')
+    return new_name
+
+
+def remove_duplicate(object_names):
+    """
+    Remove duplicates.
+
+    Parameters
+    ----------
+    object_names : list of string of characters
+        planet names
+
+    Returns
+    -------
+    new_name : list of string of characters
+        planet names without duplicates.
+    """
+    new_name = np.asarray(object_names)
+    new_name = np.unique(new_name)
+    return new_name
+
+
+def get_alternative_planet_name(list_planet, list_star):
+    """
+    add the letter of the planet to one of the names of the host star
+
+    Parameters
+    ----------
+    list_planet : list of string of characters
+        planet name
+    list_star : list of string of characters
+        star name
+
+    Returns
+    -------
+    new_planet_name : list of string of characters
+        alternative planet name
+
+    """
+    new_planet_name = np.asarray(list_star)
+    for i in range(new_planet_name.size):
+        if not pd.isna(new_planet_name[i]):
+            planet_letter = list_planet[i][-1]
+            new_planet_name[i] = list_star[i] + planet_letter
+    return new_planet_name
+
+
+def print_parameter_missing(planet_name, planet_radius, star_radius, star_temperature, semi_major_axis, inclination,
+                            eccentricity, omega, ephemeris, period):
+    """
+    print the missing parameters when writing the ini files
+
+    Parameters
+    ----------
+    planet_name : string
+    planet_radius : float
+    star_radius : float
+    star_temperature : float
+    semi_major_axis : float
+    inclination : float
+    eccentricity : float
+    omega : float
+    ephemeris : float
+    period : float
+
+    Returns
+    -------
+    print on the shell a Warning message with the missing parameter(s)
+
+    """
+    names = np.asarray(['planet radius', 'star radius', 'star temperature', 'semi major axis',
+                        'inclination', 'eccentricity', 'omega', 'ephemeris', 'period'])
+    values = np.asarray([planet_radius, star_radius, star_temperature, semi_major_axis, inclination,
+                         eccentricity, omega, ephemeris, period])
+    where_nan = np.isnan(values)
+    if names[where_nan].size == 1:
+        print("Warning: for the planet {}, the parameter {} is missing".format(planet_name, names[where_nan]))
+    if names[where_nan].size > 1:
+        print("Warning: for the planet {}, the parameters {} are missing".format(planet_name, names[where_nan]))
+
+
+def get_catalogue(path_catalogue, name_catalogue, url_catalogue, skiprows=None, update=False):
+    """
+    Read file containing the HST observations and extract the parameters
+
+    Parameters
+    ----------
+    path_catalogue : string
+        catalogue path
+    name_catalogue : string
+        catalogue filename. The format have to be a csv file
+    url_catalogue : string
+        link to the online catalogue
+    skiprows : list-like, int or callable, optional
+        skip first rows. By default: None
+    update : boolean
+        if True, the online catalogue is used
+
+    Returns
+    -------
+    catalogue_data : pandas object
+         full catalogue (last update if update==True)
+
+    """
+    if update:
+        catalogue_data = pd.read_csv(url_catalogue, skiprows=skiprows)
+    else:
+        catalogue_data = pd.read_csv(os.path.join(path_catalogue, name_catalogue), skiprows=skiprows)
+
+    return catalogue_data
 
 
 def get_jeroen_parameters(path_catalogue, name_catalogue):
     """
-    Read the file containing the HST observations data
-    and extract the list of planet, type of observations and the filter used
+    Read the catalogue obtained with the "build_local_hst_archive.py" script and extract the parameters
 
     Parameters
     ----------
@@ -30,8 +222,6 @@ def get_jeroen_parameters(path_catalogue, name_catalogue):
     Returns
     -------
     jeroen_cat : pandas object
-         planet name, type of observation and filter used
-
     """
     catalog = pd.read_csv(os.path.join(path_catalogue, name_catalogue), sep=';')
 
@@ -45,8 +235,433 @@ def get_jeroen_parameters(path_catalogue, name_catalogue):
     return jeroen_cat
 
 
-def compute_number_period(period, ephemeris, expstart, exptime, verbose=True):
+def get_hst_parameters(path_catalogue, name_catalogue):
+    """
+    Read the file containing the HST observations data
+    and extract the list of planet, type of observations and the filter used
 
+    Parameters
+    ----------
+    path_catalogue : string
+    name_catalogue : string
+
+    Returns
+    -------
+    hst_data : pandas object
+         planet name, type of observation and filter used
+
+    """
+    hst_observations = pickle.load(open(os.path.join(path_catalogue, name_catalogue), 'rb'))
+
+    hst_data = pd.DataFrame({'PLANET': [i['planet'] for i in hst_observations.values()],
+                             'OBSERVATION': [i['observation'] for i in hst_observations.values()]})
+
+    hst_data['PLANET'] = remove_binary_name(hst_data['PLANET'])
+    hst_data['PLANET'] = remove_space(hst_data['PLANET'])
+
+    hst_data = hst_data.sort_values(by=['PLANET'])
+
+    return hst_data
+
+
+def reformat_exoplanets_a_data(exo_a_cat):
+    """
+    Keeps only the relevant parameters from the *Exoplanet.a* catalogue
+    Planet name and alternative planet name are modified
+    The header is also modified in order to be uniform with the other catalogue
+
+    Parameters
+    ----------
+    exo_a_cat : pandas object
+        raw catalogue
+
+    Returns
+    -------
+    exo_a_data : pandas object
+         relevant parameters with an uniform header
+
+    """
+    exo_a_cat = exo_a_cat.rename({'#NamePlanet': 'PLANET', 'NamePlanet': 'PLANET',
+                'RAdeg_Simbad': 'RA', 'DECdeg_SIMBAD': 'DEC', 'RAdeg': 'RA', 'DECdeg': 'DEC',
+                'RadiusPlanet_EU': 'RPLANET', 'radius_error_max_EU': 'RPLANETUPPER', 'radius_error_min_EU': 'RPLANETLOWER',
+                'semi_major_axis_EU': 'A', 'semi_major_axis_error_max_EU': 'AUPPER', 'semi_major_axis_error_min_EU': 'ALOWER',
+                'inclination_EU': 'I', 'inclination_error_max_EU': 'IUPPER', 'inclination_error_min_EU': 'ILOWER',
+                'eccentricity_EU': 'ECC', 'eccentricity_error_max_EU': 'ECCUPPER', 'eccentricity_error_min_EU': 'ECCLOWER',
+                'omega_EU': 'OM', 'omega_error_max_EU': 'OMUPPER', 'omega_error_min_EU': 'OMLOWER',
+                'orbital_period_EU': 'PER', 'orbital_period_error_max_EU': 'PERUPPER', 'orbital_period_error_min_EU': 'PERLOWER',
+                'magK_EU': 'KMAG',
+                'tzero_tr_EU': 'TT', 'tzero_tr_error_max_EU': 'TTUPPER', 'tzero_tr_error_min_EU': 'TTLOWER',
+                'star_name': 'STAR', 'AltName': 'OTHERNAME',
+                'star_Radius_EU': 'RSTAR', 'star_eRadius_max_EU': 'RSTARUPPER', 'star_eRadius_min_EU': 'RSTARLOWER',
+                'star_Teff_EU': 'TEFF', 'star_eTeff_max_EU': 'TEFFUPPER', 'star_eTeff_min_EU': 'TEFFLOWER',
+                'star_Metallicity_EU': 'FE', 'star_eMetallicity_max_EU': 'FEUPPER', 'star_eMetallicity_min_EU': 'FELOWER',
+                'loggstar_Ex': 'LOGG'
+                }, axis='columns')
+
+    exo_a_cat = exo_a_cat.assign(KMAGUPPER=np.nan, KMAGLOWER=np.nan, LOGGUPPER=np.nan, LOGGLOWER=np.nan)
+
+    exo_a_cat['PLANET'] = remove_binary_name(exo_a_cat['PLANET'])
+    exo_a_cat['PLANET'] = remove_space(exo_a_cat['PLANET'])
+
+    exo_a_cat['OTHERNAME'] = remove_binary_name(exo_a_cat['OTHERNAME'])
+    exo_a_cat['OTHERNAME'] = remove_space(exo_a_cat['OTHERNAME'])
+    exo_a_cat['OTHERNAME'] = get_alternative_planet_name(exo_a_cat['PLANET'], exo_a_cat['OTHERNAME'])
+
+    exo_a_data = exo_a_cat[['PLANET', 'OTHERNAME', 'RA', 'DEC', 'RPLANET', 'RPLANETUPPER', 'RPLANETLOWER',
+                            'A', 'ALOWER', 'AUPPER', 'I', 'IUPPER', 'ILOWER', 'ECC', 'ECCUPPER', 'ECCLOWER',
+                            'OM', 'OMUPPER', 'OMLOWER', 'PER', 'PERUPPER', 'PERLOWER',
+                            'KMAG', 'KMAGUPPER', 'KMAGLOWER', 'TT', 'TTUPPER', 'TTLOWER',
+                            'STAR', 'RSTAR', 'RSTARUPPER', 'RSTARLOWER', 'TEFF', 'TEFFUPPER', 'TEFFLOWER',
+                            'FE', 'FEUPPER', 'FELOWER', 'LOGG', 'LOGGUPPER', 'LOGGLOWER']]
+
+    exo_a_data = exo_a_data.sort_values(by=['PLANET'])
+
+    return exo_a_data
+
+
+def reformat_exoplanets_org_data(exo_org_cat):
+    """
+    Keeps only the relevant parameters from the *Exoplanets.org* catalogue
+    Planet name and alternative planet name are modified
+    The header is also modified in order to be uniform with the other catalogue
+
+    Parameters
+    ----------
+    exo_org_cat : pandas object
+        raw catalogue
+
+    Returns
+    -------
+    exo_org_data : pandas object
+         relevant parameters with an uniform header
+
+    """
+    exo_org_cat = exo_org_cat.rename({'NAME': 'PLANET', 'R': 'RPLANET',
+                                      'RUPPER': 'RPLANETUPPER', 'RLOWER': 'RPLANETLOWER'
+                                      }, axis='columns')
+
+    exo_org_cat = exo_org_cat.assign(KMAG=np.nan, KMAGUPPER=np.nan, KMAGLOWER=np.nan)
+
+    exo_org_cat['PLANET'] = remove_binary_name(exo_org_cat['PLANET'])
+    exo_org_cat['PLANET'] = remove_space(exo_org_cat['PLANET'])
+
+    exo_org_cat['OTHERNAME'] = remove_binary_name(exo_org_cat['OTHERNAME'])
+    exo_org_cat['OTHERNAME'] = remove_space(exo_org_cat['OTHERNAME'])
+    exo_org_cat['OTHERNAME'] = get_alternative_planet_name(exo_org_cat['PLANET'], exo_org_cat['OTHERNAME'])
+
+    exo_org_data = exo_org_cat[['PLANET', 'OTHERNAME', 'RA', 'DEC', 'RPLANET', 'RPLANETUPPER', 'RPLANETLOWER',
+                                'A', 'ALOWER', 'AUPPER', 'I', 'IUPPER', 'ILOWER', 'ECC', 'ECCUPPER', 'ECCLOWER',
+                                'OM', 'OMUPPER', 'OMLOWER', 'PER', 'PERUPPER', 'PERLOWER',
+                                'KMAG', 'KMAGUPPER', 'KMAGLOWER', 'TT', 'TTUPPER', 'TTLOWER',
+                                'STAR', 'RSTAR', 'RSTARUPPER', 'RSTARLOWER', 'TEFF', 'TEFFUPPER', 'TEFFLOWER',
+                                'FE', 'FEUPPER', 'FELOWER', 'LOGG', 'LOGGUPPER', 'LOGGLOWER']]
+
+    exo_org_data = exo_org_data.sort_values(by=['PLANET'])
+
+    return exo_org_data
+
+
+def reformat_nasa_exoplanet_archive_data(nea_cat):
+    """
+    Keeps only the relevant parameters from the *Nasa Exoplanet Archive* catalogue
+    Planet name and alternative planet name are modified
+    The header is also modified in order to be uniform with the other catalogue
+
+    Parameters
+    ----------
+    nea_cat : pandas object
+        raw catalogue
+
+    Returns
+    -------
+    nea_data : pandas object
+         relevant parameters with an uniform header
+
+    """
+    nea_cat = nea_cat.rename({'pl_name': 'PLANET', 'mpl_name': 'PLANET',
+                              'ra': 'RA', 'dec': 'DEC',
+                              'pl_radj': 'RPLANET', 'pl_radjerr1': 'RPLANETUPPER', 'pl_radjerr2': 'RPLANETLOWER',
+                              'mpl_radj': 'RPLANET', 'mpl_radjerr1': 'RPLANETUPPER', 'mpl_radjerr2': 'RPLANETLOWER',
+                              'pl_orbsmax': 'A', 'pl_orbsmaxerr1': 'AUPPER', 'pl_orbsmaxerr2': 'ALOWER',
+                              'mpl_orbsmax': 'A', 'mpl_orbsmaxerr1': 'AUPPER', 'mpl_orbsmaxerr2': 'ALOWER',
+                              'pl_orbincl': 'I', 'pl_orbinclerr1': 'IUPPER', 'pl_orbinclerr2': 'ILOWER',
+                              'mpl_orbincl': 'I', 'mpl_orbinclerr1': 'IUPPER', 'mpl_orbinclerr2': 'ILOWER',
+                              'pl_orbeccen': 'ECC', 'pl_orbeccenerr1': 'ECCUPPER', 'pl_orbeccenerr2': 'ECCLOWER',
+                              'mpl_orbeccen': 'ECC', 'mpl_orbeccenerr1': 'ECCUPPER', 'mpl_orbeccenerr2': 'ECCLOWER',
+                              'pl_orblper': 'OM', 'pl_orblpererr1': 'OMUPPER', 'pl_orblpererr2': 'OMLOWER',
+                              'mpl_orblper': 'OM', 'mpl_orblpererr1': 'OMUPPER', 'mpl_orblpererr2': 'OMLOWER',
+                              'pl_orbper': 'PER', 'pl_orbpererr1': 'PERUPPER', 'pl_orbpererr2': 'PERLOWER',
+                              'mpl_orbper': 'PER', 'mpl_orbpererr1': 'PERUPPER', 'mpl_orbpererr2': 'PERLOWER',
+                              'st_k': 'KMAG', 'st_kerr': 'KMAGUPPER',
+                              'sy_kmag':'KMAG', 'sy_kmagerr1': 'KMAGUPPER', 'sy_kmagerr2': 'KMAGLOWER',
+                              'pl_tranmid': 'TT', 'pl_tranmiderr1': 'TTUPPER', 'pl_tranmiderr2': 'TTLOWER',
+                              'mpl_tranmid': 'TT', 'mpl_tranmiderr1': 'TTUPPER', 'mpl_tranmiderr2': 'TTLOWER',
+                              'pl_hostname': 'STAR', 'mpl_hostname': 'STAR', 'hostname': 'STAR', 'hd_name': 'OTHERNAME',
+                              'st_rad': 'RSTAR', 'st_raderr1': 'RSTARUPPER', 'st_raderr2': 'RSTARLOWER',
+                              'mst_rad': 'RSTAR', 'mst_raderr1': 'RSTARUPPER', 'mst_raderr2': 'RSTARLOWER',
+                              'st_teff': 'TEFF', 'st_tefferr1': 'TEFFUPPER', 'st_tefferr2': 'TEFFLOWER',
+                              'mst_teff': 'TEFF', 'mst_tefferr1': 'TEFFUPPER', 'mst_tefferr2': 'TEFFLOWER',
+                              'st_metfe': 'FE', 'st_metfeerr1': 'FEUPPER', 'st_metfeerr2': 'FELOWER',
+                              'st_met': 'FE', 'st_meterr1': 'FEUPPER', 'st_meterr2': 'FELOWER',
+                              'mst_metfe': 'FE', 'mst_metfeerr1': 'FEUPPER', 'mst_metfeerr2': 'FELOWER',
+                              'st_logg': 'LOGG', 'st_loggerr1': 'LOGGUPPER', 'st_loggerr2': 'LOGGLOWER',
+                              'mst_logg': 'LOGG', 'mst_loggerr1': 'LOGGUPPER', 'mst_loggerr2': 'LOGGLOWER',
+                              'ttv_flag': 'TTV'
+                              }, axis='columns')
+
+    if 'KMAGLOWER' not in nea_cat:
+        nea_cat = nea_cat.assign(KMAGLOWER=nea_cat['KMAGUPPER'])
+
+    nea_cat['PLANET'] = remove_binary_name(nea_cat['PLANET'])
+    nea_cat['PLANET'] = remove_space(nea_cat['PLANET'])
+
+    nea_cat['OTHERNAME'] = remove_binary_name(nea_cat['OTHERNAME'])
+    nea_cat['OTHERNAME'] = remove_space(nea_cat['OTHERNAME'])
+    nea_cat['OTHERNAME'] = get_alternative_planet_name(nea_cat['PLANET'], nea_cat['OTHERNAME'])
+
+    nea_data = nea_cat[['PLANET', 'OTHERNAME', 'RA', 'DEC', 'RPLANET', 'RPLANETUPPER', 'RPLANETLOWER',
+                        'A', 'ALOWER', 'AUPPER', 'I', 'IUPPER', 'ILOWER', 'ECC', 'ECCUPPER', 'ECCLOWER',
+                        'OM', 'OMUPPER', 'OMLOWER', 'PER', 'PERUPPER', 'PERLOWER', 'KMAG', 'KMAGUPPER', 'KMAGLOWER',
+                        'TT', 'TTUPPER', 'TTLOWER', 'STAR', 'RSTAR', 'RSTARUPPER', 'RSTARLOWER',
+                        'TEFF', 'TEFFUPPER', 'TEFFLOWER', 'FE', 'FEUPPER', 'FELOWER',
+                        'LOGG', 'LOGGUPPER', 'LOGGLOWER', 'TTV']]
+
+    nea_data = nea_data.sort_values(by=['PLANET'])
+
+    return nea_data
+
+
+def reformat_tepcat_data(tepcat_allplanets_cat, tepcat_observable_cat):
+    """
+    Keeps only the relevant parameters from the *Tepcat* catalogue
+    Planet name and alternative planet name are modified
+    The header is also modified in order to be uniform with the other catalogue
+
+    Parameters
+    ----------
+    tepcat_allplanets_cat : pandas object
+        raw catalogue
+
+    Returns
+    -------
+    tepcat_data : pandas object
+         relevant parameters with an uniform header
+
+    """
+    tepcat_allplanets_cat[tepcat_allplanets_cat.columns[0]] = \
+        remove_binary_name(tepcat_allplanets_cat[tepcat_allplanets_cat.columns[0]])
+    tepcat_allplanets_cat[tepcat_allplanets_cat.columns[0]] = \
+        remove_space(tepcat_allplanets_cat[tepcat_allplanets_cat.columns[0]])
+
+    tepcat_observable_cat[tepcat_observable_cat.columns[0]] = \
+        remove_binary_name(tepcat_observable_cat[tepcat_observable_cat.columns[0]])
+    tepcat_observable_cat[tepcat_observable_cat.columns[0]] = \
+        remove_space(tepcat_observable_cat[tepcat_observable_cat.columns[0]])
+
+    tepcat_merged_cat = pd.concat([tepcat_allplanets_cat, tepcat_observable_cat], axis=1, sort=True, join='inner')
+
+    tepcat_data = pd.DataFrame({'PLANET': tepcat_merged_cat[tepcat_merged_cat.columns[0]],
+                                'OTHERNAME': tepcat_merged_cat[tepcat_merged_cat.columns[43]],
+                                'RA': tepcat_merged_cat[tepcat_merged_cat.columns[47]],
+                                'DEC': tepcat_merged_cat[tepcat_merged_cat.columns[50]],
+                                'RPLANET': tepcat_merged_cat[tepcat_merged_cat.columns[29]],
+                                'RPLANETUPPER': tepcat_merged_cat[tepcat_merged_cat.columns[30]],
+                                'RPLANETLOWER': tepcat_merged_cat[tepcat_merged_cat.columns[31]],
+                                'A': tepcat_merged_cat[tepcat_merged_cat.columns[23]],
+                                'AUPPER': tepcat_merged_cat[tepcat_merged_cat.columns[24]],
+                                'ALOWER': tepcat_merged_cat[tepcat_merged_cat.columns[25]],
+                                'I': '',
+                                'IUPPER': '',
+                                'ILOWER': '',
+                                'ECC': tepcat_merged_cat[tepcat_merged_cat.columns[20]],
+                                'ECCUPPER': tepcat_merged_cat[tepcat_merged_cat.columns[21]],
+                                'ECCLOWER': tepcat_merged_cat[tepcat_merged_cat.columns[22]],
+                                'OM': '',
+                                'OMUPPER': '',
+                                'OMLOWER': '',
+                                'PER': tepcat_merged_cat[tepcat_merged_cat.columns[57]],
+                                'PERUPPER': tepcat_merged_cat[tepcat_merged_cat.columns[58]],
+                                'PERLOWER': tepcat_merged_cat[tepcat_merged_cat.columns[58]],
+                                'KMAG': tepcat_merged_cat[tepcat_merged_cat.columns[52]],
+                                'KMAGUPPER': '',
+                                'KMAGLOWER': '',
+                                'TT': tepcat_merged_cat[tepcat_merged_cat.columns[55]],
+                                'TTUPPER': tepcat_merged_cat[tepcat_merged_cat.columns[56]],
+                                'TTLOWER': tepcat_merged_cat[tepcat_merged_cat.columns[56]],
+                                'STAR': '',
+                                'RSTAR': tepcat_merged_cat[tepcat_merged_cat.columns[10]],
+                                'RSTARUPPER': tepcat_merged_cat[tepcat_merged_cat.columns[11]],
+                                'RSTARLOWER': tepcat_merged_cat[tepcat_merged_cat.columns[12]],
+                                'TEFF': tepcat_merged_cat[tepcat_merged_cat.columns[1]],
+                                'TEFFUPPER': tepcat_merged_cat[tepcat_merged_cat.columns[2]],
+                                'TEFFLOWER': tepcat_merged_cat[tepcat_merged_cat.columns[3]],
+                                'FE': tepcat_merged_cat[tepcat_merged_cat.columns[4]],
+                                'FEUPPER': tepcat_merged_cat[tepcat_merged_cat.columns[5]],
+                                'FELOWER': tepcat_merged_cat[tepcat_merged_cat.columns[6]],
+                                'LOGG': tepcat_merged_cat[tepcat_merged_cat.columns[13]],
+                                'LOGGUPPER': tepcat_merged_cat[tepcat_merged_cat.columns[14]],
+                                'LOGGLOWER': tepcat_merged_cat[tepcat_merged_cat.columns[15]]
+                                })
+
+    tepcat_data = tepcat_data.replace(-1, np.nan)
+
+    tepcat_data = tepcat_data.sort_values(by=['PLANET'])
+
+    return tepcat_data
+
+
+def merge_catalogue(catalogue_a, catalogue_b, verbose=False):
+    """
+    It returns the merged catalogue between the catalogue_a and catalogue_b.
+    The merged catalogue contains the planets from catalogue_a with the data from catalogue_b
+    (or NaN if no correspondence).
+    Both columns 'PLANET' and 'OTHERNAME' from catalogue_b are used for the correspondence with catalogue_a.
+
+    Parameters
+    ----------
+    catalogue_a : pandas object
+        catalogue containing the HST planet names to compare with catalogue_b
+    catalogue_b : pandas object
+        catalogue containing the planet data
+    verbose : boolean
+        if True, raise a warning writing the name of the planets without correspondence between both catalogues.
+
+    Returns
+    -------
+    b_merge_a : pandas object
+         new catalogue: merging of catalogue_a and catalogue_b.
+
+    """
+    # b_match_a = catalogue_b.loc[catalogue_b['PLANET'].isin(catalogue_a) |
+    # (catalogue_b['OTHERNAME'].isin(catalogue_a) & ~catalogue_b['PLANET'].isin(catalogue_a))]
+
+    only_in_othername = catalogue_b['OTHERNAME'].isin(catalogue_a) \
+                        & ~catalogue_b['PLANET'].isin(catalogue_a)
+
+    catalogue_b.loc[only_in_othername, 'PLANET'] = catalogue_b['OTHERNAME'][only_in_othername]
+
+    not_match = catalogue_a.loc[~catalogue_a.isin(catalogue_b['PLANET'])]
+    if verbose and not_match.size > 0:
+        print('Warning: list of planets with no HST observations: {}'.format(not_match.values))
+
+    b_merge_a = pd.merge(catalogue_a, catalogue_b, how='left', on=['PLANET'])
+
+    return b_merge_a
+
+
+def check_folder(folder_path, create_directory, verbose=True):
+    """
+    Check if a folder exists.
+    If not, a warning appears (if verbose=True) and the folder is created (if create_directory=True)
+
+    Parameters
+    ----------
+    folder_path : string
+        path and name of the folder
+    create_directory : boolean
+        if True, the missing folder is created
+    verbose : boolean
+        if True, raise warnings if the folder do not exist and if it is created.
+
+    Returns
+    -------
+    None
+
+    """
+    if not(os.path.isdir(folder_path)):
+        if verbose:
+            print("Warning: the directory '{}' doesn't exist.".format(folder_path))
+        if create_directory:
+            if verbose:
+                print("Creating the folder '{}'".format(folder_path))
+            os.mkdir(folder_path)
+
+
+def write_diff(exoplanet_a, exoplanets_org, nea_catalog, tepcat, output_filename):
+    """
+    Write the comparison of values of 5 parameters ('I', 'RPLANET', 'PER', 'TT', 'A') between different catalog
+
+    Parameters
+    ---------
+    exoplanet_a: pandas object
+    exoplanets_org: pandas object
+    nea_catalog: pandas object
+    tepcat: pandas object
+
+    Returns
+    -------
+    output_filename: Excel file
+    """
+    parameter = ['I', 'RPLANET', 'PER', 'TT', 'A']
+
+    writer = pd.ExcelWriter(output_filename + '.xlsx', engine='xlsxwriter')
+
+    exoplanet_a.to_excel(writer, sheet_name='exo_a_merged_hst', index=False)
+    exoplanets_org.to_excel(writer, sheet_name='exo_org_merged_hst', index=False)
+    nea_catalog.to_excel(writer, sheet_name='nea_merged_hst', index=False)
+    tepcat.to_excel(writer, sheet_name='tepcat_merged_hst', index=False)
+
+    for param in parameter:
+
+        ratio_a = exoplanet_a[param]
+        ratio_org = exoplanets_org[param]
+        ratio_nea = nea_catalog[param]
+        ratio_tep = tepcat[param]
+
+        if param == 'RPLANET':
+            ratio_a = exoplanet_a['RPLANET'] / exoplanet_a['RSTAR']
+            ratio_org = exoplanets_org['RPLANET'] / exoplanets_org['RSTAR']
+            ratio_nea = nea_catalog['RPLANET'] / nea_catalog['RSTAR']
+            ratio_tep = tepcat['RPLANET'] / tepcat['RSTAR']
+
+        if param == 'I':
+            ratio_tep = np.full(ratio_tep.size, np.nan)
+
+        org_diff_a = (ratio_org - ratio_a) / ratio_a*100
+        nea_diff_a = (ratio_nea - ratio_a) / ratio_a*100
+        tep_diff_a = (ratio_tep - ratio_a) / ratio_a*100
+
+        nea_diff_org = (ratio_nea - ratio_org) / ratio_org*100
+        tep_diff_org = (ratio_tep - ratio_org) / ratio_org*100
+
+        tep_diff_nea = (ratio_tep - ratio_nea) / ratio_nea*100
+
+        if param == 'TT':
+            org_diff_a = (ratio_org - ratio_a) / exoplanet_a['PER']
+            nea_diff_a = (ratio_nea - ratio_a) / exoplanet_a['PER']
+            tep_diff_a = (ratio_tep - ratio_a) / exoplanet_a['PER']
+
+            nea_diff_org = (ratio_nea - ratio_org) / exoplanets_org['PER']
+            tep_diff_org = (ratio_tep - ratio_org) / exoplanets_org['PER']
+
+            tep_diff_nea = (ratio_tep - ratio_nea) / nea_catalog['PER']
+
+        diff = pd.DataFrame({'(ORG-A)/A': org_diff_a, '(NEA-A)/A': nea_diff_a, '(TEP-A)/A': tep_diff_a,
+                             '(NEA-ORG/ORG)': nea_diff_org, '(TEP-ORG)/ORG': tep_diff_org,
+                             '(TEP-NEA/NEA)': tep_diff_nea})
+
+        diff.to_excel(writer, sheet_name='diff'+param, index=False)
+
+    writer.save()
+
+
+def compute_number_period(period, ephemeris, expstart, exptime, verbose=True):
+    """
+    Computes the number of period
+
+    Parameters
+    ----------
+    period: float
+    ephemeris: float
+    expstart: float
+    exptime: float
+    verbose: boolean
+
+    Returns
+    ----------
+    nbr_period: float
+        number of period
+    """
     if verbose:
         if (exptime < period):
             print('Good :observation covers less than one period')
@@ -63,7 +678,21 @@ def compute_number_period(period, ephemeris, expstart, exptime, verbose=True):
 
 
 def compute_phase_error(period, period_error, nbr_period, verbose=False):
+    """
+    Computes the phase error
 
+    Parameters
+    ----------
+    period: float
+    period_error: float
+    nbr_period: float
+    verbose: boolean
+
+    Returns
+    -------
+    phase_error: float
+
+    """
     phase_error = (period_error * nbr_period / period).decompose().value
 
     if verbose:
@@ -73,7 +702,19 @@ def compute_phase_error(period, period_error, nbr_period, verbose=False):
 
 
 def get_phase_error(visit_cat, param_cat, best_value_only=True):
+    """
+    Computes the phase error
 
+    Parameters
+    ----------
+    visit_cat: pandas object
+    param_cat: pandas object
+    best_value_only: boolean
+
+    Returns
+    -------
+    results: pandas object
+    """
     visit_planet = visit_cat['PLANET'].values
     visit = visit_cat['visit'].values
     observation = visit_cat['observation'].values
@@ -144,7 +785,7 @@ def get_phase_error(visit_cat, param_cat, best_value_only=True):
 def main(root_dir, output_filename, verbose=False):
 
     # Jeroen catalogues compilation
-    path_jeroen_compilation = os.path.join(root_dir, 'scripts')
+    path_jeroen_compilation = os.path.join(root_dir, '../exoplanets_catalog/table_jeroen')
     name_jeroen_compilation = 'jeroen_cat_compilation.csv'
 
     # Exoplanet.a catalogue

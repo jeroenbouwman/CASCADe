@@ -1429,19 +1429,29 @@ def joblib_loop(dataCube, ROICube=None, upsampleFactor=111,
                    upsampleFactor=upsampleFactor,
                    AngleOversampling=AngleOversampling)
     ncpu = int(np.min([maxNumberOfCPUs, np.max([1, mp.cpu_count()-2])]))
-    batch_size = np.min([ncpu, nreference])
+    # batch_size = np.min([ncpu, nreference])
     dfunc = joblib.delayed(func)
-    with joblib.Parallel(n_jobs=-1, prefer="processes") as MP:
+
+    from ray.util.joblib import register_ray
+    register_ray()
+
+    # with joblib.Parallel(n_jobs=-1, prefer="processes") as MP:
+    with joblib.parallel_backend('ray', n_jobs=ncpu):
         ITR = iter(np.linspace(0, ntime-1, nreference, dtype=int))
-        progress_bar = tqdm(total=nreference, dynamic_ncols=True,
-                            desc=('Determining source rotation and '
-                                  'positional shift between integrations'))
-        for block in grouper(ITR, batch_size):
-            MPITR = MP(dfunc(i) for i in block if i is not None)
-            for (k, relativeSourcePosition) in enumerate(MPITR):
-                yield relativeSourcePosition
-            progress_bar.update(k+1)
-    progress_bar.close()
+        # progress_bar = tqdm(total=nreference, dynamic_ncols=True,
+        #                      desc=('Determining source rotation and '
+        #                            'positional shift between integrations'))
+        # for block in grouper(ITR, batch_size):
+            # MPITR = joblib.Parallel(n_jobs=ncpu)(dfunc(i) for i in block if i is not None)
+        MPITR = joblib.Parallel(verbose=10)(dfunc(i) for i in ITR)
+        # for (k, relativeSourcePosition) in enumerate(MPITR):
+        #     yield relativeSourcePosition
+        for relativeSourcePosition in MPITR:
+            yield relativeSourcePosition
+    #         progress_bar.update(k+1)
+    # progress_bar.close()
+
+    ray.shutdown()
 
 
 def register_telescope_movement(cleanedDataset, ROICube=None,  nreferences=6,

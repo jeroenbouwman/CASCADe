@@ -212,10 +212,10 @@ def subtract_background_verbose(*args, **kwargs):
 
     if data.ndim == 3:
         lightcurve = np.ma.sum(data_with_roi, axis=(0, 1))
-        time = time[0, 0, :]
+        time = time[0, 0, :].data
     else:
         lightcurve = np.ma.sum(data_with_roi, axis=(0))
-        time = time[0, :]
+        time = time[0, :].data
 
     fig, ax = plt.subplots(figsize=(12, 12))
     if total_data.ndim == 2:
