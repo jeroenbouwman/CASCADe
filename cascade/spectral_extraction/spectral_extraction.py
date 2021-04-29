@@ -53,6 +53,7 @@ from skimage.transform import rotate
 from skimage.transform import SimilarityTransform
 from sklearn.preprocessing import RobustScaler
 import ray
+from ray.util.joblib import register_ray
 
 from ..data_model import SpectralDataTimeSeries
 from ..data_model import MeasurementDesc
@@ -1432,18 +1433,19 @@ def joblib_loop(dataCube, ROICube=None, upsampleFactor=111,
     # batch_size = np.min([ncpu, nreference])
     dfunc = joblib.delayed(func)
 
-    from ray.util.joblib import register_ray
+    ray.init(num_cpus=ncpu)
     register_ray()
-
     # with joblib.Parallel(n_jobs=-1, prefer="processes") as MP:
-    with joblib.parallel_backend('ray', n_jobs=ncpu):
+    with joblib.parallel_backend('ray'):
         ITR = iter(np.linspace(0, ntime-1, nreference, dtype=int))
         # progress_bar = tqdm(total=nreference, dynamic_ncols=True,
         #                      desc=('Determining source rotation and '
         #                            'positional shift between integrations'))
         # for block in grouper(ITR, batch_size):
             # MPITR = joblib.Parallel(n_jobs=ncpu)(dfunc(i) for i in block if i is not None)
-        MPITR = joblib.Parallel(verbose=10)(dfunc(i) for i in ITR)
+        MPITR = joblib.Parallel(verbose=10, pre_dispatch=nreference,
+                                max_nbytes=None, n_jobs=ncpu,
+                                batch_size=1)(dfunc(i) for i in ITR)
         # for (k, relativeSourcePosition) in enumerate(MPITR):
         #     yield relativeSourcePosition
         for relativeSourcePosition in MPITR:
