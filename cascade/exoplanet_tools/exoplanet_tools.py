@@ -829,10 +829,8 @@ def get_calalog(catalog_name, update=True):
     elif catalog_name == 'NASAEXOPLANETARCHIVE':
         path = path+"NASAEXOPLANETARCHIVE/"
         os.makedirs(path, exist_ok=True)
-        _url = ("https://exoplanetarchive.ipac.caltech.edu/"
-                "cgi-bin/nstedAPI/nph-nstedAPI?")
-#        _tab = "table=exoplanets"
-        _query = ("&select=pl_name,ra,dec,"
+        _url = ("https://exoplanetarchive.ipac.caltech.edu/TAP/sync?")
+        _query = ("query=select+pl_name,ra,dec,"
                   "pl_tranmid,pl_tranmiderr1,pl_tranmiderr2,"
                   "pl_orbper,pl_orbpererr1,pl_orbpererr2,"
                   "pl_orbsmax,pl_orbsmaxerr1,pl_orbsmaxerr2,"
@@ -845,15 +843,11 @@ def get_calalog(catalog_name, update=True):
                   "pl_massj,pl_massjerr1,pl_massjerr2,"
                   "st_mass,st_masserr1,st_masserr2,"
                   "st_teff,st_tefferr1,st_tefferr2,"
-                  "st_metfe,st_metfeerr1,st_metfeerr2,"
+                  "st_met,st_meterr1,st_meterr2,"
                   "st_logg,st_loggerr1,st_loggerr2,"
-                  "rowupdate,pl_reflink"
-                  "&orderby=dec")
-        _tab_multi = "table=exomultpars"
-        _query_multi = _query.replace("pl_", "mpl_").replace("st_", "mst_")
-
-        # use multi par catalogue as standard dous not always include T0
-        exoplanet_database_url = [_url + _tab_multi + _query_multi]
+                  "rowupdate,pl_refname"
+                  "+from+ps+orderby+dec&format=csv")
+        exoplanet_database_url = [_url + _query]
         data_files_save = ["nasaexoplanetarchive.csv"]
     elif catalog_name == 'EXOPLANETS_A':
         path = path+"EXOPLANETS_A/"
