@@ -9,18 +9,16 @@ config = {
     'url': 'https://gitlab.com/jbouwman/CASCADe/wikis/home',
     'download_url': 'https://gitlab.com/jbouwman/CASCADe',
     'author_email': 'bouwman@mpia.de',
-    'version': '0.9.76',
+    'version': '1.0.4',
     'install_requires': ['batman-package', 'astropy', 'jplephem', 'scipy',
                          'numpy', 'configparser', 'photutils', 'pandas',
-	                 'scikit-learn', 'matplotlib', 'tqdm', 'seaborn',
+                         'scikit-learn', 'matplotlib', 'tqdm', 'seaborn',
                          'pytest', 'scikit-image', 'sphinx', 'alabaster',
-                         'networkx', 'cython', 'astroquery', 'numba', 'ray', 
-                         'joblib', 'pyfiglet', 'termcolor', 'exotethys',
-                         'statsmodels'],
+                         'networkx', 'cython', 'astroquery', 'numba', 'ray',
+                         'pyfiglet', 'termcolor', 'exotethys', 'statsmodels'],
     'packages': ['cascade'],
     'scripts': [],
     'name': 'CASCADe'
 }
 
 setup(**config)
-

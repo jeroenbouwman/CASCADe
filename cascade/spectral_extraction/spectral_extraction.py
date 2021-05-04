@@ -29,10 +29,13 @@ import collections
 import warnings
 import copy
 from psutil import virtual_memory, cpu_count
+from typing import Tuple
+from itertools import zip_longest
 from tqdm import tqdm
 import multiprocessing as mp
-import joblib
-from itertools import zip_longest
+import ray
+from ray.actor import ActorHandle
+from asyncio import Event
 import statsmodels.api as sm
 from matplotlib import pyplot as plt
 import seaborn as sns
@@ -52,8 +55,7 @@ from skimage._shared.utils import safe_as_int
 from skimage.transform import rotate
 from skimage.transform import SimilarityTransform
 from sklearn.preprocessing import RobustScaler
-import ray
-from ray.util.joblib import register_ray
+
 
 from ..data_model import SpectralDataTimeSeries
 from ..data_model import MeasurementDesc
@@ -496,7 +498,7 @@ def filter_image_cube(data_in, Filters, ROIcube, enumeratedSubRegions,
                       dynamic_ncols=True):
             optimalFilterIndex[indices_poi[j[0]]] = j[1]
             filteredImage[indices_poi[j[0]]] = j[2]
-            filteredImageVariance[indices_poi[j[0]]] = j[3],
+            filteredImageVariance[indices_poi[j[0]]] = j[3]
     else:
         ncpus = int(ray.cluster_resources()['CPU'])
         chunksize = len(enumeratedSubRegions)//ncpus + 1
@@ -929,6 +931,19 @@ def determine_relative_source_position(spectralImageCube, ROICube,
                                 cross_disp_shift=xshift,
                                 disp_shift=yshift)
     return relativeSourcePosition
+
+
+@ray.remote
+def ray_determine_relative_source_position(spectralImageCube, ROICube,
+                                           refIntegration, pba,
+                                           upsampleFactor=111,
+                                           AngleOversampling=2):
+    movement = determine_relative_source_position(
+        spectralImageCube, ROICube, refIntegration,
+        upsampleFactor=upsampleFactor,
+        AngleOversampling=AngleOversampling)
+    pba.update.remote(1)
+    return movement
 
 
 def _determine_relative_source_shift(reference_image, image,
@@ -1400,10 +1415,88 @@ def grouper(iterable, n, fillvalue=None):
     return zip_longest(fillvalue=fillvalue, *args)
 
 
-def joblib_loop(dataCube, ROICube=None, upsampleFactor=111,
-                AngleOversampling=2, nreference=6, maxNumberOfCPUs=2):
+@ray.remote
+class ProgressBarActor:
+    counter: int
+    delta: int
+    event: Event
+
+    def __init__(self) -> None:
+        self.counter = 0
+        self.delta = 0
+        self.event = Event()
+
+    def update(self, num_items_completed: int) -> None:
+        """Updates the ProgressBar with the incremental
+        number of items that were just completed.
+        """
+        self.counter += num_items_completed
+        self.delta += num_items_completed
+        self.event.set()
+
+    async def wait_for_update(self) -> Tuple[int, int]:
+        """Blocking call.
+
+        Waits until somebody calls `update`, then returns a tuple of
+        the number of updates since the last call to
+        `wait_for_update`, and the total number of completed items.
+        """
+        await self.event.wait()
+        self.event.clear()
+        saved_delta = self.delta
+        self.delta = 0
+        return saved_delta, self.counter
+
+    def get_counter(self) -> int:
+        """
+        Returns the total number of complete items.
+        """
+        return self.counter
+
+
+class ProgressBar:
+    progress_actor: ActorHandle
+    total: int
+    description: str
+    pbar: tqdm
+
+    def __init__(self, total: int, description: str = ""):
+        # Ray actors don't seem to play nice with mypy, generating
+        # a spurious warning for the following line,
+        # which we need to suppress. The code is fine.
+        self.progress_actor = ProgressBarActor.remote()  # type: ignore
+        self.total = total
+        self.description = description
+
+    @property
+    def actor(self) -> ActorHandle:
+        """Returns a reference to the remote `ProgressBarActor`.
+
+        When you complete tasks, call `update` on the actor.
+        """
+        return self.progress_actor
+
+    def print_until_done(self) -> None:
+        """Blocking call.
+
+        Do this after starting a series of remote Ray tasks, to which you've
+        passed the actor handle. Each of them calls `update` on the actor.
+        When the progress meter reaches 100%, this method returns.
+        """
+        pbar = tqdm(desc=self.description, total=self.total)
+        while True:
+            delta, counter = ray.get(self.actor.wait_for_update.remote())
+            pbar.update(delta)
+            if counter >= self.total:
+                pbar.close()
+                return
+
+
+def ray_loop(dataCube, ROICube=None, upsampleFactor=111,
+             AngleOversampling=2, nreference=6, maxNumberOfCPUs=2,
+             useMultiProcesses=True):
     """
-    Loop using joblib.
+    Loop using ray.
 
     Performs parallel loop for different reference integrations to determine
     the relative source movement on the detector.
@@ -1425,41 +1518,52 @@ def joblib_loop(dataCube, ROICube=None, upsampleFactor=111,
     relativeSourcePosition
     """
     ntime = dataCube.shape[-1]
-    func = partial(determine_relative_source_position, dataCube,
-                   ROICube,
-                   upsampleFactor=upsampleFactor,
-                   AngleOversampling=AngleOversampling)
-    ncpu = int(np.min([maxNumberOfCPUs, np.max([1, mp.cpu_count()-2])]))
-    # batch_size = np.min([ncpu, nreference])
-    dfunc = joblib.delayed(func)
+    if not useMultiProcesses:
+        # create new function with all fixed inout variables fixed.
+        func = partial(determine_relative_source_position, dataCube,
+                       ROICube, upsampleFactor=upsampleFactor,
+                       AngleOversampling=AngleOversampling)
+        ITR = list(np.linspace(0, ntime-1, nreference, dtype=int))
+        movement_iterator = map(func, ITR)
 
-    ray.init(num_cpus=ncpu)
-    register_ray()
-    # with joblib.Parallel(n_jobs=-1, prefer="processes") as MP:
-    with joblib.parallel_backend('ray'):
+        for j in tqdm(movement_iterator, total=len(ITR),
+                      dynamic_ncols=True):
+            yield j
+    else:
+        ncpu = int(np.min([maxNumberOfCPUs, np.max([1, mp.cpu_count()-3])]))
+        ray.init(num_cpus=ncpu)
+
+        dataCube_id = ray.put(dataCube)
+        ROICube_id = ray.put(ROICube)
+        upsampleFactor_id = ray.put(upsampleFactor)
+        AngleOversampling_id = ray.put(AngleOversampling)
         ITR = iter(np.linspace(0, ntime-1, nreference, dtype=int))
-        # progress_bar = tqdm(total=nreference, dynamic_ncols=True,
-        #                      desc=('Determining source rotation and '
-        #                            'positional shift between integrations'))
-        # for block in grouper(ITR, batch_size):
-            # MPITR = joblib.Parallel(n_jobs=ncpu)(dfunc(i) for i in block if i is not None)
-        MPITR = joblib.Parallel(verbose=10, pre_dispatch=nreference,
-                                max_nbytes=None, n_jobs=ncpu,
-                                batch_size=1)(dfunc(i) for i in ITR)
-        # for (k, relativeSourcePosition) in enumerate(MPITR):
-        #     yield relativeSourcePosition
+
+        pb = ProgressBar(nreference,
+                         'Determine Telescope movement for '
+                         '{} reference times'.format(nreference))
+        actor = pb.actor
+        result_ids = \
+            [ray_determine_relative_source_position.remote(
+                dataCube_id,
+                ROICube_id,
+                x,
+                actor,
+                upsampleFactor=upsampleFactor_id,
+                AngleOversampling=AngleOversampling_id) for x in ITR]
+        pb.print_until_done()
+        MPITR = ray.get(result_ids)
         for relativeSourcePosition in MPITR:
             yield relativeSourcePosition
-    #         progress_bar.update(k+1)
-    # progress_bar.close()
 
-    ray.shutdown()
+        ray.shutdown()
 
 
 def register_telescope_movement(cleanedDataset, ROICube=None,  nreferences=6,
                                 mainReference=4, upsampleFactor=111,
                                 AngleOversampling=2, verbose=False,
-                                verboseSaveFile=None, maxNumberOfCPUs=2):
+                                verboseSaveFile=None, maxNumberOfCPUs=2,
+                                useMultiProcesses=True):
     """
     Register the telescope movement.
 
@@ -1523,11 +1627,12 @@ def register_telescope_movement(cleanedDataset, ROICube=None,  nreferences=6,
         raise(ValueError("Wrong mainReference value"))
 
     determinePositionIterator = \
-        joblib_loop(dataUse, ROICube=ROICube,
-                    upsampleFactor=upsampleFactor,
-                    AngleOversampling=AngleOversampling,
-                    nreference=nreferences,
-                    maxNumberOfCPUs=maxNumberOfCPUs)
+        ray_loop(dataUse, ROICube=ROICube,
+                 upsampleFactor=upsampleFactor,
+                 AngleOversampling=AngleOversampling,
+                 nreference=nreferences,
+                 maxNumberOfCPUs=maxNumberOfCPUs,
+                 useMultiProcesses=useMultiProcesses)
     iteratorResults = [position for position in determinePositionIterator]
 
     referenceIndex = np.linspace(0, ntime-1, nreferences, dtype=int)

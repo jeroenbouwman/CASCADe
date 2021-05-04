@@ -814,7 +814,14 @@ class TSOSuite:
                 int(self.cascade_parameters.cascade_max_number_of_cpus)
         except AttributeError:
             raise AttributeError("cascade_max_number_of_cpus flag not set."
-                                 " Aborting filtering of data.")
+                                 " Aborting position determination")
+        try:
+            useMultiProcesses = \
+                ast.literal_eval(self.cascade_parameters.
+                                 cascade_use_multi_processes)
+        except AttributeError:
+            raise AttributeError("cascade_use_multi_processes flag not set. "
+                                 "Aborting position determination")
         verboseSaveFile = 'register_telescope_movement.png'
         verboseSaveFile = os.path.join(savePathVerbose, verboseSaveFile)
         spectral_movement = \
@@ -825,7 +832,8 @@ class TSOSuite:
                                         AngleOversampling=AngleOversampling,
                                         verbose=verbose,
                                         verboseSaveFile=verboseSaveFile,
-                                        maxNumberOfCPUs=maxNumberOfCPUs)
+                                        maxNumberOfCPUs=maxNumberOfCPUs,
+                                        useMultiProcesses=useMultiProcesses)
         newShiftedTrace["positional_pixel"] = \
             newShiftedTrace["positional_pixel"] - \
             medianCrossDispersionPosition * \

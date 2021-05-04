@@ -30,7 +30,6 @@ dependencies:
   - psutil
   - setproctitle
   - grpcio
-  - joblib
   - pyfiglet
   - termcolor
   - statsmodels
