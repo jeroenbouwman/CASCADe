@@ -19,7 +19,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright (C) 2018, 2019  Jeroen Bouwman
+# Copyright (C) 2018, 2019, 2021  Jeroen Bouwman
 """
 Generic Observatory and Instruments specific module of the CASCADe package
 """
@@ -143,6 +143,8 @@ class GenericSpectrograph(InstrumentBase):
 
     def load_data(self):
         """
+        Load the observations.
+
         This function loads data from a Generic obsevatory and instrument
         from disk based on the parameters defined during the initialization
         of the TSO object.

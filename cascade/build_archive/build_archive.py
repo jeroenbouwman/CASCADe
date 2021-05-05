@@ -38,6 +38,7 @@ from tqdm import tqdm
 import astropy.units as u
 from astropy.table import MaskedColumn
 from astropy.io import fits
+
 from ..exoplanet_tools import extract_exoplanet_data
 from ..initialize import cascade_default_data_path
 from ..initialize import cascade_default_initialization_path
@@ -55,6 +56,7 @@ __all__ = ['read_config_file', 'remove_space', 'remove_duplicate',
            'create_bash_script', 'save_observations', 'fill_config_parameters',
            'IniFileParser', 'check_for_exceptions',
            'convert_object_value_strings_to_values', 'create_unique_ids']
+
 
 def read_config_file(file_name, path):
     """
@@ -365,7 +367,7 @@ def create_unique_ids(hst_data_catalog):
     numeral = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII']
     id_dict_all = {}
     all_planets = return_all_hst_planets(hst_data_catalog)
-    for planet in  all_planets:
+    for planet in all_planets:
         visits = return_hst_data_calalog_keys(planet, hst_data_catalog)
         obs_ids = []
         for visit in visits:
@@ -383,7 +385,7 @@ def create_unique_ids(hst_data_catalog):
                             obs_ids_dir[idx_select]+'_'+numeral[inum]
         id_dict_visit = {}
         for visit, obs_id, obs_id_dir in zip(visits, obs_ids, obs_ids_dir):
-           id_dict_visit[visit] = {'obs_id': obs_id, 'obs_id_dir': obs_id_dir}
+            id_dict_visit[visit] = {'obs_id': obs_id, 'obs_id_dir': obs_id_dir}
         id_dict_all[planet] = id_dict_visit
     return id_dict_all
 
@@ -564,7 +566,6 @@ def save_observations(data_files, cal_data_files, parser,
         )
     os.makedirs(data_save_path, exist_ok=True)
 
-    # if parser['OBSERVATIONS']['observations_mode'] == 'SCANNING':
     if parser['OBSERVATIONS']['observations_data'] == 'SPECTRAL_CUBE':
         data_files_to_download = data_files.copy()
     else:
@@ -587,7 +588,6 @@ def save_observations(data_files, cal_data_files, parser,
             with open(os.path.join(data_save_path, datafile), 'wb') as file:
                 for chunk in df.iter_content(chunk_size=1024):
                     file.write(chunk)
-    # if parser['OBSERVATIONS']['observations_mode'] == 'SCANNING':
     if parser['OBSERVATIONS']['observations_data'] == 'SPECTRAL_CUBE':
         data_files_to_download = \
             [file.replace('_flt', '_ima') for file in cal_data_files]

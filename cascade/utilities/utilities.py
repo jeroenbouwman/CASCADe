@@ -413,6 +413,26 @@ def _define_band_limits(wave):
 
 @nb.jit(nopython=True, cache=True)
 def define_weights(lr0, ur0, lr, ur):
+    """
+    Weight definition for spectra.
+
+    Parameters
+    ----------
+    lr0 : 'ndarray'
+        lower band limits of reference.
+    ur0 : 'ndarray'
+        Upper band limits of reference.
+    lr : 'ndarray'
+        lower band limits.
+    ur : 'ndarray'
+        upper band limits.
+
+    Returns
+    -------
+    weights : 'ndarray'
+        Integration weights.
+
+    """
     nwave = lr.shape[0]
     nwave0 = lr0.shape[0]
     weights = np.zeros((nwave0, nwave), dtype=lr.dtype)
@@ -425,6 +445,26 @@ def define_weights(lr0, ur0, lr, ur):
 
 @nb.jit(nopython=True, cache=True)
 def define_weights2(lr0, ur0, lr, ur):
+    """
+    Weight definition for spectral timeseries.
+
+    Parameters
+    ----------
+    lr0 : 'ndarray'
+        lower band limits of reference.
+    ur0 : 'ndarray'
+        Upper band limits of reference.
+    lr : 'ndarray'
+        lower band limits.
+    ur : 'ndarray'
+        upper band limits.
+
+    Returns
+    -------
+    weights : 'ndarray'
+        Integration weights.
+
+    """
     nwave, ntime = lr.shape
     nwave0 = lr0.shape[0]
     weights = np.zeros((nwave0, nwave, ntime), dtype=lr.dtype)

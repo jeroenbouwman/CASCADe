@@ -37,7 +37,7 @@ extracted both in an optimal way (using an extraction profile based on the
 cleaned and smoothed data) as well as using an extraction aperture
 The extracted spectra are written by default in the the
 data/HST/WFC3/WASP19b/SPECTRA/ directory of the CASCADe package.
-This directory is populated by default. If you which to compared your 
+This directory is populated by default. If you which to compared your
 results with the pre-calculated spectra, copy the content of this directory
 before running this script. Diagnostic output images can be found in the
 examples/results/WASP19b_transit_using_spectral_images directory.

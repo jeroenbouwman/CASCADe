@@ -24,7 +24,7 @@
 """
 This module defines the data models for the CASCADe transit spectroscopy code
 """
-#from weakref import WeakKeyDictionary
+
 import numpy as np
 import astropy.units as u
 
@@ -69,7 +69,6 @@ class UnitDesc:
 
     def __init__(self, keyname):
         self.default = None
-        #self.values = WeakKeyDictionary()
         self.values = {}
         self.keyname = keyname
 
@@ -147,7 +146,6 @@ class FlagDesc:
 
     def __init__(self, keyname):
         self.default = None
-        #self.values = WeakKeyDictionary()
         self.values = {}
         self.keyname = keyname
 
@@ -215,7 +213,6 @@ class AuxilaryInfoDesc:
 
     def __init__(self, keyname):
         self.default = None
-        #self.values = WeakKeyDictionary()
         self.values = {}
         self.keyname = keyname
 
@@ -284,7 +281,6 @@ class MeasurementDesc:
 
     def __init__(self, keyname):
         self.default = float("NaN")
-        #self.values = WeakKeyDictionary()
         self.values = {}
         self.keyname = keyname
 
@@ -545,7 +541,7 @@ class SpectralData(InstanceDescriptorMixin):
     @property
     def data(self):
         """
-        Data.
+        Definition of the data atttribute of the SpectralData.
 
         The data atttribute of the SpectralData is defined through a
         getter and setter method. In case data is initialized with a
@@ -626,7 +622,7 @@ class SpectralData(InstanceDescriptorMixin):
     @property
     def data_unit(self):
         """
-        Data unit.
+        Definition of the data unit attribute of the SpectralData.
 
         The data_unit attribute of the SpectralData is defined
         through a getter and setter method. This ensures that units can be

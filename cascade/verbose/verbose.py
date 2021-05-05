@@ -19,7 +19,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright (C) 2020  Jeroen Bouwman
+# Copyright (C) 2020, 2021  Jeroen Bouwman
 """
 Created on Mon May  4 19:08:58 2020
 
@@ -330,10 +330,8 @@ def check_wavelength_solution_verbose(*args, **kwargs):
     ax0.set_ylabel('Normalized Signal')
     ax0.set_title("Comparison Model with Observed Mean Spectrum")
     ax0.legend(loc='lower left', fancybox=True, framealpha=1.0,
-           ncol=1,
-           bbox_to_anchor=(0.2, 0.10, 1, 0.3), shadow=True,
-           handleheight=1.5, labelspacing=0.05,
-           fontsize=20).set_zorder(11)
+               ncol=1, bbox_to_anchor=(0.2, 0.10, 1, 0.3), shadow=True,
+               handleheight=1.5, labelspacing=0.05, fontsize=20).set_zorder(11)
     plt.show()
     if save_verbose:
         fig.savefig(os.path.join(save_path, save_name_base +
@@ -480,8 +478,9 @@ def calibrate_timeseries_verbose(*args, **kwargs):
                   nboot+1,
                   axis=0)
 
-    normed_spectrum = np.ma.array(calibration_results.normed_fitted_spectra.copy(),
-                                  mask=bad_wavelength_mask.copy())
+    normed_spectrum = \
+        np.ma.array(calibration_results.normed_fitted_spectra.copy(),
+                    mask=bad_wavelength_mask.copy())
     if transittype == "secondary":
         normed_spectrum = transit_to_eclipse(normed_spectrum)
     normed_spectrum.data[...] = normed_spectrum.data*100

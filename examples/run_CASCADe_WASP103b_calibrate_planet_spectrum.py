@@ -26,8 +26,8 @@ import os
 os.environ["CASCADE_WARNINGS"] = 'off'
 
 # To make sure no plot windows are opened if run in batch mode, use:
-import matplotlib
-matplotlib.use('AGG')
+# import matplotlib
+# matplotlib.use('AGG')
 
 import cascade
 import time
@@ -43,7 +43,7 @@ tso.execute("reset")
 
 # initialize TSO object
 # The files used in this example are for spectral data of the transit of
-# WASP 103 b observed with the GMOS instrument on Gemini. 
+# WASP 103 b observed with the GMOS instrument on Gemini.
 # The spectra have been published in Lendl et al 2017, A&A 606.
 # Before running the code, make sure that the paths specified in the .ini
 # files are correctly set. If the initialization files are not in the standard

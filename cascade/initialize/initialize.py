@@ -193,7 +193,7 @@ def reset_data():
                                                'exoplanet_data/'), new_path)
     print("Updated cascade data in directory: {}".format(destination))
     new_path = os.path.join(cascade_default_data_path, 'archive_databases/')
-    cp_user_files=os.path.exists(new_path)
+    cp_user_files = os.path.exists(new_path)
     if cp_user_files:
         user_files = find("user_processing_exceptions.ini", new_path)
         temp_dir = os.path.join(cascade_default_data_path, "temp_dir_user/")
@@ -224,6 +224,7 @@ def reset_data():
         f.write("{}".format(__version__))
     time.sleep(3.0)
 
+
 __data_dirs = ['calibration/', 'exoplanet_data/', 'archive_databases/',
                'configuration_templates/']
 
@@ -241,12 +242,13 @@ if __cascade_data_path != cascade_default_data_path:
         reset_data()
     else:
         with open(os.path.join(cascade_default_data_path,
-                           '.cascade_data_version'), 'r') as f:
+                               '.cascade_data_version'), 'r') as f:
             data_version = f.read()
         if data_version != __version__:
             print("Data version older then current cascade version, "
                   "resetting data")
             reset_data()
+
 
 def generate_default_initialization(observatory='HST', data='SPECTRUM',
                                     mode='STARING', observation='TRANSIT'):

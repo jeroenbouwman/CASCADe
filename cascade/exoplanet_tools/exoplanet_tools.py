@@ -38,17 +38,18 @@ import urllib
 import collections
 import gc
 import string
+from functools import wraps
 import astropy.units as u
 from astropy import constants as const
 from astropy.modeling.models import BlackBody
 from astropy.coordinates import SkyCoord
 from astropy.coordinates.name_resolve import NameResolveError
 from astropy.utils.data import conf
-from functools import wraps
 from astropy.table import Table, QTable
 from astropy.table import MaskedColumn
 from astropy.table import join
 from scipy import interpolate
+from skimage.registration import phase_cross_correlation
 import pandas
 import difflib
 import batman
@@ -1157,8 +1158,6 @@ def extract_exoplanet_data(data_list, target_name_or_position, coord_unit=None,
             gc.collect()
             if multiple_entries_flag:
                 # make sure to pick the latest values
-                # idx_update_time = np.argsort(new_table['ROWUPDATE'])[::-1]
-                # idx_update_time = np.argsort(new_table['PUBYEAR'])[::-1]
                 idx_good_period = ~new_table['PERLOWER'].data.mask
                 idx_update_time = \
                     np.argsort(new_table[idx_good_period]['PUBYEAR'])[::-1]
@@ -1539,8 +1538,9 @@ class exotethys_model:
         target_name = self.cascade_configuration.object_name
         instrument = self.cascade_configuration.instrument
         instrument_filter = self.cascade_configuration.instrument_filter
-        logg_unit = re.split("[\\(\\)]",
-                             self.cascade_configuration.object_logg_host_star)[1]
+        logg_unit = \
+            re.split("[\\(\\)]",
+                     self.cascade_configuration.object_logg_host_star)[1]
         logg = u.function.Dex(self.cascade_configuration.object_logg_host_star,
                               u.function.DexUnit(logg_unit))
         logg = logg.to(u.dex(u.cm/u.s**2)).value
@@ -2343,11 +2343,6 @@ class SpectralModel:
             DESCRIPTION.
 
         """
-        from skimage.registration import phase_cross_correlation
-        # from ..spectral_extraction import _define_band_limits
-        # from ..spectral_extraction import _define_rebin_weights
-        # from ..spectral_extraction import _rebin_spectra
-
         if not self.calculatate_shift:
             return 0.0, 0.0
         data = np.mean(dataset.return_masked_array('data'), axis=-1)
@@ -2485,10 +2480,6 @@ class DilutionCorrection:
             Dilution corrction.
 
         """
-        # from ..spectral_extraction import _define_band_limits
-        # from ..spectral_extraction import _define_rebin_weights
-        # from ..spectral_extraction import _rebin_spectra
-
         if not self.par['apply_dilution_correcton']:
             return np.array([None]), np.array([1])
         band_grid = np.array([self.par['dilution_band_wavelength'] -
@@ -2571,10 +2562,6 @@ class DilutionCorrection:
         None.
 
         """
-        # from ..spectral_extraction import _define_band_limits
-        # from ..spectral_extraction import _define_rebin_weights
-        # from ..spectral_extraction import _rebin_spectra
-
         wavelength = dataset.return_masked_array('wavelength')
         nwave, ntime = wavelength.shape
         if len(self.dc[0]) == 1:

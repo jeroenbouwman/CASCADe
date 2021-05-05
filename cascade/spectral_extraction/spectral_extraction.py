@@ -56,7 +56,6 @@ from skimage.transform import rotate
 from skimage.transform import SimilarityTransform
 from sklearn.preprocessing import RobustScaler
 
-
 from ..data_model import SpectralDataTimeSeries
 from ..data_model import MeasurementDesc
 from ..data_model import AuxilaryInfoDesc
@@ -148,6 +147,10 @@ class Banana(Gaussian2D):
 class Banana2DKernel(Kernel2D):
     """
     Modification of astropy Gaussian2DKernel to get a babana shaped kernel.
+
+    This class defines a banana shaped convolution kernel mimicking the shape
+    of the dispersion pattern on the detector near the short and long
+    wavelength ends.
     """
 
     _separable = True
@@ -938,6 +941,34 @@ def ray_determine_relative_source_position(spectralImageCube, ROICube,
                                            refIntegration, pba,
                                            upsampleFactor=111,
                                            AngleOversampling=2):
+    """
+    Ray wrapper for determine_relative_source_position.
+
+    Parameters
+    ----------
+    spectralImageCube : 'ndarray'
+        Input spectral image data cube. Fist dimintion is dispersion direction,
+        second dimintion is cross dispersion direction and the last dimension
+        is time.
+    ROICube : 'ndarray' of 'bool'
+        Cube containing the Region of interest for each integration.
+        If not given, it is assumed that the mask of the spectralImageCube
+        contains the region of interest.
+    refIntegration : 'int'
+        Index number of of integration to be taken as reference.
+    upsampleFactor : 'int', optional
+        integer factor by which to upsample image for FFT analysis to get
+        sub-pixel accuracy. Default value is 111
+    AngleOversampling : 'int', optional
+        Oversampling factor for angle determination, Default value 2
+
+    Returns
+    -------
+    movement : 'collections.OrderedDict'
+        relative rotation angle, scaling and x and y position as a
+        function of time.
+
+    """
     movement = determine_relative_source_position(
         spectralImageCube, ROICube, refIntegration,
         upsampleFactor=upsampleFactor,
@@ -993,9 +1024,6 @@ def _determine_relative_source_shift(reference_image, image,
 
     # subpixel precision by oversampling image by upsampleFactor
     # returns shift, error and phase difference
-    # shift, _, _ = \
-    #     register_translation(ref_im, im, upsample_factor=upsampleFactor,
-    #                          space=space)
     shift, _, _ = \
         phase_cross_correlation(ref_im, im, upsample_factor=upsampleFactor,
                                 space=space)
@@ -1075,9 +1103,6 @@ def _determine_relative_rotation_and_scale(reference_image, referenceROI,
                                output_shape=None, multichannel=None,
                                AngleOversampling=AngleOversampling)
 
-    # tparams = register_translation(warped_fft_ref_im, warped_fft_im,
-    #                                upsample_factor=upsampleFactor,
-    #                                space='real')
     tparams = phase_cross_correlation(warped_fft_ref_im, warped_fft_im,
                                       upsample_factor=upsampleFactor,
                                       space='real')
@@ -1427,7 +1452,8 @@ class ProgressBarActor:
         self.event = Event()
 
     def update(self, num_items_completed: int) -> None:
-        """Updates the ProgressBar with the incremental
+        """
+        Updates the ProgressBar with the incremental
         number of items that were just completed.
         """
         self.counter += num_items_completed
@@ -1435,7 +1461,8 @@ class ProgressBarActor:
         self.event.set()
 
     async def wait_for_update(self) -> Tuple[int, int]:
-        """Blocking call.
+        """
+        Blocking call.
 
         Waits until somebody calls `update`, then returns a tuple of
         the number of updates since the last call to
@@ -1470,7 +1497,8 @@ class ProgressBar:
 
     @property
     def actor(self) -> ActorHandle:
-        """Returns a reference to the remote `ProgressBarActor`.
+        """
+        Returns a reference to the remote `ProgressBarActor`.
 
         When you complete tasks, call `update` on the actor.
         """
@@ -1496,7 +1524,7 @@ def ray_loop(dataCube, ROICube=None, upsampleFactor=111,
              AngleOversampling=2, nreference=6, maxNumberOfCPUs=2,
              useMultiProcesses=True):
     """
-    Loop using ray.
+    Ray wrapper around determine_relative_source_position function.
 
     Performs parallel loop for different reference integrations to determine
     the relative source movement on the detector.
@@ -1508,14 +1536,23 @@ def ray_loop(dataCube, ROICube=None, upsampleFactor=111,
         second dimintion is cross dispersion direction and the last dimension
         is time. The shortest wavelengths are at the first row
     ROICube : 'ndarray' of 'bool', optional
+        Region of Interest
     nreferences : 'int', optional
+        Number of reference times used to determine the relative movement
     upsampleFactor : 'int, optional
+        Upsample factor for translational movement
     AngleOversampling : 'int, optional
-    max_number_of_cpus : 'int', optionla
+        Upsample factor for determination of rotational movement.
+    max_number_of_cpus : 'int', optional
+        Maximum number of CPU used when using parallel calculations.
+    useMultiProcesses : 'bool', optional
+        If True, calculations will be done in parallel.
 
     Returns
     -------
-    relativeSourcePosition
+    relativeSourcePosition : 'collections.OrderedDict'
+        Ordered dict containing the relative rotation angle,
+        scaling and x and y position as a function of time.
     """
     ntime = dataCube.shape[-1]
     if not useMultiProcesses:
@@ -1774,7 +1811,6 @@ def determine_center_of_light_posision(cleanData, ROI=None, verbose=False,
     X = np.array(X).T
     robust_fit = sm.RLM(COL[idx_use], X).fit()
     z = robust_fit.params[::-1]
-    # z = np.polyfit(idx, COL[idx_use], orderTrace)
     f = np.poly1d(z)
     xtrace = f(ytrace)
 
@@ -2453,15 +2489,15 @@ def compressROI(ROI, compressMask):
 
     Parameters
     ----------
-    ROI : TYPE
+    ROI : 'ndarray'
         DESCRIPTION.
-    compressMask : TYPE
-        DESCRIPTION.
+    compressMask : 'ndarray'
+        Compression mask indicating all valid data.
 
     Returns
     -------
-    compressedROI : TYPE
-        DESCRIPTION.
+    compressedROI : 'ndarray'
+        Row (wavelength) compressed region of interest.
 
     """
     compressedROI = ROI[compressMask]
@@ -2474,15 +2510,15 @@ def compressSpectralTrace(spectralTrace, compressMask):
 
     Parameters
     ----------
-    spectralTrace : TYPE
+    spectralTrace : 'dict'
         DESCRIPTION.
-    compressMask : TYPE
-        DESCRIPTION.
+    compressMask : 'ndarray'
+        Compression mask indicating all valid data.
 
     Returns
     -------
-    compressedsSpectralTrace : TYPE
-        DESCRIPTION.
+    compressedsSpectralTrace : 'dict'
+        Row (wavelength) compressed spectral trace.
 
     """
     compressedsSpectralTrace = spectralTrace.copy()
@@ -2501,15 +2537,15 @@ def compressDataset(datasetIn, ROI):
 
     Parameters
     ----------
-    datasetIn : TYPE
-        DESCRIPTION.
-    ROI : TYPE
-        DESCRIPTION.
+    datasetIn : 'SpectralDataset'
+        Spectral dataset.
+    ROI : 'ndarray'
+        Region of interest.
 
     Returns
     -------
-    compressedDataset : TYPE
-        DESCRIPTION.
+    compressedDataset : SpectralDataset'
+        Row (wavelength) compressed dataset.
 
     """
     dataIn = datasetIn.return_masked_array('data').copy()

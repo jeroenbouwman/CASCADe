@@ -182,8 +182,6 @@ class SpitzerIRS(InstrumentBase):
         inst_obs_name = cascade_configuration.instrument_observatory
         inst_inst_name = cascade_configuration.instrument
         inst_filter = cascade_configuration.instrument_filter
-#        inst_mode = cascade_configuration.instrument_mode
-#        inst_order = cascade_configuration.instrument_order
         obj_period = \
             u.Quantity(cascade_configuration.object_period).to(u.day)
         obj_period = obj_period.value
@@ -300,10 +298,8 @@ class SpitzerIRS(InstrumentBase):
         """
         # get data files
         if is_background:
-            # obsid = self.par['obs_backgr_id']
             target_name = self.par['obs_backgr_target_name']
         else:
-            # obsid = self.par['obs_id']
             target_name = self.par['obs_target_name']
 
         path_to_files = os.path.join(self.par['obs_path'],
@@ -375,7 +371,6 @@ class SpitzerIRS(InstrumentBase):
                                    target_name=target_name,
                                    dataProduct=self.par['obs_data_product'],
                                    dataFiles=data_files)
-# TEST
         # Standardize signal to mean value.
         mean_signal, _, _ = \
             sigma_clipped_stats(SpectralTimeSeries.return_masked_array("data"),
@@ -535,9 +530,6 @@ class SpitzerIRS(InstrumentBase):
 
         # wavelength calibration
         wave_cal = self._get_wavelength_calibration(npix, nodOffset)
-
-        # ROI
-        # self._define_region_of_interest(data)
 
         # reverse spectral data to make sure the shortest wavelengths are
         # at the first image row

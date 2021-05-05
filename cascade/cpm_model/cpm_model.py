@@ -29,19 +29,19 @@ regression model used in causal pixel model.
 """
 import numpy as np
 from types import SimpleNamespace
+import itertools
+from collections.abc import Iterable
+import ast
+import time as time_module
+import copy
+import ray
+from numba import jit
 from scipy.linalg import svd
 from scipy.linalg import solve_triangular
 from scipy.linalg import cholesky
 import astropy.units as u
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
-from numba import jit
-import ray
-import itertools
-from collections.abc import Iterable
-import ast
-import time as time_module
-import copy
 
 from ..exoplanet_tools import lightcurve
 from ..data_model import SpectralData
@@ -610,7 +610,7 @@ class regressionDataServer:
 
     def get_data_info(self):
         """
-        bla.
+        Get the relevant information of the observations.
 
         Returns
         -------
@@ -620,7 +620,11 @@ class regressionDataServer:
             DESCRIPTION.
         ROI : TYPE
             DESCRIPTION.
-
+        data_unit :
+        wavelength_unit :
+        time_unit :
+        time_bjd_zero :
+        data_product :
         """
         ndim = self.fit_dataset.data.ndim
         shape = self.fit_dataset.data.shape
@@ -929,7 +933,7 @@ class rayRegressionDataServer(regressionDataServer):
 
     def sync_with_parameter_server(self, parameter_server_handle):
         """
-        bla.
+        Sync the regression server with the parameter server.
 
         Parameters
         ----------
@@ -1517,7 +1521,7 @@ class regressionControler:
 
     def reset_fit_parameters(self):
         """
-        bla.
+        Reset the fitted parameters on the parameter server.
 
         Returns
         -------
@@ -1528,7 +1532,7 @@ class regressionControler:
 
     def add_fit_parameters_to_parameter_server(self, new_parameters):
         """
-        bla.
+        Add the fited refression parameters to the parameter server.
 
         Parameters
         ----------
@@ -1546,7 +1550,7 @@ class regressionControler:
     def get_data_chunck(data_server_handle, regression_selection,
                         bootstrap_selection):
         """
-        bla.
+        Get a chunk of the data to be used in the regression analysis.
 
         Parameters
         ----------
@@ -1573,7 +1577,10 @@ class regressionControler:
 
     def run_regression_model(self, nchunks=1):
         """
-        bla.
+        Run the regression model.
+
+        This method runs the regression method for the instrument systematics
+        and the transit depth determination.
 
         Parameters
         ----------
@@ -1622,7 +1629,7 @@ class regressionControler:
 
     def process_regression_fit(self):
         """
-        bla.
+        Process the fitted parameters from the regression anlysis.
 
         Returns
         -------
@@ -1724,7 +1731,7 @@ class regressionControler:
 
     def post_process_regression_fit(self):
         """
-        bla.
+        Post processing of the regression analysis.
 
         Returns
         -------
@@ -1877,7 +1884,7 @@ class rayRegressionControler(regressionControler):
 
     def instantiate_parameter_server(self):
         """
-        bla.
+        Create an handle to the parameter server.
 
         Returns
         -------
@@ -1889,7 +1896,7 @@ class rayRegressionControler(regressionControler):
 
     def instantiate_data_server(self, dataset, regressor_dataset):
         """
-        bla.
+        Create an handle to the data server.
 
         Parameters
         ----------
@@ -1908,7 +1915,7 @@ class rayRegressionControler(regressionControler):
 
     def initialize_servers(self):
         """
-        bla.
+        Initialize both the data and the parameter server.
 
         Note that the order of initialization is important: Firts the data
         server and then the parameter server.
@@ -1927,7 +1934,7 @@ class rayRegressionControler(regressionControler):
 
     def get_fit_parameters_from_server(self):
         """
-        bla.
+        Grab fitted regression parameters from the parameter server.
 
         Returns
         -------
@@ -1941,7 +1948,7 @@ class rayRegressionControler(regressionControler):
 
     def get_regularization_parameters_from_server(self):
         """
-        bla.
+        Get the regularization parameters from the parameter server.
 
         Returns
         -------
@@ -1955,7 +1962,7 @@ class rayRegressionControler(regressionControler):
 
     def get_control_parameters(self):
         """
-        bla.
+        Get the regression control parameters from the parameter server.
 
         Returns
         -------
@@ -1975,7 +1982,7 @@ class rayRegressionControler(regressionControler):
     @ray.method(num_returns=5)
     def get_lightcurve_model(self):
         """
-        bla.
+        Get the lightcurve model from the data server.
 
         Returns
         -------
@@ -1987,7 +1994,7 @@ class rayRegressionControler(regressionControler):
 
     def initialize_regression_iterators(self, nchunks=1):
         """
-        bla.
+        Initialize all iterators used in the regression analysis.
 
         Returns
         -------
@@ -2019,7 +2026,7 @@ class rayRegressionControler(regressionControler):
 
     def reset_fit_parameters(self):
         """
-        bla.
+        Reset the fitted parameters on the parameter server.
 
         Returns
         -------
@@ -2032,7 +2039,7 @@ class rayRegressionControler(regressionControler):
     def get_data_chunck(data_server_handle, regression_selection,
                         bootstrap_selection):
         """
-        bla.
+        Get a chunk of the data to be used in the regression analysis.
 
         Parameters
         ----------
@@ -2059,7 +2066,7 @@ class rayRegressionControler(regressionControler):
 
     def add_fit_parameters_to_parameter_server(self, new_parameters):
         """
-        bla.
+        Add the fited refression parameters to the parameter server.
 
         Parameters
         ----------
@@ -2078,7 +2085,10 @@ class rayRegressionControler(regressionControler):
 
     def run_regression_model(self, nchunks=1):
         """
-        bla.
+        Run the regression model.
+
+        This method runs the regression method for the instrument systematics
+        and the transit depth determination.
 
         Parameters
         ----------
@@ -2129,7 +2139,7 @@ class rayRegressionControler(regressionControler):
 
 class regressionWorker:
     """
-    regression worker class.
+    Regression worker class.
 
     This class defines the workers used in the regression analysis to
     determine the systematics and transit model parameters.

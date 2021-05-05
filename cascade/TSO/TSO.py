@@ -2032,6 +2032,5 @@ def combine_observations(target_name, observations_ids, path=None,
             ax.set_ylabel('SNR')
             ax.set_xlabel('Wavelength [{}]'.format(u.micron))
             plt.show()
-            fig.savefig(os.path.join(save_path, base_filename +
-                                     "_snr.png"),
+            fig.savefig(os.path.join(save_path, base_filename + "_snr.png"),
                         bbox_inches="tight")

@@ -29,6 +29,8 @@ from types import SimpleNamespace
 import gc
 import warnings
 import numpy as np
+import pandas as pd
+from tqdm import tqdm
 from astropy.io import fits
 import astropy.units as u
 from astropy.time import Time
@@ -38,9 +40,7 @@ from astropy.stats import sigma_clipped_stats
 from astropy.convolution import Gaussian2DKernel
 from astropy.convolution import Gaussian1DKernel
 from photutils import IRAFStarFinder
-import pandas as pd
 from scipy.optimize import nnls
-from tqdm import tqdm
 
 from ...initialize import cascade_configuration
 from ...initialize import cascade_default_data_path
@@ -129,7 +129,9 @@ class HST(ObservatoryBase):
         """
         Instruments of the HST observatory usable with CASCADe.
 
-        Returns {'WFC3'}
+        Returns
+        -------
+        {'WFC3'}
         """
         return{"WFC3"}
 
@@ -770,13 +772,8 @@ class HSTWFC3(InstrumentBase):
         spectral_data_nrptexp = spectral_data_nrptexp[idx_time_sort]
 
         # check for spurious longer exosures.
-        # med_nrptexp = np.median(spectral_data_nrptexp)
-        # idx_remove1 = spectral_data_nrptexp != med_nrptexp
         median_exposure_time = np.median(spectral_image_exposure_time)
-        idx_remove2 = (spectral_image_exposure_time-0.01) > median_exposure_time
-# BUG FIX reversion
-        # idx_remove = idx_remove1 | idx_remove2
-        idx_remove = idx_remove2
+        idx_remove = (spectral_image_exposure_time-0.01) > median_exposure_time
         spectral_image_exposure_time = \
             spectral_image_exposure_time[~idx_remove]
         time = time[~idx_remove]
@@ -835,7 +832,7 @@ class HSTWFC3(InstrumentBase):
             cal_phase = cal_phase - 1.0
 
         self._define_convolution_kernel()
-# BUG FIX
+
         offset_x = spectral_offset1
         offset_y = spectral_offset2
         cal_offset_x = cal_offset1
@@ -969,15 +966,13 @@ class HSTWFC3(InstrumentBase):
                 cubeCalType = self._get_cube_cal_type(hdul)
                 nsamp = hdul['PRIMARY'].header['NSAMP']
                 exptime = hdul['PRIMARY'].header['EXPTIME']
-# BUG FIX
                 nrptexp = hdul['PRIMARY'].header['NRPTEXP']
                 scanLeng = hdul['PRIMARY'].header['SCAN_LEN']
                 scanRate = hdul['PRIMARY'].header['SCAN_RAT']
                 scanOffset2 = hdul['PRIMARY'].header['POSTARG2']
                 scanOffset1 = hdul['PRIMARY'].header['POSTARG1']
                 scanAng = hdul['PRIMARY'].header['SCAN_ANG']
-                # paV3 = hdul['PRIMARY'].header['PA_V3']
-# BUG FIX
+
                 # The angle difference between “SCAN_ANG” and “PA_V3"
                 # determines if it is an up or down scan.
                 # For up scan, this angle is around +90 degrees (91.8),
@@ -1100,13 +1095,8 @@ class HSTWFC3(InstrumentBase):
         spectral_scan_offset1 = spectral_scan_offset1[idx_time_sort]
         spectral_data_nrptexp = spectral_data_nrptexp[idx_time_sort]
 
-        # med_nrptexp = np.median(spectral_data_nrptexp)
-        # idx_remove1 = spectral_data_nrptexp != med_nrptexp
         med_number_of_samples = np.median(spectral_image_number_of_samples)
         idx_remove = spectral_image_number_of_samples > med_number_of_samples
-#        idx_remove = idx_remove1 | idx_remove2
-# BUG FIX reversion
-        # idx_remove = idx_remove2
         time = time[~idx_remove]
         spectral_sampling_time = spectral_sampling_time[~idx_remove]
         spectral_image_cube = spectral_image_cube[~idx_remove, :, :]
@@ -1131,21 +1121,6 @@ class HSTWFC3(InstrumentBase):
 
         nintegrations, mpix, npix = spectral_image_cube.shape
         nintegrations_cal, ypix_cal, xpix_cal = calibration_image_cube.shape
-
-        # bits_not_to_flag = [0, 10, 12,14]
-        # bits_to_flag = []
-        # for ibit in range(1, 16):
-        #     if ibit not in bits_not_to_flag:
-        #         bits_to_flag.append(ibit)
-        # all_flag_values = np.unique(spectral_image_dq_cube)
-        # bit_select = np.zeros_like(all_flag_values, dtype='int')
-        # for ibit in bits_to_flag:
-        #     print((all_flag_values & (1 << (ibit - 1))))
-        #     bit_select = bit_select + (all_flag_values & (1 << (ibit - 1)))
-        # bit_select = bit_select.astype('bool')
-        # mask = np.zeros_like(spectral_image_dq_cube, dtype='bool')
-        # for iflag in all_flag_values[bit_select]:
-        #     mask = mask | (spectral_image_dq_cube == iflag)
 
         mask = self. _create_mask_from_dq(spectral_image_dq_cube)
 
@@ -1325,9 +1300,11 @@ class HSTWFC3(InstrumentBase):
             idx = (scan_directions == scan_direction)
             scan_length_diff = total_scan_length[idx] - scan_length[idx]
             if scan_direction == 0:
-                yc_temp[i] = np.mean(scan_offset_y[idx]+0.5*scan_length[idx] + scan_length_diff)
+                yc_temp[i] = np.mean(scan_offset_y[idx]+0.5*scan_length[idx] +
+                                     scan_length_diff)
             else:
-                yc_temp[i] = np.mean(scan_offset_y[idx]-0.5*scan_length[idx] - scan_length_diff)
+                yc_temp[i] = np.mean(scan_offset_y[idx]-0.5*scan_length[idx] -
+                                     scan_length_diff)
         yc_offset = (np.mean(yc_temp)-np.mean(cal_offset_y))/0.121
         try:
             self.wfc3_cal
