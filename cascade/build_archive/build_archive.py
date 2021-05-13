@@ -65,14 +65,14 @@ def read_config_file(file_name, path):
     Parameters
     ----------
     file_name : 'str'
-        DESCRIPTION.
+        Filename of the configureation file.
     path : 'str'
-        DESCRIPTION.
+        Path to the location of the configuration file.
 
     Returns
     -------
     config_dict : 'dict'
-        DESCRIPTION.
+        Dictionary containing the content of the read configuration file.
     """
     config_file = os.path.join(path, file_name)
     with open(config_file, 'r') as conf:
@@ -86,13 +86,13 @@ def remove_space(object_names):
 
     Parameters
     ----------
-    object_names : TYPE
-        DESCRIPTION.
+    object_names : 'list' or 'ndarray' of 'str'
+        List of object names possibly containing spaces.
 
     Returns
     -------
-    new_name : TYPE
-        DESCRIPTION.
+    new_name : 'ndarray' of 'str'
+        List of spaces removed object names.
 
     """
     new_name = np.asarray(object_names)
@@ -107,13 +107,13 @@ def remove_duplicate(object_names):
 
     Parameters
     ----------
-    object_names : TYPE
-        DESCRIPTION.
+    object_names : 'list' or 'ndarray' of 'str'
+        List of object names possibly containing duplicates.
 
     Returns
     -------
-    new_name : TYPE
-        DESCRIPTION.
+    new_name : 'ndarray' of 'str'
+        List of unique object names.
 
     """
     new_name = np.asarray(object_names)
@@ -422,15 +422,12 @@ def return_header_info(data_file, cal_data_file):
     temp_download_dir = os.path.join(cascade_default_data_path,
                                      "mastDownload_"+data_file_id+"/")
 
-    # session = requests.Session()
     os.makedirs(temp_download_dir, exist_ok=True)
     df = requests.get(url_data_archive.format(data_file), stream=True,
                       headers=headers)
     with open(os.path.join(temp_download_dir, data_file), 'wb') as file:
         for chunk in df.iter_content(chunk_size=1024):
             file.write(chunk)
-    # urlretrieve(URL_DATA_ARCHIVE.format(data_file),
-    #             os.path.join(TEMP_DOWNLOAD_DIR, data_file))
     header_info = {}
     with fits.open(os.path.join(temp_download_dir, data_file),
                    ignore_missing_end=True) as hdul:
@@ -441,8 +438,6 @@ def return_header_info(data_file, cal_data_file):
     with open(os.path.join(temp_download_dir, cal_data_file), 'wb') as file:
         for chunk in df.iter_content(chunk_size=1024):
             file.write(chunk)
-    # urlretrieve(URL_DATA_ARCHIVE.format(cal_data_file),
-    #             os.path.join(TEMP_DOWNLOAD_DIR, cal_data_file))
     cal_header_info = {}
     with fits.open(os.path.join(temp_download_dir, cal_data_file),
                    ignore_missing_end=True) as hdul:

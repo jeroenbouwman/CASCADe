@@ -59,7 +59,7 @@ __all__ = ['ols',
 
 
 def ols(design_matrix, data, covariance=None):
-    """
+    r"""
     Ordinary least squares.
 
     Parameters
@@ -87,7 +87,7 @@ def ols(design_matrix, data, covariance=None):
 
     .. math:: A x = y
 
-    by finding optimal solution \\^x by minimizing
+    by finding optimal solution :math:'\hat{x}' by minimizing
 
     .. math::
 
@@ -170,7 +170,7 @@ def ols(design_matrix, data, covariance=None):
 
 def ridge(input_regression_matrix, input_data, input_covariance,
           input_delta, input_alpha):
-    """
+    r"""
     Ridge regression.
 
     Parameters
@@ -209,7 +209,7 @@ def ridge(input_regression_matrix, input_data, input_covariance,
 
     .. math:: A x = y
 
-    by finding optimal solution \\^x by minimizing
+    by finding optimal solution :math:'\^x' by minimizing
 
     .. math::
         || y - A*\hat{x} ||^2 + \lambda * || \hat{x} ||^2
@@ -404,7 +404,9 @@ def log_likelihood(data, covariance, model):
     -------
     lnL : TYPE
         DESCRIPTION.
-    Note
+
+    Notes
+    -----
     2*np.sum(np.log(np.diag(np.linalg.cholesky(covariance))))
 
     np.dot(np.dot((data-model), np.diag(weights)), (data-model))
@@ -413,13 +415,10 @@ def log_likelihood(data, covariance, model):
     residual = data-model
     # Cholesky decomposition and inversion:
     G = cholesky(covariance, lower=True)
-#    S = np.linalg.inv(G)
-#    inverse_covariance = np.dot(S.T, S)
     RG = solve_triangular(G, residual, lower=True, check_finite=False)
     lnL = -0.5*(ndata*np.log(2.0*np.pi) +
                 2*np.sum(np.log(np.diag(G))) +
                 np.dot(RG.T, RG))
-#                np.dot(np.dot(residual, inverse_covariance), residual))
     return lnL
 
 
@@ -1328,13 +1327,13 @@ class regressionControler:
 
     def instantiate_data_server(self, dataset, regressor_dataset):
         """
-        Instatiate the data server.
+        Instantiate the data server.
 
         Parameters
         ----------
-        dataset : 'cascade.data_model.data_model.SpectralDataTimeSeries'
+        dataset : 'SpectralDataTimeSeries'
             The spectral timeseries dataset to be modeled.
-        regressor_dataset : 'cascade.data_model.SpectralDataTimeSeries'
+        regressor_dataset : 'SpectralDataTimeSeries'
             The cleaned version of the spectral timeseries dataset used for
             construnction the regression matrici.
 

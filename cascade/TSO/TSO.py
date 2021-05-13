@@ -937,6 +937,12 @@ class TSOSuite:
                                  "step? Aborting wavelength correction")
         else:
             try:
+                useScale = \
+                    ast.literal_eval(
+                        self.cascade_parameters.processing_use_scale_in_wave_cor)
+            except AttributeError:
+                useScale = False
+            try:
                 isMovementCorrected = datasetIn.isMovementCorrected
             except AttributeError:
                 isMovementCorrected = False
@@ -951,6 +957,8 @@ class TSOSuite:
                 datasetIn = correct_wavelength_for_source_movent(
                     datasetIn,
                     spectralMovement,
+                     useScale=useScale,
+                     useCrossDispersion=False,
                     verbose=verbose,
                     verboseSaveFile=verboseSaveFile)
                 self.observation.dataset = datasetIn
@@ -980,6 +988,8 @@ class TSOSuite:
                         correct_wavelength_for_source_movent(
                             cleanedDataset,
                             spectralMovement,
+                            useScale=useScale,
+                            useCrossDispersion=False,
                             verbose=verbose,
                             verboseSaveFile=verboseSaveFile)
 
@@ -1021,6 +1031,8 @@ class TSOSuite:
                         correct_wavelength_for_source_movent(
                             filteredDataset,
                             spectralMovement,
+                            useScale=useScale,
+                            useCrossDispersion=False,
                             verbose=verbose,
                             verboseSaveFile=verboseSaveFile)
                     corrected_mask = self.cpm.cleaned_dataset.mask

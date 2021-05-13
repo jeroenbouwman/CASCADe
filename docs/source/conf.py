@@ -20,13 +20,13 @@ sys.path.insert(0, os.path.abspath('../../'))
 # -- Project information -----------------------------------------------------
 
 project = 'CASCADe'
-copyright = '2019, 2020 Jeroen Bouwman'
+copyright = '2021 Jeroen Bouwman'
 author = 'Jeroen Bouwman'
 
 # The short X.Y version
-version = '0.9.6'
+version = '1.0.4'
 # The full version, including alpha/beta/rc tags
-release = '0.9.6'
+release = '1.0.4'
 
 
 # -- General configuration ---------------------------------------------------

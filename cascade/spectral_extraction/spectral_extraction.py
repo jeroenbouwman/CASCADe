@@ -1964,6 +1964,8 @@ def determine_absolute_cross_dispersion_position(cleanedDataset, initialTrace,
 
 
 def correct_wavelength_for_source_movent(datasetIn, spectral_movement,
+                                         useScale=False,
+                                         useCrossDispersion=False,
                                          verbose=False, verboseSaveFile=None):
     """
     Correct wavelengths for source movement.
@@ -1979,6 +1981,12 @@ def correct_wavelength_for_source_movent(datasetIn, spectral_movement,
     spectral_movement : 'OrderedDict'
         Ordered dict containing the relative rotation, scaling,
         and movement in the dispersion and cross dispersion direction.
+     useScale : 'bool', optional
+         If set the scale parameter is used to correct the wavelength.
+         Default is False.
+    useCrossDispersion : 'bool', optional
+        If set the coress dispersion movement is used to correct the
+        wavelength. Default is False.
     verbose : 'bool', optional
         If true diagnostic plots will be generated. Default is False
     verboseSaveFile : 'str', optional
@@ -2011,10 +2019,13 @@ def correct_wavelength_for_source_movent(datasetIn, spectral_movement,
         center = np.array((cols, rows)) / 2. - 0.5
         tform1 = SimilarityTransform(translation=center)
         angle_rad = np.deg2rad(-spectral_movement['relativeAngle'][it])
-        tform2 = SimilarityTransform(rotation=angle_rad)
+        scale = spectral_movement['relativeScale'][it]
+        tform2 = SimilarityTransform(rotation=angle_rad,
+                                     scale=(1.0/scale-1.0)*int(useScale)+1.0)
         tform3 = SimilarityTransform(translation=-center)
         tform_rotate = tform3 + tform2 + tform1
-        translation = (-spectral_movement['crossDispersionShift'][it]*0.0,
+        translation = (-spectral_movement['crossDispersionShift'][it] *
+                       int(useCrossDispersion),
                        -spectral_movement['dispersionShift'][it])
         tform_translate = SimilarityTransform(translation=translation)
         tform_combined = tform_translate + tform_rotate
