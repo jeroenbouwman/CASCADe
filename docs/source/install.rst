@@ -50,10 +50,18 @@ that the gitlab repository is private and to download the code, one needs to
 create a gitlab account after which the account can be added to the list of
 users which have acces to the repository. 
 
+To download and install with a single command, type on the terminal
+
+```bash
+pip install git+git://github.com/ucl-exoplanets/ExoTETHyS.git@master
+```
+
+Alternatively, one can first clone the repository and then install.
 The :blue:`CASCADe` repository path is, depending if the HTTPS or SSH protocol is used:
 
 - HTTPS: `https://gitlab.com/jbouwman/CASCADe`
 - SSH: `` git@gitlab.com:jbouwman/CASCADe ``
+
 
 To get started, open a terminal window in the directory
 you wish to clone the repository files into, and run one
@@ -73,8 +81,15 @@ git clone git@gitlab.com:jbouwman/CASCADe.git
 
 Both commands will download a copy of the files in a folder named after the
 project's name. You can then navigate to the directory and start working on it
-locally. In case one is using Anaconda make sure the cascade environment is
-activated before using our package
+locally. After accessing the root folder from terminal, type
+
+```bash
+pip install .
+```
+
+to install the package.
+In case one is using Anaconda make sure the cascade environment is
+activated before using the :blue:`CASCADe` package
 
 
 Installing all necessary packages within an Anaconda environment

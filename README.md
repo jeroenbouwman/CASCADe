@@ -1,9 +1,7 @@
 
 [![pipeline status](https://gitlab.com/jbouwman/CASCADe/badges/master/pipeline.svg)](https://gitlab.com/jbouwman/CASCADe/commits/master)
-![coverage](https://gitlab.com/jbouwman/CASCADe/badges/master/coverage.svg?job=coverage)
 
-
-# CASCADe: Calibration of trAnsit Spectroscopy using CAusal Data
+#  <span style="color:#1F618D">CASCADe </span>: Calibration of trAnsit Spectroscopy using CAusal Data
 
 At present several thousand transiting exoplanet systems have been discovered.
 For relatively few systems, however, a spectro-photometric characterization of
@@ -17,7 +15,7 @@ stars. Though significant progress has been made, most of these methods have dra
 as they either have to make too many assumptions or do not fully utilize all
 information available in the data to negate the noise terms.
 
-Within the EC Horizons 2020 project <span style="color:#FF0000:>Exoplanets A  </span> we have developed
+Within the EC Horizons 2020 project </span style="color:#FF0000:>Exoplanets A  </span> we have developed
 the Calibration of trAnsit Spectroscopy using CAusal Data (<span style="color:#1F618D">CASCADe </span>) package which implement full
 spectroscopic pipeline for HST/WFC3 and Spitzer/IRS spectroscopic timeseries observations as well as a lightcurve calibration and fitting tool. 
 The <span style="color:#1F618D">CASCADe </span> project implements a novel “data driven” method, pioneered by
@@ -26,8 +24,91 @@ and uses this to calibrate the spectral timeseries data of single transiting
 systems. The current code has been tested successfully on spectroscopic data
 obtained with the Spitzer and HST observatories. 
 
+## Installing Cascade
 
-## Using Cascade
+
+### Getting <span style="color:#1F618D">CASCADe </span> from gitlab
+
+The <span style="color:#1F618D">CASCADe </span> code can be found at gitlab and can be downloaded with git. 
+To download and install with a single command, type on the terminal
+
+```bash
+
+pip install git+git://gitlab.com/jbouwman/CASCADe.git@master
+
+```
+
+Alternatively, one can first clone the repository and then install.
+The <span style="color:#1F618D">CASCADe </span> repository path is, depending if the HTTPS or SSH protocol is used:
+
+- HTTPS: `https://gitlab.com/jbouwman/CASCADe`
+- SSH: `` git@gitlab.com:jbouwman/CASCADe ``
+
+To get started, open a terminal window in the directory
+you wish to clone the repository files into, and run one
+of the following commands:
+
+Clone via HTTPS:
+
+```bash
+
+git clone https://gitlab.com/jbouwman/CASCADe.git
+
+```
+
+Clone via SSH:
+
+```bash
+
+git clone git@gitlab.com:jbouwman/CASCADe.git
+
+```
+
+Both commands will download a copy of the files in a folder named after the
+project's name. You can then navigate to the directory and start working on it
+locally. After accessing the root folder from terminal, type
+
+```bash
+
+pip install .
+
+```
+
+to install the package.
+
+In case one is using Anaconda make sure a cascade environment is created and 
+activated before using our package In the <span style="color:#1F618D">CASCADe </span> 
+main package directory an environment.yml can be found. You can
+use this yml file to create or update the cascade Anaconda environment. If you
+not already had created an cascade environment execute the following command:
+    
+```bash
+
+conda env create -f environment.yml
+
+```
+
+Incase you already have an cascade environment, you can update the necessary 
+packages with the following command (also use this after updating <span style="color:#1F618D">CASCADe </span>
+itself):
+
+```bash
+
+conda env update -f environment.yml
+
+```
+
+Make sure the <span style="color:#1F618D">CASCADe </span> package is in your path. You can either set a PYTHONPATH
+environment variable pointing to the location of the <span style="color:#1F618D">CASCADe </span> package on your
+system, or when using anaconda with the following command:
+
+```bash
+
+conda develop <path_to_the_CASCADe_package_on_your_system>/CASCADe
+
+```
+
+## Using  <span style="color:#1F618D">CASCADe </span>
 
 The CASCADe distribution comes with a few working examples and datasets which can be found in the examples and
 data sub-directories, respectively. All needed parameters for running the code are defined in the provided 

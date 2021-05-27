@@ -46,7 +46,7 @@ def write_spectra_to_fits(spectral_dataset, path, filename, header_meta):
 
     Parameters
     ----------
-    data : 'ndarry' or 'cascade.data_model.SpectralDataTimeSeries'
+    data : 'ndarray' or 'SpectralDataTimeSeries'
         The data cube which will be save to fits file. For each time step
         a fits file will be generated.
     path : 'str'
@@ -92,7 +92,7 @@ def write_timeseries_to_fits(data, path, additional_file_string=None,
 
     Parameters
     ----------
-    data : 'ndarry' or 'cascade.data_model.SpectralDataTimeSeries'
+    data : 'ndarry' or 'SpectralDataTimeSeries'
         The data cube which will be save to fits file. For each time step
         a fits file will be generated.
     path : 'str'
@@ -216,7 +216,7 @@ def find(pattern, path):
     ----------
     pattern : 'str'
         Pattern used to search for files.
-    path " 'str'
+    path : 'str'
         Path to directory to be searched.
 
     Returns

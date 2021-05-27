@@ -22,26 +22,25 @@
 # Copyright (C) 2018, 2019, 2020, 2021  Jeroen Bouwman
 """Module defining the spectral extraction functionality used in cascade."""
 
-import numpy as np
 import math
 from functools import partial
 import collections
 import warnings
 import copy
-from psutil import virtual_memory, cpu_count
-from typing import Tuple
 from itertools import zip_longest
-from tqdm import tqdm
 import multiprocessing as mp
+from asyncio import Event
+from typing import Tuple
+from psutil import virtual_memory, cpu_count
+from tqdm import tqdm
 import ray
 from ray.actor import ActorHandle
-from asyncio import Event
 import statsmodels.api as sm
 from matplotlib import pyplot as plt
 import seaborn as sns
+import numpy as np
 from scipy import ndimage
 from scipy.ndimage import binary_dilation
-from skimage.registration import phase_cross_correlation
 from astropy.convolution import convolve
 from astropy.convolution import Gaussian2DKernel
 from astropy.convolution import Kernel2D
@@ -50,6 +49,7 @@ from astropy.modeling.parameters import Parameter
 from astropy.convolution import interpolate_replace_nans
 from astropy.convolution import Gaussian1DKernel
 from astropy.stats import sigma_clip
+from skimage.registration import phase_cross_correlation
 from skimage.transform import warp
 from skimage._shared.utils import safe_as_int
 from skimage.transform import rotate
@@ -87,8 +87,7 @@ def _round_up_to_odd_integer(value):
     i = math.ceil(value)
     if i % 2 == 0:
         return i + 1
-    else:
-        return i
+    return i
 
 
 class Banana(Gaussian2D):
@@ -328,7 +327,7 @@ def define_image_regions_to_be_filtered(ROI, filterShape):
                            tidx) for (yidx, xidx, tidx) in indices_poi]
 
     # defines all regions in image and corresponding region of filter
-    sub_regions = [isub for isub in zip(image_sub_regions, filter_sub_regions)]
+    sub_regions = list(zip(image_sub_regions, filter_sub_regions))
     # eneumerated definition of all regions in image and corresponding region
     # of filter
     enumerated_sub_regions = \
@@ -518,7 +517,7 @@ def filter_image_cube(data_in, Filters, ROIcube, enumeratedSubRegions,
 
         pbar = tqdm(total=len(result_ids), dynamic_ncols=True,
                     desc='Filtering image cube')
-        while(len(result_ids)):
+        while len(result_ids):
             done_id, result_ids = ray.wait(result_ids)
             k = ray.get(done_id[0])
             for j in k:
@@ -1659,9 +1658,9 @@ def register_telescope_movement(cleanedDataset, ROICube=None,  nreferences=6,
 
     ntime = dataUse.shape[-1]
     if (nreferences < 1) | (nreferences > ntime):
-        raise(ValueError("Wrong nreferences value"))
+        raise ValueError("Wrong nreferences value")
     if (mainReference < 0) | (mainReference > nreferences):
-        raise(ValueError("Wrong mainReference value"))
+        raise ValueError("Wrong mainReference value")
 
     determinePositionIterator = \
         ray_loop(dataUse, ROICube=ROICube,
@@ -1670,7 +1669,7 @@ def register_telescope_movement(cleanedDataset, ROICube=None,  nreferences=6,
                  nreference=nreferences,
                  maxNumberOfCPUs=maxNumberOfCPUs,
                  useMultiProcesses=useMultiProcesses)
-    iteratorResults = [position for position in determinePositionIterator]
+    iteratorResults = list(determinePositionIterator)
 
     referenceIndex = np.linspace(0, ntime-1, nreferences, dtype=int)
     testAngle = np.zeros((nreferences, ntime))
@@ -1872,9 +1871,7 @@ def correct_initial_wavelength_shift(referenceDataset, cascade_configuration,
     if len(otherDatasets_list) > 0:
         return [referenceDataset] + otherDatasets_list, modeled_observations,\
             corrected_observations
-    else:
-        return referenceDataset,  modeled_observations, \
-            corrected_observations
+    return referenceDataset,  modeled_observations, corrected_observations
 
 
 def determine_absolute_cross_dispersion_position(cleanedDataset, initialTrace,
@@ -1930,7 +1927,7 @@ def determine_absolute_cross_dispersion_position(cleanedDataset, initialTrace,
     convolvedFirstImage = convolve(cleanedData[..., 0], kernel,
                                    boundary='extend')
 
-    tot_spec, idx, col, yTrace, xTrace = \
+    _, idx, col, yTrace, xTrace = \
         determine_center_of_light_posision(convolvedFirstImage, ROI=roiUse,
                                            quantileCut=quantileCut,
                                            orderTrace=orderTrace)
@@ -2290,7 +2287,7 @@ def combine_scan_samples(datasetIn, nreads, verbose=False):
                     else:
                         dictTimeSeries[key] = aux
                 elif isinstance(aux, np.ndarray):
-                    if (len(aux) == dataInShape[-1]):
+                    if len(aux) == dataInShape[-1]:
                         # no list, no number
                         dictTimeSeries[key] = \
                             reshape_auxilary(aux, dataInShape, nreads)

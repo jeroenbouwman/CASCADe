@@ -2031,7 +2031,7 @@ class exotethys_stellar_model:
         Parameters
         ----------
         InputParameter : 'dict'
-            DESCRIPTION.
+            Input parameters defining the stellar model.
 
         Returns
         -------
@@ -2040,7 +2040,9 @@ class exotethys_stellar_model:
         sens : 'astropy.units.Quantity'
             Sensitivity of the used instrument.
         model_wavelengths : 'astropy.units.Quantity'
+            Wavelength grid of stellar model.
         model_fluxes : 'astropy.units.Quantity'
+             Stellar model.
         model_wavelengths_dilution_object : 'astropy.units.Quantity'
             Wavelength grid of stellar object diluting the transit signal.
         model_fluxes_dilution_object : 'astropy.units.Quantity'
@@ -2312,12 +2314,13 @@ class SpectralModel:
         Raises
         ------
         ValueError
-            DESCRIPTION.
+            If the requested limbdakening code is not recognized a
+            value error is raised. 
 
         Returns
         -------
-        par : TYPE
-            DESCRIPTION.
+        par : 'collections.OrderedDict'
+            Input parameters of spectral model.
 
         """
         calculatate_initial_wavelength_shift_flag = \
@@ -2343,15 +2346,16 @@ class SpectralModel:
 
         Parameters
         ----------
-        dataset : TYPE
-            DESCRIPTION.
+        dataset : 'cascade.data_model.SpectralDataTimeSeries'
+            Input spectral data time series.
 
         Returns
         -------
-        wavelength_shift : TYPE
-            DESCRIPTION.
-        error_wavelength_shift : TYPE
-            DESCRIPTION.
+        wavelength_shift : 'astropy.units.Quantity'
+            General shift in wavelength of the dispersed light compared to
+            the expected (initial guess) position.
+        error_wavelength_shift : 'astropy.units.Quantity'
+            Error estimate of the fitted wavelength shift.
 
         """
         if not self.calculatate_shift:
@@ -2430,12 +2434,15 @@ class DilutionCorrection:
         Raises
         ------
         ValueError
-            DESCRIPTION.
+            If the limbdarkning code is not recognized a ValueError is raised.
+        AttributeError
+          If the DILUTION parameters are not properly defined an AttributeError
+          is raised.
 
         Returns
         -------
-        par : TYPE
-            DESCRIPTION.
+        par : 'collections.OrderedDict'
+            Input parameters for the dilution model.
 
         """
         try:
@@ -2565,8 +2572,8 @@ class DilutionCorrection:
 
         Parameters
         ----------
-        dataset : TYPE
-            DESCRIPTION.
+        dataset : 'cascade.data_model.SpectralDataTimeSeries'
+            Spectral dataset.
 
         Returns
         -------

@@ -90,7 +90,10 @@ def load_data_verbose(*args, **kwargs):
     Parameters
     ----------
     args : 'tuple'
+        Input varables for plot output.
     kwargs : 'dict'
+        Named varables for plot output. Included should be the following:
+            verbose_par, plot_data
 
     Returns
     -------
@@ -172,12 +175,15 @@ def load_data_verbose(*args, **kwargs):
 
 def subtract_background_verbose(*args, **kwargs):
     """
-    Make verbose plots.
+    Make verbose plots for the subtract_background step.
 
     Parameters
     ----------
     args : 'tuple'
+        Input varables for plot output.
     kwargs : 'dict'
+        Named varables for plot output. Included should be the following:
+            verbose_par, plot_data
 
     Returns
     -------
@@ -296,7 +302,15 @@ def correct_wavelengths_verbose(*args, **kwargs):
 
 def check_wavelength_solution_verbose(*args, **kwargs):
     """
-    Make verbose plots.
+    Make verbose plots for the check_wavelength_solution step.
+
+    Parameters
+    ----------
+    args : 'tuple'
+        Input varables for plot output.
+    kwargs : 'dict'
+        Named varables for plot output. Included should be the following:
+            verbose_par, modeled_observations, corrected_observations
 
     Returns
     -------
@@ -365,7 +379,16 @@ def extract_1d_spectra_verbose(*args, **kwargs):
 
 def calibrate_timeseries_verbose(*args, **kwargs):
     """
-    Make verbose plots.
+    Make verbose plots for the calibrate_timeserie step.
+
+    Parameters
+    ----------
+    args : 'tuple'
+        Input varables for plot output.
+    kwargs : 'dict'
+        Named varables for plot output. Included should be the following:
+            verbose_par, model, dataset, cleaned_dataset, exoplanet_spectrum,
+            calibration_results.
 
     Returns
     -------
