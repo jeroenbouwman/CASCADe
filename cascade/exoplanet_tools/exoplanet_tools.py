@@ -1467,15 +1467,15 @@ class exotethys_model:
 
         Parameters
         ----------
-        InputParameter : TYPE
-            DESCRIPTION.
+        InputParameter : 'dict'
+            Dictionary containing all parameters defining the exotethys model.
 
         Returns
         -------
-        wl_bands : TYPE
-            DESCRIPTION.
-        ld_coefficients : TYPE
-            DESCRIPTION.
+        wl_bands : 'list'
+            List containing the wavelength bands of the exotethys model.
+        ld_coefficients : 'list'
+            List containing the wavelength dependent limbdarkening coefficients.
 
         """
         from exotethys import sail
@@ -1736,12 +1736,13 @@ class limbdarkning:
         Raises
         ------
         ValueError
-            DESCRIPTION.
+            A value error is raised if either the limbdarkening model or
+            limbdarkening law is not recognized (implemented).
 
         Returns
         -------
-        par : TYPE
-            DESCRIPTION.
+        par : 'collections.OrderedDict'
+            Dictionary containing all parameters defing the limbdarkening model.
 
         """
         calculatate_ld_coefficients_flag = ast.literal_eval(
@@ -1788,13 +1789,15 @@ class limbdarkning:
 
         Parameters
         ----------
-        InputParameter : TYPE
-            DESCRIPTION.
+        InputParameter : 'dict'
+            Dictionary containing the input parameters of the limbdarkening
+            model.
 
         Returns
         -------
-        ld_coefficients : TYPE
-            DESCRIPTION.
+        ld_coefficients : 'list'
+            List of zeros (eclipse only). The length of the list is set by
+            the type of the limbdarkening law. 
 
         """
         if InputParameter['limb_darkening_laws'] == 'linear':
@@ -1813,13 +1816,15 @@ class limbdarkning:
 
         Parameters
         ----------
-        InputParameter : TYPE
-            DESCRIPTION.
+        InputParameter : 'dict'
+            Dictionary containing the input parameters of the limbdarkening
+            model.
 
         Returns
         -------
-        ld_coefficients : TYPE
-            DESCRIPTION.
+        ld_coefficients : 'list'
+            Constant limbdarkening coefficients from the cascade configuration
+            file.
 
         """
         if InputParameter['ttype'] == 'secondary':
@@ -2025,15 +2030,21 @@ class exotethys_stellar_model:
 
         Parameters
         ----------
-        InputParameter : TYPE
+        InputParameter : 'dict'
             DESCRIPTION.
 
         Returns
         -------
-        wl_bands : TYPE
-            DESCRIPTION.
-        ld_coefficients : TYPE
-            DESCRIPTION.
+        wave_sens : 'astropy.units.Quantity'
+            Wavelength grid of the instrument sensitivity.
+        sens : 'astropy.units.Quantity'
+            Sensitivity of the used instrument.
+        model_wavelengths : 'astropy.units.Quantity'
+        model_fluxes : 'astropy.units.Quantity'
+        model_wavelengths_dilution_object : 'astropy.units.Quantity'
+            Wavelength grid of stellar object diluting the transit signal.
+        model_fluxes_dilution_object : 'astropy.units.Quantity'
+            Model flux of stellar object diluting the transit signal.
 
         """
         from exotethys import sail

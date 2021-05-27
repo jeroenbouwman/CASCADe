@@ -1,5 +1,7 @@
 
 [![pipeline status](https://gitlab.com/jbouwman/CASCADe/badges/master/pipeline.svg)](https://gitlab.com/jbouwman/CASCADe/commits/master)
+![coverage](https://gitlab.com/jbouwman/CASCADe/badges/master/coverage.svg?job=coverage)
+
 
 # CASCADe: Calibration of trAnsit Spectroscopy using CAusal Data
 
@@ -15,11 +17,14 @@ stars. Though significant progress has been made, most of these methods have dra
 as they either have to make too many assumptions or do not fully utilize all
 information available in the data to negate the noise terms.
 
+Within the EC Horizons 2020 project <span style="color:#FF0000:>Exoplanets A  </span> we have developed
+the Calibration of trAnsit Spectroscopy using CAusal Data (<span style="color:#1F618D">CASCADe </span>) package which implement full
+spectroscopic pipeline for HST/WFC3 and Spitzer/IRS spectroscopic timeseries observations as well as a lightcurve calibration and fitting tool. 
 The <span style="color:#1F618D">CASCADe </span> project implements a novel “data driven” method, pioneered by
 Schoelkopf et al (2016) utilizing the causal connections within a data set,
 and uses this to calibrate the spectral timeseries data of single transiting
-systems. The current code has been tested successfully to spectroscopic data
-obtained with the Spitzer and HST observatories.
+systems. The current code has been tested successfully on spectroscopic data
+obtained with the Spitzer and HST observatories. 
 
 
 ## Using Cascade

@@ -33,6 +33,8 @@ and uses this to calibrate the spectral timeseries data of single transiting
 systems. The current code has been tested successfully to spectroscopic data
 obtained with the Spitzer and HST observatories.
 
+Document version:
+|version|
 
 CASCADe documentation
 =====================

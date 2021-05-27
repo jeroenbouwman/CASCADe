@@ -1834,17 +1834,24 @@ def correct_initial_wavelength_shift(referenceDataset, cascade_configuration,
 
     Parameters
     ----------
-    referenceDataset : TYPE
-        DESCRIPTION.
+    referenceDataset : 'cascade.data_model.SpectralDataTimeSeries'
+        Dataset who's wavelength is used as refernce of the wavelength
+        correction.
     cascade_configuration : 'cascade.initialize.initialize.configurator'
-        DESCRIPTION.
-    **otherDatasets : TYPE
-        DESCRIPTION.
+        Singleton containing the confifuration parameters of cascade.
+    **otherDatasets : 'cascade.data_model.SpectralDataTimeSeries'
+        Optional.
+        Other datasets assumed to have the same walengths as the reference
+        dataset and which will be corrected simultaneously with the reference.
 
     Returns
     -------
-    referenceDataset : Type
-        DESCRIPTION.
+    referenceDataset : 'list' of 'cascade.data_model.SpectralDataTimeSeries'
+        Dataset with corrected wavelengths.
+    otherDatasets_list : 'list' of 'cascade.data_model.SpectralDataTimeSeries'
+        Optinal output.
+    modeled_observations : 'list' of 'ndarray'
+    corrected_observations : 'list' of 'ndarray'
     """
     model_spectra = SpectralModel(cascade_configuration)
     wave_shift, error_wave_shift = \
@@ -2501,7 +2508,7 @@ def compressROI(ROI, compressMask):
     Parameters
     ----------
     ROI : 'ndarray'
-        DESCRIPTION.
+        Region of interest on detector.
     compressMask : 'ndarray'
         Compression mask indicating all valid data.
 
@@ -2522,7 +2529,7 @@ def compressSpectralTrace(spectralTrace, compressMask):
     Parameters
     ----------
     spectralTrace : 'dict'
-        DESCRIPTION.
+        Spectral trace of the dispersed light on the detector.
     compressMask : 'ndarray'
         Compression mask indicating all valid data.
 

@@ -938,10 +938,17 @@ class TSOSuite:
         else:
             try:
                 useScale = \
-                    ast.literal_eval(
-                        self.cascade_parameters.processing_use_scale_in_wave_cor)
+                    ast.literal_eval(self.cascade_parameters.
+                                     processing_use_scale_in_wave_cor)
             except AttributeError:
                 useScale = False
+            try:     
+                useCrossDispersion = \
+                    ast.literal_eval(
+                        self.cascade_parameters.
+                        processing_use_cross_dispersion_in_wave_cor)  
+            except AttributeError:
+                useCrossDispersion = False
             try:
                 isMovementCorrected = datasetIn.isMovementCorrected
             except AttributeError:
@@ -958,7 +965,7 @@ class TSOSuite:
                     datasetIn,
                     spectralMovement,
                      useScale=useScale,
-                     useCrossDispersion=False,
+                     useCrossDispersion=useCrossDispersion,
                     verbose=verbose,
                     verboseSaveFile=verboseSaveFile)
                 self.observation.dataset = datasetIn
@@ -989,7 +996,7 @@ class TSOSuite:
                             cleanedDataset,
                             spectralMovement,
                             useScale=useScale,
-                            useCrossDispersion=False,
+                            useCrossDispersion=useCrossDispersion,
                             verbose=verbose,
                             verboseSaveFile=verboseSaveFile)
 
@@ -1032,7 +1039,7 @@ class TSOSuite:
                             filteredDataset,
                             spectralMovement,
                             useScale=useScale,
-                            useCrossDispersion=False,
+                            useCrossDispersion=useCrossDispersion,
                             verbose=verbose,
                             verboseSaveFile=verboseSaveFile)
                     corrected_mask = self.cpm.cleaned_dataset.mask

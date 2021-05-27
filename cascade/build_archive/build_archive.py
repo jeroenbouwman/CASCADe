@@ -129,23 +129,23 @@ def fill_system_parameters(name, catalogs, configuration,
     Parameters
     ----------
     name : 'str'
-        DESCRIPTION.
+        Name of the planetary system.
     catalogs : 'dict'
-        DESCRIPTION.
+        Dictionary containing the names of the exoplanet catalogs.
     configuration : 'dict'
-        DESCRIPTION
+        Dictionary containing all relevant entries in the exoplanet catalog.
     primary_cat : 'str'
-        DESCRIPTION.
+        primary catalog.
 
     Raises
     ------
     ValueError
-        DESCRIPTION.
+        Errro is raised if system can not be found in catalog.
 
     Returns
     -------
     system_parameters : 'dict'
-        DESCRIPTION.
+        Retrieved exoplanet system parameters from catalog.
 
     """
     observables = []
@@ -217,13 +217,13 @@ def long_substr(data):
 
     Parameters
     ----------
-    data : TYPE
-        DESCRIPTION.
+    data : 'ndarray' of 'str'
+        Array containing all unique identifiers of the data files.
 
     Returns
     -------
-    substr : TYPE
-        DESCRIPTION.
+    substr : 'str'
+        Longest common sub-string of the unique identifiers.
 
     """
     substr = ''
@@ -241,13 +241,14 @@ def return_exoplanet_catalogs(update=True):
 
     Parameters
     ----------
-    update : 'bool'
-    DESCRIPTION Default is True, if True update the files csv
+    update : 'bool', optional
+    If True update the files csv else use the csv files from local disk.
+    Default is True.
 
     Returns
     -------
     catalog_dict : 'dict'
-        DESCRIPTION.
+        Dictionary containing all entries for all exoplanet catalogs.
 
     """
     all_catalogs = ['TEPCAT', 'EXOPLANETS.ORG', 'NASAEXOPLANETARCHIVE',
@@ -264,16 +265,16 @@ def create_configuration(template, path, parameter_dict):
 
     Parameters
     ----------
-    template : TYPE
+    template : 'str'
         DESCRIPTION.
-    path : TYPE
+    path : 'str'
         DESCRIPTION.
-    parameter_dict : TYPE
+    parameter_dict : 'dictionary'
         DESCRIPTION.
 
     Returns
     -------
-    parser : TYPE
+    parser : 'configparser.ConfigParser'
         DESCRIPTION.
 
     """
@@ -291,7 +292,7 @@ def print_parser_content(parser):
 
     Parameters
     ----------
-    parser : TYPE
+    parser : 'configparser.ConfigParser'
         DESCRIPTION.
 
     Returns
@@ -312,14 +313,14 @@ def return_hst_data_calalog_keys(planet_name, hst_data_catalog):
 
     Parameters
     ----------
-    planet_name : TYPE
+    planet_name : 'str'
         DESCRIPTION.
-    hst_data_catalog : TYPE
+    hst_data_catalog : 'dictionary'
         DESCRIPTION.
 
     Returns
     -------
-    catalog_keys : TYPE
+    catalog_keys : 'list'
         DESCRIPTION.
 
     """
@@ -335,12 +336,12 @@ def return_all_hst_planets(hst_data_catalog):
 
     Parameters
     ----------
-    hst_data_catalog : TYPE
+    hst_data_catalog : 'dictionary'
         DESCRIPTION.
 
     Returns
     -------
-    all_observed_planets : TYPE
+    all_observed_planets : 'list' of 'str'
         DESCRIPTION.
 
     """
@@ -487,7 +488,7 @@ def create_bash_script(database_id, configuration):
     ----------
     database_id : 'str'
         DESCRIPTION.
-    configuration : TYPE
+    configuration : 'configparser.ConfigParser'
         DESCRIPTION.
 
     Returns
@@ -534,11 +535,11 @@ def save_observations(data_files, cal_data_files, parser,
 
     Parameters
     ----------
-    data_files : TYPE
+    data_files : 'list' of 'str'
         DESCRIPTION.
-    cal_data_files : TYPE
+    cal_data_files : 'list' of 'str'
         DESCRIPTION.
-    parser : TYPE
+    parser : 'configparser.ConfigParser'
         DESCRIPTION.
     skip_excisting : 'bool'
         DESCRIPTION Default is False
@@ -603,14 +604,14 @@ def fill_config_parameters(config_dict, namespece_dict):
 
     Parameters
     ----------
-    config_dict : TYPE
+    config_dict : 'dictionary'
         DESCRIPTION.
-    namespece_dict : TYPE
+    namespece_dict : 'dictionary'
         DESCRIPTION.
 
     Returns
     -------
-    config_dict : TYPE
+    config_dict : 'dictionary'
         DESCRIPTION.
 
     """
@@ -639,12 +640,12 @@ def convert_value_strings_to_values(value_string):
 
     Parameters
     ----------
-    value_string : TYPE
+    value_string : 'str'
         DESCRIPTION.
 
     Returns
     -------
-    value : TYPE
+    value : 'float', 'int', 'bool' or 'str'
         DESCRIPTION.
 
     """
@@ -661,12 +662,12 @@ def convert_object_value_strings_to_values(value_string):
 
     Parameters
     ----------
-    value_string : TYPE
+    value_string : 'str'
         DESCRIPTION.
 
     Returns
     -------
-    value : TYPE
+    value : 'astropy.units.Quantity' or 'float', 'int', 'bool', 'str'
         DESCRIPTION.
 
     """
@@ -686,14 +687,14 @@ def check_for_exceptions(exception_file, parameter_dict):
 
     Parameters
     ----------
-    exception_file : TYPE
+    exception_file : 'str'
         DESCRIPTION.
-    parameter_dict : TYPE
+    parameter_dict : 'dictionary'
         DESCRIPTION.
 
     Returns
     -------
-    exceptions_dict : TYPE
+    exceptions_dict : 'dictionary'
         DESCRIPTION.
 
     """
@@ -774,7 +775,7 @@ class IniFileParser:
 
         Returns
         -------
-        TYPE
+        'configparser.ConfigParser'
             DESCRIPTION.
 
         """

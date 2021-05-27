@@ -393,20 +393,22 @@ def log_likelihood(data, covariance, model):
 
     Parameters
     ----------
-    data : TYPE
-        DESCRIPTION.
-    covariance : TYPE
-        DESCRIPTION.
-    model : TYPE
-        DESCRIPTION.
+    data : 'ndarray'
+        Data array to be modeled
+    covariance : 'ndarray'
+        The covariance of the data.
+    model : 'ndarray'
+        Regression model of the data.
 
     Returns
     -------
-    lnL : TYPE
-        DESCRIPTION.
+    lnL : 'float'
+        Log likelihood.
 
     Notes
     -----
+    For the determinent term in the log likelyhood calculation use:
+
     2*np.sum(np.log(np.diag(np.linalg.cholesky(covariance))))
 
     np.dot(np.dot((data-model), np.diag(weights)), (data-model))
@@ -429,17 +431,17 @@ def modified_AIC(lnL, n_data, n_parameters):
 
     Parameters
     ----------
-    lnL : TYPE
-        DESCRIPTION.
-    n_data : TYPE
-        DESCRIPTION.
-    n_parameters : TYPE
-        DESCRIPTION.
+    lnL : 'float'
+        Log likelihood.
+    n_data : 'int'
+        Number of data points
+    n_parameters : 'int'
+        Number of free model parameters.
 
     Returns
     -------
-    AICc : TYPE
-        DESCRIPTION.
+    AICc : 'float'
+        modelifed Aikake information criterium.
 
     """
     AIC = -2*lnL + 2*n_parameters
@@ -453,22 +455,24 @@ def create_regularization_matrix(method, n_regressors, n_not_regularized):
 
     Parameters
     ----------
-    method : TYPE
-        DESCRIPTION.
-    n_regressors : TYPE
-        DESCRIPTION.
-    n_not_regularized : TYPE
-        DESCRIPTION.
+    method : 'string'
+        Method used to calculated regularization matrix. Allawed values
+        are 'value' or 'derivative'
+    n_regressors : 'int'
+        Number of regressors.
+    n_not_regularized : 'int'
+        Number of regressors whi should not have a regulariation term.
 
     Raises
     ------
     ValueError
-        DESCRIPTION.
+        Incase the method input parameter has a wrong value a ValueError is
+        raised.
 
     Returns
     -------
-    delta : TYPE
-        DESCRIPTION.
+    delta : 'ndarray'
+        Regularization matrix.
 
     """
     allowed_methods = ['value', 'derivative']
@@ -519,21 +523,22 @@ def return_lambda_grid(lambda_min, lambda_max, n_lambda):
 
 def make_bootstrap_samples(ndata, nsamples):
     """
-    Make sboortrap sample indicii.
+    Make bootstrap sample indicii.
 
     Parameters
     ----------
-    ndata : TYPE
-        DESCRIPTION.
-    nsamples : TYPE
-        DESCRIPTION.
+    ndata : 'int'
+        Number of data points.
+    nsamples : 'int'
+        Number of bootstrap samples.
 
     Returns
     -------
-    bootsptrap_indici : TYPE
-        DESCRIPTION.
-    non_common_indici : TYPE
-        DESCRIPTION.
+    bootsptrap_indici : 'ndarray' of 'int'
+        (nsample+1 X ndata) array containing the permutated indicii of the 
+        data array. The first row is the unsampled list of indici.
+    non_common_indici : 'list'
+        For ech nootstrap sampling, list of indici not sampled.
 
     """
     all_indici = np.arange(ndata)
@@ -555,15 +560,16 @@ def return_design_matrix(data, selection_list):
 
     Parameters
     ----------
-    data : TYPE
-        DESCRIPTION.
-    selection_list : TYPE
-        DESCRIPTION.
+    data : 'ndarray'
+        Input timeseries data.
+    selection_list : 'tuple'
+        Tuple containing the indici of the data used as regressor for a 
+        given wvelength (index).
 
     Returns
     -------
-    design_matrix : TYPE
-        DESCRIPTION.
+    design_matrix : 'ndarray'
+        Design matrix.
 
     """
     (il, ir), (idx_cal, trace), nwave = selection_list
@@ -594,8 +600,8 @@ class regressionDataServer:
 
         Parameters
         ----------
-        parameter_server_handle : TYPE
-            DESCRIPTION.
+        parameter_server_handle : 'regressionParameterServer'
+            instance of the regressionParameterServer class.
 
         Returns
         -------
@@ -613,17 +619,22 @@ class regressionDataServer:
 
         Returns
         -------
-        ndim : TYPE
-            DESCRIPTION.
-        shape : TYPE
-            DESCRIPTION.
-        ROI : TYPE
-            DESCRIPTION.
-        data_unit :
-        wavelength_unit :
-        time_unit :
-        time_bjd_zero :
-        data_product :
+        ndim : 'int'
+            Dimension of the dataset.
+        shape : 'tuple'
+            Shape of the dataset.
+        ROI : 'ndarray'
+            Region of interest.
+        data_unit : 'astropy unit'
+            Physical unit of the data.
+        wavelength_unit : 'astropy unit'
+            Physical unit of the wavelength.
+        time_unit : 'astropy unit'
+            Unit of the time.
+        time_bjd_zero : 'float'
+            Time in BJD of first integration 
+        data_product : 'string'
+            Data product.
         """
         ndim = self.fit_dataset.data.ndim
         shape = self.fit_dataset.data.shape
@@ -639,11 +650,6 @@ class regressionDataServer:
     def initialze_lightcurve_model(self):
         """
         Initialize the ligthcurve model.
-
-        Parameters
-        ----------
-        cascade_configuration : TYPE
-            DESCRIPTION.
 
         Returns
         -------
@@ -675,8 +681,10 @@ class regressionDataServer:
 
         Returns
         -------
-        TYPE
-            DESCRIPTION.
+        'tuple'
+            Tuple containing the lightcurve model, the limbdarkening correction,
+            the dilution correction, the lightcurve model parameters and the
+            mid transit time.
 
         """
         return (self.fit_lightcurve_model, self.fit_ld_correcton,
@@ -740,21 +748,26 @@ class regressionDataServer:
     @staticmethod
     def select_regressors(data, selection, bootstrap_indici=None):
         """
-        Return the design matrix based on the data set itself.
+        Return the design matrix for a given selection.
+        
+        This function selects the data to be used as regressor. To be used in
+        combination with the select_data function.
 
         Parameters
         ----------
-        data : TYPE
-            DESCRIPTION.
-        selection : TYPE
-            DESCRIPTION.
-        bootstrap_indici : TYPE, optional
-            DESCRIPTION. The default is None.
+        data : 'ndarray'
+            Spectroscopic data.
+        selection : 'tuple'
+            Tuple containing the indici of the data to be used as regressors
+            for each wavelength (index).
+        bootstrap_indici : 'ndarray' of 'int', optional
+            The time indici indicating which data to be used for a bootstrap
+            sampling. The default is None.
 
         Returns
         -------
-        design_matrix : TYPE
-            DESCRIPTION.
+        design_matrix : 'ndarray'
+            The design matrix used in the regression analysis.
         """
         (_, _), (index_disp_regressors, index_cross_disp_regressors), _ = \
             selection
@@ -770,21 +783,26 @@ class regressionDataServer:
     @staticmethod
     def select_data(data, selection, bootstrap_indici=None):
         """
-        Return the design matrix based on the data set itself.
+        Return the data for a given selection.
+        
+        This functions selects the data for to be used the the regression
+        analysis. To be used in combination with the select_regressors function.
 
         Parameters
         ----------
-        data : TYPE
-            DESCRIPTION.
-        selection : TYPE
-            DESCRIPTION.
-        bootstrap_indici : TYPE, optional
-            DESCRIPTION. The default is None.
+        data : 'ndarray'
+            Spectroscopic data..
+        selection : 'tuple'
+            Tuple containing the indici of the data to be used as regressors
+            for each wavelength (index).
+        bootstrap_indici : 'ndarray' of 'int', optional
+            The time indici indicating which data to be used for a bootstrap
+            sampling. The default is None.
 
         Returns
         -------
-        design_matrix : TYPE
-            DESCRIPTION.
+        design_matrix : 'ndarray'
+            The selected data to me modeled.
         """
         (index_dispersion, index_cross_dispersion), (_, _), _ = \
             selection
@@ -801,10 +819,12 @@ class regressionDataServer:
 
         Parameters
         ----------
-        selection : TYPE
-            DESCRIPTION.
-        bootstrap_indici : TYPE, optional
-            DESCRIPTION. The default is None.
+        selection : 'tuple'
+            Tuple containing the indici of the data to be used as regressors
+            for each wavelength (index).
+        bootstrap_indici : 'ndarray' of 'int', optional
+            The time indici indicating which data to be used for a bootstrap
+            sampling. The default is None.
 
         Returns
         -------
@@ -837,10 +857,12 @@ class regressionDataServer:
 
         Parameters
         ----------
-        selection : TYPE
-            DESCRIPTION.
-        bootstrap_indici : TYPE, optional
-            DESCRIPTION. The default is None.
+        selection : 'tuple'
+            Tuple containing the indici of the data to be used as regressors
+            for each wavelength (index).
+        bootstrap_indici : 'ndarray' of 'int', optional
+            The time indici indicating which data to be used for a bootstrap
+            sampling. The default is None.
 
         Returns
         -------
@@ -878,17 +900,19 @@ class regressionDataServer:
 
         Parameters
         ----------
-        selection : TYPE
-            DESCRIPTION.
-        bootstrap_indici : TYPE, optional
-            DESCRIPTION. The default is None.
+        selection : 'tuple'
+            Tuple containing the indici of the data to be used as regressors
+            for each wavelength (index).
+        bootstrap_indici : 'ndarray' of 'int', optional
+            The time indici indicating which data to be used for a bootstrap
+            sampling. The default is None.
 
         Returns
         -------
-        TYPE
-            DESCRIPTION.
-        TYPE
-            DESCRIPTION.
+        'ndarray'
+            Data to be modeled.
+        'ndarray'
+            Design matrix for te regression analysis of the data.
 
         """
         self.setup_regression_data(selection,
@@ -903,8 +927,8 @@ class regressionDataServer:
 
         Parameters
         ----------
-        parameter_server_handle : TYPE
-            DESCRIPTION.
+        parameter_server_handle : 'regressionParameterServer'
+            insatance of the regressionParameterServer class.
 
         Returns
         -------
@@ -936,8 +960,8 @@ class rayRegressionDataServer(regressionDataServer):
 
         Parameters
         ----------
-        parameter_server_handle : TYPE
-            DESCRIPTION.
+        parameter_server_handle : 'regressionParameterServer'
+            insatance of the regressionParameterServer class.
 
         Returns
         -------
@@ -1032,8 +1056,8 @@ class regressionParameterServer:
 
         Returns
         -------
-        TYPE
-            DESCRIPTION.
+        'cascade.initialize.cascade_configuration'
+            Singleton containing the cascade configuration.
 
         """
         return self.cascade_configuration
@@ -1068,8 +1092,8 @@ class regressionParameterServer:
 
         Returns
         -------
-        TYPE
-            DESCRIPTION.
+        simpleNameSpace'
+            Name spcae holding all relevant parameters describing the dataset.
 
         """
         return self.data_parameters
@@ -1097,8 +1121,8 @@ class regressionParameterServer:
 
         Returns
         -------
-        TYPE
-            DESCRIPTION.
+        simpleNameSpace'
+            Name spcae holding all relevant parameters for the regularization.
 
         """
         return self.regularization
@@ -1109,8 +1133,8 @@ class regressionParameterServer:
 
         Parameters
         ----------
-        new_regularization : TYPE
-            DESCRIPTION.
+        new_regularization : 'simpleNamespace'
+            New namespace holding the updated optimal regularization.
 
         Returns
         -------
@@ -1186,8 +1210,8 @@ class regressionParameterServer:
 
         Returns
         -------
-        TYPE
-            DESCRIPTION.
+        'simpleNamespace'
+            Returns a namespace containing all fitted parameters.
 
         """
         return self.fitted_parameters
@@ -1198,8 +1222,9 @@ class regressionParameterServer:
 
         Parameters
         ----------
-        new_parameters : TYPE
-            DESCRIPTION.
+        new_parameters : 'dictionary'
+            Dictionary defining aditional fit parameters of the regression
+            model.
 
         Returns
         -------
@@ -1227,8 +1252,8 @@ class regressionParameterServer:
 
         Parameters
         ----------
-        data_server_handle : TYPE
-            DESCRIPTION.
+        data_server_handle : 'regressionDataServer'
+            Instance of the regressionDataServer class.
 
         Returns
         -------
@@ -1245,10 +1270,10 @@ class regressionParameterServer:
 
         Parameters
         ----------
-        cascade_configuration : TYPE
-            DESCRIPTION.
-        data_server_handle : TYPE
-            DESCRIPTION.
+        cascade_configuration : 'cascade.initialize.cascade_configuration'
+            Singleton containing all cascade configuration parameters.
+        data_server_handle :  'regressionDataServer'
+            Instance of the regressionDataServer class.
 
         Returns
         -------
@@ -1381,8 +1406,8 @@ class regressionControler:
 
         Returns
         -------
-        TYPE
-            DESCRIPTION.
+        'simapleNamespace'
+            Namsespace containing all regularization varaibles and parameters.
 
         """
         return self.parameter_server_handle.get_regularization()
@@ -1414,8 +1439,9 @@ class regressionControler:
 
         Returns
         -------
-        TYPE
-            DESCRIPTION.
+        'simapleNamespace'
+            Namespace containing all variables and parameters defining the
+            lightcurve model.
 
         """
         return self.data_server_handle.get_lightcurve_model()
@@ -1456,8 +1482,9 @@ class regressionControler:
 
         Returns
         -------
-        TYPE
-            DESCRIPTION.
+        'simplaeNamespace'
+            Namespace containing all iterators (data indici, bootstrap indici)
+            for regression analysis 
 
         """
         return self.iterators
@@ -1469,15 +1496,17 @@ class regressionControler:
 
         Parameters
         ----------
-        it : TYPE
-            DESCRIPTION.
-        nchunks
-        number_of_iterators
+        it : 'itertools.product'
+            Iterator to be split into chunks.
+        nchunks : 'int'
+            Number of chuncks.
+        number_of_iterators : 'int'
+            Number of iterators.
 
         Yields
         ------
-        chunk_it : TYPE
-            DESCRIPTION.
+        chunk_it : 'list'
+            Chunk of the input iterator.
 
         """
         chunk_size = number_of_iterators // nchunks
@@ -1498,8 +1527,8 @@ class regressionControler:
 
         Parameters
         ----------
-        nchunk : TYPE, optional
-            DESCRIPTION. The default is 1.
+        nchunk : 'int', optional
+            Number of chunks in which to split the iterators. The default is 1.
 
         Returns
         -------
@@ -1535,8 +1564,8 @@ class regressionControler:
 
         Parameters
         ----------
-        new_parameters : TYPE
-            DESCRIPTION.
+        new_parameters : 'simpleNamespace'
+            Updated fit parameters.
 
         Returns
         -------
@@ -1553,19 +1582,21 @@ class regressionControler:
 
         Parameters
         ----------
-        data_server_handle : TYPE
-            DESCRIPTION.
-        regression_selection : TYPE
-            DESCRIPTION.
-        bootstrap_selection : TYPE
-            DESCRIPTION.
+        data_server_handle : 'regressioDataServer'
+            Instance of the regressionDataServer class.
+        regression_selection : 'tuple'
+            tuple containing indici defing the data and regression matrix for
+            all wavelength indici.
+        bootstrap_selection : 'ndarray'
+            indici defining the bootstrap sampling.
 
         Returns
         -------
-        regression_data_selection : TYPE
-            DESCRIPTION.
-        regression_matirx_selection : TYPE
-            DESCRIPTION.
+        regression_data_selection : 'ndarray'
+            Selected data to be modeled.
+        regression_matirx_selection : 'ndarray'
+            data used as design matrix in regression modeling of the
+            selected data.
 
         """
         regression_data_selection, regression_matirx_selection = \
@@ -1583,8 +1614,8 @@ class regressionControler:
 
         Parameters
         ----------
-        nchunks : TYPE, optional
-            DESCRIPTION. The default is 1.
+        nchunks : 'int', optional
+            umber of chunks in which to split the iterators. The default is 1.
 
         Returns
         -------
@@ -2247,7 +2278,7 @@ class regressionWorker:
         Parameters
         ----------
         data_server_handle : 'regressionDataDerver'
-            DESCRIPTION.
+            Instance of the regressionDataDerver class.
         regression_selection : 'list'
             List of indici defining the data to tbe modeld and the
             corresponding data to tbe used as regressors.
