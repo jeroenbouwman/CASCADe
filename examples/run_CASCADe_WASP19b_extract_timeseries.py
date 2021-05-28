@@ -24,7 +24,7 @@
 This script demonstrates the basic functionality to load spectral images and
 extract a time series of 1D spectra.
 
-In this example for the trznsiting planet WASP 19 b, we load HST/WFC3 data
+In this example for the transiting planet WASP 19 b, we load HST/WFC3 data
 taken in staring mode. After reading the fits data files, using the target
 acquisition image, the initial position of the target on the detector is
 determined, and based on that the wavelength solution and spectral trace is
