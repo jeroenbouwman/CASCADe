@@ -10,6 +10,7 @@ config = {
     'author_email': 'bouwman@mpia.de',
     'version': '1.0.6',
     'python_requires': '>=3.7',
+    'license': 'GNU General Public License v3 (GPLv3)',
     'install_requires': ['batman-package', 'astropy', 'jplephem', 'scipy',
                          'numpy', 'configparser', 'photutils', 'pandas',
                          'scikit-learn', 'matplotlib', 'tqdm', 'seaborn',
@@ -20,8 +21,20 @@ config = {
     'classifiers': ["Programming Language :: Python :: 3",
                     "License :: OSI Approved :: GNU GPLv3 License",
                     "Operating System :: OS Independent",
+                    'Intended Audience :: Science/Research',
+                    'Topic :: Scientific/Engineering :: Astronomy',
                     ],
-    'scripts': []
+    'package_data': {"data":["exoplanet_data/wavelength_bins/*.txt",
+                             "exotethys/passbands/*.pass",
+                             "exotethys/wavelength_bins/*.txt",
+                             "calibration/SPITZER/IRS/S18.18.0/*.fits",
+                             "calibration/SPITZER/IRS/S18.18.0/*.tbl",
+                             "calibration/HST/WFC3/*.fits",
+                             "calibration/HST/WFC3/*.conf",
+                             "archive_databases/HST/WFC3/*.pickle",
+                             "archive_databases/HST/WFC3/*.ini"]},
+    'scripts': [],
+    'data_files': [('', ['README.md'])]
 }
 
 setup(**config)
