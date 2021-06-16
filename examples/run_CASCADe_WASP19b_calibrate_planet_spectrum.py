@@ -22,8 +22,22 @@
 # Copyright (C) 2018, 2019, 2020  Jeroen Bouwman
 
 # to ignore (switch off) all warnings uncomment the following:
-import os
-os.environ["CASCADE_WARNINGS"] = 'off'
+"""
+This script demonstrates the basic functionality to load a spectral timeseries
+and extract the transit spectrum.
+
+In this example for the transiting planet WASP-19 b, we load HST/WFC3 spectra
+from the data/HST/WFC3/WASP19b/SPECTRA/ directory of the CASCADe package.
+This directory is populated by default or can be created by running the 
+run_CASCADe_WASP19b_extract_timeseries.py secript. Diagnostic output and the
+extracted planetary spectrum can be found in the
+examples/results/WASP-19b_ibh715_transit_from_hst_wfc3_spectra/ directory.
+
+For more details please visit https://jbouwman.gitlab.io/CASCADe/
+"""
+# To ignore (switch off) all warnings uncomment the following:
+# import os
+# os.environ["CASCADE_WARNINGS"] = 'off'
 
 # To make sure no plot windows are opened if run in batch mode, use:
 # import matplotlib
@@ -41,13 +55,7 @@ tso = cascade.TSO.TSOSuite()
 # re-initializing the object multiple times.
 tso.execute("reset")
 
-# initialize TSO object
-# The files used in this example are for spectral data of the transit of
-# WASP 19 b observed with the WFC3 isntument of HST.
-# Before running the code, make sure that the paths specified in the .ini
-# files are correctly set. If the initialization files are not in the standard
-# directory where CASCADe expect these file to be, an additional path keyword
-# can be set wiht the command below.
+# Initialize TSO object
 tso.execute("initialize", "cascade_WASP19b_calibrate_planet_spectrum.ini",
             "cascade_WASP19b_object.ini")
 

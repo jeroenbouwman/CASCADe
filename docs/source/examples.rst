@@ -67,9 +67,7 @@ To demonstrate how to use :blue:`CASCADe` to do this, we will take the extracted
 To run Example 1b, execute the following script:
 
 ```bash
-
 python3 run_CASCADe_WASP19b_calibrate_planet_spectrum.py
-
 ```
 
 The individual steps in this script are commented and a detailed explanation on the
@@ -98,9 +96,7 @@ As an example, we will use a Spitzer/IRS observation  of an eclipse of HD189733b
 To run Example 2, execute the following script:
 
 ```bash
-
 python3 run_CASCADe_HD189733b_calibrate_planet_spectrum.py
-
 ```
 
 The pipeline steps used in this example  are identical to the ones of Example 1b. Again, the the
@@ -125,10 +121,9 @@ The previous examples showed how to use :blue:`CASCADe` with HST and Spitzer obs
 To run this example, execute the following script:
 
 ```bash
-
 python3 run_CASCADe_WASP103b_calibrate_planet_spectrum.py
-
 ```
+
 To be able to run this example we stored the GMOS spectra as fits files with an identical format as the fits files
 created by :blue:`CASCADe` to store the extracted spectra.
 
