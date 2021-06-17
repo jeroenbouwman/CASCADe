@@ -8,13 +8,24 @@
 
 :blue:`CASCADe` Initialization
 ==============================
-:blue:`CASCADEe` uses initialization files to control its behaviour.
+:blue:`CASCADe` uses initialization files to control its behavior. This includes the definition of the
+input data and observational setup, the regression modeling and lightcurve fitting and general settings for
+the :blue:`CASCADe` package. In this section of the documentation we will explain the control parameters defined
+in the initialization files in detail. For this we will use the WASP-19b example provided with this package
+(see also the :doc:examples section of this manual).
 
-Extracting a spectral Timeseries
+Extracting a spectral timeseries
 --------------------------------
+The following initialization parameters are used with the `run_CASCADe_WASP19b_extract_timeseries.py` example script
+and can be found in the `cascade_WASP19b_extract_timeseries.ini` file, both coming with the :blue:`CASCADe` package.
+The configuration parameters are grouped in sections, depending on what particular aspect of they
+control.
 
 [CASCADE]
 ^^^^^^^^^
+This initialization file section controls some of the general behavior of the package, the following parameters
+can be specified here:
+
 
 .. code-block:: python
 
@@ -24,8 +35,19 @@ Extracting a spectral Timeseries
   cascade_verbose = True
   cascade_save_verbose = True
 
+The ``cascade_save_path``  specifies the path were verbose output will be saved. This path can either be
+relative to the path specified by the `CASCADE_SAVE_PATH` environment variable, or absolute, in the latter case
+overwriting the environment settings. The ``cascade_use_multi_processes`` flag specifies if the main calculations should be
+done in parallel using the ray package. The ``cascade_max_number_of_cpus`` parameter controls the maximum number of CPUs
+the parallel calculations can use. The ``cascade_verbose`` flag controls if verbose plots will be generated and
+the ``cascade_save_verbose`` flag if these plots will be saved or not.
+
+
 [PROCESSING]
 ^^^^^^^^^^^^
+
+The parameters in this initialization file section control the processing and spectral extraction
+of the :blue:`CASCADe` package, and as such will have to be chosen with care.
 
 .. code-block:: python
 
@@ -47,6 +69,13 @@ Extracting a spectral Timeseries
   processing_rebin_factor_extract1d = 1.05
   processing_auto_adjust_rebin_factor_extract1d = True
   processing_determine_initial_wavelength_shift = True
+
+The ``processing_source_selection_method`` parameter controls how the target is found in the
+target acquisition images taken with the HST/WFC3 spectroscopic observations. Note that finding the
+target in these images is important as it determines the initial wavelength solution and the placement
+of the region of interest on the spectroscopic images.  If set to `nearest`, the target found nearest
+to the expected position is used. If set to 'brightest' the brightest target in the FOV is used.
+Other possible value are 'second nearest' and 'second brightest'.
 
 
 [MODEL]
@@ -90,7 +119,7 @@ Extracting a spectral Timeseries
   observations_uses_background_model = True
 
 
-Calibrating the specral timeseries and extracting the transit spectrum
+Calibrating the spectral timeseries and extracting the transit spectrum
 ----------------------------------------------------------------------
 
 [CASCADE]
@@ -178,3 +207,41 @@ Calibrating the specral timeseries and extracting the transit spectrum
   observations_cal_version = 4.32
   observations_data_product = COE
   observations_has_background = False
+
+The stellar and planetary parameters
+------------------------------------
+Finally, in addition to all parameters controlling the behavior of the spectral extraction and
+regression analysis, we have the parameters specifying the star and planetary system. These parameters are
+used in the lightcurve model and the `check_wavelength_solution` pipeline step.
+
+[OBJECT]
+^^^^^^^^
+
+In this section all relevant stellar and planetary parameters are specified. These should be self explanatory.
+Note the units for the different parameters. When modifying the parameters, these units should be correctly
+specified such that the astropy package can handle them. 
+
+.. code-block:: python
+
+  object_name = WASP-19 b
+  object_radius = 1.386 Rjup
+  object_radius_host_star = 1.004 Rsun
+  object_temperature_host_star = 5500.0 K
+  object_semi_major_axis = 0.01634 AU
+  object_inclination = 78.78 deg
+  object_eccentricity = 0.0020
+  object_omega = 259 deg
+  object_period = 0.788838989 d
+  object_ephemeris = 2455168.96801 d
+  object_kmag = 10.48 Kmag
+  object_metallicity_host_star = 0.14 dex
+  object_logg_host_star = 4.3932 dex(cm/s2)
+
+[CATALOG]
+^^^^^^^^^
+
+.. code-block:: python
+
+  catalog_use_catalog = False
+  catalog_name = NASAEXOPLANETARCHIVE
+  catalog_update = True

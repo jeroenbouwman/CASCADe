@@ -328,19 +328,19 @@ class TSOSuite:
             if not obs_has_backgr:
                 warnings.warn("Background subtraction not needed: returning")
                 return
-        except AttributeError:
+        except AttributeError as par_err:
             raise AttributeError("backgound switch not defined. \
-                                 Aborting background subtraction")
+                                 Aborting background subtraction") from par_err
         try:
             background = self.observation.dataset_background
-        except AttributeError:
+        except AttributeError as par_err:
             raise AttributeError("No Background data found. \
-                                 Aborting background subtraction")
+                                 Aborting background subtraction") from par_err
         try:
             sigma = float(self.cascade_parameters.processing_sigma_filtering)
-        except AttributeError:
+        except AttributeError as par_err:
             raise AttributeError("Sigma clip value not defined. \
-                                 Aborting background subtraction")
+                                 Aborting background subtraction") from par_err
         try:
             obs_uses_backgr_model = \
                 ast.literal_eval(self.cascade_parameters.
@@ -433,24 +433,24 @@ class TSOSuite:
         try:
             datasetIn = copy.deepcopy(self.observation.dataset)
             ntime = datasetIn.data.shape[-1]
-        except AttributeError:
+        except AttributeError as par_err:
             raise AttributeError("No Valid data found. "
-                                 "Aborting filtering of data.")
+                                 "Aborting filtering of data.") from par_err
         try:
             ROI = self.observation.instrument_calibration.roi.copy()
-        except AttributeError:
+        except AttributeError as par_err:
             raise AttributeError("Region of interest not set. "
-                                 "Aborting filtering of data.")
+                                 "Aborting filtering of data.") from par_err
         try:
             sigma = float(self.cascade_parameters.processing_sigma_filtering)
-        except AttributeError:
+        except AttributeError as par_err:
             raise AttributeError("Sigma clip value not defined. "
-                                 "Aborting filtering of data.")
+                                 "Aborting filtering of data.") from par_err
         try:
             observationDataType = self.cascade_parameters.observations_data
-        except AttributeError:
+        except AttributeError as par_err:
             raise AttributeError("No observation data type set. "
-                                 "Aborting filtering of data.")
+                                 "Aborting filtering of data.") from par_err
         try:
             verbose = ast.literal_eval(self.cascade_parameters.cascade_verbose)
         except AttributeError:
@@ -473,51 +473,54 @@ class TSOSuite:
                 nfilter = int(self.cascade_parameters.processing_nfilter)
                 if nfilter % 2 == 0:  # even
                     nfilter += 1
-            except AttributeError:
+            except AttributeError as par_err:
                 raise AttributeError("Filter length for sigma clip not "
-                                     "defined. Aborting filtering of data.")
+                                     "defined. Aborting filtering "
+                                     "of data.") from par_err
             try:
                 kernel = \
                     self.observation.instrument_calibration.convolution_kernel
-            except AttributeError:
+            except AttributeError as par_err:
                 raise AttributeError("Convolution kernel not set. "
-                                     "Aborting filtering of data.")
+                                     "Aborting filtering of data.") from par_err
             try:
                 stdv_kernel_time = \
                     float(self.cascade_parameters.
                           processing_stdv_kernel_time_axis_filter)
-            except AttributeError:
+            except AttributeError as par_err:
                 raise AttributeError("Parameters for time dependenccy "
                                      "convolution kernel not set. "
-                                     "Aborting filtering of data.")
+                                     "Aborting filtering of data.") from par_err
         else:
             try:
                 max_number_of_iterations = \
                     int(self.cascade_parameters.
                         processing_max_number_of_iterations_filtering)
-            except AttributeError:
+            except AttributeError as par_err:
                 raise AttributeError("Maximum number of iterations not set. "
-                                     "Aborting filtering of data.")
+                                     "Aborting filtering of data.") from par_err
             try:
                 fractionalAcceptanceLimit = \
                     float(self.cascade_parameters.
                           processing_fractional_acceptance_limit_filtering)
-            except AttributeError:
+            except AttributeError as par_err:
                 raise AttributeError("Fractional ecceptance limit not set. "
-                                     "Aborting filtering of data.")
+                                     "Aborting filtering of data.") from par_err
             try:
                 useMultiProcesses = \
                     ast.literal_eval(self.cascade_parameters.
                                      cascade_use_multi_processes)
-            except AttributeError:
+            except AttributeError as par_err:
                 raise AttributeError("cascade_use_multi_processes flag not "
-                                     "set. Aborting filtering of data.")
+                                     "set. Aborting filtering "
+                                     "of data.") from par_err
             try:
                 maxNumberOfCPUs = \
                     int(self.cascade_parameters.cascade_max_number_of_cpus)
-            except AttributeError:
+            except AttributeError as par_err:
                 raise AttributeError("cascade_max_number_of_cpus flag not set."
-                                     " Aborting filtering of data.")
+                                     " Aborting filtering"
+                                     " of data.") from par_err
 
         # if timeseries data of 1D spctra use simpler filtering
         if observationDataType == 'SPECTRUM':
@@ -578,7 +581,7 @@ class TSOSuite:
         self.cpm.filtered_dataset = filteredDataset
         if verbose:
             optimal_filter_index = filteredDataset.optimalFilterIndex
-            label_im, nb_labels = \
+            label_im, _ = \
                 ndimage.label(optimal_filter_index[..., 0].mask)
             slice_y, slice_x = \
                 ndimage.find_objects((label_im != 1) | (label_im != 2))[0]
@@ -701,14 +704,16 @@ class TSOSuite:
             datasetIn = self.cpm.cleaned_dataset
             dim = datasetIn.data.shape
             ndim = datasetIn.data.ndim
-        except AttributeError:
+        except AttributeError as data_err:
             raise AttributeError("No valid cleaned data found. "
-                                 "Aborting position determination")
+                                 "Aborting position "
+                                 "determination") from data_err
         try:
             isNodded = self.observation.dataset.isNodded
-        except AttributeError:
+        except AttributeError as data_err:
             raise AttributeError("Observational strategy not properly set. "
-                                 "Aborting position determination")
+                                 "Aborting position "
+                                 "determination") from data_err
         try:
             spectralTrace = self.observation.spectral_trace
             position = self.observation.dataset.position
@@ -758,15 +763,16 @@ class TSOSuite:
         try:
             quantileCut = \
                 float(self.cascade_parameters.processing_quantile_cut_movement)
-        except AttributeError:
+        except AttributeError as par_err:
             raise AttributeError("quantile_cut_movement parameter not set. "
-                                 "Aborting position determination")
+                                 "Aborting position determination") from par_err
         try:
             orderTrace = \
                 int(self.cascade_parameters.processing_order_trace_movement)
-        except AttributeError:
+        except AttributeError as par_err:
             raise AttributeError("processing_order_trace_movement parameter "
-                                 "not set. Aborting position determination")
+                                 "not set. Aborting position "
+                                 "determination") from par_err
         verboseSaveFile = 'determine_absolute_cross_dispersion_position.png'
         verboseSaveFile = os.path.join(savePathVerbose, verboseSaveFile)
         (newShiftedTrace, newFittedTrace, medianCrossDispersionPosition,
@@ -783,45 +789,47 @@ class TSOSuite:
         try:
             nreferences = \
                 int(self.cascade_parameters.processing_nreferences_movement)
-        except AttributeError:
+        except AttributeError as par_err:
             raise AttributeError("processing_nreferences_movement parameter "
-                                 "not set. Aborting position determination")
+                                 "not set. Aborting position "
+                                 "determination") from par_err
         try:
             mainReference = \
                 int(self.cascade_parameters.processing_main_reference_movement)
-        except AttributeError:
+        except AttributeError as par_err:
             raise AttributeError("processing_main_reference_movement "
                                  "parameter not set. Aborting position "
-                                 "determination")
+                                 "determination") from par_err
         try:
             upsampleFactor = \
                 int(self.cascade_parameters.
                     processing_upsample_factor_movement)
-        except AttributeError:
+        except AttributeError as par_err:
             raise AttributeError("processing_upsample_factor_movement "
                                  "parameter not set. Aborting position "
-                                 "determination")
+                                 "determination") from par_err
         try:
             AngleOversampling = \
                 int(self.cascade_parameters.
                     processing_angle_oversampling_movement)
-        except AttributeError:
+        except AttributeError as par_err:
             raise AttributeError("processing_angle_oversampling_movement "
                                  "parameter not set. Aborting position "
-                                 "determination")
+                                 "determination") from par_err
         try:
             maxNumberOfCPUs = \
                 int(self.cascade_parameters.cascade_max_number_of_cpus)
-        except AttributeError:
+        except AttributeError as par_err:
             raise AttributeError("cascade_max_number_of_cpus flag not set."
-                                 " Aborting position determination")
+                                 " Aborting position "
+                                 "determination") from par_err
         try:
             useMultiProcesses = \
                 ast.literal_eval(self.cascade_parameters.
                                  cascade_use_multi_processes)
-        except AttributeError:
+        except AttributeError as par_err:
             raise AttributeError("cascade_use_multi_processes flag not set. "
-                                 "Aborting position determination")
+                                 "Aborting position determination") from par_err
         verboseSaveFile = 'register_telescope_movement.png'
         verboseSaveFile = os.path.join(savePathVerbose, verboseSaveFile)
         spectral_movement = \
@@ -914,14 +922,15 @@ class TSOSuite:
             savePathVerbose = None
         try:
             datasetIn = self.observation.dataset
-        except AttributeError:
+        except AttributeError as data_err:
             raise AttributeError("No valid data found. "
-                                 "Aborting position determination")
+                                 "Aborting position "
+                                 "determination") from data_err
         try:
             observationDataType = self.cascade_parameters.observations_data
-        except AttributeError:
+        except AttributeError as par_err:
             raise AttributeError("No observation data type set. "
-                                 "Aborting position determination")
+                                 "Aborting position determination") from par_err
         if observationDataType == 'SPECTRUM':
             warnings.warn("Spectral time series of 1D spectra are assumed "
                           "to be movement corrected. Skipping the "
@@ -930,11 +939,12 @@ class TSOSuite:
 
         try:
             spectralMovement = self.cpm.spectral_movement
-        except AttributeError:
+        except AttributeError as data_err:
             raise AttributeError("No information on the telescope "
                                  "movement found. Did you run the "
                                  "determine_source_movement pipeline "
-                                 "step? Aborting wavelength correction")
+                                 "step? Aborting wavelength "
+                                 "correction") from data_err
         else:
             try:
                 useScale = \
@@ -1004,7 +1014,7 @@ class TSOSuite:
                     # difined for all times or else entierly flagged.
                     cleaned_data = cleanedDataset.return_masked_array('data')
                     roi_cube = cleaned_data.mask.copy()
-                    nw, nx, nt = cleaned_data.shape
+                    _, _, nt = cleaned_data.shape
                     corrected_mask = \
                         ~((np.sum(cleaned_data.mask, axis=2) == 0) |
                           (np.sum(cleaned_data.mask, axis=2) == nt))
@@ -1101,34 +1111,36 @@ class TSOSuite:
                 int(self.cascade_parameters.processing_nextraction) + 2
             if nExtractionWidth % 2 == 0:  # even
                 nExtractionWidth += 1
-        except AttributeError:
+        except AttributeError as par_err:
             raise AttributeError("The width of the extraction mask "
                                  "is not defined. Check the CPM init file "
                                  "if the processing_nextraction parameter is "
-                                 "set. Aborting setting extraction mask")
+                                 "set. Aborting setting extraction "
+                                 "mask") from par_err
         try:
             spectralTrace = self.cpm.spectral_trace
             position = self.cpm.position
             medianPosition = self.cpm.median_position
-        except AttributeError:
-            raise AttributeError("No spectral trace or source position \
-                                 found. Aborting setting extraction mask")
+        except AttributeError as data_err:
+            raise AttributeError("No spectral trace or source position found. "
+                                 "Aborting setting extraction "
+                                 "mask") from data_err
         try:
             datasetIn = self.observation.dataset
             dim = datasetIn.data.shape
-        except AttributeError:
-            raise AttributeError("No Valid data found. \
-                                 Aborting setting extraction mask")
+        except AttributeError as data_err:
+            raise AttributeError("No Valid data found. Aborting "
+                                 "setting extraction mask") from data_err
         try:
             ROI = self.observation.instrument_calibration.roi
-        except AttributeError:
-            raise AttributeError("No ROI defined. "
-                                 "Aborting setting extraction mask")
+        except AttributeError as data_err:
+            raise AttributeError("No ROI defined. Aborting "
+                                 "setting extraction mask") from data_err
         try:
             observationDataType = self.cascade_parameters.observations_data
-        except AttributeError:
-            raise AttributeError("No observation data type set. "
-                                 "Aborting setting extraction mask")
+        except AttributeError as par_err:
+            raise AttributeError("No observation data type set. Aborting "
+                                 "setting extraction mask") from par_err
         # if spectral time series of 1D speectra, the extraction mask is
         # simply the ROI for each time step
         if observationDataType == 'SPECTRUM':
@@ -1172,14 +1184,15 @@ class TSOSuite:
         try:
             cleanedDataset = self.cpm.cleaned_dataset
             ndim = cleanedDataset.data.ndim
-        except AttributeError:
+        except AttributeError as data_err:
             raise AttributeError("No valid cleaned data found. "
-                                 "Aborting check wavelength solution")
+                                 "Aborting check wavelength "
+                                 "solution") from data_err
         try:
             dataset = self.observation.dataset
-        except AttributeError:
-            raise AttributeError("No valid data found. "
-                                 "Aborting check wavelength solution")
+        except AttributeError as data_err:
+            raise AttributeError("No valid data found. Aborting "
+                                 "check wavelength solution") from data_err
         try:
             processing_determine_initial_wavelength_shift = \
                 ast.literal_eval(self.cascade_parameters.
@@ -1270,9 +1283,9 @@ class TSOSuite:
         """
         try:
             observationDataType = self.cascade_parameters.observations_data
-        except AttributeError:
+        except AttributeError as par_err:
             raise AttributeError("No observation data type set. "
-                                 "Aborting optimal extraction")
+                                 "Aborting optimal extraction") from par_err
         # do not continue if data are already 1d spectra
         if observationDataType == "SPECTRUM":
             warnings.warn("Dataset is already a timeseries of 1d spectra "
@@ -1288,72 +1301,77 @@ class TSOSuite:
             datasetIn = self.observation.dataset
             dim = datasetIn.data.shape
             ndim = datasetIn.data.ndim
-        except AttributeError:
-            raise AttributeError("No valid dataset found. "
-                                 "Aborting extraction of 1d spectra.")
+        except AttributeError as data_err:
+            raise AttributeError("No valid dataset found. Aborting "
+                                 "extraction of 1d spectra.") from data_err
         try:
             assert (datasetIn.isBackgroundSubtracted is True), \
                ("Data not background subtracted. Aborting spectral extraction")
-        except AttributeError:
+        except AttributeError as data_err:
             raise AttributeError("Unclear if data is background subtracted as "
                                  "isBackgroundSubtracted flag is not set."
-                                 "Aborting extraction of 1d spectra.")
+                                 "Aborting extraction of "
+                                 "1d spectra.") from data_err
         try:
             assert (datasetIn.isMovementCorrected is True), \
                 ("Data not movement correced. Aborting spectral extraction")
-        except AttributeError:
+        except AttributeError as data_err:
             raise AttributeError("Unclear if data is movement corrected as "
                                  "isMovementCorrected flag is not set."
-                                 "Aborting extraction of 1d spectra.")
+                                 "Aborting extraction of "
+                                 "1d spectra.") from data_err
         try:
             assert (datasetIn.isSigmaCliped is True), \
                 ("Data not sigma clipped. Aborting spectral extraction")
-        except AttributeError:
+        except AttributeError as data_err:
             raise AttributeError("Unclear if data is filtered as "
-                                 "isSigmaCliped flag is not set."
-                                 "Aborting extraction of 1d spectra.")
+                                 "isSigmaCliped flag is not set. Aborting "
+                                 "extraction of 1d spectra.") from data_err
         try:
             cleanedDataset = self.cpm.cleaned_dataset
-        except AttributeError:
-            raise AttributeError("No valid cleaned dataset found. "
-                                 "Aborting extraction of 1d spectra.")
+        except AttributeError as data_err:
+            raise AttributeError("No valid cleaned dataset found. Aborting "
+                                 "extraction of 1d spectra.") from data_err
         try:
             filteredDataset = self.cpm.filtered_dataset
-        except AttributeError:
-            raise AttributeError("No valid filtered dataset found. "
-                                 "Aborting extraction of 1d spectra.")
+        except AttributeError as data_err:
+            raise AttributeError("No valid filtered dataset found. Aborting "
+                                 "extraction of 1d spectra.") from data_err
         try:
             ROI = self.observation.instrument_calibration.roi
-        except AttributeError:
-            raise AttributeError("No ROI defined. "
-                                 "Aborting extraction of 1d spectra.")
+        except AttributeError as data_err:
+            raise AttributeError("No ROI defined. Aborting "
+                                 "extraction of 1d spectra.") from data_err
         try:
             extractionMask = self.cpm.extraction_mask
-        except AttributeError:
-            raise AttributeError("No extraction mask defined. "
-                                 "Aborting extraction of 1d spectra.")
+        except AttributeError as data_err:
+            raise AttributeError("No extraction mask defined. Aborting "
+                                 "extraction of 1d spectra.") from data_err
         try:
             spectralMovement = self.cpm.spectral_movement
             medianCrossDispersionPosition = self.cpm.median_position
-        except AttributeError:
+        except AttributeError as data_err:
             raise AttributeError("No telecope movement values defined. "
-                                 "Aborting extraction of 1d spectra.")
+                                 "Aborting extraction of "
+                                 "1d spectra.") from data_err
         try:
             rebinFactor = \
                 float(self.cascade_parameters.
                       processing_rebin_factor_extract1d)
-        except AttributeError:
+        except AttributeError as par_err:
             raise AttributeError("The processing_rebin_factor_extract1d "
                                  "configuration parameter is not defined. "
-                                 "Aborting extraction of 1d spectra.")
+                                 "Aborting extraction of "
+                                 "1d spectra.") from par_err
         try:
             autoAdjustRebinFactor = \
                 ast.literal_eval(self.cascade_parameters.
                                  processing_auto_adjust_rebin_factor_extract1d)
-        except AttributeError:
+        except AttributeError as par_err:
             raise AttributeError("The processing_auto_adjust_rebin_factor_"
                                  "extract1d configuration parameter is not "
-                                 "defined. Aborting extraction of 1d spectra.")
+                                 "defined. Aborting extraction of "
+                                 "1d spectra.") from par_err
         try:
             processing_determine_initial_wavelength_shift = \
                 ast.literal_eval(self.cascade_parameters.

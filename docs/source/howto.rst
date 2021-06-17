@@ -6,8 +6,15 @@
     <style> .blue {color:#1f618d} </style>
     <style> .red {color:red} </style>
 
+The :blue:`CASCADe` pipelines
+=============================
+The :blue:`CASCADe` package combines basically two distinct pipelines: The first can be considered
+a "classical" spectroscopic pipeline to extract spectra from spectral images or cubes. The focus of the second pipeline
+is on the calibration of spectral timeseries and lightcurve fitting to extract a transit or eclipse spectrum. In the following
+we will explain both pipelines in more detail.
+
 Using :blue:`CASCADe` to extract a spectral timeseries
-======================================================
+-------------------------------------------------------
 
 In this section of the manual we will discuss all the pipeline steps needed to extract a
 spectral timeseries. As a first step, to be able to run the :blue:`CASCADe` code,
@@ -39,7 +46,7 @@ To initialize the TSO instance, execute the following command:
 
 The files used in this example are for spectral data of the transit of WASP 19 b observed
 with the WFC3 instrument of HST and are part of the example use cases part of the
-:blue:`CASCADe` distribution. For furthere details see the :doc:`examples` sections of the documentation.
+:blue:`CASCADe` distribution. For further details see the :doc:`examples` sections of the documentation.
 Before running the code, make sure that the paths specified in the initialization
 files are correctly set in addition to the path settings of the :blue:`CASCADe` environment
 variables (see the :doc:`environment` section of the documentation for further details).
@@ -48,17 +55,17 @@ an additional path keyword can be set. In the example above we set the path the 
 path. If the path is the standard initialization path or that specified by the `CASCADE_INITIALIZATION_FILE_PATH`
 environment variable, the path keyword can be omitted. Also note that a relative path can be specified.
 In this case the path will be relative to the the standard initialization path or that specified by the
-`CASCADE_INITIALIZATION_FILE_PATH` environment vairbale.
+`CASCADE_INITIALIZATION_FILE_PATH` environment variable.
 The loaded paramters can be found under `tso.cascade_parameters`
 
-In case the user whiches to re-initialize the TSO object, it is highly adviced to first reset the object
+In case the user whiches to re-initialize the TSO object, it is highly advised to first reset the object
 with the following command:
 
 .. code-block:: python
 
    tso.execute("reset")
 
-After which all previously defined controll and data parameters will be reset and a cleaned
+After which all previously defined control and data parameters will be reset and a cleaned
 re-initialization can be made.
 
 After initialization of the TSO object we can load the observational dataset by executing the
@@ -88,10 +95,11 @@ extraction profile. For this we use a directional filter. To execute this step u
    tso.execute("filter_dataset")
 
 This will update the mask of the background subtracted dataset found in `tso.observations.dataset`
-and create two new data product: the cleaded dataset `tso.cpm.cleaned_dataset` and a smoothed, filtered dataproduct
-`tso.cpm.filtered_dataset` on which the extraction profile for the optimal spectral extraction will be based.
+and create two new data product: the cleaded dataset `tso.cpm.cleaned_dataset` and a smoothed,
+filtered dataproduct `tso.cpm.filtered_dataset` on which the extraction profile for the optimal spectral
+extraction will be based.
 
-Continuing, next we need to determine the pointing movemenmt of the telescope as this has a direct impact on the
+Continuing, next we need to determine the pointing movement of the telescope as this has a direct impact on the
 wavelength registration. To determine the relative position, rotation and scale change of the source spectrum
 from the input spectroscopic data set, run the following pipeline step:
 
@@ -99,10 +107,11 @@ from the input spectroscopic data set, run the following pipeline step:
 
    tso.execute("determine_source_movement")
 
-We use a cross-corelation in phase space in combination with a polar transform to determine the translational and
-rotational movements of the telescope. The movements are relative to a reference observaton. To minimize the risk of
-using a reference spectral image which a problem, we compare to a number of reference images and than take the median values.
-The results of this step are stored in `tso.cpm.spectral_movement`.
+We use a cross-correlation in phase space in combination with a polar transform to determine the
+translational and rotational movements of the telescope. The movements are relative to a reference
+observation. To minimize the risk of using a reference spectral image which a problem, we compare
+to a number of reference images and than take the median values. The results of this step are stored
+in `tso.cpm.spectral_movement`.
 
 The movement of the telescope can now be used to correct the initial wavelength associated with the detector
 pixels for telescope movements:
@@ -111,10 +120,10 @@ pixels for telescope movements:
 
    tso.execute("correct_wavelengths")
 
-This will correct the wavelengths for each time step of the data and the cleaned and filterd data product.
+This will correct the wavelengths for each time step of the data and the cleaned and filtered data product.
 
 The last step before the spectral extraction is setting the extraction area on the detector within which the spectrum
-will be extracted. This is doen with the following command:
+will be extracted. This is done with the following command:
 
 .. code-block:: python
 
@@ -123,7 +132,7 @@ will be extracted. This is doen with the following command:
 The extraction aperture is centered around the spectral trace with a certain width which is defined in the initialization
 files, and takes into account the movements of the telescope determined in the `determine_source_movement` step.
 This ensures that also for larger movements, like nodding of spatial scanning like with the HST/WFC3 observations,
-the extraction aperture is always properly centered. The extracton mask in time is stored under `tso.cpm.extraction_mask`.
+the extraction aperture is always properly centered. The extraction mask in time is stored under `tso.cpm.extraction_mask`.
 
 The final step is then the spectral extraction of the spectral timeseries of the star & planet:
 
@@ -131,22 +140,25 @@ The final step is then the spectral extraction of the spectral timeseries of the
 
    tso.execute("extract_1d_spectra")
 
-This step will extract the spectral timeseries using both optimal as well as aperture extraction, and rebin the resulting spectra to a
-uniform wavelength grid, for which the rebin factor is specified in the initialization files. The resuls are stored in
-`tso.observation.dataset_optimal_extracted`, respectively `tso.observation.dataset_aperture_extracted`. The extraction profile
-and its associated mask are stored under `tso.cpm.extraction_profile` and `tso.cpm.extraction_profile_mask`. Appart from storing
-the results in the TSO object, the spectra are also saved as fits spectral tables at the location specified by the
-`CASCADE_DATA_PATH` environment variable and the 'observations_path' variable defined in the intitialization files. The fits files
-of the optimal extracted spectra are labed with 'COE' (Cascade Optimal Extracted) and the aperture extracted spectra are labeled
+This step will extract the spectral timeseries using both optimal as well as aperture extraction,
+and rebin the resulting spectra to a uniform wavelength grid, for which the rebin factor is specified
+in the initialization files. The results are stored in `tso.observation.dataset_optimal_extracted`,
+respectively `tso.observation.dataset_aperture_extracted`. The extraction profile and its associated
+mask are stored under `tso.cpm.extraction_profile` and `tso.cpm.extraction_profile_mask`. Apart from
+storing the results in the TSO object, the spectra are also saved as fits spectral tables at the
+location specified by the `CASCADE_DATA_PATH` environment variable and the 'observations_path'
+variable defined in the initialization files. The fits files of the optimal extracted spectra are
+labeled with 'COE' (Cascade Optimal Extracted) and the aperture extracted spectra are labeled
 with CAE (Cascade Aperture Extracted).
 
 
 
 Using :blue:`CASCADe` to calibrate the spectral timeseries and determine the planetary spectrum
-=================================================================================================
+-----------------------------------------------------------------------------------------------
+
 After extracting the spectral timeseries, we can now proceed to determine the systematics on the timeseries
 and extract the transit or eclipse spectrum of the planet. The first few pipeline steps are identical to those of
-the privious section. First we import the :blue:`CASCADe` package:
+the previous section. First we import the :blue:`CASCADe` package:
 
 .. code-block:: python
 
@@ -191,11 +203,11 @@ As with the spectral extraction pipeline, we also execute the `filter_dataset` p
 
   tso.execute("filter_dataset")
 
-to flag any spurious spectral data points and create cleaned dataset. Note that in this case
+to flag any spurious spectral data points and create a cleaned dataset. Note that in this case
 we use a simple median filtering in contrast to the directional filtering used for the spectral
 data cubes and images.
 
-In case of HST/WFC3 spectra, a check of the wavelength solution for an overal wavelenght shift
+In case of HST/WFC3 spectra, a check of the wavelength solution for an overall wavelength shift
 is made with the following pipeline step:
 
 .. code-block:: python
@@ -209,7 +221,7 @@ an overall wavelength shift is determined and corrected for. Note that this step
 done during spectral extraction with the :blue:`CASCADe` pipeline. For other instruments this step
 can be ignored by switching the `processing_determine_initial_wavelength_shift` parameter to `False`
 
-After all the previous teps we now can run the main pipeline task for calibratiing the spectral
+After all the previous steps we now can run the main pipeline task for calibrating the spectral
 timeseries and fitting the transit or eclipse:
 
 .. code-block:: python
@@ -217,7 +229,7 @@ timeseries and fitting the transit or eclipse:
   tso.execute("calibrate_timeseries")
 
 The derived transit spectra from the regression fit and bootstrap analysis are stored under
-`tso.exoplanet_spectrum` The used transit model under `tso.model` nd the results from the
+`tso.exoplanet_spectrum` The used transit model under `tso.model` and the results from the
 regression analysis under `tso`.calibration_results'.
 
 The final pipeline step will plot the resulting spectra and save the transit or eclipse spectrum

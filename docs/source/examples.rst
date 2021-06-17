@@ -11,7 +11,7 @@
 
 The distribution comes with three examples demonstrating the use of the
 :blue:`CASCADEe` package. These use cases can be found
-in the 'examples/' subdirectory. They cover both HST and Spitzer data as well as
+in the 'examples/' sub-directory. They cover both HST and Spitzer data as well as
 an example for a Generic spectroscopic dataset.
 
 Example1a: Extracting a Spectroscopic Timeseries from HST WFC3 spectral images.
@@ -105,18 +105,21 @@ sub-directory. The `cascade_HD189733b_object.ini` file contains all parameters s
 and planet, while the `cascade_HD189733b_calibrate_planet_spectrum.ini` initialization file specifies
 all other parameters controlling the behavior of :blue:`CASCADe`.
 
-The HD189733b eclipse spectrum and diagnostic plots are stored in the `HD189733b_AOR23439616_eclipse_from_spitzer_irs_spectra`
-sub-directory in the `CASCADE_SAVE_PATH` directory which, if not set by the user, is the `CASCADe\examples\results`
-directory of the :blue:`CASCADe` distribution.
+The HD189733b eclipse spectrum and diagnostic plots are stored in the
+`HD189733b_AOR23439616_eclipse_from_spitzer_irs_spectra` sub-directory in the `CASCADE_SAVE_PATH`
+directory which, if not set by the user, is the `CASCADe\examples\results` directory of the
+:blue:`CASCADe` distribution.
 
 Example3: Calibrating a GIMINI/GMOS Spectroscopic Timeseries and extracting a transit spectrum.
 -----------------------------------------------------------------------------------------------
 
 As a final example we show how to use :blue:`CASCADe` for spectral timeseries
 which have been extracted with another software package for a generic instrument. Though
-spectral extraction from spectral images or cubes is currently only implemented for HST/WFC3 and SpitzerIRS data,
-the extraction of the planetary signal and the calibration of the spectral lightcurves can be performed for any generic spectroscopic timeseries.
-The previous examples showed how to use :blue:`CASCADe` with HST and Spitzer observations. In this example we use an observation with the GIMINI/GMOS instrument of WASP-103b (See Lendl et al 2017, A&A 606).
+spectral extraction from spectral images or cubes is currently only implemented for HST/WFC3 and Spitzer/IRS data,
+the extraction of the planetary signal and the calibration of the spectral lightcurves can be performed for any generic
+spectroscopic timeseries. The previous examples showed how to use :blue:`CASCADe` with HST and Spitzer
+observations. In this example we use an observation with the GIMINI/GMOS instrument of WASP-103b
+(See Lendl et al 2017, A&A 606).
 
 To run this example, execute the following script:
 
