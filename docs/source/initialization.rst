@@ -27,6 +27,7 @@ This initialization file section controls some of the general behavior of the pa
 can be specified here:
 
 
+
 .. code-block:: python
 
   cascade_save_path = WASP-19b_ibh715_transit_output_from_extract_timeseries/
@@ -81,14 +82,25 @@ Other possible value are 'second nearest' and 'second brightest'.
 [MODEL]
 ^^^^^^^
 
+The parameters in this section define the limbdarkening and lightcurve model. However, for the spectral
+extraction pipeline only the stellar model grids, part of the used limbdarkening code, are used to make a
+simple estimate of the expected spectrum.
+
 .. code-block:: python
 
   model_type_limb_darkening = exotethys
   model_stellar_models_grid = Atlas_2000
 
+The ``model_type_limb_darkening`` parameter selects which limbdarkening code is used with :blue:`CASCADe`.
+At present only `exotethys` can be selected. The ``model_stellar_models_grid`` indicated which stellar grid to use. Standard the Atlas 2000 grid
+is selected. Other options are 'Phoenix_2012_13' and 'Phoenix_2018' These grids come with the used limbdarkening code.
 
 [INSTRUMENT]
 ^^^^^^^^^^^^
+
+The parameters in this section describe the used instrument, in this example the WFC3 instrument onboard HST.
+The only other instrument currently implemented in the spectral extraction pipeline is the IRS instrument of Spitzer.
+JWST instruments will follow in the near future.
 
 .. code-block:: python
 
@@ -101,8 +113,11 @@ Other possible value are 'second nearest' and 'second brightest'.
   instrument_beam = A
 
 
+
 [OBSERVATIONS]
 ^^^^^^^^^^^^^^
+
+The parameters in this section of the initialization files describe the observational data.
 
 .. code-block:: python
 
@@ -120,7 +135,7 @@ Other possible value are 'second nearest' and 'second brightest'.
 
 
 Calibrating the spectral timeseries and extracting the transit spectrum
-----------------------------------------------------------------------
+-----------------------------------------------------------------------
 
 [CASCADE]
 ^^^^^^^^^^^^^^
@@ -135,6 +150,9 @@ Calibrating the spectral timeseries and extracting the transit spectrum
 
 [PROCESSING]
 ^^^^^^^^^^^^^^
+The parameters in this initialization file section control the processing the spectral timeseries observations
+before the regression analysis. As far less pre-processing needs to be done in this pipeline compared to the
+spectral extraction pipeline only a few parameters need to be set.
 
 .. code-block:: python
 
@@ -145,9 +163,21 @@ Calibrating the spectral timeseries and extracting the transit spectrum
   processing_nextraction = 1
   processing_determine_initial_wavelength_shift = True
 
+The ``processing_sigma_filtering``, ``processing_nfilter`` and ``processing_stdv_kernel_time_axis_filter`` control
+the filtering for deviating signals in the spectral time series. In the above setting a sigma clip is made for signals
+deviating by more than 4 sigma in a 5 pixel box in the wavelength direction. The small kernel size in the time direction
+ensures very little filtering in time. This is important as we are constructing a regression model of a time series and which
+to preserve the systematics in time for proper characterization. The user is advised to leave these settings as the are.
+The ``processing_nextraction`` in this pipeline is only here for legacy reasons and has no effect. It will be removed
+in future releases. The ``processing_determine_initial_wavelength_shift`` switch controls the use of the
+`check_wavelength_solution` pipeline step. it is currently only implemented for the slitless WFC3 observations,
+for any other instrument this should be set to `False`
 
 [CPM]
 ^^^^^^^^^^^^^^
+
+This section of the initialization parameters contains all parameters controlling the regression model (or Causal Pixel Model)
+applied to calibrate the spectral lightcurves and to extract the transit or eclipse spectrum.
 
 .. code-block:: python
 
@@ -166,6 +196,8 @@ Calibrating the spectral timeseries and extracting the transit spectrum
 [MODEL]
 ^^^^^^^^^^^^^^
 
+The parameters in this section define the limbdarkening and lightcurve model used to fit the transit signal.
+
 .. code-block:: python
 
   model_type = batman
@@ -182,6 +214,11 @@ Calibrating the spectral timeseries and extracting the transit spectrum
 [INSTRUMENT]
 ^^^^^^^^^^^^^^
 
+The parameters in this section describe the used instrument and observatory. The parameters are the same as
+described in the previous section describing the initialization of the spectral extract pipeline. Note that some
+of the parameters are here of legacy reasons and have no influence on the lightcurve calibration pipeline, such as
+the ``instrument_cal_filter``, ``instrument_cal_aperture`` and ``instrument_beam`` parameters.
+
 .. code-block:: python
 
   instrument_observatory = HST
@@ -194,6 +231,9 @@ Calibrating the spectral timeseries and extracting the transit spectrum
 
 [OBSERVATIONS]
 ^^^^^^^^^^^^^^
+
+The parameters in this section of the initialization files describe the observational data. They are the same
+as used in the spectral extraction pipeline, though with slightly different values as described below.
 
 .. code-block:: python
 
@@ -208,6 +248,15 @@ Calibrating the spectral timeseries and extracting the transit spectrum
   observations_data_product = COE
   observations_has_background = False
 
+For the calibration pipeline, as it is only working with spectral timeseries, the ``observations_mode`` and
+``observations_data`` parameters should always be set to, respectively, `STARING` and `SPECTRUM`.
+The ``observations_data_product`` parameter is set to `COE` in this example to use the optimal extracted spectra.
+Alternative values are 'CAE' for the aperture extracted spectra. Note that the user can define/use their own data product.
+The name of the data product should appear in the fits file names just before the .fits extension.
+As the used spectra are already background subtracted, the ``observations_has_background`` switch needs to be set
+to 'False'
+
+
 The stellar and planetary parameters
 ------------------------------------
 Finally, in addition to all parameters controlling the behavior of the spectral extraction and
@@ -219,7 +268,7 @@ used in the lightcurve model and the `check_wavelength_solution` pipeline step.
 
 In this section all relevant stellar and planetary parameters are specified. These should be self explanatory.
 Note the units for the different parameters. When modifying the parameters, these units should be correctly
-specified such that the astropy package can handle them. 
+specified such that the astropy package can handle them.
 
 .. code-block:: python
 
