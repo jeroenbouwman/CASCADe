@@ -442,7 +442,8 @@ def generate_default_initialization(observatory='HST', data='SPECTRUM',
                         'object_ephemeris': '2454279.436714 d',
                         'object_kmag': '5.54 Kmag',
                         'object_metallicity_host_star': '0.03 dex',
-                        'object_logg_host_star': '4.56 dex(cm / s2)'}
+                        'object_logg_host_star': '4.56 dex(cm / s2)',
+                        'object_distance': '19.7638 pc'}
     config['CATALOG'] = {'catalog_use_catalog': 'False',
                          'catalog_name': 'EXOPLANETS.ORG',
                          'catalog_update': 'True',

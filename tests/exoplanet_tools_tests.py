@@ -114,6 +114,7 @@ class TestExoplanetsTools(unittest.TestCase):
         cascade_param = \
             configurator(self.path_init_files+"cascade_default.ini")
         cascade_param.telescope_collecting_area = '4.525 m2'
+        cascade_param.instrument_dispersion_scale = '1000 Angstrom'
         lc_model = lightcurve(cascade_param)
         self.assertIsInstance(lc_model.par, collections.OrderedDict)
         self.assertTrue('batman' in lc_model._lightcurve__valid_models)
