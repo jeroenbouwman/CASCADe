@@ -1204,15 +1204,28 @@ class TSOSuite:
         if not processing_determine_initial_wavelength_shift:
             return
 
-        (cleanedDataset, dataset), modeled_observations, \
+        (cleanedDataset, dataset), modeled_observations, stellar_model, \
             corrected_observations = \
             correct_initial_wavelength_shift(cleanedDataset,
                                              cascade_configuration,
                                              dataset)
 
+        try:
+            self.stellar_modeling
+        except AttributeError:
+            self.stellar_modeling = SimpleNamespace()
+        finally:
+            self.stellar_modeling.modeled_observations = \
+                modeled_observations
+            self.stellar_modeling.stellar_model = \
+                stellar_model
+            self.stellar_modeling.corrected_observations = \
+                corrected_observations
+
         vrbs = Verbose()
         vrbs.execute("check_wavelength_solution",
                      modeled_observations=modeled_observations,
+                     stellar_model=stellar_model,
                      corrected_observations=corrected_observations)
 
     def extract_1d_spectra(self):
@@ -1665,8 +1678,8 @@ class TSOSuite:
                         get_regularization_parameters_from_server.remote())
             control_parameters = \
                 ray.get(rayControler.get_control_parameters.remote())
-            lightcurve_model, ld_correction, dilution_correction, \
-                lc_parameters, mid_transit_time =\
+            lightcurve_model, ld_correction, ld_coefficients, \
+                dilution_correction, lc_parameters, mid_transit_time = \
                 ray.get(rayControler.get_lightcurve_model.remote())
 
         elapsed_time = time_module.time() - start_time
@@ -1679,6 +1692,7 @@ class TSOSuite:
         finally:
             self.model.light_curve_interpolated = lightcurve_model
             self.model.limbdarkning_correction = ld_correction
+            self.model.limbdarkning_coefficients = ld_coefficients
             self.model.dilution_correction = dilution_correction
             self.model.model_parameters = lc_parameters
             self.model.transittype = lc_parameters['transittype']
@@ -1728,6 +1742,10 @@ class TSOSuite:
                 fit_parameters.exoplanet_spectrum
             self.exoplanet_spectrum.spectrum_bootstrap =\
                 fit_parameters.exoplanet_spectrum_bootstrap
+            self.exoplanet_spectrum.non_normalized_spectrum_bootstrap =\
+                fit_parameters.non_normalized_exoplanet_spectrum_bootstrap
+            self.exoplanet_spectrum.non_normalized_stellar_spectrum_bootstrap =\
+                fit_parameters.non_normalized_stellar_spectrum_bootstrap
 
         if self.model.transittype == 'secondary':
             RadiusPlanet = u.Quantity(self.cascade_parameters.object_radius)

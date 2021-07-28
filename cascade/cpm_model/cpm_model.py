@@ -674,6 +674,7 @@ class regressionDataServer:
         self.fit_ld_correcton = fit_ld_correcton
         self.fit_dilution_correction = fit_dilution_correction
         self.mid_transit_time = mid_transit_time
+        self.fit_ld_coefficients = self.lightcurve_model.limbdarkning_model.ld
 
     def get_lightcurve_model(self):
         """
@@ -688,7 +689,7 @@ class regressionDataServer:
 
         """
         return (self.fit_lightcurve_model, self.fit_ld_correcton,
-                self.fit_dilution_correction,
+                self.fit_ld_coefficients, self.fit_dilution_correction,
                 self.lightcurve_model.par, self.mid_transit_time)
 
     def unpack_datasets(self):
@@ -952,7 +953,7 @@ class rayRegressionDataServer(regressionDataServer):
     get_data_info = \
         ray.method(num_returns=8)(regressionDataServer.get_data_info)
     get_lightcurve_model =\
-        ray.method(num_returns=5)(regressionDataServer.get_lightcurve_model)
+        ray.method(num_returns=6)(regressionDataServer.get_lightcurve_model)
 
     def sync_with_parameter_server(self, parameter_server_handle):
         """
@@ -1668,8 +1669,8 @@ class regressionControler:
         """
         fit_parameters = self.get_fit_parameters_from_server()
         control_parameters = self.get_control_parameters()
-        lightcurve_model, ld_correction, dilution_correction, \
-            lightcurve_parameters, \
+        lightcurve_model, ld_correction, ld_coefficients,\
+            dilution_correction, lightcurve_parameters, \
             mid_transit_time = self.get_lightcurve_model()
 
         fitted_baseline_list = []
@@ -1678,6 +1679,7 @@ class regressionControler:
         normed_fitted_spectrum_list = []
         error_normed_fitted_spectrum_list = []
         wavelength_normed_fitted_spectrum_list = []
+        stellar_spectrum_list = []
         for (bootstrap_selection, models, fit_results,
              spectrum) in zip(self.iterators.bootsptrap_indici,
                               fit_parameters.fitted_model,
@@ -1689,7 +1691,7 @@ class regressionControler:
                     control_parameters.cpm_parameters.n_additional_regressors
                                )
                      ), 1)
-            K = (np.identity(W1.shape[0]) - W1)
+            K = np.identity(W1.shape[0]) - W1
             # note spectrum is already corrected for LD using renormalized LC
             corrected_spectrum, _, _ = ols(K, spectrum)
             corrected_fitted_spectrum_list.append(corrected_spectrum)
@@ -1739,6 +1741,7 @@ class regressionControler:
                 error_normed_spectrum)
             wavelength_normed_fitted_spectrum_list.append(
                 wavelength_normed_spectrum)
+            stellar_spectrum_list.append(corrected_spectrum/normed_spectrum)
 
         corrected_fitted_spectrum = np.array(corrected_fitted_spectrum_list)
         fitted_baseline = np.array(fitted_baseline_list)
@@ -1748,6 +1751,7 @@ class regressionControler:
             np.array(error_normed_fitted_spectrum_list)
         wavelength_normed_fitted_spectrum =\
             np.array(wavelength_normed_fitted_spectrum_list)
+        stellar_spectrum = np.array(stellar_spectrum_list)
 
         prosessed_results = \
             {'corrected_fitted_spectrum': corrected_fitted_spectrum,
@@ -1756,7 +1760,8 @@ class regressionControler:
              'normed_fitted_spectrum': normed_fitted_spectrum,
              'error_normed_fitted_spectrum': error_normed_fitted_spectrum,
              'wavelength_normed_fitted_spectrum':
-                 wavelength_normed_fitted_spectrum}
+                 wavelength_normed_fitted_spectrum,
+              'stellar_spectrum': stellar_spectrum}
         self.add_fit_parameters_to_parameter_server(prosessed_results)
 
     def post_process_regression_fit(self):
@@ -1770,8 +1775,8 @@ class regressionControler:
         """
         fit_parameters = self.get_fit_parameters_from_server()
         control_parameters = self.get_control_parameters()
-        lightcurve_model, ld_correction, dilution_correction, \
-            lightcurve_parameters, \
+        lightcurve_model, ld_correction, ld_coefficients, \
+            dilution_correction, lightcurve_parameters, \
             mid_transit_time = self.get_lightcurve_model()
 
         sigma_cut = 3.0
@@ -1783,6 +1788,14 @@ class regressionControler:
             np.repeat(bad_wavelength_mask[np.newaxis, :],
                       control_parameters.cpm_parameters.nboot+1,
                       axis=0)
+
+        fitted_spectrum = \
+            np.ma.array(fit_parameters.corrected_fitted_spectrum.copy(),
+                        mask=bad_wavelength_mask.copy())
+
+        stellar_spectrum = \
+             np.ma.array(fit_parameters.stellar_spectrum.copy(),
+                         mask=bad_wavelength_mask.copy())
 
         normed_spectrum = \
             np.ma.array(fit_parameters.normed_fitted_spectrum.copy(),
@@ -1806,8 +1819,25 @@ class regressionControler:
         normed_spectrum.data[...] = normed_spectrum.data*100
         error_normed_spectrum.data[...] = error_normed_spectrum.data*100
 
-        # bootstraped normalized spectrum
         from astropy.stats import mad_std
+        # bootstraped spectrum (not normalized)
+        median_not_normalized_depth_bootstrap = \
+            np.ma.median(fitted_spectrum[1:, :], axis=1)
+        spectrum_bootstrap = \
+            np.ma.median(fitted_spectrum[1:, :], axis=0)
+        error_spectrum_bootstrap = \
+            mad_std((fitted_spectrum[1:, :].T -
+                     median_not_normalized_depth_bootstrap).T,
+                    axis=0, ignore_nan=True)
+
+        # 95% confidense interval non normalized transit depth
+        n = len(median_not_normalized_depth_bootstrap)
+        sort = sorted(median_not_normalized_depth_bootstrap)
+        nn_TD_min, nn_TD, nn_TD_max = \
+            (sort[int(n * 0.05)], sort[int(n * 0.5)], sort[int(n * 0.95)])
+
+
+        # bootstraped normalized spectrum
         median_depth_bootstrap = np.ma.median(normed_spectrum[1:, :], axis=1)
         normed_spectrum_bootstrap = \
             np.ma.median(normed_spectrum[1:, :], axis=0)
@@ -1820,6 +1850,20 @@ class regressionControler:
         sort = sorted(median_depth_bootstrap)
         TD_min, TD, TD_max = \
             (sort[int(n * 0.05)], sort[int(n * 0.5)], sort[int(n * 0.95)])
+        
+        # bootstraped stellar spectrum
+        median_stellar_spectrum = np.ma.median(stellar_spectrum[1:, :], axis=1)
+        stellar_spectrum_bootstrap = \
+            np.ma.median(stellar_spectrum[1:, :], axis=0)
+        error_stellar_spectrum_bootstrap = \
+            mad_std((stellar_spectrum[1:, :].T - median_stellar_spectrum).T,
+                    axis=0, ignore_nan=True)
+        
+        # 95% confidense interval
+        n = len(median_stellar_spectrum)
+        sort = sorted(median_stellar_spectrum)
+        SF_min, SF, SF_max = \
+            (sort[int(n * 0.05)], sort[int(n * 0.5)], sort[int(n * 0.95)])       
 
         observing_time = control_parameters.data_parameters.time_bjd_zero
         data_product = control_parameters.data_parameters.data_product
@@ -1830,7 +1874,7 @@ class regressionControler:
                                                    curent_data.tm_hour,
                                                    curent_data.tm_min,
                                                    curent_data.tm_sec)
-        auxilary_data = {'TDDEPTH': [TD_min, TD, TD_max],
+        auxilary_data = {'TDDEPTH': [nn_TD_min, nn_TD, nn_TD_max],
                          'MODELRP': lightcurve_parameters['rp'],
                          'MODELA': lightcurve_parameters['a'],
                          'MODELINC': lightcurve_parameters['inc']*u.deg,
@@ -1845,6 +1889,28 @@ class regressionControler:
                          'DATAPROD': data_product}
 
         wavelength_unit = control_parameters.data_parameters.wavelength_unit
+        data_unit = control_parameters.data_parameters.data_unit
+        non_normalized_exoplanet_spectrum_bootstrap = \
+            SpectralData(wavelength=wavelength_normed_spectrum[0, :],
+                         wavelength_unit=wavelength_unit,
+                         data=spectrum_bootstrap,
+                         data_unit=data_unit,
+                         uncertainty=error_spectrum_bootstrap,
+                         )
+        non_normalized_exoplanet_spectrum_bootstrap.add_auxilary(**auxilary_data)
+
+        auxilary_data['TDDEPTH'] = [SF_min, SF, SF_max]
+        data_unit = control_parameters.data_parameters.data_unit
+        non_normalized_stellar_spectrum_bootstrap = \
+            SpectralData(wavelength=wavelength_normed_spectrum[0, :],
+                         wavelength_unit=wavelength_unit,
+                         data=stellar_spectrum_bootstrap,
+                         data_unit=data_unit,
+                         uncertainty=error_stellar_spectrum_bootstrap,
+                         )
+        non_normalized_stellar_spectrum_bootstrap.add_auxilary(**auxilary_data)  
+
+        auxilary_data['TDDEPTH'] = [TD_min, TD, TD_max]
         data_unit = u.percent
         exoplanet_spectrum = \
             SpectralData(wavelength=wavelength_normed_spectrum[0, :],
@@ -1900,7 +1966,11 @@ class regressionControler:
         post_prosessed_results = \
             {'exoplanet_spectrum': exoplanet_spectrum,
              'exoplanet_spectrum_bootstrap': exoplanet_spectrum_bootstrap,
-             'fitted_systematics_bootstrap': fitted_systematics_bootstrap}
+             'non_normalized_exoplanet_spectrum_bootstrap':
+                 non_normalized_exoplanet_spectrum_bootstrap,
+             'fitted_systematics_bootstrap': fitted_systematics_bootstrap,
+             'non_normalized_stellar_spectrum_bootstrap':
+                 non_normalized_stellar_spectrum_bootstrap}
 
         self.add_fit_parameters_to_parameter_server(post_prosessed_results)
 
@@ -2009,7 +2079,7 @@ class rayRegressionControler(regressionControler):
                     )
         return control_parameters
 
-    @ray.method(num_returns=5)
+    @ray.method(num_returns=6)
     def get_lightcurve_model(self):
         """
         Get the lightcurve model from the data server.

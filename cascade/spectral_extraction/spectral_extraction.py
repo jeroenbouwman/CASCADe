@@ -1850,6 +1850,7 @@ def correct_initial_wavelength_shift(referenceDataset, cascade_configuration,
     otherDatasets_list : 'list' of 'cascade.data_model.SpectralDataTimeSeries'
         Optinal output.
     modeled_observations : 'list' of 'ndarray'
+    stellar_model : 'list' of 'ndarray'
     corrected_observations : 'list' of 'ndarray'
     """
     model_spectra = SpectralModel(cascade_configuration)
@@ -1865,13 +1866,18 @@ def correct_initial_wavelength_shift(referenceDataset, cascade_configuration,
         dataset.add_auxilary(error_wave_shift=error_wave_shift.to_string())
         otherDatasets_list[i] = dataset
     modeled_observations = \
-        [model_spectra.model_wavelength, model_spectra.model_observation]
+        [model_spectra.model_wavelength, model_spectra.model_observation,
+         model_spectra.scaling, model_spectra.relative_distanc_sqr,
+         model_spectra.sensitivity]
+    stellar_model = \
+        [model_spectra.model_wavelength, model_spectra.rebinned_stellar_model]
     corrected_observations = \
         [model_spectra.corrected_wavelength, model_spectra.observation]
     if len(otherDatasets_list) > 0:
         return [referenceDataset] + otherDatasets_list, modeled_observations,\
-            corrected_observations
-    return referenceDataset,  modeled_observations, corrected_observations
+            stellar_model, corrected_observations
+    return referenceDataset,  modeled_observations, stellar_model, \
+        corrected_observations
 
 
 def determine_absolute_cross_dispersion_position(cleanedDataset, initialTrace,

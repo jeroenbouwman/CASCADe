@@ -44,6 +44,7 @@ __all__ = ["load_data_verbose",
            "subtract_background_verbose",
            "filter_dataset_verbose",
            "determine_source_movement_verbose",
+           "check_wavelength_solution_verbose",
            "correct_wavelengths_verbose",
            "set_extraction_mask_verbose",
            "extract_1d_spectra_verbose",
@@ -324,8 +325,11 @@ def check_wavelength_solution_verbose(*args, **kwargs):
         return
     if "corrected_observations" not in kwargs.keys():
         return
+    if "stellar_model" not in  kwargs.keys():
+        return
     modeled_observations = kwargs["modeled_observations"]
     corrected_observations = kwargs["corrected_observations"]
+    stellar_model =  kwargs["stellar_model"]
 
     sns.set_context("talk", font_scale=2.0, rc={"lines.linewidth": 5.5})
     sns.set_style("white", {"xtick.bottom": True, "ytick.left": True})
@@ -335,11 +339,13 @@ def check_wavelength_solution_verbose(*args, **kwargs):
     fig, axes = plt.subplots(figsize=(18, 12), nrows=1, ncols=1, dpi=200)
     ax0 = axes
     ax0.plot(modeled_observations[0],
-             modeled_observations[1], label='Model')
+             modeled_observations[1]*modeled_observations[2] , label='Model')
     ax0.plot(corrected_observations[0],
              corrected_observations[1], label='Corrected Observations')
     ax0.plot(modeled_observations[0],
              corrected_observations[1], label='Un-Corrected Observations')
+    plt.plot([], [], ' ',
+             label="Used scaling: {:10.4f}".format(modeled_observations[2]))
     ax0.set_xlabel('Wavelength [{}]'.format(wavelength_unit))
     ax0.set_ylabel('Normalized Signal')
     ax0.set_title("Comparison Model with Observed Mean Spectrum")

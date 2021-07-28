@@ -197,6 +197,9 @@ nasaexoplanetarchive_table_units = collections.OrderedDict(
     LOGG=u.dex(u.cm/u.s**2),
     LOGGUPPER=u.dex(u.cm/u.s**2),
     LOGGLOWER=u.dex(u.cm/u.s**2),
+    DIST=u.pc,
+    DISTUPPER=u.pc,
+    DISTLOWER=u.pc,
     ROWUPDATE=u.dimensionless_unscaled,
     REFERENCES=u.dimensionless_unscaled)
 
@@ -319,7 +322,10 @@ exoplanets_table_units = collections.OrderedDict(
     DEPTH=u.dimensionless_unscaled,
     TT=u.day,
     TTUPPER=u.day,
-    TTLOWER=u.day)
+    TTLOWER=u.day,
+    DIST=u.pc,
+    DISTUPPER=u.pc,
+    DISTLOWER=u.pc)
 
 exoplanets_a_table_units = collections.OrderedDict(
     NAME=u.dimensionless_unscaled,
@@ -345,7 +351,8 @@ exoplanets_a_table_units = collections.OrderedDict(
     RSTAR_EX=const.R_sun,
     LOGG_EX=u.dex(u.cm/u.s**2),
     A_EX=u.AU,
-    R_EX=const.R_jup)
+    R_EX=const.R_jup,
+    DIST=u.pc)
 
 
 def masked_array_input(func):
@@ -846,6 +853,7 @@ def get_calalog(catalog_name, update=True):
                   "st_teff,st_tefferr1,st_tefferr2,"
                   "st_met,st_meterr1,st_meterr2,"
                   "st_logg,st_loggerr1,st_loggerr2,"
+                  "sy_dist,sy_disterr1,sy_disterr2,"
                   "rowupdate,pl_refname"
                   "+from+ps+orderby+dec&format=csv")
         exoplanet_database_url = [_url + _query]
@@ -858,7 +866,7 @@ def get_calalog(catalog_name, update=True):
                   "SR=180.000000&VERB=1&"
                   "objlist=-1&"
                   "fldlist=-1,3,4,5,8,9,18,21,24,27,30,36,45,71,82,86,92,"
-                  "99,106,107,109,110,111,113&"
+                  "99,106,107,109,110,111,113,153&"
                   "nocoor=1&format=ascii")
         exoplanet_database_url = [_url + _query]
         data_files_save = ["exoplanets_a.csv"]
@@ -1450,7 +1458,8 @@ class exotethys_model:
     """
 
     __valid_ld_laws = {'linear', 'quadratic', 'nonlinear'}
-    __valid_model_grid = {'Atlas_2000', 'Phoenix_2012_13', 'Phoenix_2018'}
+    __valid_model_grid = {'Atlas_2000', 'Phoenix_2012_13', 'Phoenix_2018',
+                          'Stagger_2015', 'Phoenix_drift_2012'}
 
     def __init__(self, cascade_configuration):
         self.cascade_configuration = cascade_configuration
@@ -1521,6 +1530,18 @@ class exotethys_model:
         wl_bands = \
             [(np.mean([float(j) for j in i])*u.Angstrom).to(u.micron).value
              for i in wl_bands]
+# TEST
+        wl_bands = \
+          [1.3840000, 1.031000000, 1.147, 1.17 , 1.193, 1.216, 1.239, 1.262, 1.285, 1.308, 1.331,
+                    1.354, 1.377, 1.4  , 1.423, 1.447, 1.47 , 1.493, 1.516, 1.539,
+                    1.562, 1.585, 1.608, 1.631, 1.715700000000]
+        ld_coefficients = \
+          [0.26287956,0.2974123, 0.27192, 0.25934, 0.24835, 0.26389, 0.26455, 0.25579, 0.22509,
+                    0.23451, 0.25538, 0.30389, 0.28306, 0.28224, 0.29374, 0.28993,
+                    0.31504, 0.27537, 0.27269, 0.2723 , 0.28077, 0.25901, 0.25706,
+                    0.22291, 0.23587377]
+        ld_coefficients = [np.array([i]) for i in ld_coefficients]
+            
         return wl_bands, ld_coefficients
 
     def return_par_from_ini(self):
@@ -2013,7 +2034,8 @@ class exotethys_stellar_model:
     simple simulated spectrum of the observed star.
     """
 
-    __valid_model_grid = {'Atlas_2000', 'Phoenix_2012_13', 'Phoenix_2018'}
+    __valid_model_grid = {'Atlas_2000', 'Phoenix_2012_13', 'Phoenix_2018',
+                          'Stagger_2015', 'Phoenix_drift_2012'}
 
     def __init__(self, cascade_configuration):
         self.cascade_configuration = cascade_configuration
@@ -2078,14 +2100,15 @@ class exotethys_stellar_model:
 
         model_wavelengths, model_fluxes = \
             boats.get_model_spectrum(InputParameter['stellar_models_grids'],
-                                     params=params)
+                                     params=params, star_database_interpolation='seq_linear')
         if InputParameter['apply_dilution_correcton']:
             params = [InputParameter['Tstar_dilution_object'] * u.K,
                       InputParameter['logg_dilution_object'],
                       InputParameter['star_metallicity_dilution_object']]
             model_wavelengths_dilution_object, model_fluxes_dilution_object = \
                 boats.get_model_spectrum(
-                    InputParameter['stellar_models_grids'], params=params)
+                    InputParameter['stellar_models_grids'], params=params,
+                    star_database_interpolation='seq_linear')
         else:
             model_wavelengths_dilution_object, model_fluxes_dilution_object = \
                 (None, None)
@@ -2112,6 +2135,13 @@ class exotethys_stellar_model:
         except AttributeError:
             warnings.warn("Warning: telescope collecting area not defined.")
             telescope_collecting_area = 1.0*u.m**2
+        try:
+            dispersion_scale = u.Quantity(
+                self.cascade_configuration.instrument_dispersion_scale)
+        except AttributeError:
+            warnings.warn("Warning: instrument dispersion scale not defined.")
+            dispersion_scale = 10*u.Angstrom       
+        dispersion_scale = dispersion_scale.to(u.Angstrom)
         logg_unit = \
             re.split('\\((.*?)\\)',
                      self.cascade_configuration.object_logg_host_star)[1]
@@ -2121,6 +2151,12 @@ class exotethys_stellar_model:
         Tstar = \
             u.Quantity(self.cascade_configuration.object_temperature_host_star)
         Tstar = Tstar.to(u.K).value
+        Rstar = \
+            u.Quantity(self.cascade_configuration.object_radius_host_star)
+        Rstar = Rstar.to(u.solRad)
+        distance = \
+             u.Quantity(self.cascade_configuration.object_distance)
+        distance = distance.to(u.pc)
         star_metallicity = \
             u.Quantity(self.cascade_configuration.object_metallicity_host_star)
         star_metallicity = star_metallicity.value
@@ -2148,9 +2184,12 @@ class exotethys_stellar_model:
             instrument=instrument,
             instrument_filter=instrument_filter,
             tel_coll_area=telescope_collecting_area,
+            instrument_dispersion_scale=dispersion_scale,
             logg=logg,
             star_metallicity=star_metallicity,
             Tstar=Tstar,
+            Rstar=Rstar,
+            distance=distance,
             stellar_models_grids=stellar_models_grids,
             save_path=save_path,
             apply_dilution_correcton=model_apply_dilution_correcton
@@ -2218,6 +2257,10 @@ class exotethys_stellar_model:
         Tstar = Tstar.to(u.K).value
         star_metallicity = system_info[0]['FE'].quantity[0]
         star_metallicity = star_metallicity.value
+        Rstar = system_info[0]['RSTAR'].quantity[0]
+        Rstar = Rstar.to(u.solRad)
+        distance = system_info[0]['DIST'].quantity[0]
+        distance = distance.to(u.pc)
         instrument = self.cascade_configuration.instrument
         instrument_filter = self.cascade_configuration.instrument_filter
         try:
@@ -2226,6 +2269,13 @@ class exotethys_stellar_model:
         except AttributeError:
             warnings.warn("Warning: telescope collecting area not defined.")
             telescope_collecting_area = 1.0*u.m**2
+        try:
+            dispersion_scale = u.Quantity(
+                self.cascade_configuration.instrument_dispersion_scale)
+        except AttributeError:
+            warnings.warn("Warning: instrument dispersion scale not defined.")
+            dispersion_scale = 10*u.Angstrom       
+        dispersion_scale = dispersion_scale.to(u.Angstrom)
         stellar_models_grids = \
             self.cascade_configuration.model_stellar_models_grid
         if not (stellar_models_grids in self.__valid_model_grid):
@@ -2250,9 +2300,12 @@ class exotethys_stellar_model:
             instrument=instrument,
             instrument_filter=instrument_filter,
             tel_coll_area=telescope_collecting_area,
+            instrument_dispersion_scale=dispersion_scale,
             logg=logg,
             star_metallicity=star_metallicity,
             Tstar=Tstar,
+            Rstar=Rstar,
+            distance=distance,
             stellar_models_grids=stellar_models_grids,
             save_path=save_path,
             apply_dilution_correcton=model_apply_dilution_correcton
@@ -2364,43 +2417,73 @@ class SpectralModel:
         wavelength = np.mean(dataset.return_masked_array('wavelength'),
                              axis=-1)
         wavelength_unit = dataset.wavelength_unit
+        data_unit = dataset.data_unit
+        
+        corrected_wavelength = wavelength.copy()
+        iterate_shift = True
+        iteration_count = 0
+        while iterate_shift:
+            lr0, ur0 = _define_band_limits(corrected_wavelength)
+            lr, ur = _define_band_limits(self.sm[0].to(wavelength_unit).value)
+            weights = _define_rebin_weights(lr0, ur0, lr, ur)
+            sens, _ = \
+                _rebin_spectra(self.sm[1].value,
+                               np.ones_like(self.sm[1].value), weights)
+            sens = sens*self.sm[1].unit
 
-        lr0, ur0 = _define_band_limits(wavelength)
-        lr, ur = _define_band_limits(self.sm[0].to(wavelength_unit).value)
-        weights = _define_rebin_weights(lr0, ur0, lr, ur)
-        sens, _ = \
-            _rebin_spectra(self.sm[1].value,
-                           np.ones_like(self.sm[1].value),
-                           weights)
-        sens = sens*self.sm[1].unit
+            n_conv = int(
+                2.3*(self.par['instrument_dispersion_scale'] /
+                np.median(np.diff(self.sm[2]))).decompose().value
+                        )
+            spectrum_star = np.convolve(self.sm[3].value,
+                                        np.ones((n_conv))/n_conv, 'same') 
+            lr, ur = _define_band_limits(self.sm[2].to(wavelength_unit).value)
+            weights = _define_rebin_weights(lr0, ur0, lr, ur)
+            spectrum_star, _ = \
+                _rebin_spectra(spectrum_star,
+                               np.ones_like(spectrum_star),
+                               weights)
+            spectrum_star = spectrum_star*self.sm[3].unit
 
-        lr, ur = _define_band_limits(self.sm[2].to(wavelength_unit).value)
-        weights = _define_rebin_weights(lr0, ur0, lr, ur)
-        spectrum_star, _ = \
-            _rebin_spectra(self.sm[3].value,
-                           np.ones_like(self.sm[3].value),
-                           weights)
-        spectrum_star = spectrum_star*self.sm[3].unit
+            relative_distanc_sqr = ((self.par['Rstar'])/
+                                    (self.par['distance'])).decompose()**2
+            calibration =  sens * relative_distanc_sqr * \
+                self.par['instrument_dispersion_scale']
 
-        model_observation = (spectrum_star * sens).decompose()
-        model_observation = model_observation/np.max(model_observation)
+            model_observation = (spectrum_star * calibration).decompose()
+            model_observation = model_observation.to(data_unit)
 
-        shift = phase_cross_correlation(model_observation[:, np.newaxis],
-                                        (data/np.max(data))[:, np.newaxis],
-                                        upsample_factor=11, space='real',
-                                        return_error=True)
-        wavelength_shift = np.mean(np.diff(wavelength)) * shift[0][0]
-        error_wavelength_shift = np.mean(np.diff(wavelength)) * shift[1]
+            scaling = np.median(data)/np.median(model_observation.value)
+            shift = phase_cross_correlation(
+                (model_observation*scaling)[:, np.newaxis],
+                data[:, np.newaxis], upsample_factor=11, space='real',
+                return_error=True)
+            wavelength_shift = np.mean(np.diff(wavelength)) * shift[0][0]
+            error_wavelength_shift = np.mean(np.diff(wavelength)) * shift[1]
 
-        model_wavelength = np.ma.array(wavelength.data*wavelength_unit,
-                                       mask=wavelength.mask)
-        corrected_wavlength = \
-            np.ma.array((wavelength.data+wavelength_shift) *
-                        wavelength_unit, mask=wavelength.mask)
+            if (np.abs(wavelength_shift) < 3*error_wavelength_shift) | \
+                (iteration_count > 5):
+                iterate_shift = False
+            iteration_count += 1
+            
+            corrected_wavelength = \
+                np.ma.array(corrected_wavelength.data+wavelength_shift, 
+                            mask=corrected_wavelength.mask)
+
+        model_wavelength = \
+            np.ma.array(corrected_wavelength.data*wavelength_unit,
+                        mask=corrected_wavelength.mask)
+        corrected_wavelength = \
+                np.ma.array(corrected_wavelength.data *
+                            wavelength_unit, mask=corrected_wavelength.mask)
         self.model_wavelength = model_wavelength
         self.model_observation = model_observation
-        self.corrected_wavelength = corrected_wavlength
-        self.observation = data/np.max(data)
+        self.rebinned_stellar_model = spectrum_star
+        self.sensitivity = calibration
+        self.scaling = scaling
+        self.relative_distanc_sqr = relative_distanc_sqr
+        self.corrected_wavelength = corrected_wavelength
+        self.observation = data
         return (wavelength_shift*wavelength_unit,
                 error_wavelength_shift*wavelength_unit)
 

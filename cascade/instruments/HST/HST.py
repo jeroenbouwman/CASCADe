@@ -77,6 +77,8 @@ class HST(ObservatoryBase):
                     self.instrument = factory.name
                     self.instrument_calibration = \
                         factory.instrument_calibration
+                    cascade_configuration.instrument_dispersion_scale = \
+                        factory.dispersion_scale
             else:
                 raise ValueError("HST instrument not recognized, "
                                  "check your init file for the following "
@@ -187,6 +189,12 @@ class HSTWFC3(InstrumentBase):
         This function returns the tame of the HST instrument: 'WFC3'
         """
         return "WFC3"
+
+    @property    
+    def dispersion_scale(self):
+        __all_scales = {'UVIS': '13.0 Angstrom', 'G102': '24.5 Angstrom',
+                        'G141': '46.5 Angstrom'}
+        return __all_scales[self.par["inst_filter"]]
 
     def load_data(self):
         """
@@ -1822,6 +1830,7 @@ class HSTWFC3(InstrumentBase):
         flag_DYDX1 = True
         flag_DLDP0 = True
         flag_DLDP1 = True
+        flag_RESOL = True
         for line in content:
             # parameters spectral trace
             if 'DYDX_'+self.par['inst_beam']+'_0' in line:
@@ -1840,6 +1849,10 @@ class HSTWFC3(InstrumentBase):
             if 'DLDP_'+self.par['inst_beam']+'_1' in line:
                 DLDP1 = np.array(line.strip().split()[1:], dtype='float64')
                 flag_DLDP1 = False
+                continue
+            if 'DRZRESOLA' in line:
+                PXLRESOL = float(line.strip().split()[1])*u.Angstrom
+                flag_RESOL = False
                 continue
         if flag_DYDX0:
             raise ValueError("Spectral trace not found in calibration file, \
@@ -1861,6 +1874,10 @@ class HSTWFC3(InstrumentBase):
                      file, check {} file for the following entry: {} \
                      Aborting".format(calibration_file_name,
                                       'DLDP_'+self.par['inst_beam']+'_1'))
+        if flag_RESOL:
+            raise ValueError("Dispersion scale not found in calibration \
+                     file, check {} file for the following entry: DRZRESOLA \
+                     Aborting".format(calibration_file_name))
         DYDX = [DYDX0, DYDX1]
         DLDP = [DLDP0, DLDP1]
         try:
@@ -1870,6 +1887,7 @@ class HSTWFC3(InstrumentBase):
         finally:
             self.wfc3_cal.DYDX = DYDX
             self.wfc3_cal.DLDP = DLDP
+            self.wfc3_cal.PXLRESOL = PXLRESOL
         return
 
     def _read_reference_pixel_file(self):
