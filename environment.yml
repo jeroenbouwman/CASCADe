@@ -34,6 +34,6 @@ dependencies:
   - termcolor
   - statsmodels
   - pip:
-    - ray==1.4.0
+    - ray==1.5.0
     - batman-package==2.4.6
     - git+https://github.com/ucl-exoplanets/ExoTETHyS.git@master

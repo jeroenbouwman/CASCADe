@@ -1673,6 +1673,15 @@ class regressionControler:
             dilution_correction, lightcurve_parameters, \
             mid_transit_time = self.get_lightcurve_model()
 
+# TEST
+        nwave = lightcurve_model.shape[0]
+        corr_matrix = np.zeros((nwave, nwave)) + np.identity(nwave)
+        for i in zip(*np.triu_indices(nwave, k = 1)):
+            coeff, _, _ = ols(lightcurve_model[i[0], :, None], lightcurve_model[i[1], :])
+            corr_matrix[i] = coeff
+            corr_matrix[i[::-1]] = 1/coeff
+
+
         fitted_baseline_list = []
         residuals_list = []
         corrected_fitted_spectrum_list = []
@@ -1691,7 +1700,7 @@ class regressionControler:
                     control_parameters.cpm_parameters.n_additional_regressors
                                )
                      ), 1)
-            K = np.identity(W1.shape[0]) - W1
+            K = np.identity(W1.shape[0]) - W1*corr_matrix
             # note spectrum is already corrected for LD using renormalized LC
             corrected_spectrum, _, _ = ols(K, spectrum)
             corrected_fitted_spectrum_list.append(corrected_spectrum)
