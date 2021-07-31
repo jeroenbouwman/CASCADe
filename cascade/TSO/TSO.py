@@ -1502,7 +1502,7 @@ class TSOSuite:
         if processing_determine_initial_wavelength_shift:
             (rebinnedOptimallyExtractedDataset,
              rebinnedApertureExtractedDataset), \
-                modeled_observations, corrected_observations = \
+                modeled_observations, stellar_model, corrected_observations = \
                 correct_initial_wavelength_shift(
                     rebinnedOptimallyExtractedDataset,
                     cascade_configuration,
