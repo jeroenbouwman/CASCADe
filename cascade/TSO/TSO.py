@@ -1392,6 +1392,12 @@ class TSOSuite:
         except AttributeError:
             processing_determine_initial_wavelength_shift = True
         try:
+            processing_renorm_spatial_scans = \
+                ast.literal_eval(self.cascade_parameters.
+                                 processing_renorm_spatial_scans)
+        except AttributeError:
+            processing_renorm_spatial_scans = False
+        try:
             savePathVerbose = self.cascade_parameters.cascade_save_path
             if not os.path.isabs(savePathVerbose):
                 savePathVerbose = os.path.join(cascade_default_save_path,
@@ -1532,6 +1538,17 @@ class TSOSuite:
             combinedRebinnedApertureExtractedDataset = \
                 combine_scan_samples(rebinnedApertureExtractedDataset,
                                      nrebinScanSamples, verbose=verbose)
+
+            from cascade.spectral_extraction import renormalize_spatial_scans
+            if processing_renorm_spatial_scans:
+                combinedRebinnedOptimallyExtractedDataset = \
+                    renormalize_spatial_scans(
+                        combinedRebinnedOptimallyExtractedDataset
+                                              )
+                combinedRebinnedApertureExtractedDataset = \
+                    renormalize_spatial_scans(
+                       combinedRebinnedApertureExtractedDataset
+                                              )
 
         try:
             datasetParametersDict = self.observation.dataset_parameters
@@ -1872,6 +1889,10 @@ class TSOSuite:
         filename = save_name_base+'_bootstraped_exoplanet_spectrum.fits'
         write_spectra_to_fits(results.spectrum_bootstrap, save_path,
                               filename, header_data)
+        filename = save_name_base+\
+            '_bootstraped_non_flux_calibrated_stellar_spectrum.fits'
+        write_spectra_to_fits(results.non_normalized_stellar_spectrum_bootstrap,
+                              save_path, filename, header_data)
 
 
 def combine_observations(target_name, observations_ids, path=None,

@@ -80,7 +80,8 @@ __all__ = ['directional_filters', 'create_edge_mask',
            'combine_scan_samples', 'sigma_clip_data',
            'sigma_clip_data_cosmic', 'create_cleaned_dataset',
            'compressROI', 'compressSpectralTrace',
-           'compressDataset', 'correct_initial_wavelength_shift']
+           'compressDataset', 'correct_initial_wavelength_shift',
+           'renormalize_spatial_scans']
 
 
 def _round_up_to_odd_integer(value):
@@ -1878,6 +1879,75 @@ def correct_initial_wavelength_shift(referenceDataset, cascade_configuration,
             stellar_model, corrected_observations
     return referenceDataset,  modeled_observations, stellar_model, \
         corrected_observations
+
+
+def renormalize_spatial_scans(referenceDataset, *otherDatasets):
+    """
+    bla.
+
+    Parameters
+    ----------
+    referenceDataset : TYPE
+        DESCRIPTION.
+    *otherDatasets : TYPE
+        DESCRIPTION.
+
+    Returns
+    -------
+    TYPE
+        DESCRIPTION.
+
+    """
+    otherDatasets_list = list(otherDatasets)
+
+    try:
+        scan_direction = np.array(referenceDataset.scan_direction)
+    except AttributeError:
+        if len(otherDatasets_list) > 0:
+            return [referenceDataset] + otherDatasets_list
+        return referenceDataset
+
+    unique_scan_directions = np.unique(scan_direction)
+    print(unique_scan_directions)
+    if len(unique_scan_directions) != 2:
+        if len(otherDatasets_list) > 0:
+            return [referenceDataset] + otherDatasets_list
+        return referenceDataset
+
+    idx = scan_direction == 0.0
+    med0 = np.median(referenceDataset.data[...,idx]).value
+    med1 = np.median(referenceDataset.data[...,~idx]).value
+    med = np.median(referenceDataset.data).value
+    scaling0 = med / med0
+    scaling1 = med / med1
+    print(med0, med1)
+
+    reference_data = copy.deepcopy(referenceDataset.data)
+    reference_data[..., idx] = reference_data[..., idx]*scaling0
+    reference_data[..., ~idx] = reference_data[..., ~idx]*scaling1
+    referenceDataset.data = reference_data
+    reference_uncertainty = copy.deepcopy(referenceDataset.uncertainty)
+    reference_uncertainty[..., idx] = reference_uncertainty[..., idx]*scaling0
+    reference_uncertainty[...,~idx] = reference_uncertainty[...,~idx]*scaling1
+    referenceDataset.uncertainty = reference_uncertainty
+
+    med0 = np.median(referenceDataset.data[...,idx]).value
+    med1 = np.median(referenceDataset.data[...,~idx]).value
+    print(med0, med1)
+
+    for i, dataset in enumerate(otherDatasets_list):
+        reference_data = copy.deepcopy(dataset.data)
+        reference_data[..., idx] = reference_data[..., idx]*scaling0
+        reference_data[..., ~idx] = reference_data[..., ~idx]*scaling1
+        dataset.data = reference_data
+        reference_uncertainty = copy.deepcopy(dataset.uncertainty)
+        reference_uncertainty[..., idx] = reference_uncertainty[..., idx]*scaling0
+        reference_uncertainty[...,~idx] = reference_uncertainty[...,~idx]*scaling1
+        dataset.uncertainty = reference_uncertainty
+        otherDatasets_list[i] = dataset
+    if len(otherDatasets_list) > 0:
+        return [referenceDataset] + otherDatasets_list
+    return referenceDataset
 
 
 def determine_absolute_cross_dispersion_position(cleanedDataset, initialTrace,

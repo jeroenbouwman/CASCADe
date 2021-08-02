@@ -357,6 +357,7 @@ def generate_default_initialization(observatory='HST', data='SPECTRUM',
              'processing_nextraction': '7',
              'processing_rebin_factor_extract1d': '1.05',
              'processing_auto_adjust_rebin_factor_extract1d': 'True',
+             'processing_renowm_spatial_scans': 'True',
              'processing_determine_initial_wavelength_shift': 'True'}
 
     config['CPM'] = {
