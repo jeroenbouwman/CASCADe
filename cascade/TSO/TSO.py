@@ -1861,21 +1861,21 @@ class TSOSuite:
 
         from cascade.utilities import write_spectra_to_fits
 
-        header_data = {'TDDEPTH': results.spectrum.TDDEPTH[1],
-                       'TDCL005': results.spectrum.TDDEPTH[0],
-                       'TDCL095': results.spectrum.TDDEPTH[2],
-                       'MODELRP': results.spectrum.MODELRP,
-                       'MODELA': results.spectrum.MODELA,
-                       'MODELINC': str(results.spectrum.MODELINC),
-                       'MODELECC': results.spectrum.MODELECC,
-                       'MODELW': str(results.spectrum.MODELW),
-                       'MODELEPH': str(results.spectrum.MODELEPH),
-                       'MODELPER': str(results.spectrum.MODELPER),
-                       'VERSION': results.spectrum.VERSION,
-                       'CREATIME': results.spectrum.CREATIME,
-                       'OBSTIME': str(results.spectrum.OBSTIME),
+        header_data = {'TDDEPTH': results.spectrum_bootstrap.TDDEPTH[1],
+                       'TDCL005': results.spectrum_bootstrap.TDDEPTH[0],
+                       'TDCL095': results.spectrum_bootstrap.TDDEPTH[2],
+                       'MODELRP': results.spectrum_bootstrap.MODELRP,
+                       'MODELA': results.spectrum_bootstrap.MODELA,
+                       'MODELINC': str(results.spectrum_bootstrap.MODELINC),
+                       'MODELECC': results.spectrum_bootstrap.MODELECC,
+                       'MODELW': str(results.spectrum_bootstrap.MODELW),
+                       'MODELEPH': str(results.spectrum_bootstrap.MODELEPH),
+                       'MODELPER': str(results.spectrum_bootstrap.MODELPER),
+                       'VERSION': results.spectrum_bootstrap.VERSION,
+                       'CREATIME': results.spectrum_bootstrap.CREATIME,
+                       'OBSTIME': str(results.spectrum_bootstrap.OBSTIME),
                        'MIDTTIME': str(results.spectrum.MIDTTIME),
-                       'DATAPROD': results.spectrum.DATAPROD,
+                       'DATAPROD': results.spectrum_bootstrap.DATAPROD,
                        'ID': observations_id,
                        'FACILITY': observatory,
                        'INSTRMNT': instrument,
@@ -1883,16 +1883,29 @@ class TSOSuite:
                        'NAME': object_target_name,
                        'OBSTYPE': transittype}
 
-        filename = save_name_base+'_exoplanet_spectrum.fits'
-        write_spectra_to_fits(results.spectrum, save_path, filename,
-                              header_data)
         filename = save_name_base+'_bootstraped_exoplanet_spectrum.fits'
         write_spectra_to_fits(results.spectrum_bootstrap, save_path,
                               filename, header_data)
+
+        header_data['TDDEPTH'] = results.spectrum.TDDEPTH[0]
+        header_data.pop('TDCL005')
+        header_data.pop('TDCL095')
+        filename = save_name_base+'_exoplanet_spectrum.fits'
+        write_spectra_to_fits(results.spectrum, save_path, filename,
+                              header_data)
+
+        header_data.pop('TDDEPTH')
+        header_data['STLRFLUX'] = \
+            results.non_normalized_stellar_spectrum_bootstrap.STLRFLUX[1]
+        header_data['STFCL005'] = \
+            results.non_normalized_stellar_spectrum_bootstrap.STLRFLUX[0]
+        header_data['STFCL095'] = \
+            results.non_normalized_stellar_spectrum_bootstrap.STLRFLUX[2]
         filename = save_name_base+\
             '_bootstraped_non_flux_calibrated_stellar_spectrum.fits'
         write_spectra_to_fits(results.non_normalized_stellar_spectrum_bootstrap,
-                              save_path, filename, header_data)
+                              save_path, filename, header_data,
+                              column_names=['Wavelength', 'Flux', 'Error Flux'])
 
 
 def combine_observations(target_name, observations_ids, path=None,

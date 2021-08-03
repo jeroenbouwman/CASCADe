@@ -1908,7 +1908,6 @@ def renormalize_spatial_scans(referenceDataset, *otherDatasets):
         return referenceDataset
 
     unique_scan_directions = np.unique(scan_direction)
-    print(unique_scan_directions)
     if len(unique_scan_directions) != 2:
         if len(otherDatasets_list) > 0:
             return [referenceDataset] + otherDatasets_list
@@ -1920,7 +1919,6 @@ def renormalize_spatial_scans(referenceDataset, *otherDatasets):
     med = np.median(referenceDataset.data).value
     scaling0 = med / med0
     scaling1 = med / med1
-    print(med0, med1)
 
     reference_data = copy.deepcopy(referenceDataset.data)
     reference_data[..., idx] = reference_data[..., idx]*scaling0
@@ -1930,10 +1928,6 @@ def renormalize_spatial_scans(referenceDataset, *otherDatasets):
     reference_uncertainty[..., idx] = reference_uncertainty[..., idx]*scaling0
     reference_uncertainty[...,~idx] = reference_uncertainty[...,~idx]*scaling1
     referenceDataset.uncertainty = reference_uncertainty
-
-    med0 = np.median(referenceDataset.data[...,idx]).value
-    med1 = np.median(referenceDataset.data[...,~idx]).value
-    print(med0, med1)
 
     for i, dataset in enumerate(otherDatasets_list):
         reference_data = copy.deepcopy(dataset.data)

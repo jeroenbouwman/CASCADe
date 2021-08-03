@@ -1838,13 +1838,14 @@ class regressionControler:
             mad_std((fitted_spectrum[1:, :].T -
                      median_not_normalized_depth_bootstrap).T,
                     axis=0, ignore_nan=True)
-
         # 95% confidense interval non normalized transit depth
         n = len(median_not_normalized_depth_bootstrap)
         sort = sorted(median_not_normalized_depth_bootstrap)
         nn_TD_min, nn_TD, nn_TD_max = \
             (sort[int(n * 0.05)], sort[int(n * 0.5)], sort[int(n * 0.95)])
 
+        # normalized spectrum
+        median_depth = np.ma.median(normed_spectrum[0, :])
 
         # bootstraped normalized spectrum
         median_depth_bootstrap = np.ma.median(normed_spectrum[1:, :], axis=1)
@@ -1853,7 +1854,6 @@ class regressionControler:
         error_normed_spectrum_bootstrap = \
             mad_std((normed_spectrum[1:, :].T - median_depth_bootstrap).T,
                     axis=0, ignore_nan=True)
-
         # 95% confidense interval
         n = len(median_depth_bootstrap)
         sort = sorted(median_depth_bootstrap)
@@ -1867,7 +1867,6 @@ class regressionControler:
         error_stellar_spectrum_bootstrap = \
             mad_std((stellar_spectrum[1:, :].T - median_stellar_spectrum).T,
                     axis=0, ignore_nan=True)
-        
         # 95% confidense interval
         n = len(median_stellar_spectrum)
         sort = sorted(median_stellar_spectrum)
@@ -1897,6 +1896,7 @@ class regressionControler:
                          'MIDTTIME': mid_transit_time,
                          'DATAPROD': data_product}
 
+        # non normlized dataset
         wavelength_unit = control_parameters.data_parameters.wavelength_unit
         data_unit = control_parameters.data_parameters.data_unit
         non_normalized_exoplanet_spectrum_bootstrap = \
@@ -1908,7 +1908,10 @@ class regressionControler:
                          )
         non_normalized_exoplanet_spectrum_bootstrap.add_auxilary(**auxilary_data)
 
-        auxilary_data['TDDEPTH'] = [SF_min, SF, SF_max]
+        # non normalized stellar dataset
+        stellar_auxilary_data = copy.deepcopy(auxilary_data)
+        stellar_auxilary_data.pop('TDDEPTH')
+        stellar_auxilary_data['STLRFLUX'] = [SF_min, SF, SF_max]
         data_unit = control_parameters.data_parameters.data_unit
         non_normalized_stellar_spectrum_bootstrap = \
             SpectralData(wavelength=wavelength_normed_spectrum[0, :],
@@ -1917,9 +1920,10 @@ class regressionControler:
                          data_unit=data_unit,
                          uncertainty=error_stellar_spectrum_bootstrap,
                          )
-        non_normalized_stellar_spectrum_bootstrap.add_auxilary(**auxilary_data)  
+        non_normalized_stellar_spectrum_bootstrap.add_auxilary(**stellar_auxilary_data)
 
-        auxilary_data['TDDEPTH'] = [TD_min, TD, TD_max]
+        # normalized datset
+        auxilary_data['TDDEPTH'] = [median_depth]
         data_unit = u.percent
         exoplanet_spectrum = \
             SpectralData(wavelength=wavelength_normed_spectrum[0, :],
@@ -1929,6 +1933,9 @@ class regressionControler:
                          uncertainty=error_normed_spectrum[0, :],
                          )
         exoplanet_spectrum.add_auxilary(**auxilary_data)
+        
+        # normalized bootstraped dataset
+        auxilary_data['TDDEPTH'] = [TD_min, TD, TD_max]
         exoplanet_spectrum_bootstrap = \
             SpectralData(wavelength=wavelength_normed_spectrum[0, :],
                          wavelength_unit=wavelength_unit,
@@ -1938,6 +1945,7 @@ class regressionControler:
                          )
         exoplanet_spectrum_bootstrap.add_auxilary(**auxilary_data)
 
+        # timeseries baseline
         nboot, nwave, ntime = fit_parameters.fitted_time.shape
         uniq_time = fit_parameters.fitted_time[0, 0, :]
         baseline_bootstrap = np.zeros((nwave, ntime))
@@ -1956,9 +1964,6 @@ class regressionControler:
             np.repeat(baseline_mask[:, np.newaxis],
                       len(uniq_time),
                       axis=1)
-
-        # baseline_zero = fit_parameters.fitted_baseline[0, ...]
-
         from cascade.data_model import SpectralDataTimeSeries
         data_unit = control_parameters.data_parameters.data_unit
         time_unit = control_parameters.data_parameters.time_unit

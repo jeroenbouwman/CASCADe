@@ -40,7 +40,8 @@ __all__ = ['write_timeseries_to_fits', 'find', 'get_data_from_fits',
            '_define_rebin_weights', '_rebin_spectra']
 
 
-def write_spectra_to_fits(spectral_dataset, path, filename, header_meta):
+def write_spectra_to_fits(spectral_dataset, path, filename, header_meta,
+                          column_names=['Wavelength', 'Depth', 'Error Depth']):
     """
     Write spectra dataset object to fits files.
 
@@ -55,34 +56,40 @@ def write_spectra_to_fits(spectral_dataset, path, filename, header_meta):
         file name of save fits file.
     header_meta : 'dict'
         All auxilary data to be written to fits header.
+    column_names : 'list' of 'string', optional
+        names of the fits table columns.
     """
     os.makedirs(path, exist_ok=True)
     mask = spectral_dataset.mask
-    table = QTable([spectral_dataset.wavelength.data.value[~mask] *
-                    spectral_dataset.wavelength_unit,
-                    spectral_dataset.data.data.value[~mask] *
-                    spectral_dataset.data_unit,
-                    spectral_dataset.uncertainty.data.value[~mask] *
-                    spectral_dataset.data_unit],
-                   names=['Wavelength', 'Depth', 'Error Depth']
-                   )
+ 
+    hdr = fits.Header()
+    for key, value in header_meta.items():
+        hdr[key] = value
+    primary_hdu = fits.PrimaryHDU(header=hdr)
+
+    columns_list = \
+        [fits.Column(name=column_names[0], format='D',
+                     unit=spectral_dataset.wavelength_unit.to_string(),
+                     array=spectral_dataset.wavelength.data.value[~mask]),
+         fits.Column(name=column_names[1], format='D',
+                     unit=spectral_dataset.data_unit.to_string(),
+                     array=spectral_dataset.data.data.value[~mask]),
+         fits.Column(name=column_names[2], format='D',
+                     unit=spectral_dataset.data_unit.to_string(),
+                     array=spectral_dataset.uncertainty.data.value[~mask]),
+        ]
     try:
-        table.add_column(
-            spectral_dataset.wavelength_binsize.data.value[~mask] *
-            spectral_dataset.wavelength_binsize_unit,
-            name='Bin Size'
-                         )
+        columns_list = columns_list + \
+            [fits.Column(name="Bin Size", format='D',
+                         unit=spectral_dataset.wavelength_binsize_unit.to_string(),
+                         array=spectral_dataset.wavelength_binsize.data.value[~mask])]
     except AttributeError:
         pass
-    table.write(os.path.join(path, filename), format='fits', overwrite=True)
+                     
+    hdu = fits.BinTableHDU.from_columns(columns_list)
 
-    with fits.open(os.path.join(path, filename)) as hdul:
-        hdr = hdul[0].header
-        for key, value in header_meta.items():
-            hdr[key] = value
-        hdul[0].header = hdr
-        hdu_new = fits.HDUList([hdul[0], hdul[1]])
-        hdu_new.writeto(os.path.join(path, filename), overwrite=True)
+    hdul = fits.HDUList([primary_hdu, hdu])
+    hdul.writeto(os.path.join(path, filename), overwrite=True)
 
 
 def write_timeseries_to_fits(data, path, additional_file_string=None,
