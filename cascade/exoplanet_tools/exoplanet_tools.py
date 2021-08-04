@@ -1530,7 +1530,7 @@ class exotethys_model:
         wl_bands = \
             [(np.mean([float(j) for j in i])*u.Angstrom).to(u.micron).value
              for i in wl_bands]
-# # TEST
+# # TEST for GJ1214b
 #         wl_bands = \
 #           [1.3840000, 1.031000000, 1.147, 1.17 , 1.193, 1.216, 1.239, 1.262, 1.285, 1.308, 1.331,
 #                     1.354, 1.377, 1.4  , 1.423, 1.447, 1.47 , 1.493, 1.516, 1.539,

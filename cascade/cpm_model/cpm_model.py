@@ -535,7 +535,7 @@ def make_bootstrap_samples(ndata, nsamples):
     Returns
     -------
     bootsptrap_indici : 'ndarray' of 'int'
-        (nsample+1 X ndata) array containing the permutated indicii of the 
+        (nsample+1 X ndata) array containing the permutated indicii of the
         data array. The first row is the unsampled list of indici.
     non_common_indici : 'list'
         For ech nootstrap sampling, list of indici not sampled.
@@ -563,7 +563,7 @@ def return_design_matrix(data, selection_list):
     data : 'ndarray'
         Input timeseries data.
     selection_list : 'tuple'
-        Tuple containing the indici of the data used as regressor for a 
+        Tuple containing the indici of the data used as regressor for a
         given wvelength (index).
 
     Returns
@@ -632,7 +632,7 @@ class regressionDataServer:
         time_unit : 'astropy unit'
             Unit of the time.
         time_bjd_zero : 'float'
-            Time in BJD of first integration 
+            Time in BJD of first integration
         data_product : 'string'
             Data product.
         """
@@ -750,7 +750,7 @@ class regressionDataServer:
     def select_regressors(data, selection, bootstrap_indici=None):
         """
         Return the design matrix for a given selection.
-        
+
         This function selects the data to be used as regressor. To be used in
         combination with the select_data function.
 
@@ -785,7 +785,7 @@ class regressionDataServer:
     def select_data(data, selection, bootstrap_indici=None):
         """
         Return the data for a given selection.
-        
+
         This functions selects the data for to be used the the regression
         analysis. To be used in combination with the select_regressors function.
 
@@ -1485,7 +1485,7 @@ class regressionControler:
         -------
         'simplaeNamespace'
             Namespace containing all iterators (data indici, bootstrap indici)
-            for regression analysis 
+            for regression analysis
 
         """
         return self.iterators
@@ -1673,14 +1673,13 @@ class regressionControler:
             dilution_correction, lightcurve_parameters, \
             mid_transit_time = self.get_lightcurve_model()
 
-# TEST
+        # correction matricx for limb darkening correction
         nwave = lightcurve_model.shape[0]
         corr_matrix = np.zeros((nwave, nwave)) + np.identity(nwave)
         for i in zip(*np.triu_indices(nwave, k = 1)):
             coeff, _, _ = ols(lightcurve_model[i[0], :, None], lightcurve_model[i[1], :])
             corr_matrix[i] = coeff
             corr_matrix[i[::-1]] = 1/coeff
-
 
         fitted_baseline_list = []
         residuals_list = []
@@ -1700,8 +1699,9 @@ class regressionControler:
                     control_parameters.cpm_parameters.n_additional_regressors
                                )
                      ), 1)
-            K = np.identity(W1.shape[0]) - W1*corr_matrix
+            K = np.identity(W1.shape[0]) - W1 * corr_matrix
             # note spectrum is already corrected for LD using renormalized LC
+            # correction for differenc in band shape is the corr_matrix
             corrected_spectrum, _, _ = ols(K, spectrum)
             corrected_fitted_spectrum_list.append(corrected_spectrum)
 
@@ -1859,7 +1859,7 @@ class regressionControler:
         sort = sorted(median_depth_bootstrap)
         TD_min, TD, TD_max = \
             (sort[int(n * 0.05)], sort[int(n * 0.5)], sort[int(n * 0.95)])
-        
+
         # bootstraped stellar spectrum
         median_stellar_spectrum = np.ma.median(stellar_spectrum[1:, :], axis=1)
         stellar_spectrum_bootstrap = \
@@ -1871,7 +1871,7 @@ class regressionControler:
         n = len(median_stellar_spectrum)
         sort = sorted(median_stellar_spectrum)
         SF_min, SF, SF_max = \
-            (sort[int(n * 0.05)], sort[int(n * 0.5)], sort[int(n * 0.95)])       
+            (sort[int(n * 0.05)], sort[int(n * 0.5)], sort[int(n * 0.95)])
 
         observing_time = control_parameters.data_parameters.time_bjd_zero
         data_product = control_parameters.data_parameters.data_product
@@ -1933,7 +1933,7 @@ class regressionControler:
                          uncertainty=error_normed_spectrum[0, :],
                          )
         exoplanet_spectrum.add_auxilary(**auxilary_data)
-        
+
         # normalized bootstraped dataset
         auxilary_data['TDDEPTH'] = [TD_min, TD, TD_max]
         exoplanet_spectrum_bootstrap = \
