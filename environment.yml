@@ -3,11 +3,11 @@ channels:
   - defaults
   - conda-forge
 dependencies:
-  - python=3.8.10
-  - ipython=7.22.0
-  - pip=21.1.2
+  - python=3.8.11
+  - ipython=7.26.0
+  - pip=21.2.2
   - qt=5.9.7
-  - numpy=1.20.2
+  - numpy=1.20.3
   - scipy=1.6.2
   - matplotlib=3.3.4
   - seaborn
@@ -34,6 +34,6 @@ dependencies:
   - termcolor
   - statsmodels
   - pip:
-    - ray==1.5.0
+    - ray==1.5.2
     - batman-package==2.4.6
     - git+https://github.com/ucl-exoplanets/ExoTETHyS.git@master

@@ -1667,8 +1667,8 @@ class TSOSuite:
             regularization = \
                 Controler.get_regularization_parameters_from_server()
             control_parameters = Controler.get_control_parameters()
-            lightcurve_model, ld_correction, dilution_correction, \
-                lc_parameters, mid_transit_time =\
+            lightcurve_model, ld_correction, ld_coefficients, \
+                dilution_correction, lc_parameters, mid_transit_time = \
                 Controler.get_lightcurve_model()
         else:
             num_cpus = psutil.cpu_count(logical=True)
@@ -1859,8 +1859,6 @@ class TSOSuite:
         else:
             save_name_base = observations_target_name
 
-        from cascade.utilities import write_spectra_to_fits
-
         header_data = {'TDDEPTH': results.spectrum_bootstrap.TDDEPTH[1],
                        'TDCL005': results.spectrum_bootstrap.TDDEPTH[0],
                        'TDCL095': results.spectrum_bootstrap.TDDEPTH[2],
@@ -1973,7 +1971,7 @@ def combine_observations(target_name, observations_ids, path=None,
 
     TD = 0
     W = 0
-    for iobs, (keys, values) in enumerate(observations.items()):
+    for (keys, values) in observations.items():
         TD += values['TD']*values['SE']**-2
         W += values['SE']**-2
     TD = TD/W

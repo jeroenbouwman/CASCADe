@@ -735,7 +735,7 @@ def transit_to_eclipse(transit, uncertainty=None):
     return eclipse
 
 
-def combine_spectra(identifier_list=[], path=""):
+def combine_spectra(identifier_list, path=""):
     """
     Combine multiple spectra.
 

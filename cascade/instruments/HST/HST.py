@@ -190,7 +190,7 @@ class HSTWFC3(InstrumentBase):
         """
         return "WFC3"
 
-    @property    
+    @property
     def dispersion_scale(self):
         __all_scales = {'UVIS': '13.0 Angstrom', 'G102': '24.5 Angstrom',
                         'G141': '46.5 Angstrom'}
