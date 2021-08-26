@@ -32,6 +32,7 @@ from types import SimpleNamespace
 import itertools
 from collections.abc import Iterable
 import ast
+import warnings
 import time as time_module
 import copy
 import ray
@@ -202,6 +203,8 @@ def ridge(input_regression_matrix, input_data, input_covariance,
     optimal_regularization : 'numpy.ndarray'
         The optimal regularization strength determened by generalized cross
         validation.
+    aicc : float'
+        Corrected Aikake information criterium.
 
     Notes
     -----
@@ -452,6 +455,10 @@ def modified_AIC(lnL, n_data, n_parameters):
 def create_regularization_matrix(method, n_regressors, n_not_regularized):
     """
     Create regularization matrix.
+
+    Two options are implemented: The first one 'value' returns a penalty
+    matrix for the clasical ridge rigression. The second option 'derivative'
+    is consistend with fused ridge penalty (as introduced by Goeman, 2008).
 
     Parameters
     ----------
@@ -951,7 +958,7 @@ class regressionDataServer:
                                           bootstrap_indici=bootstrap_indici)
             regression_selection_list.append(regression_selection)
         return regression_selection_list
-    
+
     def get_regression_data_chunk(self, iterator_chunk):
         """
         Get all relevant data for a chunck of the regression iteration.
@@ -1074,8 +1081,6 @@ class regressionParameterServer:
             ast.literal_eval(self.cascade_configuration.cpm_deltapix)
         self.cpm_parameters.nboot = \
             ast.literal_eval(self.cascade_configuration.cpm_nbootstrap)
-        self.cpm_parameters.regularization_method = \
-            self.cascade_configuration.cpm_regularization_method
         self.cpm_parameters.alpha_min = \
             ast.literal_eval(self.cascade_configuration.cpm_lam0)
         self.cpm_parameters.alpha_max = \
@@ -1086,6 +1091,11 @@ class regressionParameterServer:
             ast.literal_eval(self.cascade_configuration.cpm_add_time)
         self.cpm_parameters.add_position = \
             ast.literal_eval(self.cascade_configuration.cpm_add_position)
+        self.cpm_parameters.regularize_depth_correction = \
+            ast.literal_eval(self.cascade_configuration.cpm_regularize_depth_correction)
+        self.cpm_parameters.sigma_mse_cut = \
+            ast.literal_eval(self.cascade_configuration.cpm_sigma_mse_cut)
+    
         additional_regressor_list = []
         if self.cpm_parameters.add_position:
             additional_regressor_list.append('position')
@@ -1396,8 +1406,10 @@ class regressionControler:
     spectra in spectral data format.
     """
 
-    def __init__(self, cascade_configuration, dataset, regressor_dataset):
+    def __init__(self, cascade_configuration, dataset, regressor_dataset,
+                 number_of_workers=1):
         self.cascade_configuration = cascade_configuration
+        self.number_of_workers = number_of_workers
         self.instantiate_parameter_server()
         self.instantiate_data_server(dataset, regressor_dataset)
         self.initialize_servers()
@@ -1433,7 +1445,7 @@ class regressionControler:
 
         """
         self.data_server_handle = \
-            regressionDataServer(dataset, regressor_dataset)
+            [regressionDataServer(dataset, regressor_dataset) for _ in range(self.number_of_workers)]
 
     def initialize_servers(self):
         """
@@ -1447,10 +1459,10 @@ class regressionControler:
         None.
 
         """
-        self.data_server_handle.initialize_data_server(
-            self.parameter_server_handle)
+        for server in self.data_server_handle:
+            server.initialize_data_server(self.parameter_server_handle)
         self.parameter_server_handle.initialize_parameter_server(
-            self.data_server_handle)
+            self.data_server_handle[0])
 
     def get_fit_parameters_from_server(self):
         """
@@ -1509,7 +1521,7 @@ class regressionControler:
             lightcurve model.
 
         """
-        return self.data_server_handle.get_lightcurve_model()
+        return self.data_server_handle[0].get_lightcurve_model()
 
     def initialize_regression_iterators(self, nchunks=1):
         """
@@ -1695,32 +1707,24 @@ class regressionControler:
         selection_list = \
             data_server_handle.get_all_regression_data(
                 regression_selections, bootstrap_indici=bootstrap_selection)
-        # selection_list = []
-        # for regression_selection in regression_selections:
-        #     selection_future = \
-        #         data_server_handle.get_regression_data(
-        #             regression_selection,
-        #             bootstrap_indici=bootstrap_selection)
-        #     selection_list.append(selection_future)
+
         return selection_list
 
-    def run_regression_model(self, nchunks=1):
+    def run_regression_model(self):
         """
         Run the regression model.
 
         This method runs the regression method for the instrument systematics
         and the transit depth determination.
 
-        Parameters
-        ----------
-        nchunks : 'int', optional
-            umber of chunks in which to split the iterators. The default is 1.
-
         Returns
         -------
         None.
 
         """
+        # Number of chunks is the number of workers
+        nchunks = self.number_of_workers
+        
         # define the iterator chunks
         self.initialize_regression_iterators(nchunks=nchunks)
 
@@ -1737,7 +1741,8 @@ class regressionControler:
             for iterator_chunk in self.iterators.chunked_full_model_iterator
                   ]
         futures = [w.async_update_loop(self.parameter_server_handle,
-                   self.data_server_handle) for w in workers]
+                   self.data_server_handle[iserver])
+                   for iserver, w in enumerate(workers)]
 
         # This launches workers on the bootstraped data set + original data
         # and determines the fit parameters and error there on
@@ -1754,7 +1759,8 @@ class regressionControler:
         # reset parameters on server for final run.
         self.parameter_server_handle.reset_parameters()
         futures = [w.async_update_loop(self.parameter_server_handle,
-                   self.data_server_handle) for w in workers]
+                   self.data_server_handle[iserver])
+                   for iserver, w in enumerate(workers)]
 
     def process_regression_fit(self):
         """
@@ -1802,7 +1808,24 @@ class regressionControler:
             K = np.identity(W1.shape[0]) - W1 * corr_matrix
             # note spectrum is already corrected for LD using renormalized LC
             # correction for differenc in band shape is the corr_matrix
-            corrected_spectrum, _, _ = ols(K, spectrum)
+            if control_parameters.cpm_parameters.regularize_depth_correction:
+                input_covariance = np.diag(np.ones_like(spectrum))
+                input_delta = create_regularization_matrix('derivative', len(spectrum), 0)
+                reg_min = 1.0e-3
+                reg_max = 1.e7
+                nreg = 200
+                input_alpha = return_lambda_grid(reg_min, reg_max, nreg)
+                results = ridge(K, spectrum, input_covariance,
+                                input_delta, input_alpha)
+                corrected_spectrum = results[0]
+                if (results[-2] <= reg_min) | (results[-2] >= reg_max):
+                    warnings.warn("optimal regularization value of {} used in "
+                                  "TD subtraction correction outside the "
+                                  "range [{}, {}]".format(results[-2], reg_min,
+                                                          reg_max))
+            else:
+                corrected_spectrum, _, _ = ols(K, spectrum)
+            
             corrected_fitted_spectrum_list.append(corrected_spectrum)
 
             baseline_model = np.zeros(control_parameters.data_parameters.shape)
@@ -1819,7 +1842,7 @@ class regressionControler:
                           data_parameters.max_spectral_points))
 
             regression_data_selections = \
-                self.get_data_per_bootstrap_step(self.data_server_handle,
+                self.get_data_per_bootstrap_step(self.data_server_handle[0],
                                                   self.iterators.regressor_indici,
                                                   bootstrap_selection)
 
@@ -1892,7 +1915,7 @@ class regressionControler:
             dilution_correction, lightcurve_parameters, \
             mid_transit_time = self.get_lightcurve_model()
 
-        sigma_cut = 3.0
+        sigma_cut = control_parameters.cpm_parameters.sigma_mse_cut
         bad_wavelength_mask = \
             (fit_parameters.fitted_mse[0, :] >
              np.median(fit_parameters.fitted_mse[0, :])*sigma_cut)
@@ -2099,10 +2122,12 @@ class regressionControler:
 
 @ray.remote
 class rayRegressionControler(regressionControler):
-    """Ray wrapper regressionDataServer class."""
+    """Ray wrapper regressionControler class."""
 
-    def __init__(self, cascade_configuration, dataset, regressor_dataset):
-        super().__init__(cascade_configuration, dataset, regressor_dataset)
+    def __init__(self, cascade_configuration, dataset, regressor_dataset,
+                 number_of_workers=1):
+        super().__init__(cascade_configuration, dataset, regressor_dataset,
+                         number_of_workers=number_of_workers)
 
     def instantiate_parameter_server(self):
         """
@@ -2133,7 +2158,7 @@ class rayRegressionControler(regressionControler):
 
         """
         self.data_server_handle = \
-            rayRegressionDataServer.remote(dataset, regressor_dataset)
+            [rayRegressionDataServer.remote(dataset, regressor_dataset) for _ in range(self.number_of_workers)]
 
     def initialize_servers(self):
         """
@@ -2147,11 +2172,12 @@ class rayRegressionControler(regressionControler):
         None.
 
         """
-        ftr = self.data_server_handle.\
-            initialize_data_server.remote(self.parameter_server_handle)
+        # ftr = self.data_server_handle[0].\
+        #     initialize_data_server.remote(self.parameter_server_handle)
+        ftr = [server.initialize_data_server.remote(self.parameter_server_handle) for server in self.data_server_handle]
         ray.get(ftr)
         ftr = self.parameter_server_handle.\
-            initialize_parameter_server.remote(self.data_server_handle)
+            initialize_parameter_server.remote(self.data_server_handle[0])
         ray.get(ftr)
 
     def get_fit_parameters_from_server(self):
@@ -2212,7 +2238,7 @@ class rayRegressionControler(regressionControler):
             DESCRIPTION.
 
         """
-        return ray.get(self.data_server_handle.get_lightcurve_model.remote())
+        return ray.get(self.data_server_handle[0].get_lightcurve_model.remote())
 
     def initialize_regression_iterators(self, nchunks=1):
         """
@@ -2335,23 +2361,21 @@ class rayRegressionControler(regressionControler):
             add_new_parameters.remote(new_parameters)
                 )
 
-    def run_regression_model(self, nchunks=1):
+    def run_regression_model(self):
         """
         Run the regression model.
 
         This method runs the regression method for the instrument systematics
         and the transit depth determination.
 
-        Parameters
-        ----------
-        nchunks : TYPE, optional
-            DESCRIPTION. The default is 1.
-
         Returns
         -------
         None.
 
         """
+        # number of data chanks is the number of workers
+        nchunks = self.number_of_workers
+        
         # define the iterator chunks
         self.initialize_regression_iterators(nchunks=nchunks)
 
@@ -2368,7 +2392,7 @@ class rayRegressionControler(regressionControler):
             for iterator_chunk in self.iterators.chunked_full_model_iterator
                   ]
         futures = [w.async_update_loop.remote(self.parameter_server_handle,
-                   self.data_server_handle) for w in workers]
+                   self.data_server_handle[iserver]) for iserver, w in enumerate(workers)]
         ray.get(futures)
         # This launches workers on the bootstraped data set + original data
         # and determines the fit parameters and error there on
@@ -2385,7 +2409,7 @@ class rayRegressionControler(regressionControler):
         # reset parameters on server for final run.
         self.reset_fit_parameters()
         futures = [w.async_update_loop.remote(self.parameter_server_handle,
-                   self.data_server_handle) for w in workers]
+                   self.data_server_handle[iserver]) for iserver, w in enumerate(workers)]
         ray.get(futures)
 
 
@@ -2580,8 +2604,6 @@ class regressionWorker:
 
         Returns
         -------
-        regularization_method : 'str'
-            Method used to define regularization method. Default is 'value'
         n_additional : 'int'
             Number of additional regressors.
         ncorrect : 'int'
@@ -2591,11 +2613,10 @@ class regressionWorker:
             with a size corresponding to the total data volume.
         """
         regression_par = parameter_server_handle.get_regression_parameters()
-        regularization_method = regression_par.regularization_method
         n_additional = regression_par.n_additional_regressors
         data_par = parameter_server_handle.get_data_parameters()
         ncorrect = data_par.ncorrect
-        return regularization_method, n_additional, ncorrect
+        return n_additional, ncorrect
 
     def update_parameters_on_server(self, parameter_server_handle):
         """
@@ -2638,12 +2659,13 @@ class regressionWorker:
         None.
 
         """
-        regularization_method, n_additional, ncorrect = \
+        n_additional, ncorrect = \
             self.get_regression_parameters(parameter_server_handle)
+        regularization_method = 'value'
 
         iterator_chunk, chunk_size = self.iterator
 
-        n_sub_chunks = 250
+        n_sub_chunks = 1000
         sub_chunks = self.chunks(iterator_chunk, n_sub_chunks)
 
         for sub_chunk in sub_chunks:
@@ -2784,8 +2806,6 @@ class rayRegressionWorker(regressionWorker):
 
         Returns
         -------
-        regularization_method : 'str'
-            Method used to define regularization method. Default is 'value'
         n_additional : 'int'
             Number of additional regressors.
         ncorrect : 'int'
@@ -2796,12 +2816,11 @@ class rayRegressionWorker(regressionWorker):
         """
         regression_par = \
             ray.get(parameter_server_handle.get_regression_parameters.remote())
-        regularization_method = regression_par.regularization_method
         n_additional = regression_par.n_additional_regressors
         data_par = \
             ray.get(parameter_server_handle.get_data_parameters.remote())
         ncorrect = data_par.ncorrect
-        return regularization_method, n_additional, ncorrect
+        return n_additional, ncorrect
 
     def update_parameters_on_server(self, parameter_server_handle):
         """

@@ -441,7 +441,7 @@ class HSTWFC3(InstrumentBase):
                                  path_to_files)
 
         spectral_data_file = data_files[0]
-        spectral_data = fits.getdata(spectral_data_file, ext=0)
+        spectral_data = fits.getdata(spectral_data_file, ext=1)
         nwavelength = spectral_data.shape[0]
 
         # get the data
@@ -1554,7 +1554,7 @@ class HSTWFC3(InstrumentBase):
             scattered = 1.0
         try:
             flatfield = fits.getdata(calibration_file_name_flatfield,
-                                     ext=0)[:-10, :-10]
+                                     ext=1)[:-10, :-10]
         except FileNotFoundError:
             print("Flatfield calibration file {} not found. "
                   "Aborting".format(calibration_file_name_flatfield))
@@ -1562,7 +1562,7 @@ class HSTWFC3(InstrumentBase):
         try:
             grism_flatfield = \
                 fits.getdata(calibration_file_name_grism_flatfield,
-                             ext=0)[:-10, :-10]
+                             ext=1)[:-10, :-10]
         except FileNotFoundError:
             print("Flatfield calibration file {} not found. "
                   "Aborting".format(calibration_file_name_grism_flatfield))

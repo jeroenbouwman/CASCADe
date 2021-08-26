@@ -414,11 +414,17 @@ def calibrate_timeseries_verbose(*args, **kwargs):
         return
     if "cleaned_dataset" not in kwargs.keys():
         return
+    if "stellar_modeling" not in kwargs.keys():
+        has_stellar_model = False
+    else:
+        has_stellar_model = True
     exoplanet_spectrum = kwargs["exoplanet_spectrum"]
     calibration_results = kwargs["calibration_results"]
     model = kwargs["model"]
     dataset = kwargs["dataset"]
     cleaned_dataset = kwargs["cleaned_dataset"]
+    if has_stellar_model:
+        stellar_modeling = kwargs["stellar_modeling"]
 
     #######################################
     #  Fit quality and regularization
@@ -454,11 +460,12 @@ def calibrate_timeseries_verbose(*args, **kwargs):
                                  "_calibrate_timeseries_dof.png"),
                     bbox_inches="tight")
 
+    sigma_mse_cut = ast.literal_eval(cascade_configuration.cpm_sigma_mse_cut)
     fig, axes = plt.subplots(figsize=(18, 12), nrows=1, ncols=1, dpi=200)
     ax0 = axes
     ax0.plot(calibration_results.wavelength_normed_fitted_spectrum[0, :],
              calibration_results.mse[1, :]*10000)
-    plt.axhline(np.median(calibration_results.mse[1, :]*10000)*3,
+    plt.axhline(np.median(calibration_results.mse[1, :]*10000)*sigma_mse_cut,
                 linestyle='dashed', color='black', label='rejection threshold')
     ax0.set_xlabel('Wavelength [{}]'.format(wavelength_unit))
     ax0.set_ylabel('MSE [x 10000]')
@@ -758,6 +765,75 @@ def calibrate_timeseries_verbose(*args, **kwargs):
                          "_calibrate_timeseries_calibrated_lightcurve.png"),
             bbox_inches="tight")
 
+    #########################################################################
+    # Stellar Spetrum
+    #########################################################################
+    if has_stellar_model:
+        stellar_spectrum = \
+            exoplanet_spectrum.non_normalized_stellar_spectrum_bootstrap.data
+        wavelength_stellar_spectrum = \
+            exoplanet_spectrum.non_normalized_stellar_spectrum_bootstrap.wavelength
+        error_stellar_spectrum = \
+            exoplanet_spectrum.non_normalized_stellar_spectrum_bootstrap.uncertainty    
+    
+        calibration = stellar_modeling.modeled_observations[4]
+        relative_distance_sqr = stellar_modeling.modeled_observations[3]
+        scaling = stellar_modeling.modeled_observations[2]
+        
+        calibrated_stellar_spectrum =  \
+            np.ma.array((stellar_spectrum.data/calibration).to(u.mJy,
+                        equivalencies=u.spectral_density(
+                            wavelength_stellar_spectrum.data)) *
+                        relative_distance_sqr,
+                        mask=stellar_spectrum.mask)
+        uncertainty_stellar_spectrum = \
+            np.ma.array((error_stellar_spectrum.data/calibration).to(u.mJy,
+                        equivalencies=u.spectral_density(
+                            wavelength_stellar_spectrum.data)) *
+                        relative_distance_sqr,
+                        mask=error_stellar_spectrum.mask)
+        wavelength_calibrated_stellar_spectrum = \
+             np.ma.array(wavelength_stellar_spectrum.data,
+                         mask=wavelength_stellar_spectrum.mask)
+        calibrated_stellar_model = \
+           np.ma.array(stellar_modeling.stellar_model[1].to(u.mJy,
+                    equivalencies=u.spectral_density(
+                        stellar_modeling.stellar_model[0].data))*
+                       relative_distance_sqr,
+                       mask=calibrated_stellar_spectrum.mask)
+             
+        flux_unit = calibrated_stellar_spectrum.data.unit
+        wavelength_unit = wavelength_calibrated_stellar_spectrum.data.unit
+        use_mask = ~calibrated_stellar_spectrum.mask
+        fig, axes = plt.subplots(figsize=(18, 12), nrows=1, ncols=1, dpi=200)
+        ax0 = axes
+        ax0.plot(wavelength_calibrated_stellar_spectrum,
+                 calibrated_stellar_spectrum,
+                 label="Observed Stellar Spectrum", color='brown')
+        ax0.errorbar(wavelength_calibrated_stellar_spectrum.data.value[use_mask],
+                      calibrated_stellar_spectrum.data.value[use_mask],
+                      yerr=uncertainty_stellar_spectrum.data.value[use_mask],
+                      fmt=".", color='brown', lw=5, alpha=0.9, ecolor='brown',
+                      markerfacecolor='brown', markeredgecolor='brown',
+                      fillstyle='full', markersize=30)
+        ax0.plot(wavelength_calibrated_stellar_spectrum,
+                 calibrated_stellar_model*scaling, label="Stellar Model",
+                 color="b", lw=8, zorder=8)
+        plt.plot([], [], ' ',
+                 label="Used scaling: {:10.4f}".format(scaling))
+        ax0.set_xlabel('Wavelength [{}]'.format(wavelength_unit))
+        ax0.set_ylabel('Flux [{}]'.format(flux_unit))
+        ax0.set_title("Comparison Model with Observed Stellar Spectrum")
+        ax0.legend(loc='lower left', fancybox=True, framealpha=1.0,
+                   ncol=1, bbox_to_anchor=(0.1, 0.80, 1, 0.3), shadow=True,
+                   handleheight=1.5, labelspacing=0.05,
+                   fontsize=20).set_zorder(11)
+        plt.show()
+        if save_verbose:
+            fig.savefig(
+                os.path.join(save_path, save_name_base +
+                             "_calibrate_timeseries_calibrated_stellar_spectrum.png"),
+                bbox_inches="tight")
 
 class Verbose:
     """The Class handels verbose output vor the cascade pipeline."""

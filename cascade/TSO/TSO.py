@@ -1660,7 +1660,7 @@ class TSOSuite:
 
             Controler = regressionControler(self.cascade_parameters, dataset,
                                             cleaned_dataset)
-            Controler.run_regression_model(nchunks=1)
+            Controler.run_regression_model()
             Controler.process_regression_fit()
             Controler.post_process_regression_fit()
             fit_parameters = Controler.get_fit_parameters_from_server()
@@ -1675,14 +1675,15 @@ class TSOSuite:
             print('Number of CPUs: {}'.format(num_cpus))
             cpus_use = int(np.max([np.min([maxNumberOfCPUs, num_cpus]), 4]))
             print('Number of CPUs used: {}'.format(cpus_use))
-            print('Total number of workers: {}'.format(cpus_use-3))
+            num_workers = (cpus_use-2)//2
+            print('Total number of workers: {}'.format(num_workers))
             ray.init(num_cpus=cpus_use, ignore_reinit_error=True)
-
             rayControler = \
                 rayRegressionControler.remote(self.cascade_parameters,
-                                              dataset, cleaned_dataset)
-            nchunks = int(np.max([np.min([maxNumberOfCPUs, cpus_use-3]), 1]))
-            future = rayControler.run_regression_model.remote(nchunks=nchunks)
+                                              dataset, cleaned_dataset,
+                                              number_of_workers=num_workers)
+#            nchunks = num_workers
+            future = rayControler.run_regression_model.remote()
             ray.get(future)
             future = rayControler.process_regression_fit.remote()
             ray.get(future)
@@ -1787,12 +1788,21 @@ class TSOSuite:
                 exoplanet_spectrum_in_brightnes_temperature
         ray.shutdown()
         vrbs = Verbose()
-        vrbs.execute("calibrate_timeseries",
-                     exoplanet_spectrum=self.exoplanet_spectrum,
-                     calibration_results=self.calibration_results,
-                     model=self.model,
-                     dataset=dataset,
-                     cleaned_dataset=cleaned_dataset)
+        if hasattr(self, "stellar_modeling"):
+            vrbs.execute("calibrate_timeseries",
+                         exoplanet_spectrum=self.exoplanet_spectrum,
+                         calibration_results=self.calibration_results,
+                         model=self.model,
+                         dataset=dataset,
+                         cleaned_dataset=cleaned_dataset,
+                         stellar_modeling=self.stellar_modeling)
+        else:
+             vrbs.execute("calibrate_timeseries",
+                         exoplanet_spectrum=self.exoplanet_spectrum,
+                         calibration_results=self.calibration_results,
+                         model=self.model,
+                         dataset=dataset,
+                         cleaned_dataset=cleaned_dataset)           
 
     def save_results(self):
         """

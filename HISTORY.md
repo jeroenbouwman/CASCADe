@@ -7,3 +7,10 @@
 - Fixed bug in limb darkening correction
 - Added disance to object configuration file
 - Added derivation of stellar spectrum
+
+**version 1.0.8**
+- Improved parallel calcuation of regression modeling
+- Added regularization to correction of averige TD subtraction
+- Fixed a bug in the reading in of spectral fits files
+- Added additional verbose plot of the calibrated stellar spectrum
+- Updated processing_exceptions.ini
