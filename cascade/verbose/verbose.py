@@ -327,6 +327,10 @@ def check_wavelength_solution_verbose(*args, **kwargs):
         return
     if "stellar_model" not in  kwargs.keys():
         return
+    if "extension" not in  kwargs.keys():
+        extension="" 
+    else:
+        extension = kwargs["extension"]
     modeled_observations = kwargs["modeled_observations"]
     corrected_observations = kwargs["corrected_observations"]
     stellar_model =  kwargs["stellar_model"]
@@ -355,7 +359,8 @@ def check_wavelength_solution_verbose(*args, **kwargs):
     plt.show()
     if save_verbose:
         fig.savefig(os.path.join(save_path, save_name_base +
-                                 "_check_wavelength_solution.png"),
+                                 "_check_wavelength_solution" +
+                                 extension + ".png"),
                     bbox_inches="tight")
 
 

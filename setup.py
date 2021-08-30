@@ -8,7 +8,7 @@ config = {
     'url': 'https://jbouwman.gitlab.io/CASCADe/',
     'download_url': 'https://gitlab.com/jbouwman/CASCADe',
     'author_email': 'bouwman@mpia.de',
-    'version': '1.0.6',
+    'version': '1.0.8',
     'python_requires': '>=3.7',
     'license': 'GNU General Public License v3 (GPLv3)',
     'install_requires': ['batman-package', 'astropy', 'jplephem', 'scipy',

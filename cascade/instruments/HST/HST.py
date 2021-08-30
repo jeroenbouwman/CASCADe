@@ -1413,9 +1413,9 @@ class HSTWFC3(InstrumentBase):
             if self.par['inst_filter'] == 'G141':
                 if len(dim) <= 2:
                     wavelength_min = \
-                        self.par['proc_extend_roi'][0]*1.094*u.micron
+                        self.par['proc_extend_roi'][0]*1.096*u.micron
                     wavelength_max = \
-                        self.par['proc_extend_roi'][1]*1.6786*u.micron
+                        self.par['proc_extend_roi'][1]*1.6963*u.micron
                 else:
                     wavelength_min = \
                         self.par['proc_extend_roi'][0]*1.058*u.micron

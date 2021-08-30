@@ -1513,7 +1513,13 @@ class TSOSuite:
                     rebinnedOptimallyExtractedDataset,
                     cascade_configuration,
                     rebinnedApertureExtractedDataset)
-
+            vrbs = Verbose()
+            vrbs.execute("check_wavelength_solution",
+                         modeled_observations=modeled_observations,
+                         stellar_model=stellar_model,
+                         corrected_observations=corrected_observations,
+                         extension='_extract_1d_spectra')
+                
         from cascade.spectral_extraction import combine_scan_samples
         if observationDataType == 'SPECTRAL_CUBE':
             nscanSamples = \

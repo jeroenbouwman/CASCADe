@@ -23,16 +23,15 @@ control.
 
 [CASCADE]
 ^^^^^^^^^
+
 This initialization file section controls some of the general behavior of the package, the following parameters
 can be specified here:
 
-
-
 .. code-block:: python
 
-  cascade_save_path = WASP-19b_ibh715_transit_output_from_extract_timeseries/
+ cascade_save_path = WASP-19b_ibh715_transit_output_from_extract_timeseries/
   cascade_use_multi_processes = True
-  cascade_max_number_of_cpus = 6
+  cascade_max_number_of_cpus = 22
   cascade_verbose = True
   cascade_save_verbose = True
 
@@ -52,7 +51,7 @@ of the :blue:`CASCADe` package, and as such will have to be chosen with care.
 
 .. code-block:: python
 
-  processing_source_selection_method = nearest
+ processing_source_selection_method = nearest
   processing_bits_not_to_flag = [0, 10, 12, 14]
   processing_compress_data = True
   processing_sigma_filtering = 4.0
@@ -69,14 +68,68 @@ of the :blue:`CASCADe` package, and as such will have to be chosen with care.
   processing_drop_frames = {'up': [-1], 'down': [-1]}
   processing_rebin_factor_extract1d = 1.05
   processing_auto_adjust_rebin_factor_extract1d = True
+  processing_renorm_spatial_scans = True
   processing_determine_initial_wavelength_shift = True
 
-The ``processing_source_selection_method`` parameter controls how the target is found in the
-target acquisition images taken with the HST/WFC3 spectroscopic observations. Note that finding the
-target in these images is important as it determines the initial wavelength solution and the placement
-of the region of interest on the spectroscopic images.  If set to `nearest`, the target found nearest
-to the expected position is used. If set to 'brightest' the brightest target in the FOV is used.
-Other possible value are 'second nearest' and 'second brightest'.
+The ``processing_source_selection_method`` parameter controls how the target is found
+in the target acquisition images taken with the HST/WFC3 spectroscopic observations.
+Note that finding the target in these images is important as it determines the initial
+wavelength solution and the placement of the region of interest on the spectroscopic
+images.  If set to `nearest`, the target found nearest to the expected position is
+used. If set to 'brightest' the brightest target in the FOV is used. Other possible
+value are 'second nearest' and 'second brightest'. The ``processing_bits_not_to_flag``
+is specific to HST observations and indicate which bit set in the data quality mask
+should be flagged. If one of those bits are set, the corresponding pixel data is
+flagged as 'bad' The ``processing_compress_data`` flag indicates if data rows flagged
+for all time steps as 'bad' should be removed from the dataset. The default value is
+'True' The ``processing_sigma_filtering`` parameter indicates the sigma level above
+which to flag pixels as bad during the spatial filtering. The ``processing_max_number_of_iterations_filtering``
+parameter indicates the maximum number of iterations used in the spatial filtering.
+The standard number is 20. This parameter is advised to be used only to ensure that
+the spatial filtering process terminates after some time. The filtering normally
+terminates upon convergence which is reached if the fraction of pixels still considered
+bad is lower than the relative fraction specified by the
+``processing_fractional_acceptance_limit_filtering`` parameter, which is set to a
+standard value of half a percent. To determine the source position in the cross-dispersion
+direction and spectral trace trace the ''center-of-light'' (COL) of the dispersed
+light is determined. For comparison to the dispersion profile and calibration files
+a polynomial trace is fitted to the COL. The parameter ``processing_quantile_cut_movement``
+indicates the lower quantile which is cut before determining the cross-dispersion
+position. The ``processing_order_trace_movement`` parameter determines the polynomial
+order of the fitted trace.
+To determine the relative telescope movement, a cross correlation method is applied to
+determine the relative movement (including rotation and scaling) of the spectral images to
+a reference image. To ensure that a chosen reference image did not have by chance some
+artifacts which influences the results a number, geven by the parameter ``processing_nreferences_movement``
+of reference images are picked, after which a median movement is calculated. As the
+main reference of the reference images the image with the the index number given by the
+``processing_main_reference_movement`` is used. To ensure sub-pixel movement accuracy
+the images are over-sampled. The parameter ``processing_upsample_factor_movement`` indicates the
+oversampling of the spectral pixels, while the ``processing_angle_oversampling_movement`` indicates the
+oversampling of the angle after transformation to polar coordinates to determine the
+relative rotation and scaling.
+For the spectral extraction both a region-of-interest (ROI) as well as a extraction aperture are defined.
+The width of the latter is defined by the ``processing_nextraction`` parameter, which
+gives the extraction aperture in number of pixels. The ROI is set based on the instrument and
+expected position of the target. The ROI can be extended by changing the values of the
+``processing_extend_roi`` parameter. The values are multiplicative and extend the lower wavelength bound,
+the upper wavelength bound, the left aperture boundary and the the right boundary, respectively.
+Values smaller then 1 indicate a shrinkage, larger then one an expansion.
+In case of the use of spectral cubes (line with HST spatial scanning mode observations),
+the user has the option to drop samples from the detector reads. The ``processing_drop_frames`` parameter
+lists which samples on a detector ramp should be dropped. In case of HST spatial scans for both up and down
+scans this can be indicated separately. A -1 value indicates that no samples are dropped.
+After spectral extraction, the extracted 1d spectra are re-binned to a uniform
+wavelength grid, with a down sampling factor given by the parameter ``processing_rebin_factor_extract1d``.
+The value of this parameter should be equal or larger then 1.0. If the
+``processing_auto_adjust_rebin_factor_extract1d`` is set, the wavelength re-binning
+is outomatically adjusted such that there are fewer wavelength bins than time samples.
+The value given by the ``processing_rebin_factor_extract1d`` parameter is in this
+case used as a lower limit. In case of HST spatial scanning observations with both up and down scans, if the
+``processing_renorm_spatial_scans`` flag is set, the up and down scan data are re-normalized
+to the overall mean flux value. If the ``processing_determine_initial_wavelength_shift`` flag is set,the time
+average spectrum is compared to a model spectrum to determine a possible general
+wavelength shift. Currently only implemented for HST observations
 
 
 [MODEL]
@@ -88,12 +141,13 @@ simple estimate of the expected spectrum.
 
 .. code-block:: python
 
-  model_type_limb_darkening = exotethys
-  model_stellar_models_grid = Atlas_2000
+ model_type_limb_darkening = exotethys
+  model_stellar_models_grid = Phoenix_2018
 
 The ``model_type_limb_darkening`` parameter selects which limbdarkening code is used with :blue:`CASCADe`.
-At present only `exotethys` can be selected. The ``model_stellar_models_grid`` indicated which stellar grid to use. Standard the Atlas 2000 grid
-is selected. Other options are 'Phoenix_2012_13' and 'Phoenix_2018' These grids come with the used limbdarkening code.
+At present only `exotethys` can be selected. The ``model_stellar_models_grid`` indicated which stellar grid to use.
+Apart from the 'Phoenix_2018' grid, other options are 'Phoenix_2012_13' and 'Atlas2000', the latter being the
+standard option. These grids come with the used Exotethys limbdarkening code.
 
 [INSTRUMENT]
 ^^^^^^^^^^^^
@@ -104,14 +158,13 @@ JWST instruments will follow in the near future.
 
 .. code-block:: python
 
-  instrument_observatory = HST
+ instrument_observatory = HST
   instrument = WFC3
   instrument_filter = G141
   instrument_aperture = IRSUB128
   instrument_cal_filter = F139M
   instrument_cal_aperture = IRSUB512
   instrument_beam = A
-
 
 
 [OBSERVATIONS]
@@ -121,7 +174,7 @@ The parameters in this section of the initialization files describe the observat
 
 .. code-block:: python
 
-  observations_type = TRANSIT
+ observations_type = TRANSIT
   observations_mode = STARING
   observations_data = SPECTRAL_IMAGE
   observations_path = data/
@@ -142,7 +195,7 @@ Calibrating the spectral timeseries and extracting the transit spectrum
 
 .. code-block:: python
 
-  cascade_save_path = WASP-19b_ibh715_transit_from_hst_wfc3_spectra/
+ cascade_save_path = WASP-19b_ibh715_transit_from_hst_wfc3_spectra/
   cascade_use_multi_processes = True
   cascade_max_number_of_cpus = 6
   cascade_verbose = True
@@ -150,13 +203,14 @@ Calibrating the spectral timeseries and extracting the transit spectrum
 
 [PROCESSING]
 ^^^^^^^^^^^^^^
+
 The parameters in this initialization file section control the processing the spectral timeseries observations
 before the regression analysis. As far less pre-processing needs to be done in this pipeline compared to the
 spectral extraction pipeline only a few parameters need to be set.
 
 .. code-block:: python
 
-  processing_compress_data = True
+ processing_compress_data = True
   processing_sigma_filtering = 4.0
   processing_nfilter = 5
   processing_stdv_kernel_time_axis_filter = 0.4
@@ -181,7 +235,7 @@ applied to calibrate the spectral lightcurves and to extract the transit or ecli
 
 .. code-block:: python
 
-  cpm_lam0 = 0.001
+ cpm_lam0 = 0.001
   cpm_lam1 = 10000.0
   cpm_nlam = 140
   cpm_deltapix = 7
@@ -191,6 +245,8 @@ applied to calibrate the spectral lightcurves and to extract the transit or ecli
   cpm_add_time = True
   cpm_add_time_model_order = 1
   cpm_add_position = True
+  cpm_regularize_depth_correction = True
+  cpm_sigma_mse_cut = 5.0
 
 
 [MODEL]
@@ -200,10 +256,10 @@ The parameters in this section define the limbdarkening and lightcurve model use
 
 .. code-block:: python
 
-  model_type = batman
+ model_type = batman
   model_type_limb_darkening = exotethys
   model_limb_darkening = nonlinear
-  model_stellar_models_grid = Atlas_2000
+  model_stellar_models_grid = Phoenix_2018
   model_calculate_limb_darkening_from_model = True
   model_limb_darkening_coeff = [0.0, 0.0, 0.0, 0.0]
   model_nphase_points = 10000
@@ -221,13 +277,14 @@ the ``instrument_cal_filter``, ``instrument_cal_aperture`` and ``instrument_beam
 
 .. code-block:: python
 
-  instrument_observatory = HST
+ instrument_observatory = HST
   instrument = WFC3
   instrument_filter = G141
   instrument_aperture = IRSUB128
   instrument_cal_filter = F139M
   instrument_cal_aperture = IRSUB512
   instrument_beam = A
+
 
 [OBSERVATIONS]
 ^^^^^^^^^^^^^^
@@ -237,7 +294,7 @@ as used in the spectral extraction pipeline, though with slightly different valu
 
 .. code-block:: python
 
-  observations_type = TRANSIT
+ observations_type = TRANSIT
   observations_mode = STARING
   observations_data = SPECTRUM
   observations_path = data/
@@ -272,25 +329,39 @@ specified such that the astropy package can handle them.
 
 .. code-block:: python
 
-  object_name = WASP-19 b
-  object_radius = 1.386 Rjup
-  object_radius_host_star = 1.004 Rsun
-  object_temperature_host_star = 5500.0 K
-  object_semi_major_axis = 0.01634 AU
-  object_inclination = 78.78 deg
-  object_eccentricity = 0.0020
-  object_omega = 259 deg
-  object_period = 0.788838989 d
-  object_ephemeris = 2455168.96801 d
+ object_name = WASP-19 b
+  object_ephemeris = 2454775.3366 d
+  object_period = 0.7888396 d
+  object_radius = 1.31 jupiterRad
+  object_semi_major_axis = 0.01649 AU
+  object_inclination = 80.5 deg
+  object_eccentricity = 0.0061
+  object_omega = 259.0 deg
+  object_radius_host_star = 0.94 solRad
+  object_temperature_host_star = 5568.0 K
   object_kmag = 10.48 Kmag
-  object_metallicity_host_star = 0.14 dex
-  object_logg_host_star = 4.3932 dex(cm/s2)
+  object_metallicity_host_star = 0.0 dex
+  object_logg_host_star = 4.45 dex(cm / s2)
+  object_distance = 268.325 pc
 
 [CATALOG]
 ^^^^^^^^^
 
 .. code-block:: python
 
-  catalog_use_catalog = False
+ catalog_use_catalog = False
   catalog_name = NASAEXOPLANETARCHIVE
   catalog_update = True
+
+[DILUTION]
+^^^^^^^^^^
+
+.. code-block:: python
+
+ dilution_temperature_star = 3700.0 K
+  dilution_metallicity_star = 0.0 dex
+  dilution_logg_star = 5.0 dex(cm / s2)
+  dilution_flux_ratio = 0.01
+  dilution_band_wavelength = 1.26 micron
+  dilution_band_width = 0.05 micron
+  dilution_wavelength_shift = 0.0 micron
