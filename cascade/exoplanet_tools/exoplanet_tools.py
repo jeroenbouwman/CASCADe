@@ -2419,11 +2419,11 @@ class SpectralModel:
         wavelength_unit = dataset.wavelength_unit
         data_unit = dataset.data_unit
         
-        corrected_wavelength = wavelength.copy()
+        un_corrected_wavelength = wavelength.copy()
         iterate_shift = True
         iteration_count = 0
         while iterate_shift:
-            lr0, ur0 = _define_band_limits(corrected_wavelength)
+            lr0, ur0 = _define_band_limits(un_corrected_wavelength)
             lr, ur = _define_band_limits(self.sm[0].to(wavelength_unit).value)
             weights = _define_rebin_weights(lr0, ur0, lr, ur)
             sens, _ = \
@@ -2467,12 +2467,12 @@ class SpectralModel:
             iteration_count += 1
             
             corrected_wavelength = \
-                np.ma.array(corrected_wavelength.data+wavelength_shift, 
-                            mask=corrected_wavelength.mask)
+                np.ma.array(un_corrected_wavelength.data+wavelength_shift, 
+                            mask=un_corrected_wavelength.mask)
 
         model_wavelength = \
-            np.ma.array(corrected_wavelength.data*wavelength_unit,
-                        mask=corrected_wavelength.mask)
+            np.ma.array(un_corrected_wavelength.data*wavelength_unit,
+                        mask=un_corrected_wavelength.mask)
         corrected_wavelength = \
                 np.ma.array(corrected_wavelength.data *
                             wavelength_unit, mask=corrected_wavelength.mask)
@@ -2483,6 +2483,7 @@ class SpectralModel:
         self.scaling = scaling
         self.relative_distanc_sqr = relative_distanc_sqr
         self.corrected_wavelength = corrected_wavelength
+        self.un_corrected_wavelength = un_corrected_wavelength
         self.observation = data
         return (wavelength_shift*wavelength_unit,
                 error_wavelength_shift*wavelength_unit)

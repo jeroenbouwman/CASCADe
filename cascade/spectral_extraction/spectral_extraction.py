@@ -1873,7 +1873,8 @@ def correct_initial_wavelength_shift(referenceDataset, cascade_configuration,
     stellar_model = \
         [model_spectra.model_wavelength, model_spectra.rebinned_stellar_model]
     corrected_observations = \
-        [model_spectra.corrected_wavelength, model_spectra.observation]
+        [model_spectra.corrected_wavelength, model_spectra.observation,
+         wave_shift, error_wave_shift]
     if len(otherDatasets_list) > 0:
         return [referenceDataset] + otherDatasets_list, modeled_observations,\
             stellar_model, corrected_observations

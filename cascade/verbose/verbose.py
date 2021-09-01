@@ -346,10 +346,12 @@ def check_wavelength_solution_verbose(*args, **kwargs):
              modeled_observations[1]*modeled_observations[2] , label='Model')
     ax0.plot(corrected_observations[0],
              corrected_observations[1], label='Corrected Observations')
-    ax0.plot(modeled_observations[0],
+    ax0.plot(corrected_observations[0]-corrected_observations[2],
              corrected_observations[1], label='Un-Corrected Observations')
     plt.plot([], [], ' ',
              label="Used scaling: {:10.4f}".format(modeled_observations[2]))
+    plt.plot([], [], ' ',
+             label="Wavelength shift: {:10.4f}".format(corrected_observations[2]))
     ax0.set_xlabel('Wavelength [{}]'.format(wavelength_unit))
     ax0.set_ylabel('Normalized Signal')
     ax0.set_title("Comparison Model with Observed Mean Spectrum")
