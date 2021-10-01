@@ -14,3 +14,7 @@
 - Fixed a bug in the reading in of spectral fits files
 - Added additional verbose plot of the calibrated stellar spectrum
 - Updated processing_exceptions.ini
+
+**version 1.09**
+- Added sensitivity curves for Spitzer IRS data
+- Added a fix for the low resolution Atlas 2000 models at longer wavelengths 

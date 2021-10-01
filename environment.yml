@@ -35,5 +35,5 @@ dependencies:
   - statsmodels
   - pip:
     - 'ray[default]'
-    - batman-package==2.4.6
+    - batman-package
     - git+https://github.com/ucl-exoplanets/ExoTETHyS.git@master
