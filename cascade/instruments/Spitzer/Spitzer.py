@@ -67,6 +67,8 @@ class Spitzer(ObservatoryBase):
                 if cascade_configuration.instrument == 'IRS':
                     factory = SpitzerIRS()
                     self.par = factory.par
+                    cascade_configuration.telescope_collecting_area = \
+                        self.collecting_area
                     self.data = factory.data
                     self.spectral_trace = factory.spectral_trace
                     if self.par['obs_has_backgr']:
@@ -74,6 +76,8 @@ class Spitzer(ObservatoryBase):
                     self.instrument = factory.name
                     self.instrument_calibration = \
                         factory.instrument_calibration
+                    cascade_configuration.instrument_dispersion_scale = \
+                        factory.dispersion_scale
             else:
                 raise ValueError("Spitzer instrument not recognized, \
                                  check your init file for the following \
@@ -100,9 +104,9 @@ class Spitzer(ObservatoryBase):
 
         Returns
         -------
-        0.64 m**2
+        0.5 m**2
         """
-        return '0.64 m2'
+        return '0.5 m2'
 
     @property
     def NAIF_ID(self):
@@ -157,6 +161,12 @@ class SpitzerIRS(InstrumentBase):
     def name(self):
         """Reteurn instrument name."""
         return "IRS"
+    
+    @property
+    def dispersion_scale(self):
+        __all_scales = {'SL1': '604.5 Angstrom', 'SL2': '371.7 Angstrom',
+                        'LL1': '605.0 Angstrom', 'LL1': '1209.0 Angstrom'}
+        return __all_scales[self.par["inst_filter"]]
 
     def load_data(self):
         """Load data."""
@@ -338,7 +348,7 @@ class SpitzerIRS(InstrumentBase):
             time = np.array(auxilary_dict['TIME_BJD']['data']) * u.day
             phase = (time.value - self.par['obj_ephemeris']) / \
                 self.par['obj_period']
-            phase = phase - np.int(np.max(phase))
+            phase = phase - int(np.max(phase))
             if np.max(phase) < 0.0:
                 phase = phase + 1.0
         if auxilary_dict['POSITION']['flag']:
@@ -577,7 +587,7 @@ class SpitzerIRS(InstrumentBase):
         """
         dim = self.data.data.shape
         if len(dim) <= 2:
-            roi = np.zeros((dim[0]), dtype=np.bool)
+            roi = np.zeros((dim[0]), dtype=bool)
             roi[0] = True
             roi[-1] = True
         else:

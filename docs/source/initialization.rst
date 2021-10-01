@@ -166,6 +166,19 @@ JWST instruments will follow in the near future.
   instrument_cal_aperture = IRSUB512
   instrument_beam = A
 
+The parameters in this section are relative straightforward to interpret. The
+``instrument_observatory`` is the name of the observatory. For the extraction of
+a spectral time series, two observatories have been implemented: 'HST' and 'Spitzer'.
+The ``instrument`` parameter specifies the used instrument, in case of HST observations this is
+'WFC3' (other instruments might follow in the near future), for Spitzer observations
+this parameter needs to be set to 'IRS'. The ``instrument_filter`` is either 'G141' or 'G102' for
+observations with the WFC3 instrument or in case of Spitzer spectroscopic observations,
+'SL1' or 'SL2'.  All other parameters in this section are HST/WFC3 specific. The
+``instrument_aperture`` parameter specifies the used sub array of the spectroscopic observations.
+The parameters ``instrument_cal_filter`` and ``instrument_cal_aperture`` specify the
+used imager filter and detector sub-array of the acquisition images takes before
+the spectroscopic time series. The ``instrument_beam`` parameter specifies the used
+beam which is always 'A' for these observations.
 
 [OBSERVATIONS]
 ^^^^^^^^^^^^^^

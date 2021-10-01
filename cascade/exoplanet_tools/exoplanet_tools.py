@@ -2085,6 +2085,7 @@ class exotethys_stellar_model:
                                '.pass',
                                passband,
                                InputParameter['stellar_models_grids'])
+
         wave_sens = wave_pass.to(u.micron)
         conversion_to_erg = \
             (u.photon).to(u.erg,
@@ -2100,7 +2101,43 @@ class exotethys_stellar_model:
 
         model_wavelengths, model_fluxes = \
             boats.get_model_spectrum(InputParameter['stellar_models_grids'],
-                                     params=params, star_database_interpolation='seq_linear')
+                                     params=params,
+                                     star_database_interpolation='seq_linear')
+
+        # from matplotlib import pyplot as plt
+        # plt.plot(np.diff(model_wavelengths[1210:]))
+        # plt.show()
+        # print(model_wavelengths[1210:1214])
+        # plt.plot(np.diff(model_wavelengths[:1211]))
+        # plt.show()
+        # print(model_wavelengths[600:602])
+        # bug fix for poor wavelength resolution of stellar model at mid-IR      
+        if InputParameter['stellar_models_grids'] == 'Atlas_2000':
+            grid_step = 5*u.Angstrom
+            grid_max = (35.0*u.micron).to(u.Angstrom)
+            ngrid = int((grid_max - model_wavelengths[0])/grid_step)
+            grid_wavelenths = np.linspace(model_wavelengths[0], grid_max, ngrid)
+#            print(grid_wavelenths.unit)
+            
+#            extra_wavelengths = np.linspace(10.0, 30.0, 1000)*u.micron
+#            extra_wavelengths = extra_wavelengths.to(u.Angstrom)
+            f = interpolate.interp1d(np.log(model_wavelengths.value),
+                                     np.log(model_fluxes.value),
+                                     kind='linear')
+#            extra_fluxes = \
+#                np.exp(f(np.log(extra_wavelengths.value))) * \
+#                    model_fluxes.unit
+                    
+                
+            grid_fluxes = np.exp(f(np.log(grid_wavelenths.value))) * model_fluxes.unit
+            model_wavelengths = grid_wavelenths
+            model_fluxes = grid_fluxes
+#            model_wavelengths = np.append(model_wavelengths, extra_wavelengths)
+#            model_fluxes = np.append(model_fluxes, extra_fluxes)
+#            sort_idx = np.argsort(model_wavelengths)
+#            model_wavelengths = model_wavelengths[sort_idx]
+#            model_fluxes = model_fluxes[sort_idx]
+
         if InputParameter['apply_dilution_correcton']:
             params = [InputParameter['Tstar_dilution_object'] * u.K,
                       InputParameter['logg_dilution_object'],
@@ -2112,6 +2149,7 @@ class exotethys_stellar_model:
         else:
             model_wavelengths_dilution_object, model_fluxes_dilution_object = \
                 (None, None)
+
         return wave_sens, sens, model_wavelengths, model_fluxes, \
             model_wavelengths_dilution_object, model_fluxes_dilution_object
 
@@ -2436,7 +2474,8 @@ class SpectralModel:
                 np.median(np.diff(self.sm[2]))).decompose().value
                         )
             spectrum_star = np.convolve(self.sm[3].value,
-                                        np.ones((n_conv))/n_conv, 'same') 
+                                        np.ones((n_conv))/n_conv, 'same')
+
             lr, ur = _define_band_limits(self.sm[2].to(wavelength_unit).value)
             weights = _define_rebin_weights(lr0, ur0, lr, ur)
             spectrum_star, _ = \
