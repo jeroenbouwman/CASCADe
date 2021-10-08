@@ -1795,6 +1795,68 @@ class TSOSuite:
         ray.shutdown()
         vrbs = Verbose()
         if hasattr(self, "stellar_modeling"):
+            dataset_uncal = self.exoplanet_spectrum.non_normalized_stellar_spectrum_bootstrap      
+            stellar_spectrum = \
+                dataset_uncal.data
+            wavelength_stellar_spectrum = \
+                dataset_uncal.wavelength
+            error_stellar_spectrum = \
+                dataset_uncal.uncertainty    
+        
+            calibration = self.stellar_modeling.modeled_observations[4]
+            relative_distance_sqr = self.stellar_modeling.modeled_observations[3]
+            scaling = self.stellar_modeling.modeled_observations[2]
+            
+            calibrated_stellar_spectrum =  \
+                np.ma.array((stellar_spectrum.data/calibration).to(u.mJy,
+                            equivalencies=u.spectral_density(
+                                wavelength_stellar_spectrum.data)) *
+                            relative_distance_sqr,
+                            mask=stellar_spectrum.mask)
+            uncertainty_stellar_spectrum = \
+                np.ma.array((error_stellar_spectrum.data/calibration).to(u.mJy,
+                            equivalencies=u.spectral_density(
+                                wavelength_stellar_spectrum.data)) *
+                            relative_distance_sqr,
+                            mask=error_stellar_spectrum.mask)
+            wavelength_calibrated_stellar_spectrum = \
+                 np.ma.array(wavelength_stellar_spectrum.data,
+                             mask=wavelength_stellar_spectrum.mask)
+                 
+            calibraton_factor = \
+                np.ma.median(calibrated_stellar_spectrum).value / \
+                    np.ma.median(dataset_uncal.data).value
+            STLRFLUX = [i*calibraton_factor for i in dataset_uncal.STLRFLUX]
+
+            calibrated_stellar_model = \
+               np.ma.array(self.stellar_modeling.stellar_model[1].to(u.mJy,
+                        equivalencies=u.spectral_density(
+                            self.stellar_modeling.stellar_model[0].data))*
+                           relative_distance_sqr,
+                           mask=calibrated_stellar_spectrum.mask)
+            uncertainty_stellar_model = \
+                np.ma.array(self.stellar_modeling.stellar_model[1].to(u.mJy,
+                        equivalencies=u.spectral_density(
+                            self.stellar_modeling.stellar_model[0].data))*
+                           relative_distance_sqr*0.02,
+                           mask=calibrated_stellar_spectrum.mask)
+            
+            flux_calibrated_stellar_spectrum = \
+                SpectralData(wavelength=wavelength_calibrated_stellar_spectrum,
+                              data=calibrated_stellar_spectrum,
+                              uncertainty=uncertainty_stellar_spectrum)
+            flux_calibrated_stellar_spectrum.add_auxilary(STLRFLUX=STLRFLUX)
+            self.exoplanet_spectrum.flux_calibrated_stellar_spectrum = \
+                flux_calibrated_stellar_spectrum
+
+            flux_calibrated_stellar_model = \
+                SpectralData(wavelength=wavelength_calibrated_stellar_spectrum,
+                            data=calibrated_stellar_model,
+                            uncertainty=uncertainty_stellar_model)
+            flux_calibrated_stellar_model.add_auxilary(SCALING=scaling)
+            self.exoplanet_spectrum.flux_calibrated_stellar_model = \
+                flux_calibrated_stellar_model
+                            
             vrbs.execute("calibrate_timeseries",
                          exoplanet_spectrum=self.exoplanet_spectrum,
                          calibration_results=self.calibration_results,
@@ -1920,6 +1982,30 @@ class TSOSuite:
         write_spectra_to_fits(results.non_normalized_stellar_spectrum_bootstrap,
                               save_path, filename, header_data,
                               column_names=['Wavelength', 'Flux', 'Error Flux'])
+
+        if hasattr(results, "flux_calibrated_stellar_spectrum"):
+            header_data['STLRFLUX'] = \
+                results.flux_calibrated_stellar_spectrum.STLRFLUX[1]
+            header_data['STFCL005'] = \
+                results.flux_calibrated_stellar_spectrum.STLRFLUX[0]
+            header_data['STFCL095'] = \
+                results.flux_calibrated_stellar_spectrum.STLRFLUX[2]
+            filename = save_name_base+\
+                '_flux_calibrated_stellar_spectrum.fits'
+            write_spectra_to_fits(results.flux_calibrated_stellar_spectrum,
+                              save_path, filename, header_data,
+                              column_names=['Wavelength', 'Flux', 'Error Flux'])
+            header_data.pop('STLRFLUX')
+            header_data.pop('STFCL005')
+            header_data.pop('STFCL095')
+            header_data['SCALING'] = results.flux_calibrated_stellar_model.SCALING
+            filename = save_name_base+\
+               '_flux_calibrated_stellar_model.fits'
+            write_spectra_to_fits(results.flux_calibrated_stellar_model,
+                             save_path, filename, header_data,
+                             column_names=['Wavelength', 'Flux', 'Error Flux'])           
+            
+
 
 
 def combine_observations(target_name, observations_ids, path=None,

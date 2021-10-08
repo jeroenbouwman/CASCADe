@@ -165,7 +165,7 @@ class SpitzerIRS(InstrumentBase):
     @property
     def dispersion_scale(self):
         __all_scales = {'SL1': '604.5 Angstrom', 'SL2': '371.7 Angstrom',
-                        'LL1': '605.0 Angstrom', 'LL1': '1209.0 Angstrom'}
+                        'LL2': '605.0 Angstrom', 'LL1': '1209.0 Angstrom'}
         return __all_scales[self.par["inst_filter"]]
 
     def load_data(self):

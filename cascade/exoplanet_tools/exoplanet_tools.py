@@ -2104,39 +2104,18 @@ class exotethys_stellar_model:
                                      params=params,
                                      star_database_interpolation='seq_linear')
 
-        # from matplotlib import pyplot as plt
-        # plt.plot(np.diff(model_wavelengths[1210:]))
-        # plt.show()
-        # print(model_wavelengths[1210:1214])
-        # plt.plot(np.diff(model_wavelengths[:1211]))
-        # plt.show()
-        # print(model_wavelengths[600:602])
         # bug fix for poor wavelength resolution of stellar model at mid-IR      
         if InputParameter['stellar_models_grids'] == 'Atlas_2000':
             grid_step = 5*u.Angstrom
             grid_max = (35.0*u.micron).to(u.Angstrom)
             ngrid = int((grid_max - model_wavelengths[0])/grid_step)
             grid_wavelenths = np.linspace(model_wavelengths[0], grid_max, ngrid)
-#            print(grid_wavelenths.unit)
-            
-#            extra_wavelengths = np.linspace(10.0, 30.0, 1000)*u.micron
-#            extra_wavelengths = extra_wavelengths.to(u.Angstrom)
             f = interpolate.interp1d(np.log(model_wavelengths.value),
-                                     np.log(model_fluxes.value),
-                                     kind='linear')
-#            extra_fluxes = \
-#                np.exp(f(np.log(extra_wavelengths.value))) * \
-#                    model_fluxes.unit
-                    
-                
-            grid_fluxes = np.exp(f(np.log(grid_wavelenths.value))) * model_fluxes.unit
+                                     np.log(model_fluxes.value), kind='linear')
+            grid_fluxes = \
+                np.exp(f(np.log(grid_wavelenths.value))) * model_fluxes.unit
             model_wavelengths = grid_wavelenths
             model_fluxes = grid_fluxes
-#            model_wavelengths = np.append(model_wavelengths, extra_wavelengths)
-#            model_fluxes = np.append(model_fluxes, extra_fluxes)
-#            sort_idx = np.argsort(model_wavelengths)
-#            model_wavelengths = model_wavelengths[sort_idx]
-#            model_fluxes = model_fluxes[sort_idx]
 
         if InputParameter['apply_dilution_correcton']:
             params = [InputParameter['Tstar_dilution_object'] * u.K,
