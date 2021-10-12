@@ -2291,7 +2291,6 @@ def combine_scan_samples(datasetIn, scanDictionary, verbose=False):
     timeIn = datasetIn.return_masked_array('time').copy()
     timeUnit = datasetIn.time_unit
 
-    print(dataInShape)
     dictTimeSeries = {}
 
     def reshape_integration(data, shape, nreads):
@@ -2313,16 +2312,6 @@ def combine_scan_samples(datasetIn, scanDictionary, verbose=False):
         reshapedData = \
             np.mean(np.reshape(data, (len(data)//nreads, nreads)), axis=-1)
         return list(reshapedData)
-
-    # def reshape_list_of_strings(data, nreads):
-    #     reshapedData = data[::nreads]
-    #     base = [j for i in reshapedData
-    #             for j in i.split("_") if 'sample' in j]
-    #     if len(base) != 0:
-    #         reshapedData = \
-    #             [i.replace(base[j], "RESAMPLED{:04d}".format(j))
-    #              for j, i in enumerate(reshapedData)]
-    #     return reshapedData
     
     def combine_list_of_strings(data, scanDictionary, sort_index):
         reshapedData = []
@@ -2407,17 +2396,11 @@ def combine_scan_samples(datasetIn, scanDictionary, verbose=False):
      idx_time_sort) = reshape_primary_data(dataIn, waveIn, errorIn, timeIn,
                                            scanDictionary)
 
-    nreads = scanDictionary[1]['nsamples']
-
-    # combinedData = reshape_integration(dataIn, dataInShape, nreads)
     dictTimeSeries['data'] = combinedData
     dictTimeSeries['data_unit'] = dataUnit
-    # combinedError = reshape_error(errorIn, dataInShape, nreads)
     dictTimeSeries['uncertainty'] = combinedError
-    # combinedWavelength = reshape_integration(waveIn, dataInShape, nreads)
     dictTimeSeries['wavelength'] = combinedWavelength
     dictTimeSeries['wavelength_unit'] = wavelengthUnit
-    # combinedTime = reshape_integration(timeIn, dataInShape, nreads)
     dictTimeSeries['time'] = combinedTime
     dictTimeSeries['time_unit'] = timeUnit
 
@@ -2427,8 +2410,6 @@ def combine_scan_samples(datasetIn, scanDictionary, verbose=False):
             if isinstance(vars(datasetIn)[key], MeasurementDesc):
                 measurement = getattr(datasetIn, key)
                 # will be rebinned
-#                dictTimeSeries[key] = \
-#                    reshape_integration(measurement, dataInShape, nreads)
                 dictTimeSeries[key] = \
                     reshape_data(measurement, scanDictionary, idx_time_sort)
             elif isinstance(vars(datasetIn)[key], AuxilaryInfoDesc):
@@ -2441,14 +2422,10 @@ def combine_scan_samples(datasetIn, scanDictionary, verbose=False):
                         dictTimeSeries[key] = \
                             combine_list_of_strings(aux, scanDictionary,
                                                     idx_time_sort)
-                        # dictTimeSeries[key] = \
-                        #     reshape_list_of_strings(aux, nreads)
                     elif len(aux) == dataInShape[-1]:
                         dictTimeSeries[key] = \
                             combine_scans_auxilary(aux, scanDictionary,
                                                    idx_time_sort)
-                        # dictTimeSeries[key] = \
-                        #     reshape_auxilary(aux, dataInShape, nreads)
                     else:
                         dictTimeSeries[key] = aux
                 elif isinstance(aux, np.ndarray):
@@ -2457,8 +2434,6 @@ def combine_scan_samples(datasetIn, scanDictionary, verbose=False):
                         dictTimeSeries[key] = \
                             combine_scans_auxilary(aux, scanDictionary,
                                                    idx_time_sort)
-                        # dictTimeSeries[key] = \
-                        #     reshape_auxilary(aux, dataInShape, nreads)
                     else:
                         # no list but not an array
                         dictTimeSeries[key] = aux

@@ -1446,17 +1446,12 @@ class TSOSuite:
                     nscans.append(len(idx_scandir))
                     nscanSamples.append(
                       np.max(np.array(datasetIn.sample_number)[idx_scandir])+1)
-                # nscanSamples = \
-                #     np.max(datasetIn.sample_number) + 1
             else:
                 nscanSamples = [1]
                 nscans = [data_shape[-1]]
             nsamplesRebinned = 0
             for nscan, nsample in zip(nscans, nscanSamples):
                 nsamplesRebinned += nscan//nsample
-            # rebinFactor = \
-            #     np.max([rebinFactor,
-            #             data_shape[0]/((data_shape[-1]/nscanSamples)*0.9)])
             rebinFactor = \
                 np.max([rebinFactor,
                         data_shape[0]/(nsamplesRebinned*0.9)])
@@ -1550,38 +1545,7 @@ class TSOSuite:
                      np.max(np.array(datasetIn.sample_number)[idx_scandir])+1, 
                      'nscans': sum(idx_scandir),
                      'index': idx_scandir}
-    
-            # # nscanSamples = \
-            # #     np.max(rebinnedOptimallyExtractedDataset.sample_number) + 1
 
-            # ntime = dim[-1]
-
-            # try:
-            #     nrebinScanSamples = ast.literal_eval(
-            #         self.cascade_parameters.processing_nrebin_samples)
-            # except AttributeError:
-            #     nrebinScanSamples = nscanSamples
-
-            # possibleNCombine = \
-            #     np.arange(1, (ntime)+1)[ntime % np.arange(1, (ntime)+1) == 0]
-
-
-            # idx_closest = [np.argmin(np.abs(possibleNCombine - s)
-            #                  for s in nrebinScanSamples)]
-            
-            # # idx = np.argmin(np.abs(possibleNCombine - nrebinScanSamples))
-
-            # for i, (nsamp,idx) in enumerate(zip(possibleNCombine, idx_closest)):
-            #     if nsamp != possibleNCombine[idx]:
-            #         nrebinScanSamples[i] = possibleNCombine[idx]
-            #         warnings.warn("Value of processing_nrebin_samples not "
-            #                       "possible. Changing it to "
-            #                       "{}".format(nrebinScanSamples[i]))
-
-            print(type(rebinnedOptimallyExtractedDataset))
-            print(rebinnedOptimallyExtractedDataset)
-
-            print('blabla')
             combinedRebinnedOptimallyExtractedDataset = \
                 combine_scan_samples(rebinnedOptimallyExtractedDataset,
                                      scanDict, verbose=verbose)
