@@ -1436,15 +1436,30 @@ class TSOSuite:
 
         # rebin the spectra to single wavelength per row
         if autoAdjustRebinFactor:
-            if observationDataType == 'SPECTRAL_CUBE':
-                nscanSamples = \
-                    np.max(datasetIn.sample_number) + 1
-            else:
-                nscanSamples = 1
             data_shape = optimallyExtractedDataset.data.shape
+            if observationDataType == 'SPECTRAL_CUBE':
+                scanDirections = list(np.unique(datasetIn.scan_direction))
+                nscanSamples = []
+                nscans = []
+                for scandir in scanDirections:
+                    idx_scandir = (datasetIn.scan_direction == scandir)
+                    nscans.append(len(idx_scandir))
+                    nscanSamples.append(
+                      np.max(np.array(datasetIn.sample_number)[idx_scandir])+1)
+                # nscanSamples = \
+                #     np.max(datasetIn.sample_number) + 1
+            else:
+                nscanSamples = [1]
+                nscans = [data_shape[-1]]
+            nsamplesRebinned = 0
+            for nscan, nsample in zip(nscans, nscanSamples):
+                nsamplesRebinned += nscan//nsample
+            # rebinFactor = \
+            #     np.max([rebinFactor,
+            #             data_shape[0]/((data_shape[-1]/nscanSamples)*0.9)])
             rebinFactor = \
                 np.max([rebinFactor,
-                        data_shape[0]/((data_shape[-1]/nscanSamples)*0.9)])
+                        data_shape[0]/(nsamplesRebinned*0.9)])
         verboseSaveFile = 'rebin_to_common_wavelength_grid' + \
             '_optimally_extracted_data.png'
         verboseSaveFile = os.path.join(savePathVerbose, verboseSaveFile)
@@ -1522,28 +1537,57 @@ class TSOSuite:
                 
         from cascade.spectral_extraction import combine_scan_samples
         if observationDataType == 'SPECTRAL_CUBE':
-            nscanSamples = \
-                np.max(rebinnedOptimallyExtractedDataset.sample_number) + 1
-            ntime = dim[-1]
-            try:
-                nrebinScanSamples = \
-                    int(self.cascade_parameters.processing_nrebin_samples)
-            except AttributeError:
-                nrebinScanSamples = nscanSamples
-            possibleNCombine = \
-                np.arange(1, (ntime)+1)[ntime % np.arange(1, (ntime)+1) == 0]
-            idx = np.argmin(np.abs(possibleNCombine - nrebinScanSamples))
-            if nrebinScanSamples != possibleNCombine[idx]:
-                nrebinScanSamples = possibleNCombine[idx]
-                warnings.warn("Value of processing_nrebin_samples not "
-                              "possible. Changing it to "
-                              "{}".format(nrebinScanSamples))
+            scanDirections = \
+                list(np.unique(
+                    rebinnedOptimallyExtractedDataset.scan_direction))
+            scanDict = {}
+            for scandir in scanDirections:
+                
+                idx_scandir = \
+                    (rebinnedOptimallyExtractedDataset.scan_direction == scandir)
+                scanDict[scandir] = \
+                    {'nsamples':
+                     np.max(np.array(datasetIn.sample_number)[idx_scandir])+1, 
+                     'nscans': sum(idx_scandir),
+                     'index': idx_scandir}
+    
+            # # nscanSamples = \
+            # #     np.max(rebinnedOptimallyExtractedDataset.sample_number) + 1
+
+            # ntime = dim[-1]
+
+            # try:
+            #     nrebinScanSamples = ast.literal_eval(
+            #         self.cascade_parameters.processing_nrebin_samples)
+            # except AttributeError:
+            #     nrebinScanSamples = nscanSamples
+
+            # possibleNCombine = \
+            #     np.arange(1, (ntime)+1)[ntime % np.arange(1, (ntime)+1) == 0]
+
+
+            # idx_closest = [np.argmin(np.abs(possibleNCombine - s)
+            #                  for s in nrebinScanSamples)]
+            
+            # # idx = np.argmin(np.abs(possibleNCombine - nrebinScanSamples))
+
+            # for i, (nsamp,idx) in enumerate(zip(possibleNCombine, idx_closest)):
+            #     if nsamp != possibleNCombine[idx]:
+            #         nrebinScanSamples[i] = possibleNCombine[idx]
+            #         warnings.warn("Value of processing_nrebin_samples not "
+            #                       "possible. Changing it to "
+            #                       "{}".format(nrebinScanSamples[i]))
+
+            print(type(rebinnedOptimallyExtractedDataset))
+            print(rebinnedOptimallyExtractedDataset)
+
+            print('blabla')
             combinedRebinnedOptimallyExtractedDataset = \
                 combine_scan_samples(rebinnedOptimallyExtractedDataset,
-                                     nrebinScanSamples, verbose=verbose)
+                                     scanDict, verbose=verbose)
             combinedRebinnedApertureExtractedDataset = \
                 combine_scan_samples(rebinnedApertureExtractedDataset,
-                                     nrebinScanSamples, verbose=verbose)
+                                     scanDict, verbose=verbose)
 
             from cascade.spectral_extraction import renormalize_spatial_scans
             if processing_renorm_spatial_scans:
