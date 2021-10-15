@@ -1,9 +1,29 @@
 import setuptools
-from setuptools import setup
+import os
+import pathlib
+
+def package_files(directory):
+    exclude = ['data']
+    paths = []
+    for (path, directories, filenames) in os.walk(directory, topdown=True):
+        directories[:] = [d for d in directories if d not in exclude]
+        for filename in filenames:
+            paths.append(os.path.join('..', path, filename))
+    return paths
+
+# The directory containing this file
+HERE = pathlib.Path(__file__).parent
+
+# The text of the README file
+README = (HERE / "README.md").read_text()
+
+extra_files = package_files((HERE/'data').as_posix())
 
 config = {
-    'name': 'CASCADe',
+    'name': 'CASCADe-spectroscopy',
     'description': 'CASCADe : Calibration of trAnsit Spectroscopy using CAusal Data',
+    'long_description': README,
+    'long_description_content_type': "text/markdown",
     'author': 'Jeroen Bouwman',
     'url': 'https://jbouwman.gitlab.io/CASCADe/',
     'download_url': 'https://gitlab.com/jbouwman/CASCADe',
@@ -11,30 +31,28 @@ config = {
     'version': '1.1.0',
     'python_requires': '>=3.7',
     'license': 'GNU General Public License v3 (GPLv3)',
-    'install_requires': ['batman-package', 'astropy', 'jplephem', 'scipy',
-                         'numpy', 'configparser', 'photutils', 'pandas',
-                         'scikit-learn', 'matplotlib', 'tqdm', 'seaborn',
-                         'pytest', 'scikit-image', 'sphinx', 'alabaster',
-                         'networkx', 'cython', 'astroquery', 'numba', 'ray',
-                         'pyfiglet', 'termcolor', 'exotethys', 'statsmodels'],
-    'packages': setuptools.find_packages(),
     'classifiers': ["Programming Language :: Python :: 3",
-                    "License :: OSI Approved :: GNU GPLv3 License",
+                    "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
                     "Operating System :: OS Independent",
                     'Intended Audience :: Science/Research',
                     'Topic :: Scientific/Engineering :: Astronomy',
                     ],
-    'package_data': {"data":["exoplanet_data/wavelength_bins/*.txt",
-                             "exotethys/passbands/*.pass",
-                             "exotethys/wavelength_bins/*.txt",
-                             "calibration/SPITZER/IRS/S18.18.0/*.fits",
-                             "calibration/SPITZER/IRS/S18.18.0/*.tbl",
-                             "calibration/HST/WFC3/*.fits",
-                             "calibration/HST/WFC3/*.conf",
-                             "archive_databases/HST/WFC3/*.pickle",
-                             "archive_databases/HST/WFC3/*.ini"]},
-    'scripts': [],
-    'data_files': [('', ['README.md'])]
+    'packages': setuptools.find_packages(exclude=("tests*", "docs",)),
+    'include_package_data': True,
+    'package_data': {"": extra_files},
+    'install_requires': ['batman-package', 'astropy', 'jplephem', 'scipy',
+                         'numpy', 'configparser', 'photutils', 'pandas',
+                         'scikit-learn', 'matplotlib', 'tqdm', 'seaborn',
+                         'pytest', 'scikit-image', 'sphinx', 'alabaster',
+                         'networkx', 'cython', 'astroquery', 'numba',
+                         'ray[default]', 'pyfiglet', 'termcolor', 'exotethys',
+                         'statsmodels'],
+    'scripts': [(HERE/'scripts/build_local_hst_archive.py').as_posix(),
+                (HERE/'scripts/run_cascade.py').as_posix(),
+                (HERE/'scripts/run_cascade.sh').as_posix(),
+                (HERE/'scripts/run_stats.sh').as_posix()],
+    'data_files': [('', [(HERE/'README.md').as_posix(),
+                         (HERE/'LICENSE.txt').as_posix()])]
 }
 
-setup(**config)
+setuptools.setup(**config)
