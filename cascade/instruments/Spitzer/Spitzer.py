@@ -165,7 +165,7 @@ class SpitzerIRS(InstrumentBase):
     @property
     def dispersion_scale(self):
         __all_scales = {'SL1': '604.5 Angstrom', 'SL2': '371.7 Angstrom',
-                        'LL2': '605.0 Angstrom', 'LL1': '1209.0 Angstrom'}
+                        'LL2': '743.4 Angstrom', 'LL1': '1209.0 Angstrom'}
         return __all_scales[self.par["inst_filter"]]
 
     def load_data(self):
@@ -633,6 +633,11 @@ class SpitzerIRS(InstrumentBase):
             mask[idx_row[np.logical_not(row_check)][-1], :] = True
             # remove first row
             mask[idx_row[np.logical_not(row_check)][0], :] = True
+            # remove bad part of LL1
+            if self.par['inst_mode'] == 'LL':
+                mask[idx_row[np.logical_not(row_check)][:50], :] = True
+                mask[idx_row[np.logical_not(row_check)][-5:], :] = True
+            
         elif (self.par['inst_order'] == '2') or \
                 (self.par['inst_order'] == '3'):
             # SL2 or LL2
@@ -646,6 +651,10 @@ class SpitzerIRS(InstrumentBase):
             mask1[idx_row[np.logical_not(row_check)][-1], :] = True
             # remove first row
             mask1[idx_row[np.logical_not(row_check)][0], :] = True
+            
+            if self.par['inst_mode'] == 'LL':
+                mask1[idx_row[np.logical_not(row_check)][79:83], :] = True
+                mask1[idx_row[np.logical_not(row_check)][:5], :] = True
             # SL3 or LL3
             mask2 = np.ones(shape=order_masks.shape, dtype=np.bool)
             mask2[order_masks == 3] = False
@@ -657,6 +666,10 @@ class SpitzerIRS(InstrumentBase):
             mask2[idx_row[np.logical_not(row_check)][-1], :] = True
             # remove first row
             mask2[idx_row[np.logical_not(row_check)][0], :] = True
+            if self.par['inst_mode'] == 'LL':
+               mask2[idx_row[np.logical_not(row_check)][:4], :] = True
+               mask2[idx_row[np.logical_not(row_check)][-2:], :] = True
+
             mask = np.logical_and(mask1, mask2)
         return mask
 

@@ -23,3 +23,5 @@
 **version 1.1.0**
 - Added asymmetric frame drop for spatial scans
 - Updated processing_exceptions.ini
+- Added passbands and wavelength definitions for the long wavelength modules
+  of the Spitzer speectrograph

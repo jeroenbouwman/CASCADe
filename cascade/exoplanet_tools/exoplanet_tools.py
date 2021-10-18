@@ -2107,7 +2107,7 @@ class exotethys_stellar_model:
         # bug fix for poor wavelength resolution of stellar model at mid-IR      
         if InputParameter['stellar_models_grids'] == 'Atlas_2000':
             grid_step = 5*u.Angstrom
-            grid_max = (35.0*u.micron).to(u.Angstrom)
+            grid_max = (40.0*u.micron).to(u.Angstrom)
             ngrid = int((grid_max - model_wavelengths[0])/grid_step)
             grid_wavelenths = np.linspace(model_wavelengths[0], grid_max, ngrid)
             f = interpolate.interp1d(np.log(model_wavelengths.value),
