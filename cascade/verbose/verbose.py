@@ -696,19 +696,25 @@ def calibrate_timeseries_verbose(*args, **kwargs):
     ##################################
     sns.set_context("talk", font_scale=1.3, rc={"lines.linewidth": 3.5})
     sns.set_style("white", {"xtick.bottom": True, "ytick.left": True})
-    residual_unit = dataset.data.data.unit
-    calibration_mask = calibration_results.fitted_systematics_bootstrap.mask
-    roi_cube = cleaned_dataset.data.mask
-    image_res = \
-        np.ma.array(calibration_results.
-                    residuals[0, ~np.all(roi_cube, axis=1), ...]*residual_unit,
-                    mask=np.ma.logical_or(
-                        dataset.mask[~np.all(roi_cube, axis=1), ...],
-                        calibration_mask))
-    image_res.set_fill_value(np.nan)
-    image_res = image_res.filled().value
-    wave0 = dataset.wavelength.copy()
-    wavelength_unit = dataset.wavelength_unit
+#    residual_unit = dataset.data.data.unit
+#    calibration_mask = calibration_results.fitted_systematics_bootstrap.mask
+#    roi_cube = cleaned_dataset.data.mask
+#    image_res = \
+#        np.ma.array(calibration_results.
+#                    residuals[0, ~np.all(roi_cube, axis=1), ...]*residual_unit,
+#                    mask=np.ma.logical_or(
+#                        dataset.mask[~np.all(roi_cube, axis=1), ...],
+#                        calibration_mask))
+#    image_res.set_fill_value(np.nan)
+#    image_res = image_res.filled().value
+    
+    residual_unit = u.percent
+    image_res = calibration_results.fitted_residuals_bootstrap.data * 100
+    wave0 = calibration_results.fitted_residuals_bootstrap.wavelength
+    wavelength_unit = calibration_results.fitted_residuals_bootstrap.wavelength_unit
+    
+#    wave0 = dataset.wavelength.copy()
+#    wavelength_unit = dataset.wavelength_unit
     wave0_min = np.ma.min(wave0).data.value
     wave0_max = np.ma.max(wave0).data.value
     fig, ax = plt.subplots(figsize=(7, 6), dpi=200)
@@ -742,6 +748,8 @@ def calibrate_timeseries_verbose(*args, **kwargs):
     systematics_model = calibration_results.fitted_systematics_bootstrap
     systematics = systematics_model.return_masked_array('data')
     time_systematics = systematics_model.return_masked_array('time')
+
+    roi_cube = cleaned_dataset.data.mask
     uncal_data = \
         dataset.return_masked_array('data').copy()[~np.all(roi_cube,
                                                            axis=1), ...]

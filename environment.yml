@@ -33,6 +33,7 @@ dependencies:
   - pyfiglet
   - termcolor
   - statsmodels
+  - configparser
   - pip:
     - 'ray[default]'
     - batman-package

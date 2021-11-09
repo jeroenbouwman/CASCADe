@@ -35,9 +35,12 @@ import astropy.units as u
 from tqdm import tqdm
 import numba as nb
 
+from cascade.data_model import SpectralDataTimeSeries
+
 __all__ = ['write_timeseries_to_fits', 'find', 'get_data_from_fits',
            'spectres', 'write_spectra_to_fits', '_define_band_limits',
-           '_define_rebin_weights', '_rebin_spectra']
+           '_define_rebin_weights', '_rebin_spectra',
+           'write_dataset_to_fits', 'read_dataset_from_fits']
 
 
 def write_spectra_to_fits(spectral_dataset, path, filename, header_meta,
@@ -91,6 +94,96 @@ def write_spectra_to_fits(spectral_dataset, path, filename, header_meta,
     hdul = fits.HDUList([primary_hdu, hdu])
     hdul.writeto(os.path.join(path, filename), overwrite=True)
 
+
+def write_dataset_to_fits(spectral_dataset, path, filename,
+                                      header_meta):
+    """
+    Write a spectral dataset to a single fits files.
+
+    Parameters
+    ----------
+    spectral_dataset : 'SpectralDataTimeSeries'
+        The data cube which will be save to fits file.
+    path : 'str'
+        Path to the directory where the fits files will be saved.
+    filename: 'str' (optional)
+        file name of save fits file.
+    header_meta : 'dict'
+        All auxilary data to be written to fits header.
+    """
+    data = spectral_dataset.return_masked_array('data')
+    mask = data.mask
+    wave = spectral_dataset.return_masked_array('wavelength')
+    unc = spectral_dataset.return_masked_array('uncertainty')
+    time = spectral_dataset.return_masked_array('time')
+
+    hdr = fits.Header()
+    for key, value in header_meta.items():
+        hdr[key] = value
+    primary_hdu = fits.PrimaryHDU(header=hdr)
+
+    hdu_sys = fits.ImageHDU(data.data, name='DATA')
+    hdu_sys.header['UNITS'] = spectral_dataset.data_unit.to_string()
+    hdu_mask = fits.ImageHDU(np.array(mask, dtype=int), name='MASK')
+    hdu_wave = fits.ImageHDU(wave.data, name='WAVELENGTH')
+    hdu_wave.header['UNITS'] = spectral_dataset.wavelength_unit.to_string()
+    hdu_unc = fits.ImageHDU(unc.data, name='UNCERTAINTY')
+    hdu_unc.header['UNITS'] = spectral_dataset.data_unit.to_string()
+    hdu_time = fits.ImageHDU(time.data, name='TIME')
+    hdu_time.header['UNITS'] = spectral_dataset.time_unit.to_string()
+
+    hdul = fits.HDUList([primary_hdu, hdu_sys, hdu_mask, hdu_wave, hdu_unc,
+                         hdu_time])
+
+    os.makedirs(path, exist_ok=True)
+    hdul.writeto(os.path.join(path, filename), overwrite=True)
+
+
+def read_dataset_from_fits(path, filename, auxilary_meta):
+    """
+    Read in a spectral dataset from a single fits files.
+
+    Parameters
+    ----------
+    path : 'str'
+        Path to the directory where the fits file is located.
+    filename: 'str' (optional)
+        file name of save fits file.
+    auxilary_meta : 'list'
+        All auxilary data to read from fits header.
+    
+    Returns
+    -------
+    spectral_dataset : 'SpectralDataTimeSeries'
+        The data cube read from disk.    
+    """
+    with fits.open(os.path.join(path, filename)) as hdul:
+        header_meta = {}
+        for key in auxilary_meta:
+            value=hdul['PRIMARY'].header[key]
+            header_meta[key] = value
+        data = np.array(hdul['DATA'].data, dtype=np.float64)
+        data_unit = u.Unit(hdul['DATA'].header['UNITS'])
+        mask = np.array(hdul['MASK'].data, dtype=bool)
+        wavelength =  np.array(hdul['WAVELENGTH'].data, dtype=np.float64)
+        wavelength_unit = u.Unit(hdul['WAVELENGTH'].header['UNITS'])
+        uncertainty = np.array(hdul['UNCERTAINTY'].data, dtype=np.float64)
+        time = np.array(hdul['TIME'].data, dtype=np.float64)
+        time_unit = u.Unit(hdul['TIME'].header['UNITS'])
+    
+    spectral_dataset = SpectralDataTimeSeries(
+        wavelength=wavelength,
+        wavelength_unit=wavelength_unit,
+        data=data,
+        data_unit=data_unit,
+        uncertainty=uncertainty,
+        time=time,
+        time_unit=time_unit,
+        mask=mask)
+    spectral_dataset.add_auxilary(**header_meta)
+
+    return spectral_dataset
+    
 
 def write_timeseries_to_fits(data, path, additional_file_string=None,
                              delete_old_files=False):

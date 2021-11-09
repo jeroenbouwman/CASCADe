@@ -593,6 +593,7 @@ class HSTWFC3(InstrumentBase):
                                    data_unit=flux_unit,
                                    uncertainty=uncertainty_spectral_data,
                                    time=phase,
+                                   time_unit=u.dimensionless_unscaled,
                                    mask=mask,
                                    time_bjd=time,
                                    position=position,

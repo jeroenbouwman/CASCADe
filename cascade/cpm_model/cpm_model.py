@@ -46,6 +46,7 @@ from sklearn.preprocessing import StandardScaler
 
 from ..exoplanet_tools import lightcurve
 from ..data_model import SpectralData
+from ..data_model import SpectralDataTimeSeries
 from cascade import __version__
 
 __all__ = ['ols',
@@ -731,6 +732,11 @@ class regressionDataServer:
                 temp1 = (temp0-np.min(temp0))/(np.max(temp0)-np.min(temp0))
                 order = int(regressor.split('_')[1])
                 setattr(self, 'regressor_'+regressor, (-temp1)**order)
+            elif regressor.split('_')[0] == 'position':
+                temp0 = self.fit_dataset.return_masked_array('position')
+                temp1 = (temp0-np.min(temp0))/(np.max(temp0)-np.min(temp0))
+                order = int(regressor.split('_')[1])
+                setattr(self, 'regressor_'+regressor, (temp1)**order)                
             else:
                 setattr(self, 'regressor_'+regressor,
                         self.fit_dataset.return_masked_array(regressor))
@@ -858,7 +864,8 @@ class regressionDataServer:
         selected_covariance.set_fill_value(1.e16)
         self.regression_data_selection = \
             (selected_fit_data.filled(), selected_fit_wavelength,
-             selected_fit_time, selected_covariance.filled())
+             selected_fit_time, selected_covariance.filled(),
+             selected_fit_data.mask)
 
     def setup_regression_matrix(self, selection, bootstrap_indici=None):
         """
@@ -1097,8 +1104,15 @@ class regressionParameterServer:
             ast.literal_eval(self.cascade_configuration.cpm_sigma_mse_cut)
     
         additional_regressor_list = []
+        try:
+            self.cpm_parameters.add_position_model_order = ast.literal_eval(
+                self.cascade_configuration.cpm_add_position_model_order)
+        except AttributeError:
+            self.cpm_parameters.add_position_model_order = 1
         if self.cpm_parameters.add_position:
-            additional_regressor_list.append('position')
+            for power in range(1, self.cpm_parameters.add_position_model_order+1):
+                additional_regressor_list.append('position_{}'.format(power))
+            # additional_regressor_list.append('position')
         try:
             self.cpm_parameters.add_time_model_order = ast.literal_eval(
                 self.cascade_configuration.cpm_add_time_model_order)
@@ -1728,7 +1742,7 @@ class regressionControler:
         # define the iterator chunks
         self.initialize_regression_iterators(nchunks=nchunks)
 
-        # This launches workers on the full (non bootstraped) data set
+        # This launches workers on the full (non bootstrapped) data set
         # and determines the optimal regularization
         initial_fit_parameters = \
             copy.deepcopy(self.get_fit_parameters_from_server())
@@ -1744,7 +1758,7 @@ class regressionControler:
                    self.data_server_handle[iserver])
                    for iserver, w in enumerate(workers)]
 
-        # This launches workers on the bootstraped data set + original data
+        # This launches workers on the bootstrapped data set + original data
         # and determines the fit parameters and error there on
         updated_regularization = \
             copy.deepcopy(self.get_regularization_parameters_from_server())
@@ -1788,6 +1802,7 @@ class regressionControler:
 
         fitted_baseline_list = []
         residuals_list = []
+        normed_residuals_list = []
         corrected_fitted_spectrum_list = []
         normed_fitted_spectrum_list = []
         error_normed_fitted_spectrum_list = []
@@ -1829,7 +1844,8 @@ class regressionControler:
             corrected_fitted_spectrum_list.append(corrected_spectrum)
 
             baseline_model = np.zeros(control_parameters.data_parameters.shape)
-            residual = np.zeros(control_parameters.data_parameters.shape)
+            residual = np.ma.zeros(control_parameters.data_parameters.shape)
+            normed_residual = np.ma.zeros(control_parameters.data_parameters.shape)
             lc_model = lightcurve_model[..., bootstrap_selection]
             normed_spectrum = \
                 np.zeros((control_parameters.
@@ -1847,23 +1863,26 @@ class regressionControler:
                                                   bootstrap_selection)
 
             for ipixel, (regression_selection, (regression_data_selection, _)) in\
-                    enumerate(zip(self.iterators.regressor_indici, regression_data_selections)):
+                    enumerate(zip(self.iterators.regressor_indici,
+                                  regression_data_selections)):
 
                 (il, _), (_, _), nwave = regression_selection
 
-                data_unscaled, wavelength, phase, covariance = \
+                data_unscaled, wavelength, phase, covariance, mask= \
                     regression_data_selection
                 lc = lc_model[il, :]
                 base = models[ipixel] - (corrected_spectrum)[ipixel]*lc
                 baseline_model[il, :] = base
-                residual[il, :] = data_unscaled - models[ipixel]
+                residual[il, :] = np.ma.array(data_unscaled - models[ipixel],
+                                  mask=mask)
 
                 data_normed = data_unscaled/base
                 covariance_normed = covariance*np.diag(base**-2)
                 normed_depth, error_normed_depth, sigma_hat = \
                     ols(lc[:, np.newaxis], data_normed-1.0,
                         covariance=covariance_normed)
-
+                normed_residual[il, :] = np.ma.array(data_normed-1.0-normed_depth*lc,
+                                                     mask=mask)
                 normed_spectrum[ipixel] = \
                     normed_depth*dilution_correction[il, 0]
                 error_normed_spectrum[ipixel] = \
@@ -1872,6 +1891,7 @@ class regressionControler:
            
             fitted_baseline_list.append(baseline_model)
             residuals_list.append(residual)
+            normed_residuals_list.append(normed_residual)
             normed_fitted_spectrum_list.append(normed_spectrum)
             error_normed_fitted_spectrum_list.append(
                 error_normed_spectrum)
@@ -1881,7 +1901,8 @@ class regressionControler:
 
         corrected_fitted_spectrum = np.array(corrected_fitted_spectrum_list)
         fitted_baseline = np.array(fitted_baseline_list)
-        fit_residuals = np.array(residuals_list)
+        fit_residuals = np.ma.array(residuals_list)
+        normed_fit_residuals = np.ma.array(normed_residuals_list)
         normed_fitted_spectrum = np.array(normed_fitted_spectrum_list)
         error_normed_fitted_spectrum = \
             np.array(error_normed_fitted_spectrum_list)
@@ -1893,6 +1914,7 @@ class regressionControler:
             {'corrected_fitted_spectrum': corrected_fitted_spectrum,
              'fitted_baseline': fitted_baseline,
              'fit_residuals': fit_residuals,
+             'normed_fit_residuals': normed_fit_residuals,
              'normed_fitted_spectrum': normed_fitted_spectrum,
              'error_normed_fitted_spectrum': error_normed_fitted_spectrum,
              'wavelength_normed_fitted_spectrum':
@@ -1956,7 +1978,7 @@ class regressionControler:
         error_normed_spectrum.data[...] = error_normed_spectrum.data*100
 
         from astropy.stats import mad_std
-        # bootstraped spectrum (not normalized)
+        # bootstrapped spectrum (not normalized)
         median_not_normalized_depth_bootstrap = \
             np.ma.median(fitted_spectrum[1:, :], axis=1)
         spectrum_bootstrap = \
@@ -1974,7 +1996,7 @@ class regressionControler:
         # normalized spectrum
         median_depth = np.ma.median(normed_spectrum[0, :])
 
-        # bootstraped normalized spectrum
+        # bootstrapped normalized spectrum
         median_depth_bootstrap = np.ma.median(normed_spectrum[1:, :], axis=1)
         normed_spectrum_bootstrap = \
             np.ma.median(normed_spectrum[1:, :], axis=0)
@@ -1987,7 +2009,7 @@ class regressionControler:
         TD_min, TD, TD_max = \
             (sort[int(n * 0.05)], sort[int(n * 0.5)], sort[int(n * 0.95)])
 
-        # bootstraped stellar spectrum
+        # bootstrapped stellar spectrum
         median_stellar_spectrum = np.ma.median(stellar_spectrum[1:, :], axis=1)
         stellar_spectrum_bootstrap = \
             np.ma.median(stellar_spectrum[1:, :], axis=0)
@@ -2065,7 +2087,7 @@ class regressionControler:
                          )
         exoplanet_spectrum.add_auxilary(**auxilary_data)
 
-        # normalized bootstraped dataset
+        # normalized bootstrapped dataset
         auxilary_data['TDDEPTH'] = [TD_min, TD, TD_max]
         exoplanet_spectrum_bootstrap = \
             SpectralData(wavelength=wavelength_normed_spectrum[0, :],
@@ -2076,18 +2098,39 @@ class regressionControler:
                          )
         exoplanet_spectrum_bootstrap.add_auxilary(**auxilary_data)
 
+        fitted_transit_model = \
+            SpectralDataTimeSeries(
+                wavelength=wavelength_normed_spectrum[0, :],
+                wavelength_unit=wavelength_unit,
+                data=(lightcurve_model.T*normed_spectrum_bootstrap).T,
+                data_unit=data_unit,
+                uncertainty=(lightcurve_model.T *
+                             error_normed_spectrum_bootstrap).T,
+                time=fit_parameters.fitted_time[0, 0, :],
+                time_unit=control_parameters.data_parameters.time_unit
+                )
+        fitted_transit_model.add_auxilary(**auxilary_data)
+
         # timeseries baseline
         nboot, nwave, ntime = fit_parameters.fitted_time.shape
         uniq_time = fit_parameters.fitted_time[0, 0, :]
         baseline_bootstrap = np.zeros((nwave, ntime))
+        normed_residual_bootstrap = np.ma.zeros((nwave, ntime))
         error_baseline_bootstrap = np.zeros_like(baseline_bootstrap)
+        error_normed_residual_bootstrap = np.ma.zeros((nwave, ntime))
         for it, time in enumerate(uniq_time):
             for il in range(nwave):
                 idx = np.where(fit_parameters.fitted_time[1:, il, :] == time)
                 selection = \
                     fit_parameters.fitted_baseline[idx[0]+1, il, idx[1]]
-                baseline_bootstrap[il, it] = np.mean(selection)
-                error_baseline_bootstrap[il, it] = np.std(selection)
+                baseline_bootstrap[il, it] = np.ma.median(selection)
+                error_baseline_bootstrap[il, it] = mad_std(selection,
+                                                           ignore_nan=True)
+                selection = \
+                    fit_parameters.normed_fit_residuals[idx[0]+1, il, idx[1]]
+                normed_residual_bootstrap[il, it] = np.ma.median(selection)
+                error_normed_residual_bootstrap[il, it] = mad_std(selection,
+                                                                 ignore_nan=True)
         time_baseline_bootstrap = uniq_time
         wavelength_baseline_bootstrap = wavelength_normed_spectrum[0, :]
         baseline_mask = exoplanet_spectrum_bootstrap.mask
@@ -2095,7 +2138,9 @@ class regressionControler:
             np.repeat(baseline_mask[:, np.newaxis],
                       len(uniq_time),
                       axis=1)
-        from cascade.data_model import SpectralDataTimeSeries
+        residual_mask = np.logical_or(normed_residual_bootstrap.mask,
+                                      baseline_mask)
+        # from cascade.data_model import SpectralDataTimeSeries
         data_unit = control_parameters.data_parameters.data_unit
         time_unit = control_parameters.data_parameters.time_unit
         fitted_systematics_bootstrap = SpectralDataTimeSeries(
@@ -2107,6 +2152,17 @@ class regressionControler:
             time=time_baseline_bootstrap,
             time_unit=time_unit,
             mask=baseline_mask)
+        data_unit = u.dimensionless_unscaled
+        time_unit = control_parameters.data_parameters.time_unit
+        fitted_residuals_bootstrap = SpectralDataTimeSeries(
+            wavelength=wavelength_baseline_bootstrap,
+            wavelength_unit=wavelength_unit,
+            data=normed_residual_bootstrap,
+            data_unit=data_unit,
+            uncertainty=error_normed_residual_bootstrap,
+            time=time_baseline_bootstrap,
+            time_unit=time_unit,
+            mask=residual_mask)        
 
         post_prosessed_results = \
             {'exoplanet_spectrum': exoplanet_spectrum,
@@ -2114,6 +2170,8 @@ class regressionControler:
              'non_normalized_exoplanet_spectrum_bootstrap':
                  non_normalized_exoplanet_spectrum_bootstrap,
              'fitted_systematics_bootstrap': fitted_systematics_bootstrap,
+             'fitted_residuals_bootstrap': fitted_residuals_bootstrap,
+             'fitted_transit_model': fitted_transit_model,
              'non_normalized_stellar_spectrum_bootstrap':
                  non_normalized_stellar_spectrum_bootstrap}
 
@@ -2379,7 +2437,7 @@ class rayRegressionControler(regressionControler):
         # define the iterator chunks
         self.initialize_regression_iterators(nchunks=nchunks)
 
-        # This launches workers on the full (non bootstraped) data set
+        # This launches workers on the full (non bootstrapped) data set
         # and determines the optimal regularization
         initial_fit_parameters = \
             copy.deepcopy(self.get_fit_parameters_from_server())
@@ -2394,7 +2452,7 @@ class rayRegressionControler(regressionControler):
         futures = [w.async_update_loop.remote(self.parameter_server_handle,
                    self.data_server_handle[iserver]) for iserver, w in enumerate(workers)]
         ray.get(futures)
-        # This launches workers on the bootstraped data set + original data
+        # This launches workers on the bootstrapped data set + original data
         # and determines the fit parameters and error there on
         updated_regularization = \
             copy.deepcopy(self.get_regularization_parameters_from_server())
@@ -2488,7 +2546,7 @@ class regressionWorker:
         # Get data and regression matrix
         regression_data_selection, regression_matirx_selection = \
             regression_data
-        data_unscaled, wavelength, phase, covariance = \
+        data_unscaled, wavelength, phase, covariance, _ = \
             regression_data_selection
         (regression_matrix_unscaled, n_additional, feature_mean,
          feature_scale) = regression_matirx_selection

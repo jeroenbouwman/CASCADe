@@ -25,3 +25,8 @@
 - Updated processing_exceptions.ini
 - Added passbands and wavelength definitions for the long wavelength modules
   of the Spitzer speectrograph
+
+**version 1.1.1**
+- Fixed the LL1 passband file for Spitzer IRS
+- Added aditional output file containing systematics, residual and lc model
+- Added aditional functionality to spectrally rebin timeseries data and to save data files.

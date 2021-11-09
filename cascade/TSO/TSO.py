@@ -53,9 +53,11 @@ from ..initialize import cascade_default_save_path
 from ..initialize import cascade_default_data_path
 from ..utilities import write_timeseries_to_fits
 from ..utilities import write_spectra_to_fits
+from ..utilities import write_dataset_to_fits
 from ..utilities import _define_band_limits
 from ..utilities import _define_rebin_weights
 from ..utilities import _rebin_spectra
+from ..utilities import read_dataset_from_fits
 from ..verbose import Verbose
 from ..data_model import SpectralData
 from ..exoplanet_tools import convert_spectrum_to_brighness_temperature
@@ -79,8 +81,7 @@ from ..spectral_extraction import correct_initial_wavelength_shift
 from ..cpm_model import regressionControler
 from ..cpm_model import rayRegressionControler
 
-__all__ = ['TSOSuite',
-           'combine_observations']
+__all__ = ['TSOSuite', 'combine_observations', 'combine_timeseries']
 
 
 class TSOSuite:
@@ -1753,12 +1754,18 @@ class TSOSuite:
             self.calibration_results.baseline = fit_parameters.fitted_baseline
             self.calibration_results.fitted_systematics_bootstrap = \
                 fit_parameters.fitted_systematics_bootstrap
+            self.calibration_results.fitted_residuals_bootstrap = \
+                fit_parameters.fitted_residuals_bootstrap
             self.calibration_results.residuals = \
                 fit_parameters.fit_residuals
+            self.calibration_results.normed_residuals = \
+                fit_parameters.normed_fit_residuals
             self.calibration_results.regularization = \
                 np.array(regularization.optimal_alpha)
             self.calibration_results.used_control_parameters = \
                 control_parameters
+            self.calibration_results.fitted_transit_model = \
+                fit_parameters.fitted_transit_model
 
             print("Median regularization value: {}".
                   format(np.median(self.calibration_results.
@@ -1902,6 +1909,8 @@ class TSOSuite:
             raise
         try:
             results = self.exoplanet_spectrum
+            cal_results = self.calibration_results
+            cleaned_dataset = self.cpm.cleaned_dataset
         except AttributeError:
             print("No results defined. Aborting saving results")
             raise
@@ -1967,9 +1976,24 @@ class TSOSuite:
                        'NAME': object_target_name,
                        'OBSTYPE': transittype}
 
-        filename = save_name_base+'_bootstraped_exoplanet_spectrum.fits'
+        filename = save_name_base+'_bootstrapped_exoplanet_spectrum.fits'
         write_spectra_to_fits(results.spectrum_bootstrap, save_path,
                               filename, header_data)
+
+        filename = save_name_base+'_bootstrapped_systematics_model.fits'
+        write_dataset_to_fits(
+            cal_results.fitted_systematics_bootstrap, save_path,
+            filename, header_data)
+        filename = save_name_base+'_bootstrapped_residuals.fits'
+        write_dataset_to_fits(
+            cal_results.fitted_residuals_bootstrap, save_path,
+            filename, header_data)
+        filename = save_name_base+'_cleaned_dataset.fits'
+        write_dataset_to_fits(cleaned_dataset, save_path,
+                              filename, header_data)
+        filename = save_name_base+'_bootstrapped_transit_model.fits'
+        write_dataset_to_fits(cal_results.fitted_transit_model, save_path,
+                              filename, header_data)        
 
         header_data['TDDEPTH'] = results.spectrum.TDDEPTH[0]
         header_data.pop('TDCL005')
@@ -1986,7 +2010,7 @@ class TSOSuite:
         header_data['STFCL095'] = \
             results.non_normalized_stellar_spectrum_bootstrap.STLRFLUX[2]
         filename = save_name_base+\
-            '_bootstraped_non_flux_calibrated_stellar_spectrum.fits'
+            '_bootstrapped_non_flux_calibrated_stellar_spectrum.fits'
         write_spectra_to_fits(results.non_normalized_stellar_spectrum_bootstrap,
                               save_path, filename, header_data,
                               column_names=['Wavelength', 'Flux', 'Error Flux'])
@@ -2051,7 +2075,7 @@ def combine_observations(target_name, observations_ids, path=None,
     observations = {}
     for target in target_list:
         file_path = os.path.join(data_path, target)
-        file = target+"_bootstraped_exoplanet_spectrum.fits"
+        file = target+"_bootstrapped_exoplanet_spectrum.fits"
         with fits.open(os.path.join(file_path, file)) as hdul:
             SE = (hdul[0].header[' TDCL095']-hdul[0].header['TDDEPTH'])/2.0
             TD = hdul[0].header['TDDEPTH']
@@ -2231,3 +2255,124 @@ def combine_observations(target_name, observations_ids, path=None,
             plt.show()
             fig.savefig(os.path.join(save_path, base_filename + "_snr.png"),
                         bbox_inches="tight")
+
+
+def combine_timeseries(target_name, observations_ids, file_extension,
+                       meta_list,
+                       path=None,
+                       verbose=True):
+    """
+    Combine and rebin spectral timeseries to comon wavelength grid.
+
+    Parameters
+    ----------
+    target_name : 'str'
+        DESCRIPTION.
+    observations_ids : 'list'
+        DESCRIPTION.
+    file_extension : 'str'
+        DESCRIPTION.
+    meta_list : 'list'
+        DESCRIPTION.
+    path : 'str', optional
+        DESCRIPTION. The default is None.
+    verbose : 'bool', optional
+        DESCRIPTION. The default is True.
+
+    Returns
+    -------
+    rebinned_datasets : 'dict'
+        Rebinned datasets
+    band_averaged_datasets : 'dict'
+        Band averaged spectral datasets
+    datasets_dict : 'dict'
+        Input datasets
+
+    """
+    target_list = \
+        [target_name.strip()+'_'+obsid.strip() for obsid in observations_ids]
+
+    if path is None:
+        data_path = cascade_default_save_path
+    elif not os.path.isabs(path):
+        data_path = os.path.join(cascade_default_save_path, path)
+    else:
+        data_path = path
+
+
+    datasets_dict = {}
+    for target in target_list:
+        temp_dict = {}
+        file_path = os.path.join(data_path, target)
+        file = target+"_"+file_extension+".fits"
+        dataset = read_dataset_from_fits(file_path, file, meta_list)
+        for key in meta_list:
+            temp_dict[key] = getattr(dataset, key)
+        temp_dict['data'] = dataset.return_masked_array('data')
+        temp_dict['wavelength'] = dataset.return_masked_array('wavelength')   
+        temp_dict['uncertainty'] = dataset.return_masked_array('uncertainty')
+        temp_dict['time'] = dataset.return_masked_array('time')
+        datasets_dict[target] = temp_dict
+
+    wavelength_bins_path = \
+        os.path.join(cascade_default_data_path,
+                     "exoplanet_data/cascade/wavelength_bins")
+    wavelength_bins_file = \
+        (datasets_dict[target_list[0]]['FACILITY'] + '_' +
+         datasets_dict[target_list[0]]['INSTRMNT'] + '_' +
+         datasets_dict[target_list[0]]['FILTER'] +
+         '_wavelength_bins.txt')
+    wavelength_bins = ascii.read(os.path.join(wavelength_bins_path,
+                                              wavelength_bins_file))
+
+    lr0 = (wavelength_bins['lower limit'].data *
+           wavelength_bins['lower limit'].unit).to(u.micron).value
+    ur0 = (wavelength_bins['upper limit'].data *
+           wavelength_bins['upper limit'].unit).to(u.micron).value
+    lr0 = np.insert(lr0, 0, lr0[1])
+    ur0 = np.insert(ur0, 0, ur0[-1])
+
+    rebinned_wavelength = 0.5*(ur0 + lr0)
+
+    rebinned_datasets = {}
+    band_averaged_datasets = {}
+    for keys, values in datasets_dict.items():
+        masks = ~values['data'].mask
+        wavelength = values['wavelength'].data
+        data = values['data'].data
+        uncertainty = values['uncertainty'].data
+        time = values['time'].data
+        rebinned_data = np.zeros((rebinned_wavelength.size, time.shape[-1]))
+        rebinned_uncertainty = np.zeros((rebinned_wavelength.size,
+                                         time.shape[-1]))
+        rebinned_time = np.zeros((rebinned_wavelength.size, time.shape[-1]))
+        rebinned_mask = np.zeros((rebinned_wavelength.size, time.shape[-1]),
+                                 dtype=bool)
+        for it, (wave, dat, unc, tim, mask) in enumerate(zip(wavelength.T,
+                                                             data.T,
+                                                             uncertainty.T,
+                                                             time.T, masks.T)):
+            lr, ur = _define_band_limits(wave[mask])
+            weights = _define_rebin_weights(lr0, ur0, lr, ur)
+            new_data, new_uncertainty = \
+                _rebin_spectra(dat[mask], unc[mask], weights)
+            rebinned_data[:, it] = new_data
+            rebinned_uncertainty[:, it] = new_uncertainty
+            rebinned_time[:,it] = np.mean(tim[mask])
+            rebinned_mask[:, it] = np.all(~mask)
+        rebinned_datasets[keys] = \
+            {'wavelength': rebinned_wavelength[1:],
+             'data': rebinned_data[1:, :],
+             'uncertainty': rebinned_uncertainty[1:, :],
+             'time': rebinned_time[1:, :],
+             'mask': rebinned_mask[1:, :]}
+        band_averaged_datasets[keys] = \
+            {'wavelength': rebinned_wavelength[0],
+             'data': rebinned_data[0, :],
+             'uncertainty': rebinned_uncertainty[0, :],
+             'time': rebinned_time[0, :],
+             'mask': rebinned_mask[0, :]}            
+
+    return rebinned_datasets, band_averaged_datasets, datasets_dict
+
+

@@ -34,3 +34,4 @@ configobj
 validate
 exotethys
 statsmodels
+configparser
