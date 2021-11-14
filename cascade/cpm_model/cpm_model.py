@@ -2128,6 +2128,7 @@ class regressionControler:
                                                            ignore_nan=True)
                 selection = \
                     fit_parameters.normed_fit_residuals[idx[0]+1, il, idx[1]]
+                
                 normed_residual_bootstrap[il, it] = np.ma.median(selection)
                 error_normed_residual_bootstrap[il, it] = mad_std(selection,
                                                                  ignore_nan=True)

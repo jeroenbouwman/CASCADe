@@ -796,7 +796,7 @@ def calibrate_timeseries_verbose(*args, **kwargs):
     ax0.axes.set_ylim([1-1.3*TD/100, 1+0.8*TD/100])
     ax0.set_xlabel('Orbital Phase')
     ax0.set_ylabel('Mean Signal [{}]'.format(systematics_model.data_unit))
-    ax0.set_title("Band Averaged Instrument Systematics")
+    ax0.set_title("Band Averaged Calibrated Timeseries")
     ax0.legend(loc='lower left', fancybox=True, framealpha=1.0,
                ncol=1,
                bbox_to_anchor=(0, 0.83, 1, 0.2), shadow=True,

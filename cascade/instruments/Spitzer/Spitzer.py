@@ -327,7 +327,9 @@ class SpitzerIRS(InstrumentBase):
                                  path_to_files)
 
         data_list = ['LAMBDA', 'FLUX', 'FERROR', 'MASK']
-        auxilary_list = ["POSITION", "MEDPOS", "PUNIT", "MPUNIT", "TIME_BJD"]
+        auxilary_list = ["POSITION", "MEDPOS", "PUNIT", "MPUNIT", "TIME_BJD",
+                         "DISP_POS", "ANGLE", "SCALE", "DPUNIT", "AUNIT",
+                         "SUNIT"]
 
         data_dict, auxilary_dict = \
             get_data_from_fits(data_files, data_list, auxilary_list)
@@ -351,10 +353,15 @@ class SpitzerIRS(InstrumentBase):
             phase = phase - int(np.max(phase))
             if np.max(phase) < 0.0:
                 phase = phase + 1.0
-        if auxilary_dict['POSITION']['flag']:
-            position = np.array(auxilary_dict['POSITION']['data'])
-        else:
-            position = np.zeros(spectral_data.shape[-1])
+
+        position = np.array(auxilary_dict['POSITION']['data'])
+        posUnit =  auxilary_dict['PUNIT']['data_unit']
+        angle =  np.array(auxilary_dict['ANGLE']['data'])
+        angleUnit = auxilary_dict['AUNIT']['data_unit']
+        scaling = np.array(auxilary_dict['SCALE']['data'])
+        scaleUnit = auxilary_dict['SUNIT']['data_unit']
+        dispersion_position = np.array(auxilary_dict['DISP_POS']['data'])
+        dispPosUnit = auxilary_dict['DPUNIT']['data_unit']
 
         idx = np.argsort(time)[self.par["cpm_ncut_first_int"]:]
         time = time[idx]
@@ -365,6 +372,9 @@ class SpitzerIRS(InstrumentBase):
         data_files = [data_files[i] for i in idx]
         phase = phase[idx]
         position = position[idx]
+        angle = angle[idx]
+        scaling = scaling[idx]
+        dispersion_position = dispersion_position[idx]
 
         SpectralTimeSeries = \
             SpectralDataTimeSeries(wavelength=wavelength_data,
@@ -377,6 +387,7 @@ class SpitzerIRS(InstrumentBase):
                                    mask=mask,
                                    time_bjd=time,
                                    position=position,
+                                   position_unit=posUnit,
                                    isRampFitted=True,
                                    isNodded=False,
                                    target_name=target_name,
@@ -389,6 +400,13 @@ class SpitzerIRS(InstrumentBase):
         data_unit = u.Unit(mean_signal*SpectralTimeSeries.data_unit)
         SpectralTimeSeries.data_unit = data_unit
         SpectralTimeSeries.wavelength_unit = u.micron
+        SpectralTimeSeries.add_measurement(
+            disp_position=dispersion_position,
+            disp_position_unit=dispPosUnit,
+            angle=angle,
+            angle_unit=angleUnit,
+            scale=scaling,
+            scale_unit=scaleUnit)
 
         self._define_convolution_kernel()
 

@@ -1910,7 +1910,7 @@ class TSOSuite:
         try:
             results = self.exoplanet_spectrum
             cal_results = self.calibration_results
-            cleaned_dataset = self.cpm.cleaned_dataset
+            cleaned_dataset = copy.deepcopy(self.cpm.cleaned_dataset)
         except AttributeError:
             print("No results defined. Aborting saving results")
             raise
@@ -1988,6 +1988,8 @@ class TSOSuite:
         write_dataset_to_fits(
             cal_results.fitted_residuals_bootstrap, save_path,
             filename, header_data)
+        cleaned_dataset.mask = np.logical_or(cleaned_dataset.mask,
+                                             cal_results.fitted_systematics_bootstrap.mask)
         filename = save_name_base+'_cleaned_dataset.fits'
         write_dataset_to_fits(cleaned_dataset, save_path,
                               filename, header_data)
