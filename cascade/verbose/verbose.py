@@ -646,12 +646,16 @@ def calibrate_timeseries_verbose(*args, **kwargs):
     if transittype == 'secondary':
         ax0.axes.set_ylim([0, 2.5*TD])
         ax0.axes.set_xlim([wave0.data[0], wave0.data[-1]])
-        ax0.set_ylabel('Fplanet/Fstar [{}]'.format(spectrum_data_unit))
+        #ax0.set_ylabel('Fplanet/Fstar [{}]'.format(spectrum_data_unit))
+        ax0.set_ylabel(f'F$_\mathrm{{p}}$ / F$_\mathrm{{s}}$ '
+                       f'[{spectrum_data_unit.to_string(format="latex")}]')
     else:
         ax0.axes.set_ylim([TD*0.9, TD*1.1])
         ax0.axes.set_xlim([wave0.data[0], wave0.data[-1]])
-        ax0.set_ylabel('Transit Depth [{}]'.format(spectrum_data_unit))
-    ax0.set_xlabel('Wavelength [{}]'.format(wavelength_unit))
+        #ax0.set_ylabel('Transit Depth [{}]'.format(spectrum_data_unit))
+        ax0.set_ylabel(f'R$^2_\mathrm{{p}}$ / R$^2_\mathrm{{s}}$ '
+                       f'[{spectrum_data_unit.to_string(format="latex")}]')
+    ax0.set_xlabel(f'Wavelength [{wavelength_unit.to_string(format="latex")}]')
     ax0.legend(loc='lower left', fancybox=True, framealpha=1.0,
                ncol=1,
                bbox_to_anchor=(0, 0.90, 1, 0.2), shadow=True,
@@ -682,8 +686,8 @@ def calibrate_timeseries_verbose(*args, **kwargs):
                          markerfacecolor='blue', markeredgecolor='blue',
                          fillstyle='full', markersize=20
                          )
-            ax0.set_ylabel(f"Brightness Temperature [{ax0.yaxis.units}]")
-            ax0.set_xlabel(f"Wavelength [{ax0.xaxis.units}]")
+            ax0.set_ylabel(f'Brightness Temperature [{ax0.yaxis.units.to_string(format="latex")}]')
+            ax0.set_xlabel(f'Wavelength [{ax0.xaxis.units.to_string(format="latex")}]')
             plt.show()
         if save_verbose:
             fig.savefig(
@@ -696,25 +700,12 @@ def calibrate_timeseries_verbose(*args, **kwargs):
     ##################################
     sns.set_context("talk", font_scale=1.3, rc={"lines.linewidth": 3.5})
     sns.set_style("white", {"xtick.bottom": True, "ytick.left": True})
-#    residual_unit = dataset.data.data.unit
-#    calibration_mask = calibration_results.fitted_systematics_bootstrap.mask
-#    roi_cube = cleaned_dataset.data.mask
-#    image_res = \
-#        np.ma.array(calibration_results.
-#                    residuals[0, ~np.all(roi_cube, axis=1), ...]*residual_unit,
-#                    mask=np.ma.logical_or(
-#                        dataset.mask[~np.all(roi_cube, axis=1), ...],
-#                        calibration_mask))
-#    image_res.set_fill_value(np.nan)
-#    image_res = image_res.filled().value
-    
+
     residual_unit = u.percent
     image_res = calibration_results.fitted_residuals_bootstrap.data * 100
     wave0 = calibration_results.fitted_residuals_bootstrap.wavelength
     wavelength_unit = calibration_results.fitted_residuals_bootstrap.wavelength_unit
-    
-#    wave0 = dataset.wavelength.copy()
-#    wavelength_unit = dataset.wavelength_unit
+
     wave0_min = np.ma.min(wave0).data.value
     wave0_max = np.ma.max(wave0).data.value
     fig, ax = plt.subplots(figsize=(7, 6), dpi=200)
@@ -837,8 +828,8 @@ def calibrate_timeseries_verbose(*args, **kwargs):
             plt.plot([], [], ' ',
                      label="Used scaling: {:10.4f}".format(scaling))
             
-            ax0.set_ylabel(f"Flux [{ax0.yaxis.units}]")
-            ax0.set_xlabel(f"Wavelength [{ax0.xaxis.units}]")
+            ax0.set_ylabel(f'Flux [{ax0.yaxis.units.to_string(format="latex")}]')
+            ax0.set_xlabel(f'Wavelength [{ax0.xaxis.units.to_string(format="latex")}]')
             ax0.set_title("Comparison Model with Observed Stellar Spectrum")
             ax0.legend(loc='lower left', fancybox=True, framealpha=1.0,
                        ncol=1, bbox_to_anchor=(0.1, 0.80, 1, 0.3), shadow=True,

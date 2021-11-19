@@ -1508,9 +1508,9 @@ class exotethys_model:
                                                    'wavelength_bins/')],
              'wavelength_bins_files': [passband+'_wavelength_bins.txt'],
              'target_names': [InputParameter['target_name']],
-             'star_effective_temperature': [InputParameter['Tstar']],
-             'star_log_gravity': [InputParameter['logg']],
-             'star_metallicity': [InputParameter['star_metallicity']],
+             'star_effective_temperature': [InputParameter['Tstar'].value],
+             'star_log_gravity': [InputParameter['logg'].value],
+             'star_metallicity': [InputParameter['star_metallicity'].value],
              'targets_path': [''],
              'passbands_ext': ['.pass'],
              'passbands_path': [os.path.join(exotethys_data_path,
@@ -1564,13 +1564,13 @@ class exotethys_model:
                      self.cascade_configuration.object_logg_host_star)[1]
         logg = u.function.Dex(self.cascade_configuration.object_logg_host_star,
                               u.function.DexUnit(logg_unit))
-        logg = logg.to(u.dex(u.cm/u.s**2)).value
+        logg = logg.to(u.dex(u.cm/u.s**2))
         Tstar = \
             u.Quantity(self.cascade_configuration.object_temperature_host_star)
-        Tstar = Tstar.to(u.K).value
+        Tstar = Tstar.to(u.K)
         star_metallicity = \
             u.Quantity(self.cascade_configuration.object_metallicity_host_star)
-        star_metallicity = star_metallicity.value
+        star_metallicity = star_metallicity
         limb_darkening_laws = self.cascade_configuration.model_limb_darkening
         if not (limb_darkening_laws in self.__valid_ld_laws):
             raise ValueError("Limbdarkning model not recognized, \
@@ -1637,11 +1637,11 @@ class exotethys_model:
                                              search_radius=search_radius)
 
         logg = system_info[0]['LOGG'].quantity[0]
-        logg = logg.to(u.dex(u.cm/u.s**2)).value
+        logg = logg.to(u.dex(u.cm/u.s**2))
         Tstar = system_info[0]['TEFF'].quantity[0]
         Tstar = Tstar.to(u.K).value
         star_metallicity = system_info[0]['FE'].quantity[0]
-        star_metallicity = star_metallicity.value
+        #star_metallicity = star_metallicity.value
 
         target_name = self.cascade_configuration.object_name
         instrument = self.cascade_configuration.instrument
@@ -2095,9 +2095,9 @@ class exotethys_stellar_model:
                 (u.photon/u.erg)).to(u.electron/u.erg)
         sens = sens*hst_collecting_area
 
-        params = [InputParameter['Tstar'] * u.K,
-                  InputParameter['logg'],
-                  InputParameter['star_metallicity']]
+        params = [InputParameter['Tstar'],
+                  InputParameter['logg'].value,
+                  InputParameter['star_metallicity'].value]
 
         model_wavelengths, model_fluxes = \
             boats.get_model_spectrum(InputParameter['stellar_models_grids'],
@@ -2118,9 +2118,9 @@ class exotethys_stellar_model:
             model_fluxes = grid_fluxes
 
         if InputParameter['apply_dilution_correcton']:
-            params = [InputParameter['Tstar_dilution_object'] * u.K,
-                      InputParameter['logg_dilution_object'],
-                      InputParameter['star_metallicity_dilution_object']]
+            params = [InputParameter['Tstar_dilution_object'],
+                      InputParameter['logg_dilution_object'].value,
+                      InputParameter['star_metallicity_dilution_object'].value]
             model_wavelengths_dilution_object, model_fluxes_dilution_object = \
                 boats.get_model_spectrum(
                     InputParameter['stellar_models_grids'], params=params,
@@ -2164,10 +2164,10 @@ class exotethys_stellar_model:
                      self.cascade_configuration.object_logg_host_star)[1]
         logg = u.function.Dex(self.cascade_configuration.object_logg_host_star,
                               u.function.DexUnit(logg_unit))
-        logg = logg.to(u.dex(u.cm/u.s**2)).value
+        logg = logg.to(u.dex(u.cm/u.s**2))
         Tstar = \
             u.Quantity(self.cascade_configuration.object_temperature_host_star)
-        Tstar = Tstar.to(u.K).value
+        Tstar = Tstar.to(u.K)
         Rstar = \
             u.Quantity(self.cascade_configuration.object_radius_host_star)
         Rstar = Rstar.to(u.solRad)
@@ -2176,7 +2176,7 @@ class exotethys_stellar_model:
         distance = distance.to(u.pc)
         star_metallicity = \
             u.Quantity(self.cascade_configuration.object_metallicity_host_star)
-        star_metallicity = star_metallicity.value
+        # star_metallicity = star_metallicity.value
         stellar_models_grids = \
             self.cascade_configuration.model_stellar_models_grid
         if not (stellar_models_grids in self.__valid_model_grid):
@@ -2215,11 +2215,11 @@ class exotethys_stellar_model:
             try:
                 Tstar_dilution_object = u.Quantity(
                     self.cascade_configuration.dilution_temperature_star)
-                Tstar_dilution_object = Tstar_dilution_object.to(u.K).value
+                Tstar_dilution_object = Tstar_dilution_object.to(u.K)
                 star_metallicity_dilution_object = u.Quantity(
                     self.cascade_configuration.dilution_metallicity_star)
-                star_metallicity_dilution_object = \
-                    star_metallicity_dilution_object.value
+                #star_metallicity_dilution_object = \
+                #    star_metallicity_dilution_object.value
                 logg_unit = \
                     re.split('\\((.*?)\\)',
                              self.cascade_configuration.dilution_logg_star)[1]
@@ -2227,7 +2227,7 @@ class exotethys_stellar_model:
                     self.cascade_configuration.dilution_logg_star,
                     u.function.DexUnit(logg_unit))
                 logg_dilution_object = \
-                    logg_dilution_object.to(u.dex(u.cm/u.s**2)).value
+                    logg_dilution_object.to(u.dex(u.cm/u.s**2))
                 par["Tstar_dilution_object"] = Tstar_dilution_object
                 par["star_metallicity_dilution_object"] = \
                     star_metallicity_dilution_object
@@ -2269,11 +2269,11 @@ class exotethys_stellar_model:
         system_info = extract_exoplanet_data(catalog, target_name,
                                              search_radius=search_radius)
         logg = system_info[0]['LOGG'].quantity[0]
-        logg = logg.to(u.dex(u.cm/u.s**2)).value
+        logg = logg.to(u.dex(u.cm/u.s**2))
         Tstar = system_info[0]['TEFF'].quantity[0]
-        Tstar = Tstar.to(u.K).value
+        Tstar = Tstar.to(u.K)
         star_metallicity = system_info[0]['FE'].quantity[0]
-        star_metallicity = star_metallicity.value
+        # star_metallicity = star_metallicity.value
         Rstar = system_info[0]['RSTAR'].quantity[0]
         Rstar = Rstar.to(u.solRad)
         distance = system_info[0]['DIST'].quantity[0]
@@ -2331,11 +2331,11 @@ class exotethys_stellar_model:
             try:
                 Tstar_dilution_object = u.Quantity(
                     self.cascade_configuration.dilution_temperature_star)
-                Tstar_dilution_object = Tstar_dilution_object.to(u.K).value
+                Tstar_dilution_object = Tstar_dilution_object.to(u.K)
                 star_metallicity_dilution_object = u.Quantity(
                     self.cascade_configuration.dilution_metallicity_star)
-                star_metallicity_dilution_object = \
-                    star_metallicity_dilution_object.value
+                #star_metallicity_dilution_object = \
+                #    star_metallicity_dilution_object.value
                 logg_unit = \
                     re.split('\\((.*?)\\)',
                              self.cascade_configuration.dilution_logg_star)[1]
@@ -2343,7 +2343,7 @@ class exotethys_stellar_model:
                     self.cascade_configuration.dilution_logg_star,
                     u.function.DexUnit(logg_unit))
                 logg_dilution_object = \
-                    logg_dilution_object.to(u.dex(u.cm/u.s**2)).value
+                    logg_dilution_object.to(u.dex(u.cm/u.s**2))
                 par["Tstar_dilution_object"] = Tstar_dilution_object
                 par["star_metallicity_dilution_object"] = \
                     star_metallicity_dilution_object

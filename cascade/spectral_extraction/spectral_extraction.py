@@ -1872,14 +1872,18 @@ def correct_initial_wavelength_shift(referenceDataset, cascade_configuration,
          model_spectra.sensitivity]
     stellar_model = \
         [model_spectra.model_wavelength, model_spectra.rebinned_stellar_model]
+    input_stellar_model = [model_spectra.sm[2], model_spectra.sm[3]]
     corrected_observations = \
         [model_spectra.corrected_wavelength, model_spectra.observation,
          wave_shift, error_wave_shift]
+    stellar_model_parameters = model_spectra.par
     if len(otherDatasets_list) > 0:
         return [referenceDataset] + otherDatasets_list, modeled_observations,\
-            stellar_model, corrected_observations
+            stellar_model, corrected_observations, input_stellar_model, \
+            stellar_model_parameters
     return referenceDataset,  modeled_observations, stellar_model, \
-        corrected_observations
+        corrected_observations, input_stellar_model, \
+        stellar_model_parameters
 
 
 def renormalize_spatial_scans(referenceDataset, *otherDatasets):

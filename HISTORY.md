@@ -30,3 +30,10 @@
 - Fixed the LL1 passband file for Spitzer IRS
 - Added aditional output file containing systematics, residual and lc model
 - Added aditional functionality to spectrally rebin timeseries data and to save data files.
+
+**version 1.1.1**
+- Added input stellar model as aditional output file to save_results step.
+- Fixed issue with SL2 bandpass file.
+- Added a higher spectral resolution wavelength bins file for Spizer IRS.
+- Added the posibility of using higher orders of the  sources position as
+  an aditional regressor .

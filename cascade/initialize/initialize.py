@@ -370,7 +370,8 @@ def generate_default_initialization(observatory='HST', data='SPECTRUM',
                      'cpm_regularization_method': 'value',
                      'cpm_add_time': 'True',
                      'cpm_add_time_model_order': '1',
-                     'cpm_add_postition': 'True'
+                     'cpm_add_postition': 'True',
+                     'cpm_add_time_model_order': '1'
                      }
 
     config['MODEL'] = {'model_type': 'batman',

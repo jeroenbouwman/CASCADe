@@ -1206,7 +1206,8 @@ class TSOSuite:
             return
 
         (cleanedDataset, dataset), modeled_observations, stellar_model, \
-            corrected_observations = \
+            corrected_observations, input_stellar_model, \
+            stellar_model_parameters= \
             correct_initial_wavelength_shift(cleanedDataset,
                                              cascade_configuration,
                                              dataset)
@@ -1222,6 +1223,10 @@ class TSOSuite:
                 stellar_model
             self.stellar_modeling.corrected_observations = \
                 corrected_observations
+            self.stellar_modeling.input_stellar_model = \
+                input_stellar_model
+            self.stellar_modeling.stellar_model_parameters = \
+                stellar_model_parameters
 
         vrbs = Verbose()
         vrbs.execute("check_wavelength_solution",
@@ -1871,7 +1876,34 @@ class TSOSuite:
             flux_calibrated_stellar_model.add_auxilary(SCALING=scaling)
             self.exoplanet_spectrum.flux_calibrated_stellar_model = \
                 flux_calibrated_stellar_model
-                            
+            
+            wavelength_input_stellar_model = \
+                self.stellar_modeling.input_stellar_model[0].to(u.micron)
+            spectrum_input_stellar_model = \
+                self.stellar_modeling.input_stellar_model[1].to(
+                    u.Jy, equivalencies=u.spectral_density(
+                        wavelength_input_stellar_model))
+            scaling_input_stellar_model =  \
+                (self.stellar_modeling.stellar_model_parameters['Rstar'] /
+                 self.stellar_modeling.stellar_model_parameters['distance'])**2
+            scaling_input_stellar_model = scaling_input_stellar_model.decompose()
+            spectrum_input_stellar_model *= scaling_input_stellar_model
+            
+            flux_calibrated_input_stellar_model = SpectralData(
+                wavelength=wavelength_input_stellar_model,
+                data=spectrum_input_stellar_model,
+                uncertainty=spectrum_input_stellar_model*0.02,
+                mask=np.zeros_like(wavelength_input_stellar_model.value, dtype='bool')
+                )
+            flux_calibrated_input_stellar_model.add_auxilary(
+                MODELRS=self.stellar_modeling.stellar_model_parameters['Rstar'].to_string(),
+                MODELTS=self.stellar_modeling.stellar_model_parameters['Tstar'].to_string(),
+                MODELLGG=self.stellar_modeling.stellar_model_parameters['logg'].to_string(),
+                DISTANCE=self.stellar_modeling.stellar_model_parameters['distance'].to_string(),
+                MODELGRD=self.stellar_modeling.stellar_model_parameters['stellar_models_grids'])
+            self.exoplanet_spectrum.flux_calibrated_input_stellar_model = \
+                flux_calibrated_input_stellar_model
+            
             vrbs.execute("calibrate_timeseries",
                          exoplanet_spectrum=self.exoplanet_spectrum,
                          calibration_results=self.calibration_results,
@@ -2037,13 +2069,29 @@ class TSOSuite:
                '_flux_calibrated_stellar_model.fits'
             write_spectra_to_fits(results.flux_calibrated_stellar_model,
                              save_path, filename, header_data,
-                             column_names=['Wavelength', 'Flux', 'Error Flux'])           
+                             column_names=['Wavelength', 'Flux', 'Error Flux'])
+
+            header_data['MODELRS'] = \
+                results.flux_calibrated_input_stellar_model.MODELRS
+            header_data['MODELTS'] = \
+                results.flux_calibrated_input_stellar_model.MODELTS
+            header_data['MODELLGG'] = \
+                results.flux_calibrated_input_stellar_model.MODELLGG
+            header_data['DISTANCE'] = \
+                results.flux_calibrated_input_stellar_model.DISTANCE
+            header_data['MODELGRD'] = \
+                results.flux_calibrated_input_stellar_model.MODELGRD
+            filename = save_name_base+\
+               '_flux_calibrated_input_stellar_model.fits'
+            write_spectra_to_fits(results.flux_calibrated_input_stellar_model,
+                             save_path, filename, header_data,
+                             column_names=['Wavelength', 'Flux', 'Error Flux'])  
             
 
 
 
 def combine_observations(target_name, observations_ids, path=None,
-                         verbose=True):
+                         verbose=True, use_higher_resolution=False):
     """
     Combine with CASCADe calibrated individual observations into one spectrum.
 
@@ -2058,6 +2106,8 @@ def combine_observations(target_name, observations_ids, path=None,
     verbose : 'bool', optional
         Flag, if True, will cause CASCAde to produce verbose output (plots).
         The default is True.
+    use_higher_resolution: 'bool', optional
+        The default is False.
 
     Returns
     -------
@@ -2073,6 +2123,11 @@ def combine_observations(target_name, observations_ids, path=None,
         data_path = os.path.join(cascade_default_save_path, path)
     else:
         data_path = path
+    
+    if use_higher_resolution:
+        file_name_extension = '_higher_res'
+    else:
+        file_name_extension = ''
 
     observations = {}
     for target in target_list:
@@ -2120,7 +2175,7 @@ def combine_observations(target_name, observations_ids, path=None,
         (observations[target_list[0]]['observatory'] + '_' +
          observations[target_list[0]]['instrument'] + '_' +
          observations[target_list[0]]['instrument_filter'] +
-         '_wavelength_bins.txt')
+         '_wavelength_bins'+file_name_extension+'.txt')
     wavelength_bins = ascii.read(os.path.join(wavelength_bins_path,
                                               wavelength_bins_file))
 
@@ -2188,7 +2243,7 @@ def combine_observations(target_name, observations_ids, path=None,
 
     filename = target_name.strip() + '_' + header_data['FACILITY'] + '_' +\
         header_data['INSTRMNT'] + '_' + header_data['FILTER'] +\
-        '_combined_'+observation_type+'_spectrum.fits'
+        '_combined_'+observation_type+'_spectrum'+file_name_extension+'.fits'
     save_path = os.path.join(data_path, target_name.strip())
 
     write_spectra_to_fits(combined_dataset, save_path, filename,
@@ -2199,7 +2254,7 @@ def combine_observations(target_name, observations_ids, path=None,
         sns.set_style("white", {"xtick.bottom": True, "ytick.left": True})
         base_filename = target_name.strip() + '_' + header_data['FACILITY'] + \
             '_' + header_data['INSTRMNT'] + '_' + header_data['FILTER'] +\
-            '_combined_'+observation_type+'_spectrum'
+            '_combined_'+observation_type+'_spectrum'+file_name_extension
         with quantity_support():
             fig, ax = plt.subplots(figsize=(8, 5))
             for keys, values in rebinned_observations.items():
