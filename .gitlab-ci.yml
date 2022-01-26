@@ -15,6 +15,7 @@ units_and_doc_tests:
     - conda env create -f environment.yml
     - source activate cascade
     - conda update numpy
+    - pip install batman-package -U
     - python -m unittest discover -v -p *tests.py -s tests
     - cd docs
     - make html
