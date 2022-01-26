@@ -96,14 +96,14 @@ class Observation(object):
         if cascade_configuration.isInitialized:
             observatory = cascade_configuration.instrument_observatory
             if observatory not in self.__valid_observatories:
-                raise ValueError("Observatory not recognized, \
-                                 check your init file for the following \
-                                 valid observatories: {}. Aborting loading \
-                                 observatory".format(list(self.
-                                 __valid_observatories.keys())))
+                raise ValueError("Observatory not recognized, "
+                                 "check your init file for the following "
+                                 "valid observatories: {}. Aborting loading "
+                                 "observatory".format(list(self.
+                                                __valid_observatories.keys())))
         else:
-            raise ValueError("CASCADe not initialized, \
-                                 aborting loading Observations")
+            raise ValueError("CASCADe not initialized, "
+                             "aborting loading Observations")
         return observatory
 
     def __check_observation_type(self):

@@ -80,9 +80,16 @@ import configparser
 import warnings
 import shutil
 import time
+from urllib.parse import urlencode
+from urllib.parse import urlparse
+from pathlib import Path
+import tempfile
+import requests
+import zipfile
+import io
 
 from cascade import __path__
-from cascade import __version__
+from cascade import __version__ as __CASCADE_VERSION
 from cascade.utilities import find
 
 __all__ = ['cascade_warnings',
@@ -94,160 +101,431 @@ __all__ = ['cascade_warnings',
            'generate_default_initialization',
            'configurator',
            'cascade_configuration',
-           'reset_data',
+           #'reset_data',
            'read_ini_files']
 
-__valid_environment_variables__ = ['CASCADE_WARNINGS',
-                                   'CASCADE_PATH',
-                                   'CASCADE_DATA_PATH',
-                                   'CASCADE_SAVE_PATH',
-                                   'CASCADE_INITIALIZATION_FILE_PATH',
-                                   'CASCADE_LOG_PATH']
+def warning_on_one_line(message, category, filename, lineno, file=None, line=None):
+        return '%s:%s: %s:%s\n' % (filename, lineno, category.__name__, message)
 
-__flag_not_set__ = False
+warnings.formatwarning = warning_on_one_line
 
-__cascade_path = os.path.dirname(__path__[0])
-__cascade_data_path = os.path.join(__cascade_path, "data/")
-
-try:
-    cascade_warnings = os.environ['CASCADE_WARNINGS']
-    if cascade_warnings.strip().lower() == "off":
-        warnings.simplefilter("ignore")
-    else:
-        warnings.simplefilter("default")
-except KeyError:
-    cascade_warnings = 'on'
-    os.environ['CASCADE_WARNINGS'] = cascade_warnings
-    warnings.simplefilter("default")
-    __flag_not_set__ = True
-
-try:
-    cascade_default_path = os.environ['CASCADE_PATH']
-except KeyError:
-    cascade_default_path = \
-        os.path.dirname(__path__[0])
-    os.environ['CASCADE_PATH'] = cascade_default_path
-    __flag_not_set__ = True
-try:
-    cascade_default_data_path = \
-        os.environ['CASCADE_DATA_PATH']
-except KeyError:
-    cascade_default_data_path = \
-        os.path.join(cascade_default_path, "data/")
-    os.environ['CASCADE_DATA_PATH'] = cascade_default_data_path
-    __flag_not_set__ = True
-
-try:
-    cascade_default_save_path = os.environ['CASCADE_SAVE_PATH']
-except KeyError:
-    cascade_default_save_path = \
-        os.path.join(cascade_default_path, "examples/results/")
-    os.environ['CASCADE_SAVE_PATH'] = cascade_default_save_path
-    __flag_not_set__ = True
-
-try:
-    cascade_default_initialization_path = \
-        os.environ['CASCADE_INITIALIZATION_FILE_PATH']
-except KeyError:
-    cascade_default_initialization_path = \
-        os.path.join(cascade_default_path, "examples/init_files/")
-    os.environ['CASCADE_INITIALIZATION_FILE_PATH'] = \
-        cascade_default_initialization_path
-    __flag_not_set__ = True
-
-try:
-    cascade_default_log_path = \
-        os.environ['CASCADE_LOG_PATH']
-except KeyError:
-    cascade_default_log_path = \
-        os.path.join(cascade_default_path, "examples/logs/")
-    os.environ['CASCADE_LOG_PATH'] = \
-        cascade_default_log_path
-    __flag_not_set__ = True
-
-if __flag_not_set__:
-    warnings.warn("One of the following environment variables: {} has not "
-                  "been set. Using default "
-                  "values".format(__valid_environment_variables__))
-
-
-def reset_data():
+def check_cascade_version(version: str) -> str:
     """
-    Reset all cascade data in non default directory tree.
+    Check if a release version of the cascade package excists on Gitlab.
+
+    Parameters
+    ----------
+    version : 'str'
+        Version of the cascade package.
+
+    Returns
+    -------
+    used_version: 'str'
+        Online CASCADe version from which the data will be downloaded.
+
+    """
+    __check_url = f"https://gitlab.com/jbouwman/CASCADe/-/releases/{version}/"
+    response = requests.get(__check_url)
+    if response.status_code == 200:
+        used_version = version
+    else:
+        # warnings.warn(f'No releases found for cascade version {version}')
+        used_version = 'master'
+    return used_version
+
+def check_environment(environment_variables: list, default_values: list) -> bool:
+    """
+    Check the CASCADe environment variables.
+
+    Parameters
+    ----------
+    environment_variables : 'list'
+        List containing all CASCAde environment variables.
+    default_values : 'list'
+        List containing the default values of the CASCADe environment variables.
+
+    Returns
+    -------
+    flag_not_set : 'bool'
+        True if a CASCADe environment variables was not set by the user.
+
+    """
+    flag_not_set = False
+    for var, value in zip(environment_variables,
+                          default_values):
+        if not var in os.environ:
+            flag_not_set = True
+        os.environ[var] = os.environ.get(var, value)
+    return flag_not_set
+
+def need_to_copy_data(data_path_archive: Path,
+                      distribution_version: str) -> bool:
+    """
+    Check to see if package data and exampels need to be copied to user directory.
+
+    Parameters
+    ----------
+    data_path_archive : 'pathlib.Path'
+        Path to the package and target data defined by the user.
+    distribution_version : 'str'
+        Version of the CASCADe package.
+
+    Returns
+    -------
+    copy_flag : TYPE
+        DESCRIPTION.
+
+    """
+    copy_flag = False
+    if not data_path_archive.is_dir():
+         copy_flag = True
+    elif not (data_path_archive / '.cascade_data_version').is_file():
+        print("No data version file found. Re-initializing package data.")
+        copy_flag = True
+    else:
+        with open((data_path_archive / '.cascade_data_version'), 'r') as f:
+            data_version = f.read()
+            if data_version != distribution_version:
+                print("Old package data found. Re-initializing CASCADe data")
+                copy_flag = True            
+    return copy_flag
+
+def update_data_version(data_path_archive: Path,
+                        distribution_version: str) -> None:
+    """
+    Update version file in user data directory.
+
+    Parameters
+    ----------
+    data_path_archive : 'pathlib.Path'
+        Path to the package and target data defined by the user.
+    distribution_version : 'str'
+        Version of the CASCADe package.
 
     Returns
     -------
     None.
 
     """
-    new_path = os.path.join(cascade_default_data_path, 'calibration/')
-    if os.path.exists(new_path):
-        shutil.rmtree(new_path)
-    destination = shutil.copytree(os.path.join(__cascade_data_path,
-                                               'calibration/'), new_path)
-    print("Updated cascade data in directory: {}".format(destination))
-    new_path = os.path.join(cascade_default_data_path, 'exoplanet_data/')
-    if os.path.exists(new_path):
-        shutil.rmtree(new_path)
-    destination = shutil.copytree(os.path.join(__cascade_data_path,
-                                               'exoplanet_data/'), new_path)
-    print("Updated cascade data in directory: {}".format(destination))
-    new_path = os.path.join(cascade_default_data_path, 'archive_databases/')
-    cp_user_files = os.path.exists(new_path)
-    if cp_user_files:
-        user_files = find("user_processing_exceptions.ini", new_path)
-        temp_dir = os.path.join(cascade_default_data_path, "temp_dir_user/")
-        os.mkdir(temp_dir)
-        for i, file in enumerate(user_files):
-            sub_temp_dir = os.path.join(temp_dir, "{}/".format(i))
-            os.mkdir(sub_temp_dir)
-            shutil.copy(file, sub_temp_dir)
-        shutil.rmtree(new_path)
-    destination = shutil.copytree(os.path.join(__cascade_data_path,
-                                               'archive_databases/'), new_path)
-    if cp_user_files:
-        user_files2 = find("user_processing_exceptions.ini", temp_dir)
-        for file, file2 in zip(user_files, user_files2):
-            shutil.copy(file2, file)
-        shutil.rmtree(temp_dir)
-    print("Updated cascade data in directory: {}".format(destination))
-    new_path = os.path.join(cascade_default_data_path,
-                            'configuration_templates/')
-    if os.path.exists(new_path):
-        shutil.rmtree(new_path)
-    destination = \
-        shutil.copytree(os.path.join(__cascade_data_path,
-                                     'configuration_templates/'), new_path)
-    print("Updated cascade data in directory: {}".format(destination))
-    with open(os.path.join(cascade_default_data_path,
-                           '.cascade_data_version'), 'w') as f:
-        f.write("{}".format(__version__))
-    time.sleep(3.0)
+    with open((data_path_archive / '.cascade_data_version'), 'w') as f:
+        f.write("{}".format(__CASCADE_VERSION))
 
+def check_for_user_initialization_files(data_path_archive: Path) -> list:
+    """
+    Check if user defined initialization files exist in the data directory.
+
+    Parameters
+    ----------
+    data_path_archive : Path
+        DESCRIPTION.
+
+    Returns
+    -------
+    list
+        DESCRIPTION.
+
+    """
+    path_to_search = data_path_archive / 'archive_databases/'
+    if path_to_search.is_dir():
+        user_init_file = find("user_processing_exceptions*.ini*", path_to_search)
+    else:
+        user_init_file = None
+    return user_init_file
+ 
+def copy_cascade_data_from_distribution(data_path_archive: Path,
+                                        data_path_distribution: Path,
+                                        data_path: str,
+                                        overwrite=False) -> None:
+    """
+    Copy the data needed by CASCADe to the user defined directory.
+
+    Parameters
+    ----------
+    data_path_archive : 'pathlib.Path'
+        DESCRIPTION.
+    data_path_distribution : 'pathlib.Path'
+        DESCRIPTION.
+    data_path : 'str'
+        DESCRIPTION.
+    overwrite : 'bool', optional
+        Default value is False
+
+    Returns
+    -------
+    None
+
+    """
+    new_path = data_path_archive / data_path
+    if new_path.is_dir() & (not overwrite):
+        shutil.rmtree(new_path)
+    dest = shutil.copytree(data_path_distribution / data_path, new_path,
+                           dirs_exist_ok=overwrite)
+    print("Updated cascade data in directory: {}".format(dest))
+
+def copy_cascade_data_from_git(data_path_archive: Path,
+                               url_distribution: str,
+                               query: dict,
+                               overwrite=False) -> None:
+    """
+    Copy the data needed by CASCADe to the user defined directory from git.
+
+    Parameters
+    ----------
+    data_path_archive : 'pathlib.Path'
+        Path to the user defined data repository for CACADe.
+    url_distribution : 'str'
+        URL of the git repository from which data is copied to user
+        defined location.
+    file_base : 'str'
+        
+    query : 'dict'
+        Dictionary used to constuct query to git repository to download zip file
+        containing the data to be copied. The dictionary key is always 'path'
+        with the value pointing to a subdirectory in the git repository.
+    overwrite : 'bool', optional
+        If true, excisting directories are not deleted first before copying.
+        The default is False.
+
+    Returns
+    -------
+    None
+
+    """
+    new_path = data_path_archive / Path(*Path(query['path']).parts[1:])
+    if new_path.is_dir() & (not overwrite):
+        shutil.rmtree(new_path)    
+    
+    # some header info just to make sure it works.
+    header = {"User-Agent":"Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
+               "(KHTML, like Gecko) Chrome/51.0.2704.103 Safari/537.36"}
+    url_repository = url_distribution + urlencode(query)
+    req = requests.get(url_repository, headers=header, allow_redirects=False)
+    with zipfile.ZipFile(io.BytesIO(req.content)) as archive:
+         for file in archive.namelist():
+             p = Path(file)
+             if p.suffix != '':
+                 archive.extract(file, data_path_archive /
+                                 p.relative_to(*p.parts[:2]))
+
+    # clean up temperory zip directory. Not present if version is master?
+    base = Path(urlparse(url_distribution).path).stem + '-'
+    temp_zip_dir = base +'-'.join(Path(query['path']).parts)
+    shutil.rmtree(data_path_archive / temp_zip_dir, ignore_errors=True)
+
+    print("Updated cascade data in directory: {}".
+          format(str(Path(*Path(query['path']).parts[1:]))))
+
+def store_user_intitialization_files(file_list: list) -> None:
+    """
+    Store user defined initialization files before (re)installing data.
+
+    Parameters
+    ----------
+    file_list : list
+        DESCRIPTION.
+
+    Returns
+    -------
+    None
+
+    """
+    temp_dir = Path(tempfile.gettempdir())
+    for i, file in enumerate(file_list):
+        sub_temp_dir = temp_dir / f"{i}/"
+        sub_temp_dir.mkdir()
+        shutil.copy(file, sub_temp_dir)
+
+def restore_user_initialization_files(file_list: list) -> None:
+    """
+    Restore user defined initialization files to data directory.
+
+    Parameters
+    ----------
+    file_list : list
+        DESCRIPTION.
+
+    Returns
+    -------
+    None
+
+    """
+    temp_dir = Path(tempfile.gettempdir())
+    for i, file in enumerate(file_list):
+        sub_temp_dir = temp_dir / f"{i}/"
+        shutil.copy(sub_temp_dir / Path(file).name, file)
+        shutil.rmtree(sub_temp_dir)
+
+def reset_data_from_distribution(sections: list,
+                                 data_path_archive: Path,
+                                 data_path_distribution: Path,
+                                 overwrite=False) -> None:
+    """
+    Reset the local CASCAde data with the data from the CASCADe distribution.
+
+    Parameters
+    ----------
+    sections : 'list'
+        DESCRIPTION.
+    data_path_archive : 'pathlib.Path'
+        DESCRIPTION.
+    data_path_distribution : 'pathlib.Path'
+        DESCRIPTION.
+    overwrite : 'bool'    
+
+    Returns
+    -------
+    None
+
+    """
+    for section in sections:
+        if "archive_databases" in section:
+            user_list = check_for_user_initialization_files(data_path_archive)
+            store_user_intitialization_files(user_list)
+            copy_cascade_data_from_distribution(data_path_archive,
+                                                data_path_distribution,
+                                                section, overwrite=overwrite)
+            restore_user_initialization_files(user_list)   
+        else:
+            copy_cascade_data_from_distribution(data_path_archive,
+                                                data_path_distribution,
+                                                section, overwrite=overwrite)
+        time.sleep(1)
+
+def reset_data_from_git(query_list: list,
+                        data_path_archive: Path,
+                        url_distribution: str,
+                        overwrite=False) -> None:
+    """
+    Reset the local CASCAde data with the data from the git repository.
+
+    Parameters
+    ----------
+    query_list : 'list'
+        DESCRIPTION.
+    data_path_archive : 'pathlib.Path'
+        DESCRIPTION.
+    url_distribution : 'str'
+        DESCRIPTION.
+    overwrite : 'bool'    
+
+    Returns
+    -------
+    None
+
+    """
+    for query in query_list:
+        if "archive_databases" in query['path']:
+            user_list = check_for_user_initialization_files(data_path_archive)
+            store_user_intitialization_files(user_list)
+            copy_cascade_data_from_git(data_path_archive, url_distribution,
+                                       query, overwrite=overwrite)
+            restore_user_initialization_files(user_list)
+        else:
+            copy_cascade_data_from_git(data_path_archive, url_distribution,
+                                       query, overwrite=overwrite)
+        time.sleep(1)
+
+def setup_cascade_data(data_path_archive: Path, data_path_distribution: Path,
+                       url_distribution: str,
+                       functional_sections: list, example_sections: list,
+                       distribution_version: str) -> None:
+    """
+    Setup directory structure and data files needed by CASCAde. 
+
+    Parameters
+    ----------
+    data_path_archive : 'pathlib.Path'
+        Path to the user defined data archive.
+    data_path_distribution : 'pathlib.Path'
+        Path to the installed CASCADe distribution.
+    url_distribution : 'str'
+        URL git
+    functional_sections : 'list'
+        Sub directories for the functional data used by CASCADe.
+    example_sections : 'list'
+        Sub directories with examples how to use CASCADe
+    distribution_version : 'str'
+        Installed version of CASCADe 
+
+    Returns
+    -------
+    None
+
+    """
+    copy_flag = need_to_copy_data(data_path_archive, distribution_version)
+    if not copy_flag:
+        return
+    
+    functional_data_path = data_path_distribution / 'data'
+    examples_data_path = data_path_distribution / 'examples'
+    if functional_data_path.is_dir():
+        reset_data_from_distribution(functional_sections, data_path_archive,
+                                     functional_data_path)
+        reset_data_from_distribution(example_sections, data_path_archive,
+                                     examples_data_path,
+                                     overwrite=True) 
+    else:
+        functional_query_list = [{'path': f'data/{section}'}
+                                 for section in functional_sections]
+        reset_data_from_git(functional_query_list, data_path_archive,
+                            url_distribution)
+        examples_query_list = [{'path': f'examples/{section}'}
+                                 for section in example_sections]
+        reset_data_from_git(examples_query_list, data_path_archive,
+                            url_distribution, overwrite=True)
+
+    update_data_version(data_path_archive, distribution_version)
+
+
+__CASCADE_ONLINE_VERSION = check_cascade_version(__CASCADE_VERSION)
+#__CASCADE_FILE_BASE = f"CASCADe-{__CASCADE_ONLINE_VERSION}-"
+__CASCADE_URL = (f"https://gitlab.com/jbouwman/CASCADe/-/archive/"
+                 f"{__CASCADE_ONLINE_VERSION}/"
+                 f"CASCADe-{__CASCADE_ONLINE_VERSION}.zip?")
+
+__CASCADE_PATH = Path(os.path.dirname(__path__[0]))
+
+__CASCADE_DEFAULT_STORAGE_DIRECTORY = Path.home() / 'CASCADeSTORAGE/'
+
+__VALID_ENVIRONMENT_VARIABLES = ['CASCADE_WARNINGS',
+                                   'CASCADE_PATH',
+                                   'CASCADE_DATA_PATH',
+                                   'CASCADE_SAVE_PATH',
+                                   'CASCADE_INITIALIZATION_FILE_PATH',
+                                   'CASCADE_LOG_PATH']
+__ENVIRONMENT_DEFAULT_VALUES = \
+    ['on',
+     str(__CASCADE_PATH),
+     str(__CASCADE_DEFAULT_STORAGE_DIRECTORY),
+     str(__CASCADE_DEFAULT_STORAGE_DIRECTORY / 'results/'),
+     str(__CASCADE_DEFAULT_STORAGE_DIRECTORY / 'init_files/'),
+     str(__CASCADE_DEFAULT_STORAGE_DIRECTORY / 'logs/')]
+
+
+__flag_not_set = check_environment(__VALID_ENVIRONMENT_VARIABLES,
+                                   __ENVIRONMENT_DEFAULT_VALUES)
+if __flag_not_set:
+    warnings.warn((f"One of the following environment "
+                  f"variables: {__VALID_ENVIRONMENT_VARIABLES} has not "
+                  f"been set. Using default values"))
+
+cascade_warnings = os.environ['CASCADE_WARNINGS']
+cascade_default_path = Path(os.environ['CASCADE_PATH'])
+cascade_default_data_path = Path(os.environ['CASCADE_DATA_PATH'])
+cascade_default_save_path = Path(os.environ['CASCADE_SAVE_PATH'])
+cascade_default_initialization_path = \
+    Path(os.environ['CASCADE_INITIALIZATION_FILE_PATH'])
+cascade_default_log_path = Path(os.environ['CASCADE_LOG_PATH'])
 
 __data_dirs = ['calibration/', 'exoplanet_data/', 'archive_databases/',
-               'configuration_templates/']
+                'configuration_templates/']
+__example_dirs = ['data', 'scripts', 'init_files', 'results']
+ 
+setup_cascade_data(cascade_default_data_path,
+                     __CASCADE_PATH, __CASCADE_URL,            
+                     __data_dirs, __example_dirs,
+                     __CASCADE_VERSION)
 
-if __cascade_data_path != cascade_default_data_path:
-    dir_present = True
-    for data_dir in __data_dirs:
-        dir_present = \
-            (dir_present &
-             os.path.isdir(os.path.join(cascade_default_data_path, data_dir)))
-    if not dir_present:
-        reset_data()
-    if not os.path.isfile(os.path.join(cascade_default_data_path,
-                                       '.cascade_data_version')):
-        print("No data version file found, resetting cascade data")
-        reset_data()
-    else:
-        with open(os.path.join(cascade_default_data_path,
-                               '.cascade_data_version'), 'r') as f:
-            data_version = f.read()
-        if data_version != __version__:
-            print("Data version older then current cascade version, "
-                  "resetting data")
-            reset_data()
 
 
 def generate_default_initialization(observatory='HST', data='SPECTRUM',
@@ -324,7 +602,7 @@ def generate_default_initialization(observatory='HST', data='SPECTRUM',
             hasBackground = 'True'
 
     path = cascade_default_initialization_path
-    os.makedirs(path, exist_ok=True)
+    path.mkdir(parents=True, exist_ok=True)
 
     config = configparser.ConfigParser()
     config.optionxform = str
@@ -458,7 +736,7 @@ def generate_default_initialization(observatory='HST', data='SPECTRUM',
                           'dilution_band_width': '0.1 micron',
                           'dilution_wavelength_shift': '0.02 micron'}
 
-    with open(path + 'cascade_default.ini', 'w') as configfile:
+    with open(path / 'cascade_default.ini', 'w') as configfile:
         config.write(configfile)
 
     return True

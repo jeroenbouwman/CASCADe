@@ -46,7 +46,7 @@ config = {
                          'pytest', 'scikit-image', 'sphinx', 'alabaster',
                          'networkx', 'cython', 'astroquery', 'numba',
                          'ray[default]', 'pyfiglet', 'termcolor', 'exotethys',
-                         'statsmodels', 'configparser'],
+                         'statsmodels'],
     'scripts': [(HERE/'scripts/build_local_hst_archive.py').as_posix(),
                 (HERE/'scripts/run_cascade.py').as_posix(),
                 (HERE/'scripts/run_cascade.sh').as_posix(),

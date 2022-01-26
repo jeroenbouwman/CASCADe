@@ -112,7 +112,7 @@ class TestExoplanetsTools(unittest.TestCase):
         # test lightcurve model using parameters from default ini file
         generate_default_initialization()
         cascade_param = \
-            configurator(self.path_init_files+"cascade_default.ini")
+            configurator(self.path_init_files / "cascade_default.ini")
         cascade_param.telescope_collecting_area = '4.525 m2'
         cascade_param.instrument_dispersion_scale = '1000 Angstrom'
         lc_model = lightcurve(cascade_param)

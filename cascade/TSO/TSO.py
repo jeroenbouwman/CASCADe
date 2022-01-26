@@ -37,6 +37,7 @@ from types import SimpleNamespace
 import warnings
 import time as time_module
 import psutil
+import pathlib
 import ray
 import numpy as np
 from scipy import ndimage
@@ -97,6 +98,8 @@ class TSOSuite:
     init_files: `list` of `str`
         List containing all the initialization files needed to run the
         CASCADe code.
+    path : 'pathlib.Path' or 'str'
+        Path extension to the defult path to the initialization files.
 
     Raises
     ------
@@ -114,10 +117,14 @@ class TSOSuite:
     def __init__(self, *init_files, path=None):
         if path is None:
             path = cascade_default_initialization_path
+        else:
+            path = pathlib.Path(path)
+        if not path.is_absolute():
+            path = cascade_default_initialization_path / path
         if len(init_files) != 0:
             init_files_path = []
             for file in init_files:
-                init_files_path.append(path+file)
+                init_files_path.append(path / file)
             self.cascade_parameters = configurator(*init_files_path)
         else:
             self.cascade_parameters = cascade_configuration
@@ -203,7 +210,7 @@ class TSOSuite:
         *init_files : `tuple` of `str`
             Single or multiple file names of the .ini files containing the
             parameters defining the observation and calibration settings.
-        path : `str`
+        path : `str` or 'pathlib.Path'
             (optional) Filepath to the .ini files, standard value in None
 
         Attributes
@@ -225,16 +232,18 @@ class TSOSuite:
         """
         if path is None:
             path = cascade_default_initialization_path
-        elif not os.path.isabs(path):
-            path = os.path.join(cascade_default_initialization_path, path)
+        else:
+            path = pathlib.Path(path)
+        if not path.is_absolute():
+            path = cascade_default_initialization_path / path
         if len(init_files) != 0:
             init_files_path = []
             for file in init_files:
-                init_files_path.append(os.path.join(path, file))
-                if not os.path.isfile(os.path.join(path, file)):
+                init_files_path.append(path / file)
+                if not (path / file).is_file():
                     raise FileNotFoundError("ini file {} does not excist. "
                                             "Aborting initialization "
-                                            "".format(os.path.join(path, file))
+                                            "".format(str(path / file))
                                             )
             self.cascade_parameters = configurator(*init_files_path)
         else:
@@ -458,11 +467,11 @@ class TSOSuite:
             warnings.warn("Verbose flag not set, assuming it to be False.")
             verbose = False
         try:
-            savePathVerbose = self.cascade_parameters.cascade_save_path
-            if not os.path.isabs(savePathVerbose):
-                savePathVerbose = os.path.join(cascade_default_save_path,
-                                               savePathVerbose)
-            os.makedirs(savePathVerbose, exist_ok=True)
+            savePathVerbose = \
+                pathlib.Path(self.cascade_parameters.cascade_save_path)
+            if not savePathVerbose.is_absolute():
+                savePathVerbose = cascade_default_save_path / savePathVerbose
+            savePathVerbose.mkdir(parents=True, exist_ok=True)
         except AttributeError:
             warnings.warn("No save path defined to save verbose output "
                           "No verbose plots will be saved")
@@ -692,11 +701,11 @@ class TSOSuite:
             warnings.warn("Verbose flag not set, assuming it to be False.")
             verbose = False
         try:
-            savePathVerbose = self.cascade_parameters.cascade_save_path
-            if not os.path.isabs(savePathVerbose):
-                savePathVerbose = os.path.join(cascade_default_save_path,
-                                               savePathVerbose)
-            os.makedirs(savePathVerbose, exist_ok=True)
+            savePathVerbose = \
+                pathlib.Path(self.cascade_parameters.cascade_save_path)
+            if not savePathVerbose.is_absolute():
+                savePathVerbose = cascade_default_save_path / savePathVerbose
+            savePathVerbose.mkdir(parents=True, exist_ok=True)
         except AttributeError:
             warnings.warn("No save path defined to save verbose output "
                           "No verbose plots will be saved")
@@ -912,11 +921,11 @@ class TSOSuite:
             warnings.warn("Verbose flag not set, assuming it to be False.")
             verbose = False
         try:
-            savePathVerbose = self.cascade_parameters.cascade_save_path
-            if not os.path.isabs(savePathVerbose):
-                savePathVerbose = os.path.join(cascade_default_save_path,
-                                               savePathVerbose)
-            os.makedirs(savePathVerbose, exist_ok=True)
+            savePathVerbose = \
+                pathlib.Path(self.cascade_parameters.cascade_save_path)
+            if not savePathVerbose.is_absolute():
+                savePathVerbose = cascade_default_save_path / savePathVerbose
+            savePathVerbose.mkdir(parents=True, exist_ok=True)
         except AttributeError:
             warnings.warn("No save path defined to save verbose output "
                           "No verbose plots will be saved")
@@ -1173,11 +1182,11 @@ class TSOSuite:
 
         """
         try:
-            savePathVerbose = self.cascade_parameters.cascade_save_path
-            if not os.path.isabs(savePathVerbose):
-                savePathVerbose = os.path.join(cascade_default_save_path,
-                                               savePathVerbose)
-            os.makedirs(savePathVerbose, exist_ok=True)
+            savePathVerbose = \
+                pathlib.Path(self.cascade_parameters.cascade_save_path)
+            if not savePathVerbose.is_absolute():
+                savePathVerbose = cascade_default_save_path / savePathVerbose
+            savePathVerbose.mkdir(parents=True, exist_ok=True)
         except AttributeError:
             warnings.warn("No save path defined to save verbose output "
                           "No verbose plots will be saved")
@@ -1404,11 +1413,11 @@ class TSOSuite:
         except AttributeError:
             processing_renorm_spatial_scans = False
         try:
-            savePathVerbose = self.cascade_parameters.cascade_save_path
-            if not os.path.isabs(savePathVerbose):
-                savePathVerbose = os.path.join(cascade_default_save_path,
-                                               savePathVerbose)
-            os.makedirs(savePathVerbose, exist_ok=True)
+            savePathVerbose = \
+                pathlib.Path(self.cascade_parameters.cascade_save_path)
+            if not savePathVerbose.is_absolute():
+                savePathVerbose = cascade_default_save_path / savePathVerbose
+            savePathVerbose.mkdir(parents=True, exist_ok=True)
         except AttributeError:
             warnings.warn("No save path defined to save verbose output "
                           "No verbose plots will be saved")
@@ -1947,10 +1956,10 @@ class TSOSuite:
             print("No results defined. Aborting saving results")
             raise
         try:
-            save_path = self.cascade_parameters.cascade_save_path
-            if not os.path.isabs(save_path):
-                save_path = os.path.join(cascade_default_save_path, save_path)
-            os.makedirs(save_path, exist_ok=True)
+            save_path = pathlib.Path(self.cascade_parameters.cascade_save_path)
+            if not save_path.is_absolute():
+                save_path = cascade_default_save_path / save_path
+            save_path.mkdir(parents=True, exist_ok=True)
         except AttributeError:
             print("No save path defined. Aborting saving results")
             raise
@@ -2085,9 +2094,7 @@ class TSOSuite:
                '_flux_calibrated_input_stellar_model.fits'
             write_spectra_to_fits(results.flux_calibrated_input_stellar_model,
                              save_path, filename, header_data,
-                             column_names=['Wavelength', 'Flux', 'Error Flux'])  
-            
-
+                             column_names=['Wavelength', 'Flux', 'Error Flux'])              
 
 
 def combine_observations(target_name, observations_ids, path=None,
@@ -2101,7 +2108,7 @@ def combine_observations(target_name, observations_ids, path=None,
         Name of the target.
     observations_ids : 'list' of 'str'
         Unique idensifier for each observations to be combined.
-    path : 'str', optional
+    path : 'str' or 'pathlib.Path', optional
         Path to data. The default is None.
     verbose : 'bool', optional
         Flag, if True, will cause CASCAde to produce verbose output (plots).
@@ -2119,11 +2126,11 @@ def combine_observations(target_name, observations_ids, path=None,
 
     if path is None:
         data_path = cascade_default_save_path
-    elif not os.path.isabs(path):
-        data_path = os.path.join(cascade_default_save_path, path)
     else:
-        data_path = path
-    
+        data_path = pathlib.Path(path)
+    if not path.is_absolute():
+        data_path = cascade_default_save_path / path
+
     if use_higher_resolution:
         file_name_extension = '_higher_res'
     else:
@@ -2169,8 +2176,7 @@ def combine_observations(target_name, observations_ids, path=None,
     SE = np.sqrt(1.0/W)
 
     wavelength_bins_path = \
-        os.path.join(cascade_default_data_path,
-                     "exoplanet_data/cascade/wavelength_bins")
+        cascade_default_data_path / "exoplanet_data/cascade/wavelength_bins"
     wavelength_bins_file = \
         (observations[target_list[0]]['observatory'] + '_' +
          observations[target_list[0]]['instrument'] + '_' +
@@ -2244,7 +2250,7 @@ def combine_observations(target_name, observations_ids, path=None,
     filename = target_name.strip() + '_' + header_data['FACILITY'] + '_' +\
         header_data['INSTRMNT'] + '_' + header_data['FILTER'] +\
         '_combined_'+observation_type+'_spectrum'+file_name_extension+'.fits'
-    save_path = os.path.join(data_path, target_name.strip())
+    save_path = data_path / target_name.strip()
 
     write_spectra_to_fits(combined_dataset, save_path, filename,
                           header_data)
@@ -2295,8 +2301,7 @@ def combine_observations(target_name, observations_ids, path=None,
                               combined_wavelength[-1]*1.05])
             ax.axes.set_ylim([TD-9*SE, TD+9*SE])
             plt.show()
-            fig.savefig(os.path.join(save_path, base_filename +
-                                     ".png"),
+            fig.savefig(save_path / base_filename+".png",
                         bbox_inches="tight")
 
         with quantity_support():
@@ -2310,7 +2315,7 @@ def combine_observations(target_name, observations_ids, path=None,
             ax.set_ylabel('SNR')
             ax.set_xlabel('Wavelength [{}]'.format(u.micron))
             plt.show()
-            fig.savefig(os.path.join(save_path, base_filename + "_snr.png"),
+            fig.savefig(save_path / base_filename+"_snr.png",
                         bbox_inches="tight")
 
 
@@ -2331,7 +2336,7 @@ def combine_timeseries(target_name, observations_ids, file_extension,
         DESCRIPTION.
     meta_list : 'list'
         DESCRIPTION.
-    path : 'str', optional
+    path : 'str' or 'pathlib.Path', optional
         DESCRIPTION. The default is None.
     verbose : 'bool', optional
         DESCRIPTION. The default is True.
@@ -2351,16 +2356,15 @@ def combine_timeseries(target_name, observations_ids, file_extension,
 
     if path is None:
         data_path = cascade_default_save_path
-    elif not os.path.isabs(path):
-        data_path = os.path.join(cascade_default_save_path, path)
     else:
-        data_path = path
-
+        data_path = pathlib.Path(path)
+    if not path.is_absolute():
+        data_path = cascade_default_save_path / path
 
     datasets_dict = {}
     for target in target_list:
         temp_dict = {}
-        file_path = os.path.join(data_path, target)
+        file_path = data_path / target
         file = target+"_"+file_extension+".fits"
         dataset = read_dataset_from_fits(file_path, file, meta_list)
         for key in meta_list:
@@ -2372,15 +2376,13 @@ def combine_timeseries(target_name, observations_ids, file_extension,
         datasets_dict[target] = temp_dict
 
     wavelength_bins_path = \
-        os.path.join(cascade_default_data_path,
-                     "exoplanet_data/cascade/wavelength_bins")
+        cascade_default_data_path / "exoplanet_data/cascade/wavelength_bins/"
     wavelength_bins_file = \
         (datasets_dict[target_list[0]]['FACILITY'] + '_' +
          datasets_dict[target_list[0]]['INSTRMNT'] + '_' +
          datasets_dict[target_list[0]]['FILTER'] +
          '_wavelength_bins.txt')
-    wavelength_bins = ascii.read(os.path.join(wavelength_bins_path,
-                                              wavelength_bins_file))
+    wavelength_bins = ascii.read(wavelength_bins_path / wavelength_bins_file)
 
     lr0 = (wavelength_bins['lower limit'].data *
            wavelength_bins['lower limit'].unit).to(u.micron).value
@@ -2431,5 +2433,4 @@ def combine_timeseries(target_name, observations_ids, file_extension,
              'mask': rebinned_mask[0, :]}            
 
     return rebinned_datasets, band_averaged_datasets, datasets_dict
-
 

@@ -39,6 +39,7 @@ import collections
 import gc
 import string
 from functools import wraps
+from pathlib import Path
 import astropy.units as u
 from astropy import constants as const
 from astropy.modeling.models import BlackBody
@@ -818,24 +819,24 @@ def get_calalog(catalog_name, update=True):
     """
     valid_catalogs = ['TEPCAT', 'EXOPLANETS.ORG', 'NASAEXOPLANETARCHIVE',
                       'EXOPLANETS_A']
-    path = os.path.join(cascade_default_data_path, "exoplanet_data/")
-    os.makedirs(path, exist_ok=True)
+    path = cascade_default_data_path / "exoplanet_data/"
+    path.mkdir(parents=True, exist_ok=True)
 
     if catalog_name == 'TEPCAT':
-        path = path+"tepcat/"
+        path = path / "tepcat/"
         os.makedirs(path, exist_ok=True)
         exoplanet_database_url = [
             "http://www.astro.keele.ac.uk/jkt/tepcat/allplanets-csv.csv",
             'http://www.astro.keele.ac.uk/jkt/tepcat/observables.csv']
         data_files_save = ["allplanets.csv", "observables.csv"]
     elif catalog_name == 'EXOPLANETS.ORG':
-        path = path+"exoplanets.org/"
+        path = path / "exoplanets.org/"
         os.makedirs(path, exist_ok=True)
         exoplanet_database_url = [
             "http://www.exoplanets.org/csv-files/exoplanets.csv"]
         data_files_save = ["exoplanets.csv"]
     elif catalog_name == 'NASAEXOPLANETARCHIVE':
-        path = path+"NASAEXOPLANETARCHIVE/"
+        path = path / "NASAEXOPLANETARCHIVE/"
         os.makedirs(path, exist_ok=True)
         _url = ("https://exoplanetarchive.ipac.caltech.edu/TAP/sync?")
         _query = ("query=select+pl_name,ra,dec,"
@@ -859,7 +860,7 @@ def get_calalog(catalog_name, update=True):
         exoplanet_database_url = [_url + _query]
         data_files_save = ["nasaexoplanetarchive.csv"]
     elif catalog_name == 'EXOPLANETS_A':
-        path = path+"EXOPLANETS_A/"
+        path = path / "EXOPLANETS_A/"
         os.makedirs(path, exist_ok=True)
         _url = ("http://svo2.cab.inta-csic.es/vocats/v2/exostars/cs.php?")
         _query = ("RA=180.000000&DEC=0.000000&"
@@ -878,7 +879,7 @@ def get_calalog(catalog_name, update=True):
     for url, file in zip(exoplanet_database_url, data_files_save):
         if update:
             try:
-                download_results = urllib.request.urlretrieve(url, path+file)
+                download_results = urllib.request.urlretrieve(url, path / file)
             except urllib.error.URLError:
                 print('Network connection not working, check settings')
                 raise
@@ -1489,8 +1490,8 @@ class exotethys_model:
         """
         from exotethys import sail
 
-        exotethys_data_path = os.path.join(cascade_default_data_path,
-                                           "exoplanet_data/exotethys/")
+        exotethys_data_path = \
+            cascade_default_data_path / "exoplanet_data/exotethys/"
         passband = InputParameter['instrument'] + '_' +\
             InputParameter['instrument_filter']
 
@@ -1586,10 +1587,10 @@ class exotethys_model:
                      limbdarkning \
                      coefficients".format(self.__valid_model_grid))
         try:
-            save_path = self.cascade_configuration.cascade_save_path
-            if not os.path.isabs(save_path):
-                save_path = os.path.join(cascade_default_save_path, save_path)
-            os.makedirs(save_path, exist_ok=True)
+            save_path = Path(self.cascade_configuration.cascade_save_path)
+            if not save_path.is_absolute():
+                save_path = cascade_default_save_path / save_path
+            save_path.mkdir(parents=True, exist_ok=True)
         except AttributeError:
             raise AttributeError("No save path defined\
                                  Aborting defining limbdarkning model")
@@ -1661,10 +1662,10 @@ class exotethys_model:
                      limbdarkning \
                      coefficients".format(self.__valid_model_grid))
         try:
-            save_path = self.cascade_configuration.cascade_save_path
-            if not os.path.isabs(save_path):
-                save_path = os.path.join(cascade_default_save_path, save_path)
-            os.makedirs(save_path, exist_ok=True)
+            save_path = Path(self.cascade_configuration.cascade_save_path)
+            if not save_path.is_absolute():
+                save_path = cascade_default_save_path / save_path
+            save_path.mkdir(parents=True, exist_ok=True)
         except AttributeError:
             raise AttributeError("No save path defined\
                                  Aborting defining limbdarkning model")
@@ -2075,8 +2076,7 @@ class exotethys_stellar_model:
         from exotethys import boats
 
         exotethys_data_path = \
-            os.path.join(cascade_default_data_path,
-                         "exoplanet_data/exotethys/passbands")
+            cascade_default_data_path / "exoplanet_data/exotethys/passbands"
         passband = InputParameter['instrument'] + '_' +\
             InputParameter['instrument_filter']
 

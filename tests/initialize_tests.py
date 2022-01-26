@@ -19,12 +19,12 @@ class TestInitialize(unittest.TestCase):
     def test_basic_cascade(self):
         # generate default initialization file and check if filr is generated
         generate_default_initialization()
-        self.assertTrue(os.path.exists(self.path+"cascade_default.ini"))
+        self.assertTrue(os.path.exists(self.path / "cascade_default.ini"))
         # initialize cascade unsing the default ini file and check if
         # initilization is successful. Also check if the instance of the
         # configurator is identical to that of the calss instance (singleton)
         cascade_param_configuration = \
-            configurator(self.path+"cascade_default.ini")
+            configurator(self.path / "cascade_default.ini")
         self.assertTrue(cascade_param_configuration.isInitialized)
         self.assertEqual(cascade_param_configuration, cascade_configuration)
         # check if instances of configurator are equal also in tso object

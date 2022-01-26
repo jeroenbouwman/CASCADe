@@ -37,3 +37,7 @@
 - Added a higher spectral resolution wavelength bins file for Spizer IRS.
 - Added the posibility of using higher orders of the  sources position as
   an aditional regressor .
+
+**version 1.1.2**
+- Changed the directory structure for the examples coming with the distribution.
+- Added the option to get data files directly from git repository.
