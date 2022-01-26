@@ -229,7 +229,7 @@ def check_for_user_initialization_files(data_path_archive: Path) -> list:
     if path_to_search.is_dir():
         user_init_file = find("user_processing_exceptions*.ini*", path_to_search)
     else:
-        user_init_file = None
+        user_init_file = []
     return user_init_file
  
 def copy_cascade_data_from_distribution(data_path_archive: Path,
