@@ -36,5 +36,4 @@ dependencies:
   - configparser
   - pip:
     - 'ray[default]'
-    - batman-package
     - git+https://github.com/ucl-exoplanets/ExoTETHyS.git@master
