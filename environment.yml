@@ -3,7 +3,7 @@ channels:
   - defaults
   - conda-forge
 dependencies:
-  - python>=3.7.0
+  - python=3.8
   - ipython
   - pip
   - qt
@@ -36,4 +36,5 @@ dependencies:
   - configparser
   - pip:
     - 'ray[default]'
+    - batman-package
     - git+https://github.com/ucl-exoplanets/ExoTETHyS.git@master
