@@ -7,7 +7,7 @@ dependencies:
   - ipython
   - pip
   - qt
-  - numpy=1.20.3
+  - numpy
   - scipy
   - matplotlib
   - seaborn
@@ -36,5 +36,5 @@ dependencies:
   - configparser
   - pip:
     - 'ray[default]'
-    - batman-package==2.4.6
+    - git+https://github.com/lkreidberg/batman.git@master
     - git+https://github.com/ucl-exoplanets/ExoTETHyS.git@master
