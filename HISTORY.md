@@ -41,3 +41,8 @@
 **version 1.1.2**
 - Changed the directory structure for the examples coming with the distribution.
 - Added the option to get data files directly from git repository.
+
+**version 1.1.3**
+- Cleaned up the initilization module.
+- Resolved problem with versioning of numpy, numba and batman in conda environment
+  Currently only tested for python 3.8.

@@ -32,7 +32,7 @@ CASCADEe used the following environment variables:
         Switch to show or not show warnings. Can either be 'on' or 'off'
     CASCADE_PATH
         Default directory for CASCADe.
-    CASCADE_OBSERVATIONS
+    CASCADE_DATA_PATH
         Default path to the input observational data and calibration files.
     CASCADE_SAVE_PATH
         Default path to where CASCADe saves output.
@@ -41,16 +41,10 @@ CASCADEe used the following environment variables:
     CASCADE_LOG_PATH:
         Default directory for logfiles.
 
-Attributes
-----------
-cascade_default_path : 'str'
-    CASCADe default path
-cascade_default_data_path : 'str'
-    Default path to the input observational data and calibration files.
-cascade_default_save_path : 'str'
-    Default path to where CASCADe saves output.
-cascade_default_initialization_path : 'str'
-    Default directory for CASCADe initialization files.
+On first import of the cascade package, a check is made if the default or
+user defined path to the input observational data and calibration files exist.
+If not, this is created and the functional data for CASCADe is copied into the
+directory, together with usage examples.
 
 Examples
 --------
@@ -101,8 +95,34 @@ __all__ = ['cascade_warnings',
            'generate_default_initialization',
            'configurator',
            'cascade_configuration',
-           #'reset_data',
+           'setup_cascade_data',
            'read_ini_files']
+
+
+__CASCADE_PATH = Path(os.path.dirname(__path__[0]))
+__CASCADE_DEFAULT_STORAGE_DIRECTORY = Path.home() / 'CASCADeSTORAGE/'
+
+__CASCADE_PATH = Path(os.path.dirname(__path__[0]))
+__CASCADE_DEFAULT_STORAGE_DIRECTORY = Path.home() / 'CASCADeSTORAGE/'
+
+__VALID_ENVIRONMENT_VARIABLES = ['CASCADE_WARNINGS',
+                                   'CASCADE_PATH',
+                                   'CASCADE_DATA_PATH',
+                                   'CASCADE_SAVE_PATH',
+                                   'CASCADE_INITIALIZATION_FILE_PATH',
+                                   'CASCADE_LOG_PATH']
+__ENVIRONMENT_DEFAULT_VALUES = \
+    ['on',
+     str(__CASCADE_PATH),
+     str(__CASCADE_DEFAULT_STORAGE_DIRECTORY),
+     str(__CASCADE_DEFAULT_STORAGE_DIRECTORY / 'results/'),
+     str(__CASCADE_DEFAULT_STORAGE_DIRECTORY / 'init_files/'),
+     str(__CASCADE_DEFAULT_STORAGE_DIRECTORY / 'logs/')]
+
+__DATA_DIRS = ['calibration/', 'exoplanet_data/', 'archive_databases/',
+                'configuration_templates/']
+__EXAMPLE_DIRS = ['data', 'scripts', 'init_files', 'results']
+
 
 def warning_on_one_line(message, category, filename, lineno, file=None, line=None):
         return '%s:%s: %s:%s\n' % (filename, lineno, category.__name__, message)
@@ -133,6 +153,7 @@ def check_cascade_version(version: str) -> str:
         used_version = 'master'
     return used_version
 
+
 def check_environment(environment_variables: list, default_values: list) -> bool:
     """
     Check the CASCADe environment variables.
@@ -157,6 +178,7 @@ def check_environment(environment_variables: list, default_values: list) -> bool
             flag_not_set = True
         os.environ[var] = os.environ.get(var, value)
     return flag_not_set
+
 
 def need_to_copy_data(data_path_archive: Path,
                       distribution_version: str) -> bool:
@@ -190,6 +212,7 @@ def need_to_copy_data(data_path_archive: Path,
                 copy_flag = True            
     return copy_flag
 
+
 def update_data_version(data_path_archive: Path,
                         distribution_version: str) -> None:
     """
@@ -209,6 +232,7 @@ def update_data_version(data_path_archive: Path,
     """
     with open((data_path_archive / '.cascade_data_version'), 'w') as f:
         f.write("{}".format(__CASCADE_VERSION))
+
 
 def check_for_user_initialization_files(data_path_archive: Path) -> list:
     """
@@ -231,7 +255,8 @@ def check_for_user_initialization_files(data_path_archive: Path) -> list:
     else:
         user_init_file = []
     return user_init_file
- 
+
+
 def copy_cascade_data_from_distribution(data_path_archive: Path,
                                         data_path_distribution: Path,
                                         data_path: str,
@@ -456,15 +481,25 @@ def setup_cascade_data(data_path_archive: Path, data_path_distribution: Path,
     if not copy_flag:
         return
     
+    print("Updating CASCADe data archive.")
     functional_data_path = data_path_distribution / 'data'
     examples_data_path = data_path_distribution / 'examples'
     if functional_data_path.is_dir():
+        print("Copying data from distribution to user defined data archive")
         reset_data_from_distribution(functional_sections, data_path_archive,
                                      functional_data_path)
         reset_data_from_distribution(example_sections, data_path_archive,
                                      examples_data_path,
                                      overwrite=True) 
     else:
+        print("Copying data from git repository to user defined data archive" 
+              "This can take a moment depending on the connection speed.")
+        used_distribution = Path(urlparse(url_distribution).path).parts[-2]
+        if distribution_version != used_distribution:
+            warnings.warn("The local CASCADe distribution is "
+                          f"version {distribution_version}. "
+                          f"Using the {used_distribution} branch of the git "
+                          "repository to install the CASCADe data.")
         functional_query_list = [{'path': f'data/{section}'}
                                  for section in functional_sections]
         reset_data_from_git(functional_query_list, data_path_archive,
@@ -475,57 +510,6 @@ def setup_cascade_data(data_path_archive: Path, data_path_distribution: Path,
                             url_distribution, overwrite=True)
 
     update_data_version(data_path_archive, distribution_version)
-
-
-__CASCADE_ONLINE_VERSION = check_cascade_version(__CASCADE_VERSION)
-#__CASCADE_FILE_BASE = f"CASCADe-{__CASCADE_ONLINE_VERSION}-"
-__CASCADE_URL = (f"https://gitlab.com/jbouwman/CASCADe/-/archive/"
-                 f"{__CASCADE_ONLINE_VERSION}/"
-                 f"CASCADe-{__CASCADE_ONLINE_VERSION}.zip?")
-
-__CASCADE_PATH = Path(os.path.dirname(__path__[0]))
-
-__CASCADE_DEFAULT_STORAGE_DIRECTORY = Path.home() / 'CASCADeSTORAGE/'
-
-__VALID_ENVIRONMENT_VARIABLES = ['CASCADE_WARNINGS',
-                                   'CASCADE_PATH',
-                                   'CASCADE_DATA_PATH',
-                                   'CASCADE_SAVE_PATH',
-                                   'CASCADE_INITIALIZATION_FILE_PATH',
-                                   'CASCADE_LOG_PATH']
-__ENVIRONMENT_DEFAULT_VALUES = \
-    ['on',
-     str(__CASCADE_PATH),
-     str(__CASCADE_DEFAULT_STORAGE_DIRECTORY),
-     str(__CASCADE_DEFAULT_STORAGE_DIRECTORY / 'results/'),
-     str(__CASCADE_DEFAULT_STORAGE_DIRECTORY / 'init_files/'),
-     str(__CASCADE_DEFAULT_STORAGE_DIRECTORY / 'logs/')]
-
-
-__flag_not_set = check_environment(__VALID_ENVIRONMENT_VARIABLES,
-                                   __ENVIRONMENT_DEFAULT_VALUES)
-if __flag_not_set:
-    warnings.warn((f"One of the following environment "
-                  f"variables: {__VALID_ENVIRONMENT_VARIABLES} has not "
-                  f"been set. Using default values"))
-
-cascade_warnings = os.environ['CASCADE_WARNINGS']
-cascade_default_path = Path(os.environ['CASCADE_PATH'])
-cascade_default_data_path = Path(os.environ['CASCADE_DATA_PATH'])
-cascade_default_save_path = Path(os.environ['CASCADE_SAVE_PATH'])
-cascade_default_initialization_path = \
-    Path(os.environ['CASCADE_INITIALIZATION_FILE_PATH'])
-cascade_default_log_path = Path(os.environ['CASCADE_LOG_PATH'])
-
-__data_dirs = ['calibration/', 'exoplanet_data/', 'archive_databases/',
-                'configuration_templates/']
-__example_dirs = ['data', 'scripts', 'init_files', 'results']
- 
-setup_cascade_data(cascade_default_data_path,
-                     __CASCADE_PATH, __CASCADE_URL,            
-                     __data_dirs, __example_dirs,
-                     __CASCADE_VERSION)
-
 
 
 def generate_default_initialization(observatory='HST', data='SPECTRUM',
@@ -813,7 +797,71 @@ class configurator(object, metaclass=_Singleton):
 
 cascade_configuration = configurator()
 """
-Singleton containing the entite configuration settings for the
-CASCADe code to work. This includes object and observation definitions and
-causal noise model settings.
+Instance if the configurator Singleton containing the entire configuration
+settings for the CASCADe code to work. This includes object and observation
+definitions and causal noise model settings.
+
+:meta hide-value:
 """
+
+__cascade_online_version = check_cascade_version(__CASCADE_VERSION)
+__cascade_url = (f"https://gitlab.com/jbouwman/CASCADe/-/archive/"
+                 f"{__cascade_online_version}/"
+                 f"CASCADe-{__cascade_online_version}.zip?")
+
+__flag_not_set = \
+    check_environment(__VALID_ENVIRONMENT_VARIABLES, __ENVIRONMENT_DEFAULT_VALUES)
+if __flag_not_set:
+    warnings.warn((f"One of the following environment "
+                  f"variables: {__VALID_ENVIRONMENT_VARIABLES} has not "
+                  f"been set. Using default values"))
+
+cascade_warnings = os.environ['CASCADE_WARNINGS']
+"""
+'str' :
+    If set to 'off' no warnings are shown. Default is 'on'
+
+:meta hide-value:
+"""
+cascade_default_path = Path(os.environ['CASCADE_PATH'])
+"""
+'pathlib.Path' :
+    CASCADe default path
+
+:meta hide-value:
+"""
+cascade_default_data_path = Path(os.environ['CASCADE_DATA_PATH'])
+"""
+'pathlib.Path' :
+    Default path to the input observational data and calibration files.
+
+:meta hide-value:
+"""
+cascade_default_save_path = Path(os.environ['CASCADE_SAVE_PATH'])
+"""
+'pathlib.Path' :
+    Default path to where CASCADe saves output.
+
+:meta hide-value:
+"""
+cascade_default_initialization_path = \
+    Path(os.environ['CASCADE_INITIALIZATION_FILE_PATH'])
+"""
+'pathlib.Path' :
+    Default path to where CASCADe saves output.
+
+:meta hide-value:
+"""
+cascade_default_log_path = Path(os.environ['CASCADE_LOG_PATH'])
+"""
+'pathlib.Path' :
+    Default directory for CASCADe log files.
+
+:meta hide-value:
+"""
+
+ 
+setup_cascade_data(cascade_default_data_path, __CASCADE_PATH, __cascade_url,            
+                   __DATA_DIRS, __EXAMPLE_DIRS, __CASCADE_VERSION)
+
+
