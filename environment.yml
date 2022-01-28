@@ -25,7 +25,7 @@ dependencies:
   - networkx
   - pytest
   - tqdm
-  - numba>=0.55
+  - numba=0.55
   - aiohttp
   - psutil
   - setproctitle

@@ -325,12 +325,19 @@ def copy_cascade_data_from_git(data_path_archive: Path,
                "(KHTML, like Gecko) Chrome/51.0.2704.103 Safari/537.36"}
     url_repository = url_distribution + urlencode(query)
     req = requests.get(url_repository, headers=header, allow_redirects=False)
+
     with zipfile.ZipFile(io.BytesIO(req.content)) as archive:
          for file in archive.namelist():
+             if file.endswith('/'):
+                 continue
              p = Path(file)
-             if p.suffix != '':
-                 archive.extract(file, data_path_archive /
-                                 p.relative_to(*p.parts[:2]))
+             sub_index = p.parts.index(new_path.stem)
+             sub_path = Path(*p.parts[sub_index:])
+             new_destintion = data_path_archive / sub_path
+             zipInfo = archive.getinfo(file)
+             zipInfo.filename = p.name
+             new_destintion.parent.mkdir(parents=True, exist_ok=True)
+             archive.extract(zipInfo, new_destintion.parent)
 
     # clean up temperory zip directory. Not present if version is master?
     base = Path(urlparse(url_distribution).path).stem + '-'
@@ -492,7 +499,7 @@ def setup_cascade_data(data_path_archive: Path, data_path_distribution: Path,
                                      examples_data_path,
                                      overwrite=True) 
     else:
-        print("Copying data from git repository to user defined data archive" 
+        print("Copying data from git repository to user defined data archive. " 
               "This can take a moment depending on the connection speed.")
         used_distribution = Path(urlparse(url_distribution).path).parts[-2]
         if distribution_version != used_distribution:

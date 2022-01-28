@@ -44,5 +44,6 @@
 
 **version 1.1.3**
 - Cleaned up the initilization module.
+- Fixed bug in unpacking of zip file from git.
 - Resolved problem with versioning of numpy, numba and batman in conda environment
   Currently only tested for python 3.8.

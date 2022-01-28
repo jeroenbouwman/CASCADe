@@ -14,7 +14,6 @@ units_and_doc_tests:
     - conda update -n base -c defaults conda
     - conda env create -f environment.yml
     - source activate cascade
-    - conda install numpy=1.22.1 -c conda-forge
     - conda list
     - python -m unittest discover -v -p *tests.py -s tests
     - cd docs
