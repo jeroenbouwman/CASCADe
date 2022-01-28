@@ -7,7 +7,7 @@ dependencies:
   - ipython
   - pip
   - qt
-  - numpy>=1.21.2
+  - numpy>=1.22
   - scipy
   - matplotlib
   - seaborn
@@ -25,7 +25,7 @@ dependencies:
   - networkx
   - pytest
   - tqdm
-  - numba=0.55
+  - numba>=0.55
   - aiohttp
   - psutil
   - setproctitle
