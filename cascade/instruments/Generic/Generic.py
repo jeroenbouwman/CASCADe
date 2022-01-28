@@ -337,6 +337,9 @@ class GenericSpectrograph(InstrumentBase):
             np.take_along_axis(uncertainty_spectral_data, idx, axis=0)
         mask = np.take_along_axis(mask, idx, axis=0)
 
+        time_unit = u.day
+        time = time * time_unit
+
         SpectralTimeSeries = \
             SpectralDataTimeSeries(wavelength=wavelength_data,
                                    wavelength_unit=wave_unit,
@@ -344,6 +347,7 @@ class GenericSpectrograph(InstrumentBase):
                                    data_unit=flux_unit,
                                    uncertainty=uncertainty_spectral_data,
                                    time=phase,
+                                   time_unit=u.dimensionless_unscaled,
                                    mask=mask,
                                    time_bjd=time,
                                    position=position,

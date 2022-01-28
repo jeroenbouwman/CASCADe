@@ -830,6 +830,11 @@ cascade_warnings = os.environ['CASCADE_WARNINGS']
 
 :meta hide-value:
 """
+if cascade_warnings.strip().lower() == "off": 
+    warnings.simplefilter("ignore")
+else:
+    warnings.simplefilter("default")
+
 cascade_default_path = Path(os.environ['CASCADE_PATH'])
 """
 'pathlib.Path' :
@@ -867,7 +872,6 @@ cascade_default_log_path = Path(os.environ['CASCADE_LOG_PATH'])
 :meta hide-value:
 """
 
- 
 setup_cascade_data(cascade_default_data_path, __CASCADE_PATH, __cascade_url,            
                    __DATA_DIRS, __EXAMPLE_DIRS, __CASCADE_VERSION)
 

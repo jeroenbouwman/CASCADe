@@ -28,7 +28,7 @@ config = {
     'url': 'https://jbouwman.gitlab.io/CASCADe/',
     'download_url': 'https://gitlab.com/jbouwman/CASCADe',
     'author_email': 'bouwman@mpia.de',
-    'version': '1.1.3',
+    'version': '1.1.4',
     'python_requires': '=3.8',
     'license': 'GNU General Public License v3 (GPLv3)',
     'classifiers': ["Programming Language :: Python :: 3",

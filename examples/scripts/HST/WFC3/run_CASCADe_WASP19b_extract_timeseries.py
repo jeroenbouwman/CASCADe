@@ -67,7 +67,7 @@ tso.execute("reset")
 
 # Initialize the TSO object
 tso.execute("initialize", "cascade_WASP19b_extract_timeseries.ini",
-            "cascade_WASP19b_object.ini", path='HST/WFC3/WASP-19b_example/')
+            "cascade_WASP19b_object.ini", path='HST/WFC3/WASP-19b_ibh715_example/')
 
 # Load the spectral data, including background observations if specified.
 tso.execute("load_data")

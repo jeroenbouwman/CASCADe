@@ -47,3 +47,11 @@
 - Fixed bug in unpacking of zip file from git.
 - Resolved problem with versioning of numpy, numba and batman in conda environment
   Currently only tested for python 3.8.
+
+**version 1.1.4**
+- Made a minor bug fix to the initialize module to make sure the warnings flag was
+  not ignored.
+- Small fixed to the example scrips and .ini files.
+- Small bug fix to the Generic instrument module for the time unit.
+- Bug fix in the extract_1d pipeline step when calling the
+  correct_initial_wavelength_shift function.
