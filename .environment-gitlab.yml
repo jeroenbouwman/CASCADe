@@ -1,13 +1,13 @@
 name: cascade
 channels:
-  - defaults
   - conda-forge
+  - defaults
 dependencies:
   - python=3.8
   - ipython
   - pip
   - qt
-  - numpy
+  - numpy=1.22.1
   - scipy
   - matplotlib
   - seaborn
