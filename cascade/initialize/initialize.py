@@ -101,6 +101,7 @@ __all__ = ['cascade_warnings',
            'configurator',
            'cascade_configuration',
            'setup_cascade_data',
+           'initialize_cascade',
            'read_ini_files']
 
 
@@ -912,7 +913,11 @@ str :
 :meta hide-value:
 """
 
-setup_cascade_data(cascade_default_path, __CASCADE_DISTRIBUTION_PATH,
-                    __cascade_url, __DATA_DIRS, __EXAMPLE_DIRS, __CASCADE_VERSION)
+def initialize_cascade():
+    setup_cascade_data(cascade_default_path, __CASCADE_DISTRIBUTION_PATH,
+                       __cascade_url, __DATA_DIRS, __EXAMPLE_DIRS, __CASCADE_VERSION)
 
+
+if __name__ == '__main__':
+    initialize_cascade()
 

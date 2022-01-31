@@ -48,6 +48,7 @@ from astropy.io import ascii
 from matplotlib import pyplot as plt
 import seaborn as sns
 
+from ..initialize import initialize_cascade
 from ..initialize import (cascade_configuration, configurator)
 from ..initialize import cascade_default_initialization_path
 from ..initialize import cascade_default_save_path
@@ -115,6 +116,7 @@ class TSOSuite:
     """
 
     def __init__(self, *init_files, path=None):
+        initialize_cascade()
         if path is None:
             path = cascade_default_initialization_path
         else:
