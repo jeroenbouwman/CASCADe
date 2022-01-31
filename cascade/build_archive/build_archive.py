@@ -44,6 +44,11 @@ from ..initialize import cascade_default_data_path
 from ..initialize import cascade_default_initialization_path
 from ..initialize import cascade_default_path
 from ..initialize import cascade_default_save_path
+from ..initialize import cascade_default_scripts_path
+from ..initialize import cascade_default_log_path
+from ..initialize import cascade_default_run_scripts_path
+from ..initialize import cascade_warnings
+from ..initialize import cascade_default_anaconda_environment
 from ..exoplanet_tools import parse_database
 from ..initialize import read_ini_files
 
@@ -510,6 +515,11 @@ def create_bash_script(database_id, configuration):
     script_dict['default_path'] = cascade_default_path
     script_dict['init_path'] = cascade_default_initialization_path
     script_dict['data_path'] = cascade_default_data_path
+    script_dict['scripts_path'] = cascade_default_scripts_path 
+    script_dict['log_path'] = cascade_default_log_path
+    script_dict['warnings'] = cascade_warnings
+    script_dict['conda_env'] = cascade_default_anaconda_environment
+    script_dict['run_scripts_path'] = cascade_default_run_scripts_path
     script_dict['system_name'] = system_name
     script_dict['instrument_save_path'] = instrument_save_path
     script_dict['visit'] = database_id
@@ -517,8 +527,9 @@ def create_bash_script(database_id, configuration):
     with open(os.path.join(templates_dir, scripts_template)) as template_file:
         filled_template = template_file.read().format(**script_dict)
 
-    bash_file_path = os.path.join(cascade_default_path, 'scripts',
-                                  instrument_save_path)
+    #bash_file_path = os.path.join(cascade_default_path, 'scripts',
+    #                              instrument_save_path)
+    bash_file_path = cascade_default_scripts_path / instrument_save_path
     os.makedirs(bash_file_path, exist_ok=True)
     bash_filename = 'run_'+system_name+'.sh'
     with open(os.path.join(bash_file_path, bash_filename), 'w') as file:

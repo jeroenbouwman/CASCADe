@@ -1,14 +1,17 @@
 #!/bin/bash
 
 eval "$(conda shell.bash hook)"
-conda activate cascade
+conda activate {conda_env}
 
-export CASCADE_DEFAULT_PATH={default_path}
+export CASCADE_STORAGE_PATH={default_path}
 export CASCADE_INITIALIZATION_FILE_PATH={init_path}
 export CASCADE_DATA_PATH={data_path}
 export CASCADE_SAVE_PATH={save_path}
+export CASCADE_WARNINGS={warnings}
+export CASCADE_SCRIPTS_PATH={scripts_path}
+export CASCADE_LOG_PATH={log_path}
 
-cascade_script_path=${{CASCADE_DEFAULT_PATH}}/scripts
+cascade_script_path={run_scripts_path}
 [[ ":$PATH:" =~ ":${{cascade_script_path}}:" ]] || PATH="${{cascade_script_path}}:$PATH"
 
 # uncomment the line below to re-build local archive
@@ -19,7 +22,10 @@ run_cascade.py cascade_{system_name}_object.ini cascade_{system_name}_calibrate_
 unset CASCADE_INITIALIZATION_FILE_PATH
 unset CASCADE_DATA_PATH
 unset CASCADE_SAVE_PATH
-unset CASCADE_DEFAULT_PATH
+unset CASCADE_STORAGE_PATH
+unset CASCADE_WARNINGS
+unset CASCADE_SCRIPTS_PATH
+unset CASCADE_LOG_PATH
 PATH="$(echo "$PATH" |sed -e "s#\(^\|:\)$(echo "$cascade_script_path" |sed -e 's/[^^]/[&]/g' -e 's/\^/\\^/g')\(:\|/\{{0,1\}}$\)#\1\2#" -e 's#:\+#:#g' -e 's#^:\|:$##g')"
 
 conda deactivate
