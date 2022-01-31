@@ -51,7 +51,7 @@ import seaborn as sns
 from ..initialize import (cascade_configuration, configurator)
 from ..initialize import cascade_default_initialization_path
 from ..initialize import cascade_default_save_path
-from ..initialize import cascade_default_data_path
+from ..initialize import cascade_default_path
 from ..utilities import write_timeseries_to_fits
 from ..utilities import write_spectra_to_fits
 from ..utilities import write_dataset_to_fits
@@ -2129,8 +2129,8 @@ def combine_observations(target_name, observations_ids, path=None,
         data_path = cascade_default_save_path
     else:
         data_path = pathlib.Path(path)
-    if not path.is_absolute():
-        data_path = cascade_default_save_path / path
+    if not data_path.is_absolute():
+        data_path = cascade_default_save_path / data_path
 
     if use_higher_resolution:
         file_name_extension = '_higher_res'
@@ -2139,7 +2139,7 @@ def combine_observations(target_name, observations_ids, path=None,
 
     observations = {}
     for target in target_list:
-        file_path = os.path.join(data_path, target)
+        file_path = data_path / target
         file = target+"_bootstrapped_exoplanet_spectrum.fits"
         with fits.open(os.path.join(file_path, file)) as hdul:
             SE = (hdul[0].header[' TDCL095']-hdul[0].header['TDDEPTH'])/2.0
@@ -2177,7 +2177,7 @@ def combine_observations(target_name, observations_ids, path=None,
     SE = np.sqrt(1.0/W)
 
     wavelength_bins_path = \
-        cascade_default_data_path / "exoplanet_data/cascade/wavelength_bins"
+        cascade_default_path / "exoplanet_data/cascade/wavelength_bins"
     wavelength_bins_file = \
         (observations[target_list[0]]['observatory'] + '_' +
          observations[target_list[0]]['instrument'] + '_' +
@@ -2302,7 +2302,7 @@ def combine_observations(target_name, observations_ids, path=None,
                               combined_wavelength[-1]*1.05])
             ax.axes.set_ylim([TD-9*SE, TD+9*SE])
             plt.show()
-            fig.savefig(save_path / base_filename+".png",
+            fig.savefig(save_path / (base_filename+".png"),
                         bbox_inches="tight")
 
         with quantity_support():
@@ -2316,7 +2316,7 @@ def combine_observations(target_name, observations_ids, path=None,
             ax.set_ylabel('SNR')
             ax.set_xlabel('Wavelength [{}]'.format(u.micron))
             plt.show()
-            fig.savefig(save_path / base_filename+"_snr.png",
+            fig.savefig(save_path / (base_filename+"_snr.png"),
                         bbox_inches="tight")
 
 
@@ -2359,8 +2359,8 @@ def combine_timeseries(target_name, observations_ids, file_extension,
         data_path = cascade_default_save_path
     else:
         data_path = pathlib.Path(path)
-    if not path.is_absolute():
-        data_path = cascade_default_save_path / path
+    if not data_path.is_absolute():
+        data_path = cascade_default_save_path / data_path
 
     datasets_dict = {}
     for target in target_list:
@@ -2377,7 +2377,7 @@ def combine_timeseries(target_name, observations_ids, file_extension,
         datasets_dict[target] = temp_dict
 
     wavelength_bins_path = \
-        cascade_default_data_path / "exoplanet_data/cascade/wavelength_bins/"
+        cascade_default_path / "exoplanet_data/cascade/wavelength_bins/"
     wavelength_bins_file = \
         (datasets_dict[target_list[0]]['FACILITY'] + '_' +
          datasets_dict[target_list[0]]['INSTRMNT'] + '_' +

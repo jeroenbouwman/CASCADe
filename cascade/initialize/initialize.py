@@ -30,14 +30,16 @@ are used to initialize CASCADe.
 CASCADEe used the following environment variables:
     CASCADE_WARNINGS
         Switch to show or not show warnings. Can either be 'on' or 'off'
-    CASCADE_PATH
-        Default directory for CASCADe.
+    CASCADE_STORAGE_PATH
+        Default storage directory for all functional data of CASCADe.
     CASCADE_DATA_PATH
-        Default path to the input observational data and calibration files.
+        Default path to the input observational data.
     CASCADE_SAVE_PATH
         Default path to where CASCADe saves output.
     CASCADE_INITIALIZATION_FILE_PATH:
         Default directory for CASCADe initialization files.
+    CASCADE_SCRIPTS_PATH
+        Default path to the pipeline scripts of CASCADe.
     CASCADE_LOG_PATH:
         Default directory for logfiles.
 
@@ -91,32 +93,48 @@ __all__ = ['cascade_warnings',
            'cascade_default_data_path',
            'cascade_default_save_path',
            'cascade_default_initialization_path',
+           'cascade_default_scripts_path',
            'cascade_default_log_path',
            'generate_default_initialization',
+           'cascade_default_run_scripts_path',
+           'cascade_default_anaconda_environment',
            'configurator',
            'cascade_configuration',
            'setup_cascade_data',
            'read_ini_files']
 
 
-__CASCADE_PATH = Path(os.path.dirname(__path__[0]))
-__CASCADE_DEFAULT_STORAGE_DIRECTORY = Path.home() / 'CASCADeSTORAGE/'
+# run scripts in $CONDA_PREFIX / bin or __path__/scripts
+# conda environment  $CONDA_DEFAULT_ENV or cascade
 
-__CASCADE_PATH = Path(os.path.dirname(__path__[0]))
-__CASCADE_DEFAULT_STORAGE_DIRECTORY = Path.home() / 'CASCADeSTORAGE/'
+__CASCADE_ANACONDA_ENV = os.environ.get('CONDA_DEFAULT_ENV', 'cascade')
+
+__CASCADE_DISTRIBUTION_PATH = Path(os.path.dirname(__path__[0]))
+
+__CASCADE_RUN_SCRIPTS_PATH =__CASCADE_DISTRIBUTION_PATH / 'scripts/'
+if not __CASCADE_RUN_SCRIPTS_PATH.is_dir():
+    __CASCADE_RUN_SCRIPTS_PATH = \
+        Path(os.environ.get('CONDA_PREFIX'), str(Path.home())) / 'bin/'
+
+__CASCADE_DEFAULT_STORAGE_DIRECTORY = \
+    Path(os.environ.get('CASCADE_STORAGE_PATH',
+                        str(Path.home() / 'CASCADeSTORAGE/')))
+
 
 __VALID_ENVIRONMENT_VARIABLES = ['CASCADE_WARNINGS',
-                                   'CASCADE_PATH',
-                                   'CASCADE_DATA_PATH',
-                                   'CASCADE_SAVE_PATH',
-                                   'CASCADE_INITIALIZATION_FILE_PATH',
-                                   'CASCADE_LOG_PATH']
+                                 'CASCADE_STORAGE_PATH',
+                                 'CASCADE_DATA_PATH',
+                                 'CASCADE_SAVE_PATH',
+                                 'CASCADE_INITIALIZATION_FILE_PATH',
+                                 'CASCADE_SCRIPTS_PATH',
+                                 'CASCADE_LOG_PATH']
 __ENVIRONMENT_DEFAULT_VALUES = \
     ['on',
-     str(__CASCADE_PATH),
      str(__CASCADE_DEFAULT_STORAGE_DIRECTORY),
+     str(__CASCADE_DEFAULT_STORAGE_DIRECTORY / 'data/') ,
      str(__CASCADE_DEFAULT_STORAGE_DIRECTORY / 'results/'),
      str(__CASCADE_DEFAULT_STORAGE_DIRECTORY / 'init_files/'),
+     str(__CASCADE_DEFAULT_STORAGE_DIRECTORY / 'scripts/'),
      str(__CASCADE_DEFAULT_STORAGE_DIRECTORY / 'logs/')]
 
 __DATA_DIRS = ['calibration/', 'exoplanet_data/', 'archive_databases/',
@@ -661,7 +679,7 @@ def generate_default_initialization(observatory='HST', data='SPECTRUM',
             {'observations_type': observation,
              'observations_mode': mode,
              'observations_data': data,
-             'observations_path': 'data/',
+             'observations_path': './',
              'observations_target_name': 'HD189733b',
              'observations_cal_path': 'calibration/',
              'observations_id': '',
@@ -835,17 +853,17 @@ if cascade_warnings.strip().lower() == "off":
 else:
     warnings.simplefilter("default")
 
-cascade_default_path = Path(os.environ['CASCADE_PATH'])
+cascade_default_path = Path(os.environ['CASCADE_STORAGE_PATH'])
 """
 'pathlib.Path' :
-    CASCADe default path
+    CASCADe default path to data storage containing all needed functional data.
 
 :meta hide-value:
 """
 cascade_default_data_path = Path(os.environ['CASCADE_DATA_PATH'])
 """
 'pathlib.Path' :
-    Default path to the input observational data and calibration files.
+    Default path to the input observational data.
 
 :meta hide-value:
 """
@@ -864,6 +882,15 @@ cascade_default_initialization_path = \
 
 :meta hide-value:
 """
+cascade_default_scripts_path = \
+    Path(os.environ['CASCADE_SCRIPTS_PATH'])
+"""
+'pathlib.Path' :
+    Default path to the CASCADe pipeline scripts.
+
+:meta hide-value:
+""" 
+
 cascade_default_log_path = Path(os.environ['CASCADE_LOG_PATH'])
 """
 'pathlib.Path' :
@@ -871,8 +898,21 @@ cascade_default_log_path = Path(os.environ['CASCADE_LOG_PATH'])
 
 :meta hide-value:
 """
+cascade_default_run_scripts_path = __CASCADE_RUN_SCRIPTS_PATH
+"""
+'pathlib.Path' :
 
-setup_cascade_data(cascade_default_data_path, __CASCADE_PATH, __cascade_url,            
-                   __DATA_DIRS, __EXAMPLE_DIRS, __CASCADE_VERSION)
+:meta hide-value:
+"""
+cascade_default_anaconda_environment = __CASCADE_ANACONDA_ENV
+
+"""
+str :
+
+:meta hide-value:
+"""
+
+setup_cascade_data(cascade_default_path, __CASCADE_DISTRIBUTION_PATH,
+                    __cascade_url, __DATA_DIRS, __EXAMPLE_DIRS, __CASCADE_VERSION)
 
 

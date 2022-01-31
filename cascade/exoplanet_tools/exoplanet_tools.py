@@ -56,7 +56,7 @@ import difflib
 import batman
 import ray
 
-from ..initialize import cascade_default_data_path
+from ..initialize import cascade_default_path
 from ..initialize import cascade_default_save_path
 from ..data_model import SpectralData
 from ..utilities import _define_band_limits
@@ -819,7 +819,7 @@ def get_calalog(catalog_name, update=True):
     """
     valid_catalogs = ['TEPCAT', 'EXOPLANETS.ORG', 'NASAEXOPLANETARCHIVE',
                       'EXOPLANETS_A']
-    path = cascade_default_data_path / "exoplanet_data/"
+    path = cascade_default_path / "exoplanet_data/"
     path.mkdir(parents=True, exist_ok=True)
 
     if catalog_name == 'TEPCAT':
@@ -1491,7 +1491,7 @@ class exotethys_model:
         from exotethys import sail
 
         exotethys_data_path = \
-            cascade_default_data_path / "exoplanet_data/exotethys/"
+            cascade_default_path / "exoplanet_data/exotethys/"
         passband = InputParameter['instrument'] + '_' +\
             InputParameter['instrument_filter']
 
@@ -2076,7 +2076,7 @@ class exotethys_stellar_model:
         from exotethys import boats
 
         exotethys_data_path = \
-            cascade_default_data_path / "exoplanet_data/exotethys/passbands"
+            cascade_default_path / "exoplanet_data/exotethys/passbands"
         passband = InputParameter['instrument'] + '_' +\
             InputParameter['instrument_filter']
 

@@ -3,7 +3,7 @@ import os
 import pathlib
 
 def package_files(directory):
-    exclude = ['data']
+    exclude = ['data', 'examples']
     paths = []
     for (path, directories, filenames) in os.walk(directory, topdown=True):
         directories[:] = [d for d in directories if d not in exclude]
@@ -17,7 +17,12 @@ HERE = pathlib.Path(__file__).parent
 # The text of the README file
 README = (HERE / "README.md").read_text()
 
-extra_files = package_files((HERE/'data').as_posix())
+#extra_files = package_files((HERE/'data').as_posix())
+
+scripts =  [(HERE/'scripts/build_local_hst_archive.py').as_posix(),
+            (HERE/'scripts/run_cascade.py').as_posix(),
+            (HERE/'scripts/run_cascade.sh').as_posix(),
+            (HERE/'scripts/run_stats.sh').as_posix()]
 
 config = {
     'name': 'CASCADe-spectroscopy',
@@ -29,7 +34,7 @@ config = {
     'download_url': 'https://gitlab.com/jbouwman/CASCADe',
     'author_email': 'bouwman@mpia.de',
     'version': '1.1.4',
-    'python_requires': '=3.8',
+    'python_requires': '>=3.7, <=3.9',
     'license': 'GNU General Public License v3 (GPLv3)',
     'classifiers': ["Programming Language :: Python :: 3",
                     "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
@@ -37,9 +42,9 @@ config = {
                     'Intended Audience :: Science/Research',
                     'Topic :: Scientific/Engineering :: Astronomy',
                     ],
-    'packages': setuptools.find_packages(exclude=("tests*", "docs",)),
+    'packages': setuptools.find_packages(exclude=("tests_private", "docs", "examples",)),
     'include_package_data': True,
-    'package_data': {"": extra_files},
+    'package_data': {"": scripts},
     'install_requires': ['batman-package', 'astropy', 'jplephem', 'scipy',
                          'numpy', 'configparser', 'photutils', 'pandas',
                          'scikit-learn', 'matplotlib', 'tqdm', 'seaborn',
@@ -47,10 +52,7 @@ config = {
                          'networkx', 'cython', 'astroquery', 'numba',
                          'ray[default]', 'pyfiglet', 'termcolor', 'exotethys',
                          'statsmodels'],
-    'scripts': [(HERE/'scripts/build_local_hst_archive.py').as_posix(),
-                (HERE/'scripts/run_cascade.py').as_posix(),
-                (HERE/'scripts/run_cascade.sh').as_posix(),
-                (HERE/'scripts/run_stats.sh').as_posix()],
+    'scripts': scripts,
     'data_files': [('', [(HERE/'README.md').as_posix(),
                          (HERE/'LICENSE.txt').as_posix()])]
 }

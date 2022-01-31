@@ -497,7 +497,7 @@ def create_bash_script(database_id, configuration):
 
     """
     # Location of the tamples
-    templates_dir = os.path.join(cascade_default_data_path,
+    templates_dir = os.path.join(cascade_default_path,
                                  'configuration_templates/')
     scripts_template = 'bash_script.template'
 
@@ -517,7 +517,7 @@ def create_bash_script(database_id, configuration):
     with open(os.path.join(templates_dir, scripts_template)) as template_file:
         filled_template = template_file.read().format(**script_dict)
 
-    bash_file_path = os.path.join(cascade_default_data_path, 'scripts',
+    bash_file_path = os.path.join(cascade_default_path, 'scripts',
                                   instrument_save_path)
     os.makedirs(bash_file_path, exist_ok=True)
     bash_filename = 'run_'+system_name+'.sh'
@@ -701,7 +701,7 @@ def check_for_exceptions(exception_file, parameter_dict):
     observation_name = parameter_dict['observations_target_name']
     observtory = parameter_dict['instrument_observatory']
     instrument = parameter_dict['instrument']
-    file_path = os.path.join(cascade_default_data_path, 'archive_databases/',
+    file_path = os.path.join(cascade_default_path, 'archive_databases/',
                              observtory, instrument)
     if not os.path.isfile(os.path.join(file_path, exception_file)):
         return {}

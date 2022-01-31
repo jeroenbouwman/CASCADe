@@ -44,6 +44,7 @@ from scipy.optimize import nnls
 
 from ...initialize import cascade_configuration
 from ...initialize import cascade_default_data_path
+from ...initialize import cascade_default_path
 from ...data_model import SpectralDataTimeSeries
 from ...utilities import find
 from ..InstrumentsBaseClasses import ObservatoryBase, InstrumentBase
@@ -270,7 +271,7 @@ class HSTWFC3(InstrumentBase):
             obs_path = os.path.join(cascade_default_data_path, obs_path)
         obs_cal_path = cascade_configuration.observations_cal_path
         if not os.path.isabs(obs_cal_path):
-            obs_cal_path = os.path.join(cascade_default_data_path,
+            obs_cal_path = os.path.join(cascade_default_path,
                                         obs_cal_path)
         obs_id = cascade_configuration.observations_id
         obs_cal_version = cascade_configuration.observations_cal_version

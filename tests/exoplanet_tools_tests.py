@@ -13,7 +13,7 @@ from cascade.exoplanet_tools import extract_exoplanet_data
 from cascade.exoplanet_tools import convert_spectrum_to_brighness_temperature
 from cascade.exoplanet_tools import lightcurve
 from cascade.initialize import cascade_default_initialization_path
-from cascade.initialize import cascade_default_data_path
+from cascade.initialize import cascade_default_path
 from cascade.initialize import generate_default_initialization
 from cascade.initialize import configurator
 
@@ -29,7 +29,7 @@ class TestExoplanetsTools(unittest.TestCase):
         self.mask = np.array([False, False])
         self.test_bt = np.array([1780.54871058, 1143.99801537])
         self.test_bt_unit = u.K
-        self.path = cascade_default_data_path
+        self.path = cascade_default_path
         self.catalog_name = ['EXOPLANETS.ORG', "TEPCAT",
                              "NASAEXOPLANETARCHIVE", "EXOPLANETS_A"]
         self.catalog_dir = ["exoplanets.org", "tepcat",

@@ -21,15 +21,43 @@ a full spectroscopic pipeline for HST/WFC3 and Spitzer/IRS spectroscopic
 timeseries observations as well as lightcurve calibration and fitting functionality.
 The <span style="color:#1F618D">CASCADe </span> project implements a novel “data driven”
 method, pioneered by Schoelkopf et al (2016) utilizing the causal connections within a
-data set, and uses this to calibrate the spectral timeseries data of single transiting
-systems. The current code has been tested successfully on spectroscopic data
-obtained with the Spitzer and HST observatories.
+data set, and uses this to calibrate the spectral timeseries data of a transiting
+systems, observed in a single object mode. The current code has been tested
+successfully on spectroscopic data obtained with the Spitzer and HST observatories,
+as well as JWST MIRI simulations.
 
 ## Installing Cascade
 
-The <span style="color:#1F618D">CASCADe </span> code can be downloaded from gitlab either
-using git or pip. To download and install with a single command using pip, type in a
-terminal the following command
+The easiest way to install the <span style="color:#1F618D">CASCADe </span>
+package is to create an Anaconda environment, download the distribution from PyPi,
+and install the package in the designated Anaconda environment with the following
+commands:
+
+```bash
+
+conda create --name cascade python=3.8 ipython
+conda activate cascade
+pip install CASCADe-spectroscopy
+
+```
+
+This will install all code and scripts you need for the package to work.
+> **_NOTE:_**  <span style="color:#1F618D">CASCADe </span> depends on the exotethys package version 2.0.2, which is currently only available on github and needs to be installed by the user when installing <span style="color:#1F618D">CASCADe </span> using PyPi.
+
+All necessary data needed by <span style="color:#1F618D">CASCADe </span> for it to
+work properly, such as calibration files for the different spectroscopic instruments of HST and Spitzer, will be downloaded from the gitlab repository when using
+<span style="color:#1F618D">CASCADe </span> for the first time. In ipython of python simply type:
+```python
+
+import cascade
+
+```
+
+The additional downloaded data also includes examples and observational data to try out the <span style="color:#1F618D">CASCADe </span> package.
+
+The <span style="color:#1F618D">CASCADe </span> code can also be downloaded from
+gitlab directly by either using git or pip. To download and install with a
+single command using pip, type in a terminal the following command
 
 ```bash
 
@@ -37,8 +65,8 @@ pip install git+git://gitlab.com/jbouwman/CASCADe.git@master
 
 ```
 
-Alternatively, one can first clone the repository and then install, either using the
-HTTPS protocal:
+Alternatively, one can first clone the repository and then install, either using
+the HTTPS protocal:
 
 ```bash
 
@@ -66,11 +94,9 @@ pip install .
 
 to install the package.
 
-In case one is using Anaconda make sure a cascade environment is created and
-activated before using our package In the <span style="color:#1F618D">CASCADe </span>
-main package directory an environment.yml can be found. You can
-use this yml file to create or update the cascade Anaconda environment. If you
-not already had created an cascade environment execute the following command:
+In case one is installing <span style="color:#1F618D">CASCADe </span> directly from
+gitlab, and one is using Anaconda,  make sure a cascade environment is created and
+activated before using our package. For conveniance,  in the <span style="color:#1F618D">CASCADe </span> main package directory an environment.yml can be found. You can use this yml file to create or update the cascade Anaconda environment. If you not already had created an cascade environment execute the following command:
 
 ```bash
 
@@ -78,7 +104,7 @@ conda env create -f environment.yml
 
 ```
 
-Incase you already have an cascade environment, you can update the necessary
+In case you already have an cascade environment, you can update the necessary
 packages with the following command (also use this after updating
 <span style="color:#1F618D">CASCADe </span> itself):
 

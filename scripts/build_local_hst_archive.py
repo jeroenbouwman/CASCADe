@@ -254,12 +254,14 @@ def built_local_hst_archive(init_path, data_path, save_path, no_warnings,
 
     import cascade
     from cascade.initialize import cascade_default_data_path
+    from cascade.initialize import cascade_default_path
     from cascade.initialize import cascade_default_initialization_path
     from cascade.initialize import cascade_default_save_path
+    from cascade.initialize import cascade_default_scripts_path
     from cascade.build_archive import return_exoplanet_catalogs
     from cascade.build_archive import return_all_hst_planets
     from cascade.build_archive import return_hst_data_calalog_keys
-    from cascade.build_archive import long_substr
+    # from cascade.build_archive import long_substr
     from cascade.build_archive import return_header_info
     from cascade.build_archive import save_observations
     from cascade.build_archive import IniFileParser
@@ -276,9 +278,11 @@ def built_local_hst_archive(init_path, data_path, save_path, no_warnings,
         "{}".format(cascade_default_data_path), "green")
     log("The save directory is set to: "
         "{}".format(cascade_default_save_path), "green")
+    log("The scripts directory is set to: "
+        "{}".format(cascade_default_scripts_path), "green")  
 
     # Location of the tamples
-    TEMPLATES_DIR = os.path.join(cascade_default_data_path,
+    TEMPLATES_DIR = os.path.join(cascade_default_path,
                                  'configuration_templates/')
 
     # All configuration files for the different sections in the
@@ -306,7 +310,7 @@ def built_local_hst_archive(init_path, data_path, save_path, no_warnings,
     INITIALIZATION_EXCEPTIONS_USER = 'user_processing_exceptions.ini'
 
     # Get the HST observations catalog file
-    HST_CATALOG_FILE = os.path.join(cascade_default_data_path,
+    HST_CATALOG_FILE = os.path.join(cascade_default_path,
                                     "archive_databases/HST/WFC3/",
                                     "WFC3_files.pickle")
     with open(HST_CATALOG_FILE, 'rb') as f:
