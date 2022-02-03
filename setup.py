@@ -11,18 +11,20 @@ def package_files(directory):
             paths.append(os.path.join('..', path, filename))
     return paths
 
-# The directory containing this file
-HERE = pathlib.Path(__file__).parent
+# The directory containing this file, MUST be RELATIVE
+HERE = pathlib.Path(__file__)
+HERE = HERE.relative_to(HERE.parent).parent
 
 # The text of the README file
 README = (HERE / "README.md").read_text()
 
 #extra_files = package_files((HERE/'data').as_posix())
 
-scripts =  [(HERE/'scripts/build_local_hst_archive.py').as_posix(),
-            (HERE/'scripts/run_cascade.py').as_posix(),
-            (HERE/'scripts/run_cascade.sh').as_posix(),
-            (HERE/'scripts/run_stats.sh').as_posix()]
+scripts =  [(HERE / 'scripts/build_local_hst_archive.py').as_posix(),
+            (HERE / 'scripts/setup_cascade.py').as_posix(),
+            (HERE / 'scripts/run_cascade.py').as_posix(),
+            (HERE / 'scripts/run_cascade.sh').as_posix(),
+            (HERE / 'scripts/run_stats.sh').as_posix()]
 
 config = {
     'name': 'CASCADe-spectroscopy',
@@ -33,7 +35,7 @@ config = {
     'url': 'https://jbouwman.gitlab.io/CASCADe/',
     'download_url': 'https://gitlab.com/jbouwman/CASCADe',
     'author_email': 'bouwman@mpia.de',
-    'version': '1.1.4',
+    'version': '1.1.5',
     'python_requires': '>=3.7, <=3.9',
     'license': 'GNU General Public License v3 (GPLv3)',
     'classifiers': ["Programming Language :: Python :: 3",
@@ -46,15 +48,17 @@ config = {
     'include_package_data': True,
     'package_data': {"": scripts},
     'install_requires': ['batman-package', 'astropy', 'jplephem', 'scipy',
-                         'numpy', 'configparser', 'photutils', 'pandas',
+                         'numpy==1.22.1', 'configparser', 'photutils', 'pandas',
                          'scikit-learn', 'matplotlib', 'tqdm', 'seaborn',
                          'pytest', 'scikit-image', 'sphinx', 'alabaster',
-                         'networkx', 'cython', 'astroquery', 'numba',
-                         'ray[default]', 'pyfiglet', 'termcolor', 'exotethys',
-                         'statsmodels'],
+                         'networkx', 'cython', 'astroquery', 'numba==0.53.1',
+                         'ray[default]', 'pyfiglet', 'termcolor',
+                         'statsmodels',
+                         'exotethys @ https://github.com/ucl-exoplanets/ExoTETHyS/tarball/master#egg=ExoTETHyS-master'],
+    'dependency_links': ['https://github.com/ucl-exoplanets/ExoTETHyS/tarball/master#egg=ExoTETHyS-master'],
     'scripts': scripts,
-    'data_files': [('', [(HERE/'README.md').as_posix(),
-                         (HERE/'LICENSE.txt').as_posix()])]
+    'data_files': [('', [(HERE / 'README.md').as_posix(),
+                         (HERE / 'LICENSE.txt').as_posix()])]
 }
 
 setuptools.setup(**config)

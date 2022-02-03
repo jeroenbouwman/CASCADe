@@ -788,7 +788,7 @@ class TSOSuite:
         verboseSaveFile = 'determine_absolute_cross_dispersion_position.png'
         verboseSaveFile = os.path.join(savePathVerbose, verboseSaveFile)
         (newShiftedTrace, newFittedTrace, medianCrossDispersionPosition,
-         initialCorssDispersionShift) = \
+         initialCrossDispersionShift) = \
             determine_absolute_cross_dispersion_position(
                 datasetIn,
                 spectralTrace,
@@ -868,7 +868,7 @@ class TSOSuite:
         self.cpm.spectral_movement = spectral_movement
         self.cpm.position = spectral_movement["crossDispersionShift"]
         self.cpm.median_position = medianCrossDispersionPosition
-        self.cpm.initial_position_shift = initialCorssDispersionShift
+        self.cpm.initial_position_shift = initialCrossDispersionShift
 
     def correct_wavelengths(self):
         """

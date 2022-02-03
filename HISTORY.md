@@ -55,3 +55,10 @@
 - Small bug fix to the Generic instrument module for the time unit.
 - Bug fix in the extract_1d pipeline step when calling the
   correct_initial_wavelength_shift function.
+
+**version 1.1.5**
+ - Updated the setup.py script.
+ - Updated the README file to reflect all changes
+ - Fixed some spelling mistakes in the plot captions and variable names.
+  
+  

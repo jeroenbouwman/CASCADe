@@ -1984,7 +1984,7 @@ def determine_absolute_cross_dispersion_position(cleanedDataset, initialTrace,
         To the observed source poisiton shifted spectral trace
     newFittedTrace : 'OrderedDict'
         Trace determined by fit to the center of light position.
-    initialCorssDispersionShift : 'float'
+    initialCrossDispersionShift : 'float'
         Shift between initial guess for spectral trace position and
         fitted trace position of the first spectral image.
     """
@@ -2011,12 +2011,12 @@ def determine_absolute_cross_dispersion_position(cleanedDataset, initialTrace,
     medianCrossDispersionPositionInitialTrace = \
         np.ma.median(initialTrace['positional_pixel'].value[idx])
 
-    initialCorssDispersionShift = \
+    initialCrossDispersionShift = \
         medianCrossDispersionPosition-medianCrossDispersionPositionInitialTrace
 
     newShiftedTrace['positional_pixel'] = \
         newShiftedTrace['positional_pixel'] + \
-        initialCorssDispersionShift*newShiftedTrace['positional_pixel'].unit
+        initialCrossDispersionShift*newShiftedTrace['positional_pixel'].unit
     newFittedTrace['positional_pixel'] = \
         xTrace*newFittedTrace['positional_pixel'].unit
 
@@ -2033,13 +2033,13 @@ def determine_absolute_cross_dispersion_position(cleanedDataset, initialTrace,
         ax.legend(loc='best')
         ax.set_title('Initial Trace Position')
         ax.set_xlabel('Pixel Position Dispersion Direction')
-        ax.set_ylabel('Pixel Position Corss-Dispersion Direction')
+        ax.set_ylabel('Pixel Position Cross-Dispersion Direction')
         plt.show()
         if verboseSaveFile is not None:
             fig.savefig(verboseSaveFile, bbox_inches='tight')
 
     return newShiftedTrace, newFittedTrace, medianCrossDispersionPosition, \
-        initialCorssDispersionShift
+        initialCrossDispersionShift
 
 
 def correct_wavelength_for_source_movent(datasetIn, spectral_movement,

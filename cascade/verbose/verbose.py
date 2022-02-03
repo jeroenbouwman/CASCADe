@@ -125,7 +125,7 @@ def load_data_verbose(*args, **kwargs):
                       cmap=cmap, interpolation="none", vmin=0.0, vmax=1.0)
         plt.colorbar(p, ax=ax).set_label("Normalized Intensity")
         ax.set_ylabel("Pixel Position Dispersion Direction")
-        ax.set_xlabel("Pixel Position Corss-Dispersion Direction")
+        ax.set_xlabel("Pixel Position Cross-Dispersion Direction")
         fig_name_extension = "a"
     else:
         ax.plot(wavelength[:, 0], data[:, 0], lw=3, color="b")
@@ -238,7 +238,7 @@ def subtract_background_verbose(*args, **kwargs):
                       cmap=cmap, interpolation="none", vmin=0.0, vmax=1.0)
         plt.colorbar(p, ax=ax).set_label("Normalized Average Intensity")
         ax.set_ylabel("Pixel Position Dispersion Direction")
-        ax.set_xlabel("Pixel Position Corss-Dispersion Direction")
+        ax.set_xlabel("Pixel Position Cross-Dispersion Direction")
         fig_name_extension = "a"
     else:
         ax.plot(total_wavelength, total_data)
