@@ -55,7 +55,7 @@ commands:
 
 .. code-block:: bash
 
-  conda activate cascade
+   conda activate cascade
    pip install CASCADe-spectroscopy
 
 .. note::
@@ -83,7 +83,7 @@ or alternatively from within the python interpreter:
 .. code-block:: python
 
   from cascade.initialize import initialize_cascade
-   initialize_cascade()
+  initialize_cascade()
 
 
 The additional downloaded data also includes examples and observational data to
@@ -135,7 +135,7 @@ to install the package.
 In case one is installing :blue:`CASCADe` directly from
 GitLab, and one is using Anaconda,  make sure a cascade environment is created
 and activated before using our package. For convenience, in the :blue:`CASCADe`
-main package directory an en**vironment.yml** can be found. You can use this yml
+main package directory an **environment.yml** can be found. You can use this yml
 file to create or update the cascade Anaconda environment. If you not already
 had created an cascade environment execute the following command:
 
