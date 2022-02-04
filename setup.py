@@ -54,8 +54,7 @@ config = {
                          'networkx', 'cython', 'astroquery', 'numba==0.53.1',
                          'ray[default]', 'pyfiglet', 'termcolor',
                          'statsmodels',
-                         'exotethys @ https://github.com/ucl-exoplanets/ExoTETHyS/tarball/master#egg=ExoTETHyS-master'],
-    'dependency_links': ['https://github.com/ucl-exoplanets/ExoTETHyS/tarball/master#egg=ExoTETHyS-master'],
+                         'exotethys==2.0.2'],
     'scripts': scripts,
     'data_files': [('', [(HERE / 'README.md').as_posix(),
                          (HERE / 'LICENSE.txt').as_posix()])]

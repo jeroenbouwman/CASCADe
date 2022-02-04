@@ -42,8 +42,7 @@ pip install CASCADe-spectroscopy
 ```
 
 This will install all code and scripts you need for the package to work.
-> **_NOTE:_**  <span style="color:#1F618D">CASCADe </span> depends on the exotethys package version 2.0.2, which is currently only available on GitHub and needs to be installed by the user when installing <span style="color:#1F618D">CASCADe </span> using PyPi. Also note that the batman package is only guaranteed to work when using numpy version 1.22.1, and with this numpy version one should install version 0.53.1
-of the numba package.  
+> **_NOTE:_**  <span style="color:#1F618D">CASCADe </span>  The batman package is only guaranteed to work when using numpy version 1.22.1, and with this numpy version one should install version 0.53.1 of the numba package.
 
 ## Installing the required <span style="color:#1F618D">CASCADe</span> data and examples
 
@@ -367,11 +366,16 @@ python3 run_CASCADe_WASP103b_calibrate_planet_spectrum.py
 
 ```
 
-The initialization files for this example are `cascade_WASP103b_object.ini`, which contains the system parameters and
-`cascade_WASP103b_calibrate_planet_spectrum.ini`, which contains all other necessary parameters.
-
-The WASP-103 b transit spectrum and diagnostic plots are stored in the `WASP103b_transit_from_generic_instrument`
-sub-directory in the `CASCADE_SAVE_PATH` directory.
+The initialization files for example 2 can be found in the
+`Generic/Gemini/GMOS/WASP-103b_example/` sub-directory of the directory specified
+by the `CASCADE_INITIALIZATION_FILE_PATH` environment variable. Similar to
+the other examples, the `cascade_WASP103b_object.ini` initialization file contains
+all parameters defining the system, and the `cascade_WASP103b_calibrate_planet_spectrum.ini` file contains all other
+parameters needed by the <span style="color:#1F618D">CASCADe </span> pipeline.
+The WASP-103 b transit spectrum and diagnostic plots are stored in the
+`Generic/Gemini/GMOS/WASP103b_transit_from_generic_instrument/`
+sub-directory of the directory specified by the `CASCADE_SAVE_PATH` environment
+variable.
 
 ## Documentation
 
