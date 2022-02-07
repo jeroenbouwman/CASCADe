@@ -15,7 +15,7 @@ the observational data can be found in the **examples/** sub-directory of the
 GitLab repository, and should be installed (see above) in the directory defined
 by the ``CASCADE_STORAGE_PATH`` and other environment variables. The examples
 cover both HST and Spitzer data as well as an example for a Generic spectroscopic
-dataset, in this case an observation with the GMOS instrument on Gimini.
+dataset, in this case an observation with the GMOS instrument on Gemini.
 
 Example 1a: Extracting a Spectroscopic Timeseries from HST WFC3 spectral images
 -------------------------------------------------------------------------------
@@ -148,7 +148,7 @@ pipeline. The HD189733b eclipse spectrum and diagnostic plots are stored in the
 sub-directory of the directory specified by the ``CASCADE_SAVE_PATH`` environment
 variable.
 
-Example 3: Calibrating a GIMINI/GMOS Spectroscopic Timeseries and extracting a transit spectrum
+Example 3: Calibrating a GEMINI/GMOS Spectroscopic Timeseries and extracting a transit spectrum
 -----------------------------------------------------------------------------------------------
 
 As a final example we show how to use :blue:`CASCADe` for spectral timeseries

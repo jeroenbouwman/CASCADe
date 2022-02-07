@@ -53,6 +53,9 @@ CASCADe documentation
    initialization
    howto
    examples
+   hst
+   acknowledgments
+   publications
    cascade
 
 Indices and tables
