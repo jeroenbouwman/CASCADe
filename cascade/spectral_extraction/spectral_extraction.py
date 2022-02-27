@@ -146,7 +146,7 @@ class Banana(Gaussian2D):
 
 class Banana2DKernel(Kernel2D):
     """
-    Modification of astropy Gaussian2DKernel to get a babana shaped kernel.
+    Modification of astropy Gaussian2DKernel to get a banana shaped kernel.
 
     This class defines a banana shaped convolution kernel mimicking the shape
     of the dispersion pattern on the detector near the short and long
