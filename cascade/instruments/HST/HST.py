@@ -553,7 +553,7 @@ class HSTWFC3(InstrumentBase):
 
         # orbital phase
         phase = (time - self.par['obj_ephemeris']) / self.par['obj_period']
-        phase = phase - np.int(np.max(phase))
+        phase = phase - int(np.max(phase))
         if np.max(phase) < 0.0:
             phase = phase + 1.0
         phase = phase - np.rint(phase)
@@ -781,9 +781,10 @@ class HSTWFC3(InstrumentBase):
         spectral_offset2 = spectral_offset2[idx_time_sort]
         spectral_data_nrptexp = spectral_data_nrptexp[idx_time_sort]
 
-        # check for spurious longer exosures.
+        # check for spurious longer or shorter exosures.
         median_exposure_time = np.median(spectral_image_exposure_time)
-        idx_remove = (spectral_image_exposure_time-0.01) > median_exposure_time
+        idx_remove = (((spectral_image_exposure_time-0.01) > median_exposure_time) |
+                      ((spectral_image_exposure_time+0.01) < median_exposure_time))
         spectral_image_exposure_time = \
             spectral_image_exposure_time[~idx_remove]
         time = time[~idx_remove]
@@ -828,14 +829,14 @@ class HSTWFC3(InstrumentBase):
 
         # orbital phase
         phase = (time - self.par['obj_ephemeris']) / self.par['obj_period']
-        phase = phase - np.int(np.max(phase))
+        phase = phase - int(np.max(phase))
         if np.max(phase) < 0.0:
             phase = phase + 1.0
         if np.min(phase) > 0.5:
             phase = phase - 1.0
         cal_phase = (cal_time - self.par['obj_ephemeris']) / \
             self.par['obj_period']
-        cal_phase = cal_phase - np.int(np.max(cal_phase))
+        cal_phase = cal_phase - int(np.max(cal_phase))
         if np.max(cal_phase) < 0.0:
             cal_phase = cal_phase + 1.0
         if np.min(cal_phase) > 0.5:
@@ -1106,7 +1107,7 @@ class HSTWFC3(InstrumentBase):
         spectral_data_nrptexp = spectral_data_nrptexp[idx_time_sort]
 
         med_number_of_samples = np.median(spectral_image_number_of_samples)
-        idx_remove = spectral_image_number_of_samples > med_number_of_samples
+        idx_remove = spectral_image_number_of_samples != med_number_of_samples
         time = time[~idx_remove]
         spectral_sampling_time = spectral_sampling_time[~idx_remove]
         spectral_image_cube = spectral_image_cube[~idx_remove, :, :]
@@ -1154,14 +1155,14 @@ class HSTWFC3(InstrumentBase):
 
         # orbital phase
         phase = (time - self.par['obj_ephemeris']) / self.par['obj_period']
-        phase = phase - np.int(np.max(phase))
+        phase = phase - int(np.max(phase))
         if np.max(phase) < 0.0:
             phase = phase + 1.0
         if np.min(phase) > 0.5:
             phase = phase - 1.0
         cal_phase = (cal_time - self.par['obj_ephemeris']) / \
             self.par['obj_period']
-        cal_phase = cal_phase - np.int(np.max(cal_phase))
+        cal_phase = cal_phase - int(np.max(cal_phase))
         if np.max(cal_phase) < 0.0:
             cal_phase = cal_phase + 1.0
         if np.min(cal_phase) > 0.5:
