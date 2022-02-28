@@ -61,4 +61,7 @@
  - Updated the README file to reflect all changes
  - Fixed some spelling mistakes in the plot captions and variable names.
   
+**version 1.1.6**
+ - Fix bug in HST module for non constant integration times / samples op the ramp.
+ - Updated the HST database file.
   

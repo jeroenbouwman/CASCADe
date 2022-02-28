@@ -2392,7 +2392,7 @@ def combine_scan_samples(datasetIn, scanDictionary, verbose=False):
         reshapedTime = np.take_along_axis(reshapedTime, idx_time_sort, axis=-1)
         reshapedWave = np.take_along_axis(reshapedWave, idx_time_sort, axis=-1)
         reshapedError = np.take_along_axis(reshapedError, idx_time_sort, axis=-1)
-        print(reshapedData.shape)
+
         return (reshapedData, reshapedWave, reshapedError, reshapedTime,
                 idx_time_sort)
 
