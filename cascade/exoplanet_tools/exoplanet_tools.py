@@ -1963,6 +1963,7 @@ class lightcurve:
             Interposlated limbdarkening correction.
 
         """
+        print(self.lc)
         if len(self.lc[0]) == 1:
             # interpoplate light curve model to observed phases
             f = interpolate.interp1d(self.lc[1], self.lc[2][0, :])

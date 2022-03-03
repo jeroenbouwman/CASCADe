@@ -368,6 +368,7 @@ def get_data_from_fits(data_files, data_list, auxilary_list):
                                            dynamic_ncols=True)):
         with fits.open(fits_file) as hdu_list:
             fits_header = hdu_list[0].header
+            print(hdu_list.info())
             for key, value in auxilary_dict.items():
                 try:
                     value['data'][ifile] = fits_header[key]
