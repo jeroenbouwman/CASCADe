@@ -42,6 +42,7 @@ from ...initialize import cascade_default_path
 from ...data_model import SpectralDataTimeSeries
 from ...utilities import find, get_data_from_fits
 from ..InstrumentsBaseClasses import ObservatoryBase, InstrumentBase
+from ...spectral_extraction import rebin_to_common_wavelength_grid
 
 
 __all__ = ['JWST', 'JWSTMIRILRS', 'JWSTNIRISS', 'JWSTNIRSPEC', 'JWSTNIRCAM']
@@ -60,6 +61,8 @@ class JWST(ObservatoryBase):
             if (cascade_configuration.instrument in
                 self.observatory_instruments.keys()):
                 factory = self.observatory_instruments[cascade_configuration.instrument]()
+                cascade_configuration.telescope_collecting_area = \
+                    self.collecting_area
                 self.par = factory.par
                 self.data = factory.data
                 self.spectral_trace = factory.spectral_trace
@@ -68,6 +71,8 @@ class JWST(ObservatoryBase):
                 self.instrument = factory.name
                 self.instrument_calibration = \
                     factory.instrument_calibration
+                cascade_configuration.instrument_dispersion_scale = \
+                     factory.dispersion_scale   
             else:
                 raise ValueError("JWST instrument not recognized, \
                                  check your init file for the following \
@@ -146,6 +151,11 @@ class JWSTMIRILRS(InstrumentBase):
         Name of the JWST instrument: 'MIRILRS'
         """
         return "MIRILRS"
+
+    @property
+    def dispersion_scale(self):
+        __all_scales = {'P750L': '100.0 Angstrom'}
+        return __all_scales[self.par["inst_filter"]]
 
     def load_data(self):
         """
@@ -404,6 +414,11 @@ class JWSTNIRSPEC(InstrumentBase):
         """
         return "NIRSPECBOTS"
 
+    @property
+    def dispersion_scale(self):
+        __all_scales = {'PRISM/CLEAR': '100.0 Angstrom'}
+        return __all_scales[self.par["inst_filter"]]
+
 
     def load_data(self):
         """
@@ -544,48 +559,68 @@ class JWSTNIRSPEC(InstrumentBase):
             raise AssertionError("No Timeseries data found in dir " +
                                  path_to_files)
     
-        exp_start = []
         time_bjd = []
-    
+
         wavelength_data = []
         spectral_data = []
         uncertainty_spectral_data = []
         dq = []
         
         all_data_files = []
-  
+
         for data_file in data_files:
             with fits.open(data_file) as hdu_list:
                 fits_header = hdu_list[0].header
-                exp_start.append(fits_header['EXPSTART'])
-                nints = fits_header['nints']
+                exp_start = fits_header['EXPSTART']
+                exp_end = fits_header['EXPEND']
+                
+                nints_total = fits_header['nints']
+#                nints_end = fits_header['INTEND']
+#                nints_start = fits_header['INTSTART']
+                
+#                nints = nints_end-nints_start+1
+                nints = nints_total
+                nints_start = 1
+    
+                delta_time = (exp_end - exp_start) / nints_total
+                start_time = exp_start + 0.5 * delta_time + 2400000.5
+                
                 all_data_files += [data_file]*nints
                 for i in range(2, nints+2):
-                    time_bjd.append(hdu_list[i].header['TZERO12'])
+                    # EXTNAME = 'EXTRACT1D'
+                    time_bjd.append(start_time + ((i-2)+(nints_start-1))*delta_time)
                     idx = np.argsort(hdu_list[i].data['WAVELENGTH'])
                     wavelength_data.append(hdu_list[i].data['WAVELENGTH'][idx])
                     spectral_data.append(hdu_list[i].data['FLUX'][idx])
                     uncertainty_spectral_data.append(hdu_list[i].data['FLUX_ERROR'][idx])
                     dq.append(hdu_list[i].data['DQ'][::-1])
-    
+
         wavelength_data = np.array(wavelength_data, dtype=float).T
         spectral_data = np.array(spectral_data, dtype=float).T
         uncertainty_spectral_data = np.array(uncertainty_spectral_data, dtype=float).T
         dq = np.array(dq, dtype=int).T
-    
-    
+
+
         time_bjd = np.array(time_bjd, dtype=float)
         exp_start = np.array(exp_start, dtype=float)
-    
+
         spectral_data = np.ma.masked_invalid(spectral_data)
-    
+
         mask = spectral_data.mask
-    
-        phase = np.ones_like(time_bjd)
-    
+
+        # orbital phase
+        phase = (time_bjd - self.par['obj_ephemeris']) / self.par['obj_period']
+        phase = phase - int(np.max(phase))
+        if np.max(phase) < 0.0:
+            phase = phase + 1.0
+        phase = phase - np.rint(phase)
+        if self.par['obs_type'] == 'ECLIPSE':
+            phase[phase < 0] = phase[phase < 0] + 1.0
+        
+
         wave_unit = u.micron
         flux_unit = u.Jy
-    
+
         SpectralTimeSeries = \
             SpectralDataTimeSeries(
                                    wavelength=wavelength_data,
@@ -603,7 +638,34 @@ class JWSTNIRSPEC(InstrumentBase):
                                    dataProduct=self.par['obs_data_product'],
                                    dataFiles=all_data_files
                                    )
-    
+        # make sure that the date units are as "standard" as posible
+        data_unit = (1.0*SpectralTimeSeries.data_unit).decompose().unit
+        SpectralTimeSeries.data_unit = data_unit
+        wave_unit = (1.0*SpectralTimeSeries.wavelength_unit).decompose().unit
+        SpectralTimeSeries.wavelength_unit = wave_unit
+        # To make the as standard as posible, by defaut change to
+        # mean nomalized data units and use micron as wavelength unit
+        mean_signal, _, _ = \
+            sigma_clipped_stats(SpectralTimeSeries.return_masked_array("data"),
+                                sigma=3, maxiters=10)
+        data_unit = u.Unit(mean_signal*SpectralTimeSeries.data_unit)
+        SpectralTimeSeries.data_unit = data_unit
+        SpectralTimeSeries.wavelength_unit = u.micron
+
+        SpectralTimeSeries.period = self.par['obj_period']
+        SpectralTimeSeries.ephemeris = self.par['obj_ephemeris']
+
+
+        nrebin =  (spectral_data.shape[0]+10) / spectral_data.shape[1]
+        if nrebin > 1.0:
+            SpectralTimeSeries = \
+                rebin_to_common_wavelength_grid(SpectralTimeSeries, 0,
+                                                nrebin=nrebin, verbose=False,
+                                                verboseSaveFile=None)
+
+
+        self._define_convolution_kernel()
+
         return SpectralTimeSeries
     
     
@@ -634,6 +696,26 @@ class JWSTNIRSPEC(InstrumentBase):
             self.nirspecbots_cal.roi = roi
         return
 
+    def _define_convolution_kernel(self):
+        """
+        Define convolution kernel.
+
+        Define the instrument specific convolution kernel which will be used
+        in the correction procedure of bad pixels.
+        """
+        if self.par["obs_data"] == 'SPECTRUM':
+            kernel = Gaussian1DKernel(4.0, x_size=19)
+        else:
+            kernel = Gaussian2DKernel(x_stddev=0.2, y_stddev=4.0,
+                                      theta=-0.0092, x_size=5, y_size=19)
+        try:
+            self.nirspecbots_cal
+        except AttributeError:
+            self.nirspecbots_cal = SimpleNamespace()
+        finally:
+            self.nirspecbots_cal.convolution_kernel = kernel
+        return
+
 
 class JWSTNIRISS(InstrumentBase):
     """
@@ -647,6 +729,11 @@ class JWSTNIRISS(InstrumentBase):
         Name of the JWST instrument: 'NIRISS'
         """
         return "NIRISS"
+
+    @property
+    def dispersion_scale(self):
+        __all_scales = {'S': '100.0 Angstrom'}
+        return __all_scales[self.par["inst_filter"]]
 
     def load_data(self):
         """
@@ -710,6 +797,11 @@ class JWSTNIRCAM(InstrumentBase):
         Name of the JWST instrument: 'NIRCAMLW'
         """
         return "NIRCAMLW"
+
+    @property
+    def dispersion_scale(self):
+        __all_scales = {'LW': '100.0 Angstrom'}
+        return __all_scales[self.par["inst_filter"]]
 
     def load_data(self):
         """
@@ -943,6 +1035,15 @@ class JWSTNIRCAM(InstrumentBase):
 
         SpectralTimeSeries.period = self.par['obj_period']
         SpectralTimeSeries.ephemeris = self.par['obj_ephemeris']
+
+
+        nrebin =  (spectral_data.shape[0]+10) / spectral_data.shape[1]
+        if nrebin > 1.0:
+            SpectralTimeSeries = \
+                rebin_to_common_wavelength_grid(SpectralTimeSeries, 0,
+                                                nrebin=nrebin, verbose=False,
+                                                verboseSaveFile=None)
+
 
         self._define_convolution_kernel()
 
