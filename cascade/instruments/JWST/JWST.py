@@ -35,6 +35,7 @@ from astropy.time import Time
 from astropy.convolution import Gaussian2DKernel
 from astropy.convolution import Gaussian1DKernel
 from astropy.stats import sigma_clipped_stats
+from tqdm import tqdm
 
 from ...initialize import cascade_configuration
 from ...initialize import cascade_default_data_path
@@ -514,8 +515,162 @@ class JWSTNIRSPEC(InstrumentBase):
             cpm_ncut_first_int=cpm_ncut_first_int)
     
         return par
+
+    def get_spectra(self, is_background=False):
+        """
+        Get the 1D spectra.
+
+        This function combines all functionallity to read fits files
+        containing the (uncalibrated) spectral timeseries, including
+        orbital phase and wavelength information
+
+        Parameters
+        ----------
+        is_background : `bool`
+            if `True` the data represents an observaton of the IR background
+            to be subtracted of the data of the transit spectroscopy target.
+
+        Returns
+        -------
+        SpectralTimeSeries : `cascade.data_model.SpectralDataTimeSeries`
+            Instance of `SpectralDataTimeSeries` containing all spectroscopic
+            data including uncertainties, time, wavelength and bad pixel mask.
+
+        Raises
+        ------
+        AssertionError, KeyError
+            Raises an error if no data is found or if certain expected
+            fits keywords are not present in the data files.
+        """
+        # get data files
+        if is_background:
+            target_name = self.par['obs_backgr_target_name']
+        else:
+            target_name = self.par['obs_target_name']
+
+        path_to_files = os.path.join(self.par['obs_path'],
+                                     self.par['inst_obs_name'],
+                                     self.par['inst_inst_name'],
+                                     target_name,
+                                     'SPECTRA/')
+        data_files = find('*' + self.par['obs_id'] + '*' +
+                          self.par['obs_data_product']+'.fits', path_to_files)
+
+        # number of integrations
+        nintegrations = len(data_files)
+        if nintegrations < 2:
+            raise AssertionError("No Timeseries data found in dir " +
+                                 path_to_files)
+
+        data_list = ['LAMBDA', 'FLUX', 'FERROR', 'MASK']
+        auxilary_list = ["POSITION", "MEDPOS", "PUNIT", "MPUNIT", "TIME_BJD",
+                         "DISP_POS", "ANGLE", "SCALE", "DPUNIT", "AUNIT",
+                         "SUNIT"]
+
+        data_dict, auxilary_dict = \
+            get_data_from_fits(data_files, data_list, auxilary_list)
+
+        if (not auxilary_dict['TIME_BJD']['flag']):
+            raise KeyError("No TIME_BJD keyword found in fits files")
+
+        wavelength_data = np.array(data_dict['LAMBDA']['data']).T
+        wave_unit = data_dict['LAMBDA']['data'][0].unit
+        spectral_data = np.array(data_dict['FLUX']['data']).T
+        flux_unit = data_dict['FLUX']['data'][0].unit
+        uncertainty_spectral_data = np.array(data_dict['FERROR']['data']).T
+        if data_dict['MASK']['flag']:
+            mask = np.array(data_dict['MASK']['data']).T
+        else:
+            mask = np.zeros_like(spectral_data, dtype=bool)
+        if auxilary_dict['TIME_BJD']['flag']:
+            time = np.array(auxilary_dict['TIME_BJD']['data']) * u.day
+            phase = (time.value - self.par['obj_ephemeris']) / \
+                self.par['obj_period']
+            phase = phase - int(np.max(phase))
+            if np.max(phase) < 0.0:
+                phase = phase + 1.0
+
+        position = np.array(auxilary_dict['POSITION']['data'])
+        posUnit =  auxilary_dict['PUNIT']['data_unit']
+        angle =  np.array(auxilary_dict['ANGLE']['data'])
+        angleUnit = auxilary_dict['AUNIT']['data_unit']
+        scaling = np.array(auxilary_dict['SCALE']['data'])
+        scaleUnit = auxilary_dict['SUNIT']['data_unit']
+        dispersion_position = np.array(auxilary_dict['DISP_POS']['data'])
+        dispPosUnit = auxilary_dict['DPUNIT']['data_unit']
+
+        idx = np.argsort(time)[self.par["cpm_ncut_first_int"]:]
+        time = time[idx]
+        spectral_data = spectral_data[:, idx]
+        uncertainty_spectral_data = uncertainty_spectral_data[:, idx]
+        wavelength_data = wavelength_data[:, idx]
+        mask = mask[:, idx]
+        data_files = [data_files[i] for i in idx]
+        phase = phase[idx]
+        position = position[idx]
+        angle = angle[idx]
+        scaling = scaling[idx]
+        dispersion_position = dispersion_position[idx]
+
+        SpectralTimeSeries = \
+            SpectralDataTimeSeries(wavelength=wavelength_data,
+                                   wavelength_unit=wave_unit,
+                                   data=spectral_data,
+                                   data_unit=flux_unit,
+                                   uncertainty=uncertainty_spectral_data,
+                                   time=phase,
+                                   time_unit=u.dimensionless_unscaled,
+                                   mask=mask,
+                                   time_bjd=time,
+                                   position=position,
+                                   position_unit=posUnit,
+                                   isRampFitted=True,
+                                   isNodded=False,
+                                   target_name=target_name,
+                                   dataProduct=self.par['obs_data_product'],
+                                   dataFiles=data_files)
+        # Standardize signal to mean value.
+        mean_signal, _, _ = \
+            sigma_clipped_stats(SpectralTimeSeries.return_masked_array("data"),
+                                sigma=3, maxiters=10)
+        data_unit = u.Unit(mean_signal*SpectralTimeSeries.data_unit)
+        SpectralTimeSeries.data_unit = data_unit
+        SpectralTimeSeries.wavelength_unit = u.micron
+        SpectralTimeSeries.add_measurement(
+            disp_position=dispersion_position,
+            disp_position_unit=dispPosUnit,
+            angle=angle,
+            angle_unit=angleUnit,
+            scale=scaling,
+            scale_unit=scaleUnit)
+
+        if spectral_data.shape[-1] > 512:
+            scanDict = {}
+            idx_scandir = np.ones(spectral_data.shape[-1], dtype=bool)
+            scanDict[0] = \
+                    {'nsamples': 16, 
+                     'nscans': sum(idx_scandir),
+                     'index': idx_scandir}
+
+            from cascade.spectral_extraction import combine_scan_samples
+            SpectralTimeSeries = \
+                combine_scan_samples(SpectralTimeSeries,
+                                     scanDict, verbose=False)
+
+
+
+        nrebin =  (spectral_data.shape[0]+10) / spectral_data.shape[1]
+        if nrebin > 1.0:
+            SpectralTimeSeries = \
+                rebin_to_common_wavelength_grid(SpectralTimeSeries, 0,
+                                                nrebin=nrebin, verbose=False,
+                                                verboseSaveFile=None)
+
+        self._define_convolution_kernel()
+
+        return SpectralTimeSeries
     
-    def get_spectra(self):
+    def get_spectra_alt(self):
         """
         Read the input spectra.
     
@@ -598,13 +753,14 @@ class JWSTNIRSPEC(InstrumentBase):
         uncertainty_spectral_data = np.array(uncertainty_spectral_data, dtype=float).T
         dq = np.array(dq, dtype=int).T
 
+        mask = self._create_mask_from_dq(dq)
 
         time_bjd = np.array(time_bjd, dtype=float)
         exp_start = np.array(exp_start, dtype=float)
 
         spectral_data = np.ma.masked_invalid(spectral_data)
 
-        mask = spectral_data.mask
+        mask = mask | spectral_data.mask
 
         # orbital phase
         phase = (time_bjd - self.par['obj_ephemeris']) / self.par['obj_period']
@@ -714,7 +870,7 @@ class JWSTNIRSPEC(InstrumentBase):
         uncertainty_spectral_data = []
         dq = []
         
-        all_data_files = []
+        #all_data_files = []
 
         for data_file in data_files:
             with fits.open(data_file) as hdu_list:
@@ -732,8 +888,9 @@ class JWSTNIRSPEC(InstrumentBase):
     
                 delta_time = (exp_end - exp_start) / nints_total
                 start_time = exp_start + 0.5 * delta_time + 2400000.5
+
+                #all_data_files += [data_file]*nints
                 
-                all_data_files += [data_file]*nints
                 for i in range(2, nints+2):
                     # EXTNAME = 'EXTRACT1D'
                     time_bjd.append(start_time + ((i-2)+(nints_start-1))*delta_time)
@@ -749,6 +906,7 @@ class JWSTNIRSPEC(InstrumentBase):
         uncertainty_spectral_data =  np.concatenate(uncertainty_spectral_data, axis=0, dtype=float).T
         dq = np.concatenate(dq, axis=0, dtype=int)
         
+        all_data_files = ['ERS_{0:0=4d}_rateints.fits'.format(i) for i in range(spectral_data.shape[-1])]
 
         time_bjd = np.array(time_bjd, dtype=float)
         exp_start = np.array(exp_start, dtype=float)
@@ -901,6 +1059,40 @@ class JWSTNIRSPEC(InstrumentBase):
             self.nirspecbots_cal.convolution_kernel = kernel
         return
 
+    def _create_mask_from_dq(self, dq_cube):
+        """
+        Create mask from DQ cube.
+
+        Parameters
+        ----------
+        dq_cube : TYPE
+            DESCRIPTION.
+
+        Returns
+        -------
+        mask : TYPE
+            DESCRIPTION.
+
+        Note
+        ----
+        Standard bit values not to flag are 0, 12 and 14.
+        Bit valiue 10 (blobs) is not set by default but can be selected not to
+        be flagged in case of problem.
+        """
+        bits_not_to_flag = self.par['proc_bits_not_to_flag']
+        bits_to_flag = []
+        for ibit in range(1, 16):
+            if ibit not in bits_not_to_flag:
+                bits_to_flag.append(ibit)
+        all_flag_values = np.unique(dq_cube)
+        bit_select = np.zeros_like(all_flag_values, dtype='int')
+        for ibit in bits_to_flag:
+            bit_select = bit_select + (all_flag_values & (1 << (ibit - 1)))
+        bit_select = bit_select.astype('bool')
+        mask = np.zeros_like(dq_cube, dtype='bool')
+        for iflag in all_flag_values[bit_select]:
+            mask = mask | (dq_cube == iflag)
+        return mask
 
 class JWSTNIRISS(InstrumentBase):
     """

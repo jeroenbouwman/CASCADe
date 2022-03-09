@@ -229,7 +229,7 @@ def write_timeseries_to_fits(data, path, additional_file_string=None,
             fileBase = "image_cube"
         if not isinstance(additional_file_string, type(None)):
             fileBase = fileBase + '_' + str(additional_file_string).strip(' ')
-        dataFiles = [fileBase+"_{0:0=3d}.fits".format(it)
+        dataFiles = [fileBase+"_{0:0=4d}.fits".format(it)
                      for it in range(ntime)]
 
     if ndim == 2:
@@ -368,7 +368,6 @@ def get_data_from_fits(data_files, data_list, auxilary_list):
                                            dynamic_ncols=True)):
         with fits.open(fits_file) as hdu_list:
             fits_header = hdu_list[0].header
-            print(hdu_list.info())
             for key, value in auxilary_dict.items():
                 try:
                     value['data'][ifile] = fits_header[key]
