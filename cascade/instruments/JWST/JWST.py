@@ -391,7 +391,7 @@ class JWSTNIRSPEC(InstrumentBase):
     """
     NIRSPEC instrument module.
     """
-    __valid_data = {'SPECTRUM'}
+    __valid_data = {'SPECTRUM', 'SPECTRAL_IMAGE'}
     __valid_observing_strategy = {'STARING'}
 
     def __init__(self):
@@ -428,17 +428,14 @@ class JWSTNIRSPEC(InstrumentBase):
         parameters defined during the initialization of the TSO object.
         """
         if self.par["obs_data"] == 'SPECTRUM':
-            data = self.get_spectra()
-            if self.par['obs_has_backgr']:
-                data_back = self.get_spectra(is_background=True)
+            return self.get_spectra()
+        elif self.par["obs_data"] == 'SPECTRAL_IMAGE':
+            return self.get_spectral_images()
+    
         else:
-            raise ValueError("NIRSPEC insrtrument can currently only be used \
-                              with observational data parameter \
-                              set to 'SPECTRUM'")
-        if self.par['obs_has_backgr']:
-            return data, data_back
-        else:
-            return data
+            raise ValueError("NIRSPEC insrtrument can currently only be used "
+                             "with observational data parameter "
+                             f"set to {self.__valid_data}")
 
     def get_instrument_setup(self):
         """
@@ -481,6 +478,13 @@ class JWSTNIRSPEC(InstrumentBase):
         
         obs_data_product = cascade_configuration.observations_data_product
         obs_target_name = cascade_configuration.observations_target_name
+        # background observations
+        try:
+            obs_uses_backgr_model = \
+                ast.literal_eval(cascade_configuration.
+                                 observations_uses_background_model)
+        except AttributeError:
+            obs_uses_backgr_model = False   
         obs_has_backgr = ast.literal_eval(cascade_configuration.
                                           observations_has_background)
         
@@ -506,11 +510,12 @@ class JWSTNIRSPEC(InstrumentBase):
             obs_data_product=obs_data_product,
             obs_target_name=obs_target_name,
             obs_has_backgr=obs_has_backgr,
+            obs_uses_backgr_model=obs_uses_backgr_model,
             cpm_ncut_first_int=cpm_ncut_first_int)
     
         return par
     
-    def get_spectra(self, is_background=False):
+    def get_spectra(self):
         """
         Read the input spectra.
     
@@ -520,9 +525,7 @@ class JWSTNIRSPEC(InstrumentBase):
     
         Parameters
         ----------
-        is_background : `bool`
-            if `True` the data represents an observaton of the IR background
-            to be subtracted of the data of the transit spectroscopy target.
+        None
     
         Returns
         -------
@@ -537,12 +540,7 @@ class JWSTNIRSPEC(InstrumentBase):
             fits keywords are not present in the data files.
         """
         # get data files
-        if is_background:
-            # obsid = self.par['obs_backgr_id']
-            target_name = self.par['obs_backgr_target_name']
-        else:
-            # obsid = self.par['obs_id']
-            target_name = self.par['obs_target_name']
+        target_name = self.par['obs_target_name']
     
         path_to_files = os.path.join(self.par['obs_path'],
                                      self.par['inst_obs_name'],
@@ -656,6 +654,21 @@ class JWSTNIRSPEC(InstrumentBase):
         SpectralTimeSeries.ephemeris = self.par['obj_ephemeris']
 
 
+        if spectral_data.shape[-1] > 512:
+            scanDict = {}
+            idx_scandir = np.ones(spectral_data.shape[-1], dtype=bool)
+            scanDict[0] = \
+                    {'nsamples': 16, 
+                     'nscans': sum(idx_scandir),
+                     'index': idx_scandir}
+
+            from cascade.spectral_extraction import combine_scan_samples
+            SpectralTimeSeries = \
+                combine_scan_samples(SpectralTimeSeries,
+                                     scanDict, verbose=False)
+
+
+
         nrebin =  (spectral_data.shape[0]+10) / spectral_data.shape[1]
         if nrebin > 1.0:
             SpectralTimeSeries = \
@@ -668,6 +681,158 @@ class JWSTNIRSPEC(InstrumentBase):
 
         return SpectralTimeSeries
     
+
+    def get_spectral_images(self):
+        """
+        
+
+        Returns
+        -------
+        None.
+
+        """
+        # get data files
+        target_name = self.par['obs_target_name']
+    
+        path_to_files = os.path.join(self.par['obs_path'],
+                                     self.par['inst_obs_name'],
+                                     self.par['inst_inst_name'],
+                                     target_name,
+                                     'SPECTRAL_IMAGES/')
+        
+        data_files = find('*' + self.par['obs_id'] + '*rateints.fits',
+                          path_to_files)
+    
+        # number of integrations
+        nintegrations = len(data_files)
+        if nintegrations < 1:
+            raise AssertionError("No Timeseries data found in dir " +
+                                 path_to_files)
+        time_bjd = []
+
+        spectral_data = []
+        uncertainty_spectral_data = []
+        dq = []
+        
+        all_data_files = []
+
+        for data_file in data_files:
+            with fits.open(data_file) as hdu_list:
+                fits_header = hdu_list[0].header
+                exp_start = fits_header['EXPSTART']
+                exp_end = fits_header['EXPEND']
+                
+                nints_total = fits_header['nints']
+#                nints_end = fits_header['INTEND']
+#                nints_start = fits_header['INTSTART']
+                
+#                nints = nints_end-nints_start+1
+                nints = nints_total
+                nints_start = 1
+    
+                delta_time = (exp_end - exp_start) / nints_total
+                start_time = exp_start + 0.5 * delta_time + 2400000.5
+                
+                all_data_files += [data_file]*nints
+                for i in range(2, nints+2):
+                    # EXTNAME = 'EXTRACT1D'
+                    time_bjd.append(start_time + ((i-2)+(nints_start-1))*delta_time)
+                
+                #idx = np.argsort(hdu_list[i].data['WAVELENGTH'])
+                #wavelength_data.append(hdu_list[i].data['WAVELENGTH'][idx])
+                spectral_data.append(hdu_list['SCI'].data)
+                uncertainty_spectral_data.append(hdu_list['ERR'].data)
+                dq.append(hdu_list['DQ'].data)
+
+        spectral_data = np.concatenate(spectral_data, axis=0, dtype=float).T
+        wavelength_data = self.define_wavelength_calibration(spectral_data.shape)
+        uncertainty_spectral_data =  np.concatenate(uncertainty_spectral_data, axis=0, dtype=float).T
+        dq = np.concatenate(dq, axis=0, dtype=int)
+        
+
+        time_bjd = np.array(time_bjd, dtype=float)
+        exp_start = np.array(exp_start, dtype=float)
+
+        spectral_data = np.ma.masked_invalid(spectral_data)
+
+        mask = spectral_data.mask
+
+        # orbital phase
+        phase = (time_bjd - self.par['obj_ephemeris']) / self.par['obj_period']
+        phase = phase - int(np.max(phase))
+        if np.max(phase) < 0.0:
+            phase = phase + 1.0
+        phase = phase - np.rint(phase)
+        if self.par['obs_type'] == 'ECLIPSE':
+            phase[phase < 0] = phase[phase < 0] + 1.0
+        
+
+        wave_unit = u.micron
+        flux_unit = u.ct/u.s
+
+        SpectralTimeSeries = \
+            SpectralDataTimeSeries(
+                                   wavelength=wavelength_data,
+                                   wavelength_unit=wave_unit,
+                                   data=spectral_data.data,
+                                   data_unit=flux_unit,
+                                   uncertainty=uncertainty_spectral_data,
+                                   time=phase,
+                                   time_unit=u.dimensionless_unscaled,
+                                   mask=mask,
+                                   time_bjd=time_bjd,
+                                   isRampFitted=True,
+                                   isNodded=False,
+                                   target_name=target_name,
+                                   dataProduct=self.par['obs_data_product'],
+                                   dataFiles=all_data_files
+                                   )
+        # make sure that the date units are as "standard" as posible
+        data_unit = (1.0*SpectralTimeSeries.data_unit).decompose().unit
+        SpectralTimeSeries.data_unit = data_unit
+        wave_unit = (1.0*SpectralTimeSeries.wavelength_unit).decompose().unit
+        SpectralTimeSeries.wavelength_unit = wave_unit
+        # To make the as standard as posible, by defaut change to
+        # mean nomalized data units and use micron as wavelength unit
+        mean_signal, _, _ = \
+            sigma_clipped_stats(SpectralTimeSeries.return_masked_array("data"),
+                                sigma=3, maxiters=10)
+        data_unit = u.Unit(mean_signal*SpectralTimeSeries.data_unit)
+        SpectralTimeSeries.data_unit = data_unit
+        SpectralTimeSeries.wavelength_unit = u.micron
+
+        SpectralTimeSeries.period = self.par['obj_period']
+        SpectralTimeSeries.ephemeris = self.par['obj_ephemeris']
+
+
+        if self.par['obs_has_backgr']:
+            SpectralTimeSeriesBackground = self.determine_background(SpectralTimeSeries)
+            return SpectralTimeSeries, SpectralTimeSeriesBackground
+
+        return SpectralTimeSeries
+
+    def determine_background(self, SpectralTimeSeries):
+        import copy
+        SpectralTimeSeriesBackground = copy.deepcopy(SpectralTimeSeries)
+        data = SpectralTimeSeriesBackground.data.data.value
+        background = np.nanmedian(data[:, [0,1,2,3,4,  25,26,27,28,29,30,31], :], axis=1)
+        background = np.repeat(background[:,None, :], 32, axis=1)
+        background = background * SpectralTimeSeriesBackground.data_unit
+        background = np.ma.array(background, mask=SpectralTimeSeriesBackground.mask)
+        SpectralTimeSeriesBackground.data = background
+        return SpectralTimeSeriesBackground
+
+    def define_wavelength_calibration(self, data_shape):
+        coeff = [-5.49471141e-19,  9.88675530e-16, -7.23417941e-13,
+                 2.73519357e-10, -5.53539904e-08,  5.33082106e-06,
+                 -1.15990213e-04,  3.92862378e-03, 5.61153919e-01]
+        x = np.arange(432)
+        wave = np.zeros(data_shape[0])
+        wave[30:-50] = np.polyval(coeff, x)
+        wave_image = np.repeat(wave[..., None], data_shape[1], axis=1)
+        wave_cube = np.repeat(wave_image[..., None], data_shape[2], axis=2)
+        return wave_cube
+        
     
     def get_spectral_trace(self):
         """Get spectral trace."""
@@ -686,8 +851,28 @@ class JWSTNIRSPEC(InstrumentBase):
         Defines region on detector which containes the intended target star.
         """
         dim = self.data.data.shape
-        roi = np.zeros((dim[0]), dtype=bool)
-    
+        ndim = self.data.data.ndim
+
+        roi = np.ones((dim[0:ndim-1]), dtype=bool)
+
+        wavelength_min = 1.161*u.micron
+        wavelength_max = 4.91*u.micron
+        
+        idx = np.where((self.data.wavelength[..., 0].data > wavelength_min) &
+                       (self.data.wavelength[..., 0].data < wavelength_max))
+        roi[idx] = False
+        
+        # mask_min = self.spectral_trace['wavelength'] > wavelength_min
+        # mask_max = self.spectral_trace['wavelength'] < wavelength_max
+        # mask_not_defined = self.spectral_trace['wavelength'] == 0.
+        # idx_min = int(np.min(self.spectral_trace['wavelength_pixel'].value[mask_min]))
+        # idx_max = int(np.max(self.spectral_trace['wavelength_pixel'].value[mask_max]))
+
+        # roi = np.zeros((dim[0]), dtype=bool)
+        # roi[0:idx_min] = True
+        # roi[idx_max+1:] = True
+        # roi[mask_not_defined] = True
+
         try:
             self.nirspecbots_cal
         except AttributeError:
@@ -758,7 +943,7 @@ class JWSTNIRISS(InstrumentBase):
             error will be raised
         """
         # instrument parameters
-        inst_inst_name = cascade_configuration.instrument
+        #inst_inst_name = cascade_configuration.instrument
         pass
 
 class JWSTNIRCAM(InstrumentBase):

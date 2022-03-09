@@ -36,7 +36,7 @@ config = {
     'download_url': 'https://gitlab.com/jbouwman/CASCADe',
     'author_email': 'bouwman@mpia.de',
     'version': '1.1.6',
-    'python_requires': '>=3.7, <=3.9',
+    'python_requires': '>=3.7, <3.10',
     'license': 'GNU General Public License v3 (GPLv3)',
     'classifiers': ["Programming Language :: Python :: 3",
                     "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
