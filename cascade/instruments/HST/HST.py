@@ -84,7 +84,7 @@ class HST(ObservatoryBase):
                 raise ValueError("HST instrument not recognized, "
                                  "check your init file for the following "
                                  "valid instruments: {}. Aborting loading "
-                                 "instrument".format(self.valid_instruments))
+                                 "instrument".format(self.observatory_instruments))
         else:
             raise ValueError("CASCADe not initialized, \
                                  aborting loading Observatory")
@@ -1453,7 +1453,7 @@ class HSTWFC3(InstrumentBase):
         idx_min = int(np.min(trace['wavelength_pixel'].value[mask_min]))
         idx_max = int(np.max(trace['wavelength_pixel'].value[mask_max]))
         if len(dim) <= 2:
-            roi = np.zeros((dim[0]), dtype=np.bool)
+            roi = np.zeros((dim[0]), dtype=bool)
             roi[0:idx_min] = True
             roi[idx_max+1:] = True
             roi[mask_not_defined] = True

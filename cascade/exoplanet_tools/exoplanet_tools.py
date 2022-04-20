@@ -1460,7 +1460,7 @@ class exotethys_model:
 
     __valid_ld_laws = {'linear', 'quadratic', 'nonlinear'}
     __valid_model_grid = {'Atlas_2000', 'Phoenix_2012_13', 'Phoenix_2018',
-                          'Stagger_2015', 'Phoenix_drift_2012'}
+                          'Stagger_2015', 'Stagger_2018', 'Phoenix_drift_2012'}
 
     def __init__(self, cascade_configuration):
         self.cascade_configuration = cascade_configuration
@@ -1542,7 +1542,7 @@ class exotethys_model:
 #                     0.31504, 0.27537, 0.27269, 0.2723 , 0.28077, 0.25901, 0.25706,
 #                     0.22291, 0.23587377]
 #         ld_coefficients = [np.array([i]) for i in ld_coefficients]
-            
+
         return wl_bands, ld_coefficients
 
     def return_par_from_ini(self):
@@ -1819,7 +1819,7 @@ class limbdarkning:
         -------
         ld_coefficients : 'list'
             List of zeros (eclipse only). The length of the list is set by
-            the type of the limbdarkening law. 
+            the type of the limbdarkening law.
 
         """
         if InputParameter['limb_darkening_laws'] == 'linear':
@@ -2036,7 +2036,7 @@ class exotethys_stellar_model:
     """
 
     __valid_model_grid = {'Atlas_2000', 'Phoenix_2012_13', 'Phoenix_2018',
-                          'Stagger_2015', 'Phoenix_drift_2012'}
+                          'Stagger_2015', 'Stagger_2018', 'Phoenix_drift_2012'}
 
     def __init__(self, cascade_configuration):
         self.cascade_configuration = cascade_configuration
@@ -2104,7 +2104,7 @@ class exotethys_stellar_model:
                                      params=params,
                                      star_database_interpolation='seq_linear')
 
-        # bug fix for poor wavelength resolution of stellar model at mid-IR      
+        # bug fix for poor wavelength resolution of stellar model at mid-IR
         if InputParameter['stellar_models_grids'] == 'Atlas_2000':
             grid_step = 5*u.Angstrom
             grid_max = (40.0*u.micron).to(u.Angstrom)
@@ -2157,7 +2157,7 @@ class exotethys_stellar_model:
                 self.cascade_configuration.instrument_dispersion_scale)
         except AttributeError:
             warnings.warn("Warning: instrument dispersion scale not defined.")
-            dispersion_scale = 10*u.Angstrom       
+            dispersion_scale = 10*u.Angstrom
         dispersion_scale = dispersion_scale.to(u.Angstrom)
         logg_unit = \
             re.split('\\((.*?)\\)',
@@ -2291,7 +2291,7 @@ class exotethys_stellar_model:
                 self.cascade_configuration.instrument_dispersion_scale)
         except AttributeError:
             warnings.warn("Warning: instrument dispersion scale not defined.")
-            dispersion_scale = 10*u.Angstrom       
+            dispersion_scale = 10*u.Angstrom
         dispersion_scale = dispersion_scale.to(u.Angstrom)
         stellar_models_grids = \
             self.cascade_configuration.model_stellar_models_grid
@@ -2385,7 +2385,7 @@ class SpectralModel:
         ------
         ValueError
             If the requested limbdakening code is not recognized a
-            value error is raised. 
+            value error is raised.
 
         Returns
         -------
@@ -2435,7 +2435,7 @@ class SpectralModel:
                              axis=-1)
         wavelength_unit = dataset.wavelength_unit
         data_unit = dataset.data_unit
-        
+
         un_corrected_wavelength = wavelength.copy()
         iterate_shift = True
         iteration_count = 0
@@ -2483,9 +2483,9 @@ class SpectralModel:
                 (iteration_count > 5):
                 iterate_shift = False
             iteration_count += 1
-            
+
             corrected_wavelength = \
-                np.ma.array(un_corrected_wavelength.data+wavelength_shift, 
+                np.ma.array(un_corrected_wavelength.data+wavelength_shift,
                             mask=un_corrected_wavelength.mask)
 
         model_wavelength = \

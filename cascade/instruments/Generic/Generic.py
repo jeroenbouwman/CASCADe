@@ -69,7 +69,7 @@ class Generic(ObservatoryBase):
                 raise ValueError("Generic instrument not recognized, \
                                  check your init file for the following \
                                  valid instruments: {}. Aborting loading \
-                                 instrument".format(self.valid_instruments))
+                                 instrument".format(self.observatory_instruments))
         else:
             raise ValueError("CASCADe not initialized, \
                                  aborting loading Observatory")
@@ -400,7 +400,7 @@ class GenericSpectrograph(InstrumentBase):
         Defines region on detector which containes the intended target star.
         """
         dim = self.data.data.shape
-        roi = np.zeros((dim[0]), dtype=np.bool)
+        roi = np.zeros((dim[0]), dtype=bool)
 
         try:
             self.Generic_cal

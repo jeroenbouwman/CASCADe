@@ -229,7 +229,7 @@ def write_timeseries_to_fits(data, path, additional_file_string=None,
             fileBase = "image_cube"
         if not isinstance(additional_file_string, type(None)):
             fileBase = fileBase + '_' + str(additional_file_string).strip(' ')
-        dataFiles = [fileBase+"_{0:0=3d}.fits".format(it)
+        dataFiles = [fileBase+"_{0:0=4d}.fits".format(it)
                      for it in range(ntime)]
 
     if ndim == 2:

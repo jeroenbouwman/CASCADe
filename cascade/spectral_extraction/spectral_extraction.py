@@ -626,8 +626,8 @@ def iterative_bad_pixel_flagging(dataset, ROIcube, Filters,
                           ReturnCleanedData=True)
 
     iiteration = 1
-    while (numberOfFlaggedPixels > acceptanceLimit) & \
-            (iiteration <= maxNumberOfIterations):
+    while ((numberOfFlaggedPixels > acceptanceLimit) & \
+            (iiteration <= maxNumberOfIterations)) | (iiteration == 1):
         mask = (cleanedData-filteredImage)**2 > (sigmaLimit *
                                                  filteredImageVariance)
         numberOfFlaggedPixels = np.sum(~ROIcube & mask)
