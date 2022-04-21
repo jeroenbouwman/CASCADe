@@ -1,9 +1,9 @@
-name: cascade
+name: cascade-test
 channels:
   - conda-forge
   - defaults
 dependencies:
-  - python=3.8
+  - python=3.9
   - ipython
   - pip
   - qt
@@ -37,4 +37,4 @@ dependencies:
   - pip:
     - 'ray[default]'
     - batman-package
-    - exotethys==2.0.2
+    - exotethys==2.0.3

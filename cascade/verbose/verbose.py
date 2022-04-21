@@ -330,7 +330,7 @@ def check_wavelength_solution_verbose(*args, **kwargs):
     if "stellar_model" not in  kwargs.keys():
         return
     if "extension" not in  kwargs.keys():
-        extension="" 
+        extension=""
     else:
         extension = kwargs["extension"]
     modeled_observations = kwargs["modeled_observations"]
@@ -600,8 +600,11 @@ def calibrate_timeseries_verbose(*args, **kwargs):
     sns.set_context("talk", font_scale=1.0, rc={"lines.linewidth": 3.5})
     sns.set_style("white", {"xtick.bottom": True, "ytick.left": True})
     from scipy.stats import probplot
-    probplot(mean_norm, dist=distribution_function(*distribution_variables),
-             plot=plt.figure(dpi=200).add_subplot(111))
+    try:
+        probplot(mean_norm, dist=distribution_function(*distribution_variables),
+			            plot=plt.figure(dpi=200).add_subplot(111))
+    except ValueError:
+        pass
     plt.title("QQ-plot of mean transit depth")
     plt.show()
     if save_verbose:
@@ -693,7 +696,7 @@ def calibrate_timeseries_verbose(*args, **kwargs):
             fig.savefig(
                 os.path.join(save_path, save_name_base +
                              "_calibrate_timeseries_brightness_temperature_spectrum.png"),
-                bbox_inches="tight")        
+                bbox_inches="tight")
 
     ####################################
     # residual plot
@@ -827,7 +830,7 @@ def calibrate_timeseries_verbose(*args, **kwargs):
                      color="b", lw=8, zorder=8)
             plt.plot([], [], ' ',
                      label="Used scaling: {:10.4f}".format(scaling))
-            
+
             ax0.set_ylabel(f'Flux [{ax0.yaxis.units.to_string(format="latex")}]')
             ax0.set_xlabel(f'Wavelength [{ax0.xaxis.units.to_string(format="latex")}]')
             ax0.set_title("Comparison Model with Observed Stellar Spectrum")
