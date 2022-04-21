@@ -28,7 +28,7 @@ commands:
 
 ```bash
 
-conda create --name cascade python=3.8 ipython
+conda create --name cascade python=3.9 ipython
 conda activate cascade
 pip install CASCADe-spectroscopy
 

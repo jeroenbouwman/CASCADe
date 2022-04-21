@@ -29,7 +29,7 @@ and then create and environment for :blue:`CASCADe`:
 
 .. code-block:: bash
 
-  conda create --name cascade python=3.8 ipython
+  conda create --name cascade python=3.9 ipython
 
 Note that specifying the python version and adding ipython to be installed are
 optional. The :blue: `CASCADe` code is guaranteed to work with python version 3.8

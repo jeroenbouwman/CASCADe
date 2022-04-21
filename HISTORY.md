@@ -65,3 +65,6 @@
  - Fix bug in HST module for non constant integration times / samples op the ramp.
  - Updated the HST database file.
   
+**version 1.1.7**
+ - Added JWST functionality
+ - Updated requirements
