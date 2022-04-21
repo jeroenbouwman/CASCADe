@@ -1,4 +1,4 @@
-name: cascade-test
+name: cascade
 channels:
   - conda-forge
   - defaults
