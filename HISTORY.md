@@ -1,6 +1,6 @@
 ## History of versions
 
-**version 1.0.6**  
+**version 1.0.6**
 - First online release
 
 **version 1.0.7**
@@ -17,7 +17,7 @@
 
 **version 1.0.9**
 - Added sensitivity curves for Spitzer IRS data
-- Added a fix for the low resolution Atlas 2000 models at longer wavelengths 
+- Added a fix for the low resolution Atlas 2000 models at longer wavelengths
 - Updated Verbose plots for stellar spectrum
 
 **version 1.1.0**
@@ -60,11 +60,15 @@
  - Updated the setup.py script.
  - Updated the README file to reflect all changes
  - Fixed some spelling mistakes in the plot captions and variable names.
-  
+
 **version 1.1.6**
  - Fix bug in HST module for non constant integration times / samples op the ramp.
  - Updated the HST database file.
-  
+
 **version 1.1.7**
  - Added JWST functionality
  - Updated requirements
+
+**version 1.1.8**
+ - Solved issue #100, added normalization=None to phase cross-correlation.
+ - Updated requirements for scikit-image to >= 0.19

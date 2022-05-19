@@ -24,9 +24,9 @@ copyright = '2021 Jeroen Bouwman'
 author = 'Jeroen Bouwman'
 
 # The short X.Y version
-version = '1.1.7'
+version = '1.1.8'
 # The full version, including alpha/beta/rc tags
-release = '1.1.7 alpha'
+release = '1.1.8 alpha'
 
 
 # -- General configuration ---------------------------------------------------
@@ -144,7 +144,7 @@ html_static_path = ['_static']
 # Output file base name for HTML help builder.
 htmlhelp_basename = 'CASCADedoc'
 
-# Favicon image 
+# Favicon image
 html_favicon = './_static/cascade.ico'
 
 
