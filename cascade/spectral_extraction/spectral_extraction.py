@@ -1026,7 +1026,7 @@ def _determine_relative_source_shift(reference_image, image,
     # returns shift, error and phase difference
     shift, _, _ = \
         phase_cross_correlation(ref_im, im, upsample_factor=upsampleFactor,
-                                space=space)
+                                space=space, normalization=None)
     relativeImageShiftY = -shift[0]
     relativeImageShiftX = -shift[1]
     return relativeImageShiftY, relativeImageShiftX
@@ -2316,13 +2316,13 @@ def combine_scan_samples(datasetIn, scanDictionary, verbose=False):
         reshapedData = \
             np.mean(np.reshape(data, (len(data)//nreads, nreads)), axis=-1)
         return list(reshapedData)
-    
+
     def combine_list_of_strings(data, scanDictionary, sort_index):
         reshapedData = []
         for scan_dir, scan_par in scanDictionary.items():
             data_scan = np.ma.compress(scan_par['index'], data, axis=-1)
             reshapedData.append(data_scan[::scan_par['nsamples']])
-        reshapedData = np.hstack(reshapedData) 
+        reshapedData = np.hstack(reshapedData)
         reshapedData = np.take_along_axis(reshapedData,
                                           sort_index.mean(axis=0, dtype=int),
                                           axis=-1)
@@ -2342,14 +2342,14 @@ def combine_scan_samples(datasetIn, scanDictionary, verbose=False):
             reshapedData.append(
                 reshape_auxilary(data_scan, data_scan.shape,
                                  scan_par['nsamples']))
-        reshapedData = np.hstack(reshapedData) 
+        reshapedData = np.hstack(reshapedData)
         reshapedData = np.take_along_axis(reshapedData,
                                           sort_index.mean(axis=0, dtype=int),
                                           axis=-1)
         if isinstance(data, list):
             reshapedData = list(reshapedData)
         return reshapedData
-    
+
     def reshape_data(data, scanDictionary, sort_index):
         reshapedData = []
         for scan_dir, scan_par in scanDictionary.items():
@@ -2357,10 +2357,10 @@ def combine_scan_samples(datasetIn, scanDictionary, verbose=False):
             reshapedData.append(
                 reshape_integration(data_scan, data_scan.shape,
                                     scan_par['nsamples']))
-        reshapedData = np.hstack(reshapedData)    
+        reshapedData = np.hstack(reshapedData)
         reshapedData = np.take_along_axis(reshapedData, sort_index, axis=-1)
         return reshapedData
-    
+
     def reshape_primary_data(data, wave, error,  time,  scanDictionary):
         reshapedData = []
         reshapedTime = []
@@ -2376,10 +2376,10 @@ def combine_scan_samples(datasetIn, scanDictionary, verbose=False):
                                     scan_par['nsamples']))
             reshapedTime.append(
                reshape_integration(time_scan, data_scan.shape,
-                                   scan_par['nsamples']))  
+                                   scan_par['nsamples']))
             reshapedWave.append(
                reshape_integration(wave_scan, data_scan.shape,
-                                   scan_par['nsamples']))    
+                                   scan_par['nsamples']))
             reshapedError.append(
                 reshape_error(error_scan, data_scan.shape,
                                    scan_par['nsamples']))

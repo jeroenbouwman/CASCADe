@@ -37,6 +37,16 @@ pip install CASCADe-spectroscopy
 This will install all code and scripts you need for the package to work.
 > **_NOTE:_**  <span style="color:#1F618D">CASCADe </span>  The batman package is only guaranteed to work when using numpy version 1.22.1, and with this numpy version one should install version 0.53.1 of the numba package.
 
+To update an existing installation to the latest release, simply use the -U option
+with pip:
+
+```bash
+
+conda activate cascade
+pip install CASCADe-spectroscopy -U
+
+```
+
 ## Installing the required <span style="color:#1F618D">CASCADe</span> data and examples
 
 All necessary data needed by <span style="color:#1F618D">CASCADe </span> for it to
