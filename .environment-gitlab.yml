@@ -3,11 +3,11 @@ channels:
   - conda-forge
   - defaults
 dependencies:
-  - python=3.9
+  - python>=3.9, <3.10
   - ipython
   - pip
   - qt
-  - numpy=1.22.1
+  - numpy
   - scipy
   - matplotlib
   - seaborn
@@ -25,7 +25,7 @@ dependencies:
   - networkx
   - pytest
   - tqdm
-  - numba=0.53.1
+  - numba
   - aiohttp
   - psutil
   - setproctitle
@@ -37,4 +37,4 @@ dependencies:
   - pip:
     - 'ray[default]'
     - batman-package
-    - exotethys==2.0.4
+    - exotethys
