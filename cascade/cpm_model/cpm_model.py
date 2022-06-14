@@ -736,7 +736,7 @@ class regressionDataServer:
                 temp0 = self.fit_dataset.return_masked_array('position')
                 temp1 = (temp0-np.min(temp0))/(np.max(temp0)-np.min(temp0))
                 order = int(regressor.split('_')[1])
-                setattr(self, 'regressor_'+regressor, (temp1)**order)                
+                setattr(self, 'regressor_'+regressor, (temp1)**order)
             else:
                 setattr(self, 'regressor_'+regressor,
                         self.fit_dataset.return_masked_array(regressor))
@@ -936,7 +936,7 @@ class regressionDataServer:
         self.setup_regression_matrix(selection,
                                      bootstrap_indici=bootstrap_indici)
         return self.regression_data_selection, self.regression_matrix_selection
-    
+
     def get_all_regression_data(self, selection_list, bootstrap_indici=None):
         """
         Get all relevant data for a slection list for a single bootstrap step.
@@ -986,7 +986,7 @@ class regressionDataServer:
 
         """
 
-                
+
         regression_selection_list = []
         for (_, bootstrap_indici),\
                 (_, selection) in iterator_chunk:
@@ -994,8 +994,8 @@ class regressionDataServer:
                 self. get_regression_data(selection,
                                           bootstrap_indici=bootstrap_indici)
             regression_selection_list.append(regression_selection)
-        return regression_selection_list   
-    
+        return regression_selection_list
+
     def initialize_data_server(self, parameter_server_handle):
         """
         Initialize the data server.
@@ -1102,7 +1102,7 @@ class regressionParameterServer:
             ast.literal_eval(self.cascade_configuration.cpm_regularize_depth_correction)
         self.cpm_parameters.sigma_mse_cut = \
             ast.literal_eval(self.cascade_configuration.cpm_sigma_mse_cut)
-    
+
         additional_regressor_list = []
         try:
             self.cpm_parameters.add_position_model_order = ast.literal_eval(
@@ -1738,7 +1738,7 @@ class regressionControler:
         """
         # Number of chunks is the number of workers
         nchunks = self.number_of_workers
-        
+
         # define the iterator chunks
         self.initialize_regression_iterators(nchunks=nchunks)
 
@@ -1827,8 +1827,8 @@ class regressionControler:
                 input_covariance = np.diag(np.ones_like(spectrum))
                 input_delta = create_regularization_matrix('derivative', len(spectrum), 0)
                 reg_min = 1.0e-3
-                reg_max = 1.e7
-                nreg = 200
+                reg_max = 1.e8
+                nreg = 230
                 input_alpha = return_lambda_grid(reg_min, reg_max, nreg)
                 results = ridge(K, spectrum, input_covariance,
                                 input_delta, input_alpha)
@@ -1840,7 +1840,7 @@ class regressionControler:
                                                           reg_max))
             else:
                 corrected_spectrum, _, _ = ols(K, spectrum)
-            
+
             corrected_fitted_spectrum_list.append(corrected_spectrum)
 
             baseline_model = np.zeros(control_parameters.data_parameters.shape)
@@ -1888,7 +1888,7 @@ class regressionControler:
                 error_normed_spectrum[ipixel] = \
                     error_normed_depth*dilution_correction[il, 0]
                 wavelength_normed_spectrum[ipixel] = wavelength
-           
+
             fitted_baseline_list.append(baseline_model)
             residuals_list.append(residual)
             normed_residuals_list.append(normed_residual)
@@ -2128,7 +2128,7 @@ class regressionControler:
                                                            ignore_nan=True)
                 selection = \
                     fit_parameters.normed_fit_residuals[idx[0]+1, il, idx[1]]
-                
+
                 normed_residual_bootstrap[il, it] = np.ma.median(selection)
                 error_normed_residual_bootstrap[il, it] = mad_std(selection,
                                                                  ignore_nan=True)
@@ -2163,7 +2163,7 @@ class regressionControler:
             uncertainty=error_normed_residual_bootstrap,
             time=time_baseline_bootstrap,
             time_unit=time_unit,
-            mask=residual_mask)        
+            mask=residual_mask)
 
         post_prosessed_results = \
             {'exoplanet_spectrum': exoplanet_spectrum,
@@ -2372,7 +2372,7 @@ class rayRegressionControler(regressionControler):
                 regression_selection,
                 bootstrap_indici=bootstrap_selection))
         return regression_data_selection, regression_matirx_selection
-    
+
     @staticmethod
     def get_data_per_bootstrap_step(data_server_handle, regression_selections,
                         bootstrap_selection):
@@ -2398,7 +2398,7 @@ class rayRegressionControler(regressionControler):
         selection_list = \
             ray.get(data_server_handle.get_all_regression_data.remote(
                 regression_selections, bootstrap_indici=bootstrap_selection))
-            
+
         return selection_list
 
     def add_fit_parameters_to_parameter_server(self, new_parameters):
@@ -2434,7 +2434,7 @@ class rayRegressionControler(regressionControler):
         """
         # number of data chanks is the number of workers
         nchunks = self.number_of_workers
-        
+
         # define the iterator chunks
         self.initialize_regression_iterators(nchunks=nchunks)
 
@@ -2511,7 +2511,7 @@ class regressionWorker:
         self.regularization = copy.deepcopy(updated_regularization)
         self.iterator = updated_iterator_chunk
 
-    def compute_model(self, regression_data, regularization_method, alpha): 
+    def compute_model(self, regression_data, regularization_method, alpha):
         """
         Compute the regression model.
 
@@ -2731,14 +2731,14 @@ class regressionWorker:
             regression_data_sub_chunk = self.get_regression_data_chunk(data_server_handle, sub_chunk)
             for ((iboot, bootstrap_selection),\
                     (idata_point, regression_selection)), regression_data in zip(sub_chunk,regression_data_sub_chunk) :
-    
+
                 (_, _), (index_disp_regressors, _), nwave = regression_selection
-    
+
                 (beta_optimal, rss, mse, degrees_of_freedom, model_unscaled,
                  alpha, aic, phase, wavelength) = self.compute_model(
                      regression_data,regularization_method,
                      self.regularization.optimal_alpha[idata_point])
-    
+
                 self.regularization.optimal_alpha[idata_point] = alpha
                 self.fit_parameters.\
                     fitted_spectrum[iboot, idata_point] = beta_optimal[1]
