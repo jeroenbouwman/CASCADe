@@ -457,11 +457,12 @@ class JWSTMIRILRS(InstrumentBase):
             phase[phase < 0] = phase[phase < 0] + 1.0
 
 
-        scaling = (wavelength_data/wavelength_data[0, 0])**4
+        scaling = 2.25 * (wavelength_data/wavelength_data[0, 0])**4
         spectral_data = spectral_data*scaling
         uncertainty_spectral_data = uncertainty_spectral_data*scaling
         wave_unit = u.micron
-        flux_unit = u.DN / u.s * u.micron**4
+        #flux_unit = u.DN / u.s * u.micron**4
+        flux_unit = u.electron / u.s
 
 
         SpectralTimeSeries = \

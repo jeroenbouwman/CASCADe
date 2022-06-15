@@ -72,3 +72,11 @@
 **version 1.1.8**
  - Solved issue #100, added normalization=None to phase cross-correlation.
  - Updated requirements for scikit-image to >= 0.19
+
+**version 1.1.9**
+ - Updated the requirements for numpy and nummba.
+ - Updated the JWST functionality for MIRI/LRS
+
+**version 1.1.10**
+ - Made the number of data servers configurable
+

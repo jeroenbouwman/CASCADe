@@ -1084,6 +1084,9 @@ class regressionParameterServer:
         self.cpm_parameters.max_number_of_cpus = \
             ast.literal_eval(
                 self.cascade_configuration.cascade_max_number_of_cpus)
+        self.cpm_parameters.cascade_number_of_data_servers = \
+            ast.literal_eval(
+                self.cascade_configuration.cascade_number_of_data_servers)
         self.cpm_parameters.nwidth = \
             ast.literal_eval(self.cascade_configuration.cpm_deltapix)
         self.cpm_parameters.nboot = \
@@ -1421,9 +1424,10 @@ class regressionControler:
     """
 
     def __init__(self, cascade_configuration, dataset, regressor_dataset,
-                 number_of_workers=1):
+                 number_of_workers=1, number_of_data_servers = 1):
         self.cascade_configuration = cascade_configuration
         self.number_of_workers = number_of_workers
+        self.number_of_data_servers = number_of_data_servers
         self.instantiate_parameter_server()
         self.instantiate_data_server(dataset, regressor_dataset)
         self.initialize_servers()
@@ -1458,8 +1462,12 @@ class regressionControler:
         None.
 
         """
+        #self.data_server_handle = \
+        #    [regressionDataServer(dataset, regressor_dataset)
+        #     for _ in range(self.number_of_workers)]
         self.data_server_handle = \
-            [regressionDataServer(dataset, regressor_dataset) for _ in range(self.number_of_workers)]
+             [regressionDataServer(dataset, regressor_dataset)
+              for _ in range(self.number_of_data_servers)]
 
     def initialize_servers(self):
         """
@@ -1754,8 +1762,9 @@ class regressionControler:
                              iterator_chunk)
             for iterator_chunk in self.iterators.chunked_full_model_iterator
                   ]
+        ndata_server=len(self.data_server_handle)
         futures = [w.async_update_loop(self.parameter_server_handle,
-                   self.data_server_handle[iserver])
+                   self.data_server_handle[iserver%ndata_server])
                    for iserver, w in enumerate(workers)]
 
         # This launches workers on the bootstrapped data set + original data
@@ -1773,7 +1782,7 @@ class regressionControler:
         # reset parameters on server for final run.
         self.parameter_server_handle.reset_parameters()
         futures = [w.async_update_loop(self.parameter_server_handle,
-                   self.data_server_handle[iserver])
+                   self.data_server_handle[iserver%ndata_server])
                    for iserver, w in enumerate(workers)]
 
     def process_regression_fit(self):
@@ -1827,7 +1836,7 @@ class regressionControler:
                 input_covariance = np.diag(np.ones_like(spectrum))
                 input_delta = create_regularization_matrix('derivative', len(spectrum), 0)
                 reg_min = 1.0e-3
-                reg_max = 1.e8
+                reg_max = 5.e6
                 nreg = 230
                 input_alpha = return_lambda_grid(reg_min, reg_max, nreg)
                 results = ridge(K, spectrum, input_covariance,
@@ -2184,9 +2193,10 @@ class rayRegressionControler(regressionControler):
     """Ray wrapper regressionControler class."""
 
     def __init__(self, cascade_configuration, dataset, regressor_dataset,
-                 number_of_workers=1):
+                 number_of_workers=1, number_of_data_servers=1):
         super().__init__(cascade_configuration, dataset, regressor_dataset,
-                         number_of_workers=number_of_workers)
+                         number_of_workers=number_of_workers,
+                         number_of_data_servers=number_of_data_servers)
 
     def instantiate_parameter_server(self):
         """
@@ -2216,8 +2226,12 @@ class rayRegressionControler(regressionControler):
         None.
 
         """
+#        self.data_server_handle = \
+#            [rayRegressionDataServer.remote(dataset, regressor_dataset)
+#             for _ in range(self.number_of_workers)]
         self.data_server_handle = \
-            [rayRegressionDataServer.remote(dataset, regressor_dataset) for _ in range(self.number_of_workers)]
+                [rayRegressionDataServer.remote(dataset, regressor_dataset)
+                 for _ in range(self.number_of_data_servers)]
 
     def initialize_servers(self):
         """
@@ -2233,7 +2247,8 @@ class rayRegressionControler(regressionControler):
         """
         # ftr = self.data_server_handle[0].\
         #     initialize_data_server.remote(self.parameter_server_handle)
-        ftr = [server.initialize_data_server.remote(self.parameter_server_handle) for server in self.data_server_handle]
+        ftr = [server.initialize_data_server.remote(self.parameter_server_handle)
+               for server in self.data_server_handle]
         ray.get(ftr)
         ftr = self.parameter_server_handle.\
             initialize_parameter_server.remote(self.data_server_handle[0])
@@ -2450,8 +2465,10 @@ class rayRegressionControler(regressionControler):
                                        iterator_chunk)
             for iterator_chunk in self.iterators.chunked_full_model_iterator
                   ]
+        ndata_servers=len(self.data_server_handle)
         futures = [w.async_update_loop.remote(self.parameter_server_handle,
-                   self.data_server_handle[iserver]) for iserver, w in enumerate(workers)]
+                   self.data_server_handle[iserver%ndata_servers])
+                   for iserver, w in enumerate(workers)]
         ray.get(futures)
         # This launches workers on the bootstrapped data set + original data
         # and determines the fit parameters and error there on
@@ -2468,7 +2485,8 @@ class rayRegressionControler(regressionControler):
         # reset parameters on server for final run.
         self.reset_fit_parameters()
         futures = [w.async_update_loop.remote(self.parameter_server_handle,
-                   self.data_server_handle[iserver]) for iserver, w in enumerate(workers)]
+                   self.data_server_handle[iserver%ndata_servers])
+                   for iserver, w in enumerate(workers)]
         ray.get(futures)
 
 

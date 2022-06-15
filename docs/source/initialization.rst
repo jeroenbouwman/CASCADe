@@ -206,13 +206,21 @@ Calibrating the spectral timeseries and extracting the transit spectrum
 [CASCADE]
 ^^^^^^^^^^^^^^
 
+The general initialization file section is identical as when extracting the spectral
+time series with 1 exeption:
+
 .. code-block:: python
 
  cascade_save_path = WASP-19b_ibh715_transit_from_hst_wfc3_spectra/
   cascade_use_multi_processes = True
   cascade_max_number_of_cpus = 6
+  cascade_number_of_data_servers = 1
   cascade_verbose = True
   cascade_save_verbose = True
+
+the ``cascade_number_of_data_servers`` is added here which controlls the number of
+parallel data servers to be started when fitting the lightcurves.
+
 
 [PROCESSING]
 ^^^^^^^^^^^^^^

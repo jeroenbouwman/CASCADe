@@ -964,11 +964,11 @@ class TSOSuite:
                                      processing_use_scale_in_wave_cor)
             except AttributeError:
                 useScale = False
-            try:     
+            try:
                 useCrossDispersion = \
                     ast.literal_eval(
                         self.cascade_parameters.
-                        processing_use_cross_dispersion_in_wave_cor)  
+                        processing_use_cross_dispersion_in_wave_cor)
             except AttributeError:
                 useCrossDispersion = False
             try:
@@ -1547,7 +1547,7 @@ class TSOSuite:
                          stellar_model=stellar_model,
                          corrected_observations=corrected_observations,
                          extension='_extract_1d_spectra')
-                
+
         from cascade.spectral_extraction import combine_scan_samples
         if observationDataType == 'SPECTRAL_CUBE':
             scanDirections = \
@@ -1555,12 +1555,12 @@ class TSOSuite:
                     rebinnedOptimallyExtractedDataset.scan_direction))
             scanDict = {}
             for scandir in scanDirections:
-                
+
                 idx_scandir = \
                     (rebinnedOptimallyExtractedDataset.scan_direction == scandir)
                 scanDict[scandir] = \
                     {'nsamples':
-                     np.max(np.array(datasetIn.sample_number)[idx_scandir])+1, 
+                     np.max(np.array(datasetIn.sample_number)[idx_scandir])+1,
                      'nscans': sum(idx_scandir),
                      'index': idx_scandir}
 
@@ -1684,6 +1684,11 @@ class TSOSuite:
         except AttributeError:
             raise AttributeError("cascade_max_number_of_cpus flag not set."
                                  " Aborting time series calibration.")
+        try:
+            NumberOfDataServers = \
+                int(self.cascade_parameters.cascade_number_of_data_servers)
+        except  AttributeError:
+            NumberOfDataServers = 1
 
         print('Starting regression analysis')
         start_time = time_module.time()
@@ -1707,7 +1712,7 @@ class TSOSuite:
             print('Number of CPUs: {}'.format(num_cpus))
             cpus_use = int(np.max([np.min([maxNumberOfCPUs, num_cpus]), 4]))
             print('Number of CPUs used: {}'.format(cpus_use))
-            num_workers = (cpus_use-2)//2
+            num_workers = (cpus_use-2-NumberOfDataServers)
             print('Total number of workers: {}'.format(num_workers))
             ray.init(num_cpus=cpus_use, ignore_reinit_error=True)
             rayControler = \
@@ -1827,18 +1832,18 @@ class TSOSuite:
         ray.shutdown()
         vrbs = Verbose()
         if hasattr(self, "stellar_modeling"):
-            dataset_uncal = self.exoplanet_spectrum.non_normalized_stellar_spectrum_bootstrap      
+            dataset_uncal = self.exoplanet_spectrum.non_normalized_stellar_spectrum_bootstrap
             stellar_spectrum = \
                 dataset_uncal.data
             wavelength_stellar_spectrum = \
                 dataset_uncal.wavelength
             error_stellar_spectrum = \
-                dataset_uncal.uncertainty    
-        
+                dataset_uncal.uncertainty
+
             calibration = self.stellar_modeling.modeled_observations[4]
             relative_distance_sqr = self.stellar_modeling.modeled_observations[3]
             scaling = self.stellar_modeling.modeled_observations[2]
-            
+
             calibrated_stellar_spectrum =  \
                 np.ma.array((stellar_spectrum.data/calibration).to(u.mJy,
                             equivalencies=u.spectral_density(
@@ -1854,7 +1859,7 @@ class TSOSuite:
             wavelength_calibrated_stellar_spectrum = \
                  np.ma.array(wavelength_stellar_spectrum.data,
                              mask=wavelength_stellar_spectrum.mask)
-                 
+
             calibraton_factor = \
                 np.ma.median(calibrated_stellar_spectrum).value / \
                     np.ma.median(dataset_uncal.data).value
@@ -1872,7 +1877,7 @@ class TSOSuite:
                             self.stellar_modeling.stellar_model[0].data))*
                            relative_distance_sqr*0.02,
                            mask=calibrated_stellar_spectrum.mask)
-            
+
             flux_calibrated_stellar_spectrum = \
                 SpectralData(wavelength=wavelength_calibrated_stellar_spectrum,
                               data=calibrated_stellar_spectrum,
@@ -1888,7 +1893,7 @@ class TSOSuite:
             flux_calibrated_stellar_model.add_auxilary(SCALING=scaling)
             self.exoplanet_spectrum.flux_calibrated_stellar_model = \
                 flux_calibrated_stellar_model
-            
+
             wavelength_input_stellar_model = \
                 self.stellar_modeling.input_stellar_model[0].to(u.micron)
             spectrum_input_stellar_model = \
@@ -1900,7 +1905,7 @@ class TSOSuite:
                  self.stellar_modeling.stellar_model_parameters['distance'])**2
             scaling_input_stellar_model = scaling_input_stellar_model.decompose()
             spectrum_input_stellar_model *= scaling_input_stellar_model
-            
+
             flux_calibrated_input_stellar_model = SpectralData(
                 wavelength=wavelength_input_stellar_model,
                 data=spectrum_input_stellar_model,
@@ -1915,7 +1920,7 @@ class TSOSuite:
                 MODELGRD=self.stellar_modeling.stellar_model_parameters['stellar_models_grids'])
             self.exoplanet_spectrum.flux_calibrated_input_stellar_model = \
                 flux_calibrated_input_stellar_model
-            
+
             vrbs.execute("calibrate_timeseries",
                          exoplanet_spectrum=self.exoplanet_spectrum,
                          calibration_results=self.calibration_results,
@@ -1929,7 +1934,7 @@ class TSOSuite:
                          calibration_results=self.calibration_results,
                          model=self.model,
                          dataset=dataset,
-                         cleaned_dataset=cleaned_dataset)           
+                         cleaned_dataset=cleaned_dataset)
 
     def save_results(self):
         """
@@ -2039,7 +2044,7 @@ class TSOSuite:
                               filename, header_data)
         filename = save_name_base+'_bootstrapped_transit_model.fits'
         write_dataset_to_fits(cal_results.fitted_transit_model, save_path,
-                              filename, header_data)        
+                              filename, header_data)
 
         header_data['TDDEPTH'] = results.spectrum.TDDEPTH[0]
         header_data.pop('TDCL005')
@@ -2097,7 +2102,7 @@ class TSOSuite:
                '_flux_calibrated_input_stellar_model.fits'
             write_spectra_to_fits(results.flux_calibrated_input_stellar_model,
                              save_path, filename, header_data,
-                             column_names=['Wavelength', 'Flux', 'Error Flux'])              
+                             column_names=['Wavelength', 'Flux', 'Error Flux'])
 
 
 def combine_observations(target_name, observations_ids, path=None,
@@ -2373,7 +2378,7 @@ def combine_timeseries(target_name, observations_ids, file_extension,
         for key in meta_list:
             temp_dict[key] = getattr(dataset, key)
         temp_dict['data'] = dataset.return_masked_array('data')
-        temp_dict['wavelength'] = dataset.return_masked_array('wavelength')   
+        temp_dict['wavelength'] = dataset.return_masked_array('wavelength')
         temp_dict['uncertainty'] = dataset.return_masked_array('uncertainty')
         temp_dict['time'] = dataset.return_masked_array('time')
         datasets_dict[target] = temp_dict
@@ -2433,7 +2438,7 @@ def combine_timeseries(target_name, observations_ids, file_extension,
              'data': rebinned_data[0, :],
              'uncertainty': rebinned_uncertainty[0, :],
              'time': rebinned_time[0, :],
-             'mask': rebinned_mask[0, :]}            
+             'mask': rebinned_mask[0, :]}
 
     return rebinned_datasets, band_averaged_datasets, datasets_dict
 
