@@ -294,9 +294,9 @@ class JWST(ObservatoryBase):
 
         Returns
         -------
-        42 m**2
+        25.4 m**2
         """
-        return '42.00 m2'
+        return '25.40 m2'
 
     @property
     def NAIF_ID(self):
@@ -349,7 +349,7 @@ class JWSTMIRILRS(InstrumentBase):
 
     @property
     def dispersion_scale(self):
-        __all_scales = {'P750L': '100.0 Angstrom'}
+        __all_scales = {'P750L': '789.47368 Angstrom'}
         return __all_scales[self.par["inst_filter"]]
 
     def load_data(self):
@@ -552,7 +552,7 @@ class JWSTMIRILRS(InstrumentBase):
 #        roi = np.zeros((dim[0]), dtype=bool)
 
         wavelength_min = \
-            self.par['proc_extend_roi'][0]*4.5*u.micron
+            self.par['proc_extend_roi'][0]*4.2*u.micron
         wavelength_max = \
             self.par['proc_extend_roi'][1]*12.5*u.micron
 

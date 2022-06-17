@@ -1105,6 +1105,12 @@ class regressionParameterServer:
             ast.literal_eval(self.cascade_configuration.cpm_regularize_depth_correction)
         self.cpm_parameters.sigma_mse_cut = \
             ast.literal_eval(self.cascade_configuration.cpm_sigma_mse_cut)
+        self.cpm_parameters.alpha_min_depth_correction = \
+            ast.literal_eval(self.cascade_configuration.cpm_lam0_depth_correction)
+        self.cpm_parameters.alpha_max_depth_correction = \
+            ast.literal_eval(self.cascade_configuration.cpm_lam1_depth_correction)
+        self.cpm_parameters.n_alpha_depth_correction = \
+            ast.literal_eval(self.cascade_configuration.cpm_nlam_depth_correction)
 
         additional_regressor_list = []
         try:
@@ -1835,9 +1841,9 @@ class regressionControler:
             if control_parameters.cpm_parameters.regularize_depth_correction:
                 input_covariance = np.diag(np.ones_like(spectrum))
                 input_delta = create_regularization_matrix('derivative', len(spectrum), 0)
-                reg_min = 1.0e-3
-                reg_max = 5.e6
-                nreg = 230
+                reg_min = control_parameters.cpm_parameters.alpha_min_depth_correction
+                reg_max = control_parameters.cpm_parameters.alpha_max_depth_correction
+                nreg = control_parameters.cpm_parameters.n_alpha_depth_correction
                 input_alpha = return_lambda_grid(reg_min, reg_max, nreg)
                 results = ridge(K, spectrum, input_covariance,
                                 input_delta, input_alpha)
@@ -2778,6 +2784,7 @@ class regressionWorker:
                 self.fit_parameters.\
                     regression_results[iboot, idata_point, 0:n_additional] = \
                     beta_optimal[0:n_additional]
+            del regression_data_sub_chunk
         self.update_parameters_on_server(parameter_server_handle)
 
 

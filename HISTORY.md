@@ -80,3 +80,6 @@
 **version 1.1.10**
  - Made the number of data servers configurable
 
+**version 1.1.11**
+ - Update to JWST MIRI LRS module
+ - Addedconfigurable regularization parameters for TD correction
