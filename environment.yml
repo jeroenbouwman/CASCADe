@@ -1,7 +1,7 @@
 name: cascade
 channels:
-  - defaults
   - conda-forge
+  - defaults
 dependencies:
   - python>=3.8, <3.10
   - ipython
@@ -18,7 +18,7 @@ dependencies:
   - pandas
   - sphinx
   - alabaster
-  - scikit-image
+  - scikit-image>=0.19
   - scikit-learn
   - setuptools
   - cython

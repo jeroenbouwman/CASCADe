@@ -494,11 +494,13 @@ def create_regularization_matrix(method, n_regressors, n_not_regularized):
             np.diag(np.ones(n_regressors-n_not_regularized))
     elif method == 'derivative':
         # regularazation on derivative
-        delta_temp = np.diag(-np.ones(n_regressors-n_not_regularized-1), 1) +\
+        delta_temp = np.diag(-1*np.ones(n_regressors-n_not_regularized-1), 1) +\
             np.diag(-1*np.ones(n_regressors-n_not_regularized-1), -1) + \
             np.diag(2*np.ones(n_regressors-n_not_regularized))
+
         delta_temp[0, 0] = 1.0
         delta_temp[-1, -1] = 1.0
+        #delta_temp = delta_temp/np.linspace(1,3, delta_temp.shape[0])**2
         delta = np.diag(np.zeros((n_regressors)))
         delta[n_not_regularized:, n_not_regularized:] += delta_temp
     return delta
@@ -523,6 +525,10 @@ def return_lambda_grid(lambda_min, lambda_max, n_lambda):
         DESCRIPTION.
 
     """
+    if n_lambda <= 1:
+        lambda_grid = np.array([lambda_min])
+        return lambda_grid
+
     delta_lam = np.abs(np.log10(lambda_max)-np.log10(lambda_min))/(n_lambda-1)
     lambda_grid = 10**(np.log10(lambda_min) +
                        np.linspace(0, n_lambda-1, n_lambda)*delta_lam)
@@ -961,7 +967,7 @@ class regressionDataServer:
         regression_selection_list = []
         for selection in selection_list:
             regression_selection = \
-                self. get_regression_data(selection,
+                self.get_regression_data(selection,
                                           bootstrap_indici=bootstrap_indici)
             regression_selection_list.append(regression_selection)
         return regression_selection_list
@@ -991,7 +997,7 @@ class regressionDataServer:
         for (_, bootstrap_indici),\
                 (_, selection) in iterator_chunk:
             regression_selection = \
-                self. get_regression_data(selection,
+                self.get_regression_data(selection,
                                           bootstrap_indici=bootstrap_indici)
             regression_selection_list.append(regression_selection)
         return regression_selection_list
@@ -1105,12 +1111,27 @@ class regressionParameterServer:
             ast.literal_eval(self.cascade_configuration.cpm_regularize_depth_correction)
         self.cpm_parameters.sigma_mse_cut = \
             ast.literal_eval(self.cascade_configuration.cpm_sigma_mse_cut)
-        self.cpm_parameters.alpha_min_depth_correction = \
-            ast.literal_eval(self.cascade_configuration.cpm_lam0_depth_correction)
-        self.cpm_parameters.alpha_max_depth_correction = \
-            ast.literal_eval(self.cascade_configuration.cpm_lam1_depth_correction)
-        self.cpm_parameters.n_alpha_depth_correction = \
-            ast.literal_eval(self.cascade_configuration.cpm_nlam_depth_correction)
+        try:
+            self.cpm_parameters.reg_type_depth_correction = \
+                   self.cascade_configuration.cpm_reg_type_depth_correction
+        except AttributeError:
+            self.cpm_parameters.reg_type_depth_correction = 'derivative'
+        try:
+            self.cpm_parameters.alpha_min_depth_correction = \
+                ast.literal_eval(self.cascade_configuration.cpm_lam0_depth_correction)
+            self.cpm_parameters.alpha_max_depth_correction = \
+                ast.literal_eval(self.cascade_configuration.cpm_lam1_depth_correction)
+            self.cpm_parameters.n_alpha_depth_correction = \
+                ast.literal_eval(self.cascade_configuration.cpm_nlam_depth_correction)
+        except AttributeError:
+            self.cpm_parameters.alpha_min_depth_correction = 0.001
+            self.cpm_parameters.alpha_max_depth_correction = 1.e7
+            self.cpm_parameters.n_alpha_depth_correction = 100
+        try:
+            self.cpm_parameters.number_of_sub_chunks_per_load = \
+                ast.literal_eval(self.cascade_configuration.cpm_number_of_sub_chunks_per_load)
+        except AttributeError:
+            self.cpm_parameters.number_of_sub_chunks_per_load = 300
 
         additional_regressor_list = []
         try:
@@ -1840,11 +1861,15 @@ class regressionControler:
             # correction for differenc in band shape is the corr_matrix
             if control_parameters.cpm_parameters.regularize_depth_correction:
                 input_covariance = np.diag(np.ones_like(spectrum))
-                input_delta = create_regularization_matrix('derivative', len(spectrum), 0)
+                input_delta = create_regularization_matrix(
+                    control_parameters.cpm_parameters.reg_type_depth_correction,
+                    len(spectrum), 0)
+
                 reg_min = control_parameters.cpm_parameters.alpha_min_depth_correction
                 reg_max = control_parameters.cpm_parameters.alpha_max_depth_correction
                 nreg = control_parameters.cpm_parameters.n_alpha_depth_correction
                 input_alpha = return_lambda_grid(reg_min, reg_max, nreg)
+
                 results = ridge(K, spectrum, input_covariance,
                                 input_delta, input_alpha)
                 corrected_spectrum = results[0]
@@ -2697,9 +2722,10 @@ class regressionWorker:
         """
         regression_par = parameter_server_handle.get_regression_parameters()
         n_additional = regression_par.n_additional_regressors
+        n_sub_chunks = regression_par.number_of_sub_chunks_per_load
         data_par = parameter_server_handle.get_data_parameters()
         ncorrect = data_par.ncorrect
-        return n_additional, ncorrect
+        return n_additional, ncorrect, n_sub_chunks
 
     def update_parameters_on_server(self, parameter_server_handle):
         """
@@ -2742,13 +2768,11 @@ class regressionWorker:
         None.
 
         """
-        n_additional, ncorrect = \
+        n_additional, ncorrect, n_sub_chunks = \
             self.get_regression_parameters(parameter_server_handle)
         regularization_method = 'value'
 
         iterator_chunk, chunk_size = self.iterator
-
-        n_sub_chunks = 1000
         sub_chunks = self.chunks(iterator_chunk, n_sub_chunks)
 
         for sub_chunk in sub_chunks:
@@ -2901,10 +2925,11 @@ class rayRegressionWorker(regressionWorker):
         regression_par = \
             ray.get(parameter_server_handle.get_regression_parameters.remote())
         n_additional = regression_par.n_additional_regressors
+        n_sub_chunks = regression_par.number_of_sub_chunks_per_load
         data_par = \
             ray.get(parameter_server_handle.get_data_parameters.remote())
         ncorrect = data_par.ncorrect
-        return n_additional, ncorrect
+        return n_additional, ncorrect, n_sub_chunks
 
     def update_parameters_on_server(self, parameter_server_handle):
         """

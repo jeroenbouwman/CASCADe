@@ -83,3 +83,8 @@
 **version 1.1.11**
  - Update to JWST MIRI LRS module
  - Addedconfigurable regularization parameters for TD correction
+
+**version 1.1.12**
+ - Added the posibility to read in position file for JWST observations.
+ - Added a parameter to regulate the number of data chuncks to be loaded at
+   the same time

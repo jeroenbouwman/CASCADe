@@ -35,6 +35,7 @@ from astropy.convolution import Gaussian2DKernel
 from astropy.convolution import Gaussian1DKernel
 from astropy.stats import sigma_clipped_stats
 from tqdm import tqdm
+import pathlib
 
 from ...initialize import cascade_configuration
 from ...initialize import cascade_default_data_path
@@ -243,6 +244,15 @@ def read_x1dints_files(data_files, bits_not_to_flag, first_integration):
             time_bjd, mask, all_data_files)
 
 
+def read_position_file(data_file, first_integration):
+    if pathlib.Path(data_file).is_file:
+        with fits.open(data_file) as hdu_list:
+            position = hdu_list[1].data['POSITION']
+        return (position - np.median(position))[first_integration:]
+    else:
+        return []
+
+
 class JWST(ObservatoryBase):
     """
     This observatory class defines the instuments and data handling for the
@@ -349,7 +359,8 @@ class JWSTMIRILRS(InstrumentBase):
 
     @property
     def dispersion_scale(self):
-        __all_scales = {'P750L': '789.47368 Angstrom'}
+       # __all_scales = {'P750L': '789.47368 Angstrom'}
+        __all_scales = {'P750L': '777 Angstrom'}
         return __all_scales[self.par["inst_filter"]]
 
     def load_data(self):
@@ -447,6 +458,14 @@ class JWSTMIRILRS(InstrumentBase):
             read_x1dints_files(data_files, bits_not_to_flag,
                                self.par["cpm_ncut_first_int"])
 
+        position_file = find('target_trace_position.fits',
+                             path_to_files)
+
+        position = read_position_file(position_file[0],
+                                      self.par["cpm_ncut_first_int"])
+        if len(position) == 0:
+            position = np.ones((len(time_bjd)))
+
         # orbital phase
         phase = (time_bjd - self.par['obj_ephemeris']) / self.par['obj_period']
         phase = phase - int(np.max(phase))
@@ -457,7 +476,7 @@ class JWSTMIRILRS(InstrumentBase):
             phase[phase < 0] = phase[phase < 0] + 1.0
 
 
-        scaling = 2.25 * (wavelength_data/wavelength_data[0, 0])**4
+        scaling = 3.4375 * (wavelength_data/7.5)**4
         spectral_data = spectral_data*scaling
         uncertainty_spectral_data = uncertainty_spectral_data*scaling
         wave_unit = u.micron
@@ -476,6 +495,8 @@ class JWSTMIRILRS(InstrumentBase):
                                    time_unit=u.dimensionless_unscaled,
                                    mask=mask,
                                    time_bjd=time_bjd,
+                                   position=position,
+                                   position_unit=u.pix,
                                    isRampFitted=True,
                                    isNodded=False,
                                    target_name=target_name,
