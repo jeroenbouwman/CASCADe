@@ -2430,7 +2430,14 @@ class SpectralModel:
         """
         if not self.calculatate_shift:
             return 0.0, 0.0
-        data = np.mean(dataset.return_masked_array('data'), axis=-1)
+        try:
+            scaling = dataset.return_masked_array('scaling')
+            if scaling is None:
+                scaling = 1.0
+        except AttributeError:
+            scaling = 1.0
+
+        data = np.mean(dataset.return_masked_array('data')/scaling, axis=-1)
         wavelength = np.mean(dataset.return_masked_array('wavelength'),
                              axis=-1)
         wavelength_unit = dataset.wavelength_unit

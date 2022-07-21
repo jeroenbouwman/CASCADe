@@ -938,7 +938,7 @@ class SpectralDataTimeSeries(SpectralData):
             else:
                 ntile = len(self._time.shape)
                 if ntile != 1:
-                    raise ValueError("Unkwon time structure")
+                    raise ValueError("Unknown time structure")
                 tiling = (self._data.shape[:-1]) + \
                     tuple(np.ones(ntile).astype(int))
                 time_out = np.tile(self._time, tiling)
@@ -952,7 +952,7 @@ class SpectralDataTimeSeries(SpectralData):
             else:
                 ntile = len(self._time_bjd.shape)
                 if ntile != 1:
-                    raise ValueError("Unkwon time structure")
+                    raise ValueError("Unknown time structure")
                 tiling = (self._data.shape[:-1]) + \
                     tuple(np.ones(ntile).astype(int))
                 time_out = np.tile(self._time_bjd, tiling)
@@ -967,7 +967,7 @@ class SpectralDataTimeSeries(SpectralData):
                 else:
                     ntile = len(self._position.shape)
                     if ntile != 1:
-                        raise ValueError("Unkwon time structure")
+                        raise ValueError("Unknown time structure")
                     tiling = (self._data.shape[:-1]) + \
                         tuple(np.ones(ntile).astype(int))
                     position_out = np.tile(self._position, tiling)
@@ -975,4 +975,20 @@ class SpectralDataTimeSeries(SpectralData):
                     return np.ma.array(np.array([position_out]),
                                        mask=self.mask)
                 return np.ma.array(position_out, mask=self.mask)
+        elif attr == 'scaling':
+            if hasattr(self, 'scaling'):
+                if (self.mask.shape == ()) or \
+                   (self.mask.shape == self._scaling.shape):
+                    scaling_out = self._scaling
+                else:
+                    ntile = len(self._scaling.shape)
+                    if ntile != 1:
+                        raise ValueError("Unknown time structure")
+                    tiling = (self._data.shape[:-1]) + \
+                        tuple(np.ones(ntile).astype(int))
+                    scaling_out = np.tile(self._scaling, tiling)
+                if scaling_out.shape == ():
+                    return np.ma.array(np.array([scaling_out]),
+                                       mask=self.mask)
+                return np.ma.array(scaling_out, mask=self.mask)
         return super().return_masked_array(attr)

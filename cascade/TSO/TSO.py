@@ -1839,6 +1839,13 @@ class TSOSuite:
                 dataset_uncal.wavelength
             error_stellar_spectrum = \
                 dataset_uncal.uncertainty
+            try:
+                data_scaling = \
+                    np.ma.mean(cleaned_dataset.return_masked_array('scaling'), axis=-1)
+            except:
+                data_scaling = 1.0
+            stellar_spectrum = stellar_spectrum/data_scaling
+            error_stellar_spectrum = error_stellar_spectrum/data_scaling
 
             calibration = self.stellar_modeling.modeled_observations[4]
             relative_distance_sqr = self.stellar_modeling.modeled_observations[3]
@@ -2332,7 +2339,7 @@ def combine_timeseries(target_name, observations_ids, file_extension,
                        path=None,
                        verbose=True):
     """
-    Combine and rebin spectral timeseries to comon wavelength grid.
+    Combine and rebin spectral timeseries to common wavelength grid.
 
     Parameters
     ----------

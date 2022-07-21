@@ -190,6 +190,34 @@ def create_mask_from_dq(dq_cube, bits_not_to_flag):
 
 
 def read_x1dints_files(data_files, bits_not_to_flag, first_integration):
+    """
+    Read the jwst pipeline product x1dints.
+
+    Parameters
+    ----------
+    data_files : TYPE
+        DESCRIPTION.
+    bits_not_to_flag : TYPE
+        DESCRIPTION.
+    first_integration : TYPE
+        DESCRIPTION.
+
+    Returns
+    -------
+    wavelength_data : TYPE
+        DESCRIPTION.
+    spectral_data : TYPE
+        DESCRIPTION.
+    uncertainty_spectral_data : TYPE
+        DESCRIPTION.
+    time_bjd : TYPE
+        DESCRIPTION.
+    mask : TYPE
+        DESCRIPTION.
+    all_data_files : TYPE
+        DESCRIPTION.
+
+    """
     time_bjd = []
     wavelength_data = []
     spectral_data = []
@@ -201,20 +229,12 @@ def read_x1dints_files(data_files, bits_not_to_flag, first_integration):
     for data_file in data_files:
         with fits.open(data_file) as hdu_list:
             fits_header = hdu_list[0].header
-
-            exp_start = fits_header['EXPSTART']
-            exp_end = fits_header['EXPEND']
-            nints_total = fits_header['NINTS']
-            delta_time = (exp_end - exp_start) / nints_total
-            start_time = exp_start + 0.5 * delta_time + 2400000.5
-
             nints_end = fits_header['INTEND']
             nints_start = fits_header['INTSTART']
             nints = nints_end-nints_start+1
-
             all_data_files += [data_file]*nints
-            time_bjd += list(start_time +
-                             ((nints_start-1) + np.arange(nints))*delta_time)
+
+            time_bjd += list(hdu_list['INT_TIMES'].data['int_mid_BJD_TDB'])
             for hdu in hdu_list:
                 if not (hdu.name == 'EXTRACT1D'):
                     continue
@@ -243,14 +263,30 @@ def read_x1dints_files(data_files, bits_not_to_flag, first_integration):
     return (wavelength_data, spectral_data, uncertainty_spectral_data,
             time_bjd, mask, all_data_files)
 
-
 def read_position_file(data_file, first_integration):
+
+    position_list = ["POSITION", "TIME_BJD", "DISP_POS", "ANGLE", "SCALE"]
+    header_list = ["MEDPOS", "MPUNIT", "PUNIT","DPUNIT", "AUNIT", "SUNIT"]
+
     if pathlib.Path(data_file).is_file:
+        position_dict = {}
         with fits.open(data_file) as hdu_list:
-            position = hdu_list[1].data['POSITION']
-        return (position - np.median(position))[first_integration:]
+
+            for key in header_list:
+                try:
+                    value = hdu_list['PRIMARY'].header[key]
+                    position_dict[key] = value
+                except:
+                    pass
+            for key in position_list:
+                try:
+                    value = hdu_list[1].data[key]
+                    position_dict[key] = value[first_integration:]
+                except:
+                    pass
+        return position_dict
     else:
-        return []
+        return {}
 
 
 class JWST(ObservatoryBase):
@@ -458,13 +494,25 @@ class JWSTMIRILRS(InstrumentBase):
             read_x1dints_files(data_files, bits_not_to_flag,
                                self.par["cpm_ncut_first_int"])
 
-        position_file = find('target_trace_position.fits',
-                             path_to_files)
-
-        position = read_position_file(position_file[0],
-                                      self.par["cpm_ncut_first_int"])
-        if len(position) == 0:
+        # poisiton info
+        position_file = find('target_trace_position.fits', path_to_files)
+        if len(position_file) == 0:
             position = np.ones((len(time_bjd)))
+            position_unit = u.pix
+            median_position = np.median(position)
+        else:
+            position_dict = read_position_file(position_file[0],
+                                      self.par["cpm_ncut_first_int"])
+            position = position_dict['POSITION']
+            try:
+                median_position = position_dict['MEDPOS']
+            except:
+                median_position = np.median(position)
+                position = position - median_position
+            try:
+                position_unit =  position_dict['PUNIT']
+            except:
+                position_unit = u.pix
 
         # orbital phase
         phase = (time_bjd - self.par['obj_ephemeris']) / self.par['obj_period']
@@ -474,15 +522,15 @@ class JWSTMIRILRS(InstrumentBase):
         phase = phase - np.rint(phase)
         if self.par['obs_type'] == 'ECLIPSE':
             phase[phase < 0] = phase[phase < 0] + 1.0
-
-
-        scaling = 3.4375 * (wavelength_data/7.5)**4
-        spectral_data = spectral_data*scaling
-        uncertainty_spectral_data = uncertainty_spectral_data*scaling
+#
+# HACK
+        detector_gain = 2.75 *u.electron / u.DN
+        scaling = (wavelength_data/7.5)**4
+        scaling_unit = u.dimensionless_unscaled
+        spectral_data *= detector_gain.value * scaling
+        uncertainty_spectral_data *= detector_gain.value * scaling
         wave_unit = u.micron
-        #flux_unit = u.DN / u.s * u.micron**4
         flux_unit = u.electron / u.s
-
 
         SpectralTimeSeries = \
             SpectralDataTimeSeries(
@@ -496,7 +544,9 @@ class JWSTMIRILRS(InstrumentBase):
                                    mask=mask,
                                    time_bjd=time_bjd,
                                    position=position,
-                                   position_unit=u.pix,
+                                   position_unit=position_unit,
+                                   scaling=scaling,
+                                   scaling_unit=scaling_unit,
                                    isRampFitted=True,
                                    isNodded=False,
                                    target_name=target_name,
@@ -509,10 +559,9 @@ class JWSTMIRILRS(InstrumentBase):
         SpectralTimeSeries.data_unit = data_unit
         wave_unit = (1.0*SpectralTimeSeries.wavelength_unit).decompose().unit
         SpectralTimeSeries.wavelength_unit = wave_unit
+
         # To make the as standard as posible, by defaut change to
         # mean nomalized data units and use micron as wavelength unit
-
-
         mean_signal, _, _ = \
             sigma_clipped_stats(SpectralTimeSeries.return_masked_array("data"),
                                 sigma=3, maxiters=10)
@@ -570,10 +619,9 @@ class JWSTMIRILRS(InstrumentBase):
         Defines region on detector which containes the intended target star.
         """
         dim = self.data.data.shape
-#        roi = np.zeros((dim[0]), dtype=bool)
 
         wavelength_min = \
-            self.par['proc_extend_roi'][0]*4.2*u.micron
+            self.par['proc_extend_roi'][0]*4.4*u.micron
         wavelength_max = \
             self.par['proc_extend_roi'][1]*12.5*u.micron
 

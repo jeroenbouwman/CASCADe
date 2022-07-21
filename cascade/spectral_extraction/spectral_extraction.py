@@ -2179,6 +2179,10 @@ def rebin_to_common_wavelength_grid(dataset, referenceIndex, nrebin=None,
     uncertainty = dataset.return_masked_array('uncertainty')
     wavelength = dataset.return_masked_array('wavelength')
     time = dataset.return_masked_array('time')
+    try:
+        scaling = dataset.return_masked_array('scaling')
+    except:
+        scaling = None
 
     # A pixel row (time) does not have the same wavelength in time
     # Need to find the miximum-lowest or minimum-higest wavelength for a
@@ -2205,6 +2209,11 @@ def rebin_to_common_wavelength_grid(dataset, referenceIndex, nrebin=None,
     rebinnedWavelength = np.tile(referenceWavelength,
                                  (rebinnedSpectra.shape[-1], 1)).T
 
+    if scaling is not None:
+        rebinnedScaling, _ = _rebin_spectra(scaling, scaling*0.0, weights)
+    else:
+        rebinnedScaling = None
+
     ndim = dataset.data.ndim
     selection = tuple((ndim-1)*[0]+[Ellipsis])
 
@@ -2218,13 +2227,17 @@ def rebin_to_common_wavelength_grid(dataset, referenceIndex, nrebin=None,
     dictTimeSeries['time'] = time[selection]
     dictTimeSeries['time_unit'] = dataset.time_unit
     dictTimeSeries['isRebinned'] = True
+    if rebinnedScaling is not None:
+        dictTimeSeries['scaling'] = rebinnedScaling
+        dictTimeSeries['scaling_unit'] = dataset.scaling_unit
 
     # get everything else apart from data, wavelength, time and uncertainty
     for key in vars(dataset).keys():
         if key[0] != "_":
             if isinstance(vars(dataset)[key], MeasurementDesc):
                 measurement = getattr(dataset, key)
-                dictTimeSeries[key] = measurement[selection]
+                if not key in dictTimeSeries.keys():
+                    dictTimeSeries[key] = measurement[selection]
             else:
                 # print('can be added withour rebin')
                 dictTimeSeries[key] = getattr(dataset, key)
@@ -2641,6 +2654,13 @@ def create_cleaned_dataset(datasetIn, ROIcube, kernel, stdvKernelTime):
         dataProduct=datasetIn.dataProduct,
         dataFiles=datasetIn.dataFiles,
         isCleanedData=True)
+
+    try:
+        scaling = datasetIn.scaling
+        scaling_unit = datasetIn.scaling_unit
+        cleanedDataset.add_measurement(scaling=scaling, scaling_unit=scaling_unit)
+    except AttributeError:
+        pass
 
     return cleanedDataset
 
