@@ -113,6 +113,16 @@ def load_data_verbose(*args, **kwargs):
 
     data = kwargs["plot_data"].dataset.return_masked_array("data")
     wavelength = kwargs["plot_data"].dataset.return_masked_array("wavelength")
+
+    try:
+        scaling = kwargs["plot_data"].dataset.return_masked_array("scaling")
+        if scaling is None:
+            scaling = 1.0
+    except:
+        scaling=1.0
+
+    data=data/scaling
+
     fig, ax = plt.subplots(figsize=(12, 12), nrows=1, ncols=1)
     if data.ndim == 3:
         cmap = plt.cm.viridis
@@ -205,6 +215,15 @@ def subtract_background_verbose(*args, **kwargs):
     wavelength = kwargs["plot_data"].dataset.return_masked_array("wavelength")
     time = kwargs["plot_data"].dataset.return_masked_array("time")
     roi = kwargs["plot_data"].instrument_calibration.roi
+
+    try:
+        scaling = kwargs["plot_data"].dataset.return_masked_array("scaling")
+        if scaling is None:
+            scaling = 1.0
+    except:
+        scaling=1.0
+
+    data=data/scaling
 
     if data.ndim == 3:
         roi_cube = np.tile(roi.T, (time.shape[-1], 1, 1)).T
@@ -357,8 +376,8 @@ def check_wavelength_solution_verbose(*args, **kwargs):
     ax0.set_xlabel('Wavelength [{}]'.format(wavelength_unit))
     ax0.set_ylabel('Normalized Signal')
     ax0.set_title("Comparison Model with Observed Mean Spectrum")
-    ax0.legend(loc='lower left', fancybox=True, framealpha=1.0,
-               ncol=1, bbox_to_anchor=(0.2, 0.10, 1, 0.3), shadow=True,
+    ax0.legend(loc='best', fancybox=True, framealpha=1.0,
+               ncol=1, bbox_to_anchor=(0.2, 0.10, 0.8, 0.8), shadow=True,
                handleheight=1.5, labelspacing=0.05, fontsize=20).set_zorder(11)
     plt.show()
     if save_verbose:
