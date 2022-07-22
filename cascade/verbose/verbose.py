@@ -845,7 +845,7 @@ def calibrate_timeseries_verbose(*args, **kwargs):
             ax0.plot(exoplanet_spectrum.flux_calibrated_stellar_model.
                      wavelength.data[~mask],
                      exoplanet_spectrum.flux_calibrated_stellar_model.
-                     data.data[~mask], label="Stellar Model",
+                     data.data[~mask]*scaling, label="Stellar Model",
                      color="b", lw=8, zorder=8)
             plt.plot([], [], ' ',
                      label="Used scaling: {:10.4f}".format(scaling))
@@ -863,6 +863,56 @@ def calibrate_timeseries_verbose(*args, **kwargs):
                 os.path.join(save_path, save_name_base +
                              "_calibrate_timeseries_calibrated_stellar_spectrum.png"),
                 bbox_inches="tight")
+
+    ####################3
+    # Check distribution
+    ######################
+    spectrum0 = exoplanet_spectrum.spectrum.return_masked_array('data')
+    wave0 = exoplanet_spectrum.spectrum.return_masked_array('wavelength')
+    error0 = exoplanet_spectrum.spectrum.return_masked_array('uncertainty')
+
+    from scipy import stats
+    indx = (wave0 > 5.0) & (wave0 < 10.0)
+
+    def normal(mean, std, histmax=False, color="black", label=''):
+        x = np.linspace(mean-4*std, mean+4*std, 200)
+        p = stats.norm.pdf(x, mean, std)
+        if histmax:
+            p = p*histmax/max(p)
+        z = plt.plot(x, p, color, linewidth=2, label=label)
+
+    data = spectrum0[indx]*1.e4
+    median_data = np.median(data)
+    data -= median_data
+
+    error = error0[indx]*1.e4
+
+    av_std = []
+    for i in range(300):
+        av_std.append(np.std(np.random.normal(loc=0.0, scale=error)))
+    av_std = np.mean(av_std)
+
+    warnings.simplefilter("ignore")
+    sns.set_context("talk", font_scale=1.0, rc={"lines.linewidth": 2.5})
+    sns.set_style("white", {"xtick.bottom": True, "ytick.left": True})
+
+    fig, ax = plt.subplots(figsize=(8, 5), ncols=1, nrows=1, dpi=200)
+    his = sns.histplot(x=data, stat="probability", ax=ax)
+    normal(data.mean(), data.std(), histmax=ax.get_ylim()[1],
+           label=f'Expected distribution from errors, $\sigma$={data.std(): .2f}')
+    normal(0.0, av_std, histmax=ax.get_ylim()[1], color='red',
+           label=f'Fit to distribution $\sigma$={av_std: .2f}')
+    ax.set_xlabel('Deviation from median depth [ppm]')
+    ax.legend(loc='upper left', fancybox=False, framealpha=0.5,
+                  ncol=1, bbox_to_anchor=(0.0, 0.01, 1, 1), shadow=False,
+                  handleheight=1.4, labelspacing=0.1,
+                  fontsize=10).set_zorder(11)
+    plt.show()
+    if save_verbose:
+        fig.savefig(
+            os.path.join(save_path, save_name_base +
+                         "_distribution_from_median_depth.png"),
+            bbox_inches="tight")
 
 
 class Verbose:
