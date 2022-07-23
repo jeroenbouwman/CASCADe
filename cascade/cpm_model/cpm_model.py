@@ -1090,9 +1090,12 @@ class regressionParameterServer:
         self.cpm_parameters.max_number_of_cpus = \
             ast.literal_eval(
                 self.cascade_configuration.cascade_max_number_of_cpus)
-        self.cpm_parameters.cascade_number_of_data_servers = \
-            ast.literal_eval(
-                self.cascade_configuration.cascade_number_of_data_servers)
+        try:
+            self.cpm_parameters.cascade_number_of_data_servers = \
+                ast.literal_eval(
+                    self.cascade_configuration.cascade_number_of_data_servers)
+        except AttributeError:
+            self.cpm_parameters.cascade_number_of_data_servers = 1
         self.cpm_parameters.nwidth = \
             ast.literal_eval(self.cascade_configuration.cpm_deltapix)
         self.cpm_parameters.nboot = \

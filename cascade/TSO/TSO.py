@@ -1718,7 +1718,8 @@ class TSOSuite:
             rayControler = \
                 rayRegressionControler.remote(self.cascade_parameters,
                                               dataset, cleaned_dataset,
-                                              number_of_workers=num_workers)
+                                              number_of_workers=num_workers,
+                                              number_of_data_servers=NumberOfDataServers)
 #            nchunks = num_workers
             future = rayControler.run_regression_model.remote()
             ray.get(future)

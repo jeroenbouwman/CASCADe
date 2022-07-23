@@ -399,6 +399,18 @@ class JWSTMIRILRS(InstrumentBase):
         __all_scales = {'P750L': '777 Angstrom'}
         return __all_scales[self.par["inst_filter"]]
 
+    @property
+    def detector_gain(self):
+        """
+        Detector gain of the miri detectors.
+
+        Returns
+        -------
+        2.75 * u.electron / u.DN
+        """
+        return 2.75 * u.electron / u.DN
+
+
     def load_data(self):
         """
         Load the observations.
@@ -522,13 +534,14 @@ class JWSTMIRILRS(InstrumentBase):
         phase = phase - np.rint(phase)
         if self.par['obs_type'] == 'ECLIPSE':
             phase[phase < 0] = phase[phase < 0] + 1.0
-#
-# HACK
-        detector_gain = 2.75 *u.electron / u.DN
+
+        detector_gain = self.detector_gain
+
         scaling = (wavelength_data/7.5)**4
         scaling_unit = u.dimensionless_unscaled
         spectral_data *= detector_gain.value * scaling
         uncertainty_spectral_data *= detector_gain.value * scaling
+
         wave_unit = u.micron
         flux_unit = u.electron / u.s
 
