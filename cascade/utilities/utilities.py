@@ -64,7 +64,7 @@ def write_spectra_to_fits(spectral_dataset, path, filename, header_meta,
     """
     os.makedirs(path, exist_ok=True)
     mask = spectral_dataset.mask
- 
+
     hdr = fits.Header()
     for key, value in header_meta.items():
         hdr[key] = value
@@ -88,7 +88,7 @@ def write_spectra_to_fits(spectral_dataset, path, filename, header_meta,
                          array=spectral_dataset.wavelength_binsize.data.value[~mask])]
     except AttributeError:
         pass
-                     
+
     hdu = fits.BinTableHDU.from_columns(columns_list)
 
     hdul = fits.HDUList([primary_hdu, hdu])
@@ -116,6 +116,15 @@ def write_dataset_to_fits(spectral_dataset, path, filename,
     wave = spectral_dataset.return_masked_array('wavelength')
     unc = spectral_dataset.return_masked_array('uncertainty')
     time = spectral_dataset.return_masked_array('time')
+    try:
+        position = spectral_dataset.return_masked_array('position')
+    except:
+        position = None
+    try:
+        scaling = spectral_dataset.return_masked_array('scaling')
+    except:
+        scaling = None
+
 
     hdr = fits.Header()
     for key, value in header_meta.items():
@@ -132,8 +141,18 @@ def write_dataset_to_fits(spectral_dataset, path, filename,
     hdu_time = fits.ImageHDU(time.data, name='TIME')
     hdu_time.header['UNITS'] = spectral_dataset.time_unit.to_string()
 
-    hdul = fits.HDUList([primary_hdu, hdu_sys, hdu_mask, hdu_wave, hdu_unc,
-                         hdu_time])
+    product_list = [primary_hdu, hdu_sys, hdu_mask, hdu_wave, hdu_unc, hdu_time]
+
+    if position is not None:
+        hdu_position = fits.ImageHDU(position.data, name='POSITION')
+        hdu_position.header['UNITS'] = spectral_dataset.position_unit.to_string()
+        product_list += [hdu_position]
+    if scaling is not None:
+        hdu_scaling = fits.ImageHDU(scaling.data, name='SCALING')
+        hdu_scaling.header['UNITS'] = spectral_dataset.scaling_unit.to_string()
+        product_list += [hdu_scaling]
+
+    hdul = fits.HDUList(product_list)
 
     os.makedirs(path, exist_ok=True)
     hdul.writeto(os.path.join(path, filename), overwrite=True)
@@ -151,11 +170,11 @@ def read_dataset_from_fits(path, filename, auxilary_meta):
         file name of save fits file.
     auxilary_meta : 'list'
         All auxilary data to read from fits header.
-    
+
     Returns
     -------
     spectral_dataset : 'SpectralDataTimeSeries'
-        The data cube read from disk.    
+        The data cube read from disk.
     """
     with fits.open(os.path.join(path, filename)) as hdul:
         header_meta = {}
@@ -170,7 +189,17 @@ def read_dataset_from_fits(path, filename, auxilary_meta):
         uncertainty = np.array(hdul['UNCERTAINTY'].data, dtype=np.float64)
         time = np.array(hdul['TIME'].data, dtype=np.float64)
         time_unit = u.Unit(hdul['TIME'].header['UNITS'])
-    
+        try:
+            position = np.array(hdul['POSITION'].data, dtype=np.float64)
+            position_unit = u.Unit(hdul['POSITION'].header['UNITS'])
+        except:
+            position = None
+        try:
+            scaling = np.array(hdul['SCALING'].data, dtype=np.float64)
+            scaling_unit = u.Unit(hdul['SCALING'].header['UNITS'])
+        except:
+            scaling = None
+
     spectral_dataset = SpectralDataTimeSeries(
         wavelength=wavelength,
         wavelength_unit=wavelength_unit,
@@ -182,8 +211,15 @@ def read_dataset_from_fits(path, filename, auxilary_meta):
         mask=mask)
     spectral_dataset.add_auxilary(**header_meta)
 
+    if position is not None:
+        spectral_dataset.add_measurement(position=position,
+                                         position_unit=position_unit)
+    if scaling is not None:
+        spectral_dataset.add_measurement(scaling=scaling,
+                                         scaling_unit=scaling_unit)
+
     return spectral_dataset
-    
+
 
 def write_timeseries_to_fits(data, path, additional_file_string=None,
                              delete_old_files=False):

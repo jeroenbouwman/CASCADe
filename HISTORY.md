@@ -88,3 +88,6 @@
  - Added the posibility to read in position file for JWST observations.
  - Added a parameter to regulate the number of data chuncks to be loaded at
    the same time
+
+**version 1.1.15**
+ - Updated database file for HST observations

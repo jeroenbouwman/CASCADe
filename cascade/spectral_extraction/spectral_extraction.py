@@ -2661,6 +2661,12 @@ def create_cleaned_dataset(datasetIn, ROIcube, kernel, stdvKernelTime):
         cleanedDataset.add_measurement(scaling=scaling, scaling_unit=scaling_unit)
     except AttributeError:
         pass
+    try:
+        position = datasetIn.position
+        position_unit = datasetIn.position_unit
+        cleanedDataset.add_measurement(position=position, position_unit=position_unit)
+    except AttributeError:
+        pass
 
     return cleanedDataset
 
