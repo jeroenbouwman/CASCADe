@@ -9,9 +9,9 @@ before_script:
   - apt-get install -y build-essential
   - conda update -n base -c defaults conda
   - conda install -n base conda-libmamba-solver
-  - conda config --set experimental_solver libmamba
+  - conda config --set solver libmamba
   - conda config --describe channel_priority
-  - conda config --set channel_priority flexible
+  - conda config --set channel_priority strict
   - conda env create -f .environment-gitlab.yml
   - conda init bash
   - source ~/.bashrc
