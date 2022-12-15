@@ -7,14 +7,16 @@ stages:
 before_script:
   - apt-get update -q -y
   - apt-get install -y build-essential
+  - conda update -n base -c defaults conda
+  - conda env create -f .environment-gitlab.yml
+  - conda init bash
+  - source ~/.bashrc
+  - conda activate cascade
+  - conda list
 
 units_and_doc_tests:
   stage: test
   script:
-    - conda update -n base -c defaults conda
-    - conda env create -f .environment-gitlab.yml
-    - source activate cascade
-    - conda list
     - export PYTHONPATH="$PYTHONPATH:."
     - python cascade/initialize/initialize.py
     - python -m unittest discover -v -p *tests.py -s tests
