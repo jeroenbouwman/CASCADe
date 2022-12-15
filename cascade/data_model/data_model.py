@@ -975,6 +975,22 @@ class SpectralDataTimeSeries(SpectralData):
                     return np.ma.array(np.array([position_out]),
                                        mask=self.mask)
                 return np.ma.array(position_out, mask=self.mask)
+        elif attr == 'fwhm':
+            if hasattr(self, 'fwhm'):
+                if (self.mask.shape == ()) or \
+                   (self.mask.shape == self._fwhm.shape):
+                    fwhm_out = self._fwhm
+                else:
+                    ntile = len(self._fwhm.shape)
+                    if ntile != 1:
+                        raise ValueError("Unknown time structure")
+                    tiling = (self._data.shape[:-1]) + \
+                        tuple(np.ones(ntile).astype(int))
+                    fwhm_out = np.tile(self._fwhm, tiling)
+                if fwhm_out.shape == ():
+                    return np.ma.array(np.array([fwhm_out]),
+                                       mask=self.mask)
+                return np.ma.array(fwhm_out, mask=self.mask)
         elif attr == 'scaling':
             if hasattr(self, 'scaling'):
                 if (self.mask.shape == ()) or \

@@ -24,9 +24,9 @@ copyright = '2021 Jeroen Bouwman'
 author = 'Jeroen Bouwman'
 
 # The short X.Y version
-version = '1.1.15'
+version = '1.1.16'
 # The full version, including alpha/beta/rc tags
-release = '1.1.15 alpha'
+release = '1.1.16 alpha'
 
 
 # -- General configuration ---------------------------------------------------

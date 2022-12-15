@@ -113,6 +113,12 @@ def get_jwst_instrument_setup(configuration, default_data_path):
     except AttributeError:
         cpm_ncut_first_int = 0
     try:
+        cpm_ncut_last_int = \
+           configuration.cpm_ncut_last_integrations
+        cpm_ncut_last_int = ast.literal_eval(cpm_ncut_last_int)
+    except AttributeError:
+        cpm_ncut_last_int = -1
+    try:
         proc_rebin_time = int(ast.literal_eval(
             cascade_configuration.processing_rebin_number_time_steps))
     except AttributeError:
@@ -144,6 +150,7 @@ def get_jwst_instrument_setup(configuration, default_data_path):
         obs_target_name=obs_target_name,
         obs_has_backgr=obs_has_backgr,
         cpm_ncut_first_int=cpm_ncut_first_int,
+        cpm_ncut_last_int=cpm_ncut_last_int,
         proc_extend_roi=proc_extend_roi,
         proc_rebin_time=proc_rebin_time,
         proc_rebin_factor=proc_rebin_factor,
@@ -189,18 +196,20 @@ def create_mask_from_dq(dq_cube, bits_not_to_flag):
     return mask
 
 
-def read_x1dints_files(data_files, bits_not_to_flag, first_integration):
+def read_x1dints_files(data_files, bits_not_to_flag, first_integration, last_integration):
     """
     Read the jwst pipeline product x1dints.
 
     Parameters
     ----------
-    data_files : TYPE
-        DESCRIPTION.
-    bits_not_to_flag : TYPE
-        DESCRIPTION.
-    first_integration : TYPE
-        DESCRIPTION.
+    data_files : 'list'
+        List of x1d.first files.
+    bits_not_to_flag : 'list'
+        Bit numbers not to use when creating boolean mask from DQ data.
+    first_integration : 'int'
+        Index of first integration to be used in fit of the entiere data set.
+    last_integration : 'int'
+        Index of last integration to use.
 
     Returns
     -------
@@ -252,7 +261,7 @@ def read_x1dints_files(data_files, bits_not_to_flag, first_integration):
     mask = np.ma.masked_invalid(spectral_data).mask
     mask = mask | create_mask_from_dq(dq, bits_not_to_flag)
 
-    idx = np.argsort(time_bjd)[first_integration:]
+    idx = np.argsort(time_bjd)[first_integration:last_integration]
     time_bjd = time_bjd[idx]
     spectral_data = spectral_data[:, idx]
     uncertainty_spectral_data = uncertainty_spectral_data[:, idx]
@@ -263,8 +272,25 @@ def read_x1dints_files(data_files, bits_not_to_flag, first_integration):
     return (wavelength_data, spectral_data, uncertainty_spectral_data,
             time_bjd, mask, all_data_files)
 
-def read_position_file(data_file, first_integration):
+def read_position_file(data_file, first_integration, last_integration):
+    """
+    Read file containing position info of spectral source in time.
 
+    Parameters
+    ----------
+    data_file : 'str'
+        Name of file containing position info.
+    first_integration : 'int'
+        Index of first integration to be used in fit of the entiere data set.
+    last_integration : 'int'
+        Index of last integration to use.
+
+    Returns
+    -------
+    'dict'
+        Dictionary containing position information.
+
+    """
     position_list = ["POSITION", "TIME_BJD", "DISP_POS", "ANGLE", "SCALE"]
     header_list = ["MEDPOS", "MPUNIT", "PUNIT","DPUNIT", "AUNIT", "SUNIT"]
 
@@ -281,7 +307,50 @@ def read_position_file(data_file, first_integration):
             for key in position_list:
                 try:
                     value = hdu_list[1].data[key]
-                    position_dict[key] = value[first_integration:]
+                    position_dict[key] = value[first_integration:last_integration]
+                except:
+                    pass
+        return position_dict
+    else:
+        return {}
+
+
+def read_FWHM_file(data_file, first_integration, last_integration):
+    """
+    Read file containing position info of FWHM of the disperced light in time.
+
+    Parameters
+    ----------
+    data_file : 'str'
+        Name of file containing position info.
+    first_integration : 'int'
+        Index of first integration to be used in fit of the entiere data set.
+    last_integration : 'int'
+        Index of last integration to use.
+
+    Returns
+    -------
+    'dict'
+        Dictionary continging FWHM info.
+
+    """
+    position_list = ["FWHM", "TIME_BJD"]
+    header_list = ['MEDFWHM']
+
+    if pathlib.Path(data_file).is_file:
+        position_dict = {}
+        with fits.open(data_file) as hdu_list:
+
+            for key in header_list:
+                try:
+                    value = hdu_list['PRIMARY'].header[key]
+                    position_dict[key] = value
+                except:
+                    pass
+            for key in position_list:
+                try:
+                    value = hdu_list[1].data[key]
+                    position_dict[key] = value[first_integration:last_integration]
                 except:
                     pass
         return position_dict
@@ -491,7 +560,8 @@ class JWSTMIRILRS(InstrumentBase):
                                      target_name,
                                      'SPECTRA/')
 
-        data_files = find('*' + self.par['obs_id'] + '*x1dints.fits',
+        data_files = find('*' + self.par['obs_id'] + '*' +
+                          self.par['obs_data_product']+'.fits',
                           path_to_files)
 
         # number of integrations
@@ -504,9 +574,10 @@ class JWSTMIRILRS(InstrumentBase):
         (wavelength_data, spectral_data, uncertainty_spectral_data, time_bjd,
          mask, all_data_files) = \
             read_x1dints_files(data_files, bits_not_to_flag,
-                               self.par["cpm_ncut_first_int"])
+                               self.par["cpm_ncut_first_int"],
+                               self.par["cpm_ncut_last_int"])
 
-        # poisiton info
+        # positon info
         position_file = find('target_trace_position.fits', path_to_files)
         if len(position_file) == 0:
             position = np.ones((len(time_bjd)))
@@ -514,7 +585,8 @@ class JWSTMIRILRS(InstrumentBase):
             median_position = np.median(position)
         else:
             position_dict = read_position_file(position_file[0],
-                                      self.par["cpm_ncut_first_int"])
+                                      self.par["cpm_ncut_first_int"],
+                                      self.par["cpm_ncut_last_int"])
             position = position_dict['POSITION']
             try:
                 median_position = position_dict['MEDPOS']
@@ -526,14 +598,37 @@ class JWSTMIRILRS(InstrumentBase):
             except:
                 position_unit = u.pix
 
+        # FWHM info
+        fwhm_file = find('target_FWHM.fits', path_to_files)
+        if len(fwhm_file) == 0:
+            fwhm = np.ones((len(time_bjd)))
+            fwhm_unit = u.pix
+            median_fwhm = np.median(fwhm)
+        else:
+            fwhm_dict = read_FWHM_file(fwhm_file[0],
+                                      self.par["cpm_ncut_first_int"],
+                                      self.par["cpm_ncut_last_int"])
+            fwhm = fwhm_dict['FWHM']
+            try:
+                median_fwhm = fwhm_dict['MEDFWHM']
+            except:
+                median_fwhm = np.median(fwhm)
+                fwhm = fwhm - median_fwhm
+            try:
+                fwhm_unit =  fwhm_dict['FWHMUNIT']
+            except:
+                fwhm_unit = u.pix
+
+
         # orbital phase
-        phase = (time_bjd - self.par['obj_ephemeris']) / self.par['obj_period']
+        phase = (time_bjd+2400000.5 - self.par['obj_ephemeris']) / self.par['obj_period']
         phase = phase - int(np.max(phase))
-        if np.max(phase) < 0.0:
-            phase = phase + 1.0
-        phase = phase - np.rint(phase)
-        if self.par['obs_type'] == 'ECLIPSE':
-            phase[phase < 0] = phase[phase < 0] + 1.0
+# BUG FIX
+        #if np.max(phase) < 0.0:
+        #    phase = phase + 1.0
+        #phase = phase - np.rint(phase)
+        #if self.par['obs_type'] == 'ECLIPSE':
+        #    phase[phase < 0] = phase[phase < 0] + 1.0
 
         detector_gain = self.detector_gain
 
@@ -558,6 +653,8 @@ class JWSTMIRILRS(InstrumentBase):
                                    time_bjd=time_bjd,
                                    position=position,
                                    position_unit=position_unit,
+                                   fwhm=fwhm,
+                                   fwhm_unit=fwhm_unit,
                                    scaling=scaling,
                                    scaling_unit=scaling_unit,
                                    isRampFitted=True,

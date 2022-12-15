@@ -91,3 +91,8 @@
 
 **version 1.1.15**
  - Updated database file for HST observations
+
+**version 1.1.16**
+ - Changed orbital phase calculation for MIRI LRS
+ - Added option to remove integrations at the end of the time series
+ - Added FWHM as addition regressor

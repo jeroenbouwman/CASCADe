@@ -743,6 +743,11 @@ class regressionDataServer:
                 temp1 = (temp0-np.min(temp0))/(np.max(temp0)-np.min(temp0))
                 order = int(regressor.split('_')[1])
                 setattr(self, 'regressor_'+regressor, (temp1)**order)
+            elif regressor.split('_')[0] == 'fwhm':
+                temp0 = self.fit_dataset.return_masked_array('fwhm')
+                temp1 = (temp0-np.min(temp0))/(np.max(temp0)-np.min(temp0))
+                order = int(regressor.split('_')[1])
+                setattr(self, 'regressor_'+regressor, (temp1)**order)
             else:
                 setattr(self, 'regressor_'+regressor,
                         self.fit_dataset.return_masked_array(regressor))
@@ -1110,6 +1115,11 @@ class regressionParameterServer:
             ast.literal_eval(self.cascade_configuration.cpm_add_time)
         self.cpm_parameters.add_position = \
             ast.literal_eval(self.cascade_configuration.cpm_add_position)
+        try:
+            self.cpm_parameters.add_fwhm = \
+                ast.literal_eval(self.cascade_configuration.cpm_add_fwhm)
+        except AttributeError:
+            self.cpm_parameters.add_fwhm = False
         self.cpm_parameters.regularize_depth_correction = \
             ast.literal_eval(self.cascade_configuration.cpm_regularize_depth_correction)
         self.cpm_parameters.sigma_mse_cut = \
@@ -1154,6 +1164,14 @@ class regressionParameterServer:
         if self.cpm_parameters.add_time:
             for power in range(1, self.cpm_parameters.add_time_model_order+1):
                 additional_regressor_list.append('time_{}'.format(power))
+        try:
+            self.cpm_parameters.add_fwhm_model_order = ast.literal_eval(
+                self.cascade_configuration.cpm_add_fwhm_model_order)
+        except AttributeError:
+            self.cpm_parameters.add_fwhm_model_order = 1
+        if self.cpm_parameters.add_fwhm:
+            for power in range(1, self.cpm_parameters.add_fwhm_model_order+1):
+                additional_regressor_list.append('fwhm_{}'.format(power))
 
         self.cpm_parameters.additional_regressor_list = \
             additional_regressor_list
