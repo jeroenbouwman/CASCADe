@@ -2114,7 +2114,7 @@ class TSOSuite:
 
 
 def combine_observations(target_name, observations_ids, path=None,
-                         verbose=True, use_higher_resolution=False):
+                         verbose=True, use_resolution='nominal'):
     """
     Combine with CASCADe calibrated individual observations into one spectrum.
 
@@ -2129,8 +2129,8 @@ def combine_observations(target_name, observations_ids, path=None,
     verbose : 'bool', optional
         Flag, if True, will cause CASCAde to produce verbose output (plots).
         The default is True.
-    use_higher_resolution: 'bool', optional
-        The default is False.
+    use_higher_resolution: 'str', optional
+        The default is 'nominal'. Can have values 'lower', 'nominal', 'higher'
 
     Returns
     -------
@@ -2147,8 +2147,10 @@ def combine_observations(target_name, observations_ids, path=None,
     if not data_path.is_absolute():
         data_path = cascade_default_save_path / data_path
 
-    if use_higher_resolution:
+    if use_resolution == 'higher':
         file_name_extension = '_higher_res'
+    elif use_resolution == 'lower':
+        file_name_extension = '_lower_res'
     else:
         file_name_extension = ''
 

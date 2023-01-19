@@ -921,7 +921,8 @@ class regressionDataServer:
         self.regression_matrix_selection = \
             (regression_matrix, n_additional, self.RS.mean_, self.RS.scale_)
 
-    def get_regression_data(self, selection, bootstrap_indici=None):
+    def get_regression_data(self, selection, bootstrap_indici=None,
+                            return_data_only=False):
         """
         Get all relevant data.
 
@@ -933,6 +934,8 @@ class regressionDataServer:
         bootstrap_indici : 'ndarray' of 'int', optional
             The time indici indicating which data to be used for a bootstrap
             sampling. The default is None.
+        return_data_only : 'bool', optional
+            If set, the design matrix is not determined and returned as None.
 
         Returns
         -------
@@ -941,14 +944,20 @@ class regressionDataServer:
         'ndarray'
             Design matrix for te regression analysis of the data.
 
+
         """
         self.setup_regression_data(selection,
                                    bootstrap_indici=bootstrap_indici)
-        self.setup_regression_matrix(selection,
-                                     bootstrap_indici=bootstrap_indici)
+        if not return_data_only:
+            self.setup_regression_matrix(selection,
+                                         bootstrap_indici=bootstrap_indici)
+        else:
+            self.regression_matrix_selection = None
         return self.regression_data_selection, self.regression_matrix_selection
 
-    def get_all_regression_data(self, selection_list, bootstrap_indici=None):
+
+    def get_all_regression_data(self, selection_list, bootstrap_indici=None,
+                                return_data_only=False):
         """
         Get all relevant data for a slection list for a single bootstrap step.
 
@@ -960,20 +969,23 @@ class regressionDataServer:
         bootstrap_indici : 'ndarray' of 'int', optional
             The time indici indicating which data to be used for a bootstrap
             sampling. The default is None.
+        return_data_only : 'bool', optional
+            If set, the design matrix is not determined and returned as None.
 
         Returns
         -------
         'ndarray'
             Data to be modeled.
         'ndarray'
-            Design matrix for te regression analysis of the data.
+            Design matrix for the regression analysis of the data.
 
         """
         regression_selection_list = []
         for selection in selection_list:
             regression_selection = \
                 self.get_regression_data(selection,
-                                          bootstrap_indici=bootstrap_indici)
+                                          bootstrap_indici=bootstrap_indici,
+                                          return_data_only=return_data_only)
             regression_selection_list.append(regression_selection)
         return regression_selection_list
 
@@ -1754,7 +1766,7 @@ class regressionControler:
 
     @staticmethod
     def get_data_per_bootstrap_step(data_server_handle, regression_selections,
-                        bootstrap_selection):
+                        bootstrap_selection, return_data_only=True):
         """
         Get all data chunks to be used in the regression analysis per bootstrap step.
 
@@ -1766,7 +1778,8 @@ class regressionControler:
             DESCRIPTION.
         bootstrap_selection : 'ndarray'
             indici defining the bootstrap sampling.
-
+        return_data_only : 'bool', optional
+            If set, the design matrix is not determined and returned as None.
 
         Returns
         -------
@@ -1776,7 +1789,8 @@ class regressionControler:
         """
         selection_list = \
             data_server_handle.get_all_regression_data(
-                regression_selections, bootstrap_indici=bootstrap_selection)
+                regression_selections, bootstrap_indici=bootstrap_selection,
+                return_data_only=return_data_only)
 
         return selection_list
 

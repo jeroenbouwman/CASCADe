@@ -39,7 +39,7 @@ from astropy.wcs import WCS
 from astropy.stats import sigma_clipped_stats
 from astropy.convolution import Gaussian2DKernel
 from astropy.convolution import Gaussian1DKernel
-from photutils import IRAFStarFinder
+from photutils.detection import IRAFStarFinder
 from scipy.optimize import nnls
 
 from ...initialize import cascade_configuration

@@ -875,6 +875,7 @@ def get_calalog(catalog_name, update=True):
         raise ValueError('Catalog name not recognized. ' +
                          'Use one of the following: {}'.format(valid_catalogs))
 
+    print(f'Getting data from {catalog_name}')
     files_downloaded = []
     for url, file in zip(exoplanet_database_url, data_files_save):
         if update:
@@ -1972,10 +1973,16 @@ class lightcurve:
             ld_correction_obs = \
                 np.repeat(self.lc[3], len(dataset.wavelength.data.value[:, 0]))
         else:
-            f = interpolate.interp2d(self.lc[0][1:], self.lc[1],
-                                     self.lc[2][1:, :].T, kind='cubic')
-            lcmodel_obs = f(dataset.wavelength.data.value[:, 0],
-                            dataset.time.data.value[0, :] - time_offset).T
+            # 2d case
+            f = interpolate.RegularGridInterpolator((self.lc[0][1:], self.lc[1]),
+                                                    self.lc[2][1:, :],
+                                                    method='cubic',
+                                                    bounds_error=False,
+                                                    fill_value = None)
+            Xnew, Ynew = np.meshgrid(dataset.wavelength.data.value[:, 0],
+                              dataset.time.data.value[0, :] - time_offset,
+                              indexing='ij')
+            lcmodel_obs = f((Xnew, Ynew))
             # correction for limbdarking
             f = interpolate.interp1d(self.lc[0], self.lc[3])
             ld_correction_obs = f(dataset.wavelength.data.value[:, 0])

@@ -35,6 +35,7 @@ import numpy as np
 import copy
 import requests
 from tqdm import tqdm
+import urllib
 import astropy.units as u
 from astropy.table import MaskedColumn
 from astropy.io import fits
@@ -260,7 +261,10 @@ def return_exoplanet_catalogs(update=True):
                     'EXOPLANETS_A']
     catalog_dict = {}
     for cat in all_catalogs:
-        catalog_dict[cat] = parse_database(cat, update=update)
+        try:
+            catalog_dict[cat] = parse_database(cat, update=update)
+        except urllib.error.URLError:
+            print ('Catalog skipped')
     return catalog_dict
 
 
@@ -515,7 +519,7 @@ def create_bash_script(database_id, configuration):
     script_dict['default_path'] = cascade_default_path
     script_dict['init_path'] = cascade_default_initialization_path
     script_dict['data_path'] = cascade_default_data_path
-    script_dict['scripts_path'] = cascade_default_scripts_path 
+    script_dict['scripts_path'] = cascade_default_scripts_path
     script_dict['log_path'] = cascade_default_log_path
     script_dict['warnings'] = cascade_warnings
     script_dict['conda_env'] = cascade_default_anaconda_environment

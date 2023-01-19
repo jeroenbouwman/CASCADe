@@ -96,3 +96,9 @@
  - Changed orbital phase calculation for MIRI LRS
  - Added option to remove integrations at the end of the time series
  - Added FWHM as addition regressor
+
+**version 1.1.17**
+ - Added lower resolution rebin option for combining observations.
+ - Updated build_archive module to allow for skipping of archive incase of no connection.
+ - Fixed depreciation warnings for methods used in HST and exoplanet_tools modules.
+ - Removed regression matrix from data needed by post_proceccing step in the cpm_model module.
