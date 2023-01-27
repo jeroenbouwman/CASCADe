@@ -164,7 +164,12 @@ def check_cascade_version(version: str) -> str:
 
     """
     __check_url = f"https://gitlab.com/jbouwman/CASCADe/-/releases/{version}/"
-    response = requests.get(__check_url)
+    try:
+        response = requests.get(__check_url)
+    except requests.ConnectionError:
+        warnings.warn("No internet connection, setting online version to master")
+        used_version = 'master'
+        return used_version
     if response.status_code == 200:
         used_version = version
     else:
@@ -228,7 +233,7 @@ def need_to_copy_data(data_path_archive: Path,
             data_version = f.read()
             if data_version != distribution_version:
                 print("Old package data found. Re-initializing CASCADe data")
-                copy_flag = True            
+                copy_flag = True
     return copy_flag
 
 
@@ -321,7 +326,7 @@ def copy_cascade_data_from_git(data_path_archive: Path,
         URL of the git repository from which data is copied to user
         defined location.
     file_base : 'str'
-        
+
     query : 'dict'
         Dictionary used to constuct query to git repository to download zip file
         containing the data to be copied. The dictionary key is always 'path'
@@ -337,8 +342,8 @@ def copy_cascade_data_from_git(data_path_archive: Path,
     """
     new_path = data_path_archive / Path(*Path(query['path']).parts[1:])
     if new_path.is_dir() & (not overwrite):
-        shutil.rmtree(new_path)    
-    
+        shutil.rmtree(new_path)
+
     # some header info just to make sure it works.
     header = {"User-Agent":"Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
                "(KHTML, like Gecko) Chrome/51.0.2704.103 Safari/537.36"}
@@ -421,7 +426,7 @@ def reset_data_from_distribution(sections: list,
         DESCRIPTION.
     data_path_distribution : 'pathlib.Path'
         DESCRIPTION.
-    overwrite : 'bool'    
+    overwrite : 'bool'
 
     Returns
     -------
@@ -435,7 +440,7 @@ def reset_data_from_distribution(sections: list,
             copy_cascade_data_from_distribution(data_path_archive,
                                                 data_path_distribution,
                                                 section, overwrite=overwrite)
-            restore_user_initialization_files(user_list)   
+            restore_user_initialization_files(user_list)
         else:
             copy_cascade_data_from_distribution(data_path_archive,
                                                 data_path_distribution,
@@ -457,7 +462,7 @@ def reset_data_from_git(query_list: list,
         DESCRIPTION.
     url_distribution : 'str'
         DESCRIPTION.
-    overwrite : 'bool'    
+    overwrite : 'bool'
 
     Returns
     -------
@@ -481,7 +486,7 @@ def setup_cascade_data(data_path_archive: Path, data_path_distribution: Path,
                        functional_sections: list, example_sections: list,
                        distribution_version: str) -> None:
     """
-    Setup directory structure and data files needed by CASCAde. 
+    Setup directory structure and data files needed by CASCAde.
 
     Parameters
     ----------
@@ -496,7 +501,7 @@ def setup_cascade_data(data_path_archive: Path, data_path_distribution: Path,
     example_sections : 'list'
         Sub directories with examples how to use CASCADe
     distribution_version : 'str'
-        Installed version of CASCADe 
+        Installed version of CASCADe
 
     Returns
     -------
@@ -506,7 +511,7 @@ def setup_cascade_data(data_path_archive: Path, data_path_distribution: Path,
     copy_flag = need_to_copy_data(data_path_archive, distribution_version)
     if not copy_flag:
         return
-    
+
     print("Updating CASCADe data archive.")
     functional_data_path = data_path_distribution / 'data'
     examples_data_path = data_path_distribution / 'examples'
@@ -516,9 +521,9 @@ def setup_cascade_data(data_path_archive: Path, data_path_distribution: Path,
                                      functional_data_path)
         reset_data_from_distribution(example_sections, data_path_archive,
                                      examples_data_path,
-                                     overwrite=True) 
+                                     overwrite=True)
     else:
-        print("Copying data from git repository to user defined data archive. " 
+        print("Copying data from git repository to user defined data archive. "
               "This can take a moment depending on the connection speed.")
         used_distribution = Path(urlparse(url_distribution).path).parts[-2]
         if distribution_version != used_distribution:
@@ -849,7 +854,7 @@ cascade_warnings = os.environ['CASCADE_WARNINGS']
 
 :meta hide-value:
 """
-if cascade_warnings.strip().lower() == "off": 
+if cascade_warnings.strip().lower() == "off":
     warnings.simplefilter("ignore")
 else:
     warnings.simplefilter("default")
@@ -890,7 +895,7 @@ cascade_default_scripts_path = \
     Default path to the CASCADe pipeline scripts.
 
 :meta hide-value:
-""" 
+"""
 
 cascade_default_log_path = Path(os.environ['CASCADE_LOG_PATH'])
 """

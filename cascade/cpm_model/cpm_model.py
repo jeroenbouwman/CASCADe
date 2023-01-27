@@ -35,6 +35,7 @@ import ast
 import warnings
 import time as time_module
 import copy
+import gc
 import ray
 from numba import jit
 from scipy.linalg import svd
@@ -2456,7 +2457,7 @@ class rayRegressionControler(regressionControler):
 
     @staticmethod
     def get_data_per_bootstrap_step(data_server_handle, regression_selections,
-                        bootstrap_selection):
+                        bootstrap_selection, return_data_only=True):
         """
         Get all data chunks to be used in the regression analysis per bootstrap step.
 
@@ -2478,7 +2479,8 @@ class rayRegressionControler(regressionControler):
         """
         selection_list = \
             ray.get(data_server_handle.get_all_regression_data.remote(
-                regression_selections, bootstrap_indici=bootstrap_selection))
+                regression_selections, bootstrap_indici=bootstrap_selection,
+                return_data_only=return_data_only))
 
         return selection_list
 
@@ -2554,6 +2556,24 @@ class rayRegressionControler(regressionControler):
                    self.data_server_handle[iserver%ndata_servers])
                    for iserver, w in enumerate(workers)]
         ray.get(futures)
+
+
+class processWorker:
+    """
+    Post-process worker class.
+
+    This class defines the workers used in the post-processing of the
+    regression analysis to determine the final systematics and error.
+    """
+
+    def __init__(self, bootsptrap_indici, fitted_model,
+                 regression_results, fitted_spectrum):
+
+        self.bootsptrap_indici = bootsptrap_indici
+        self.fitted_model = fitted_model
+        self.regression_results = regression_results
+        self.fitted_spectrum = fitted_spectrum
+
 
 
 class regressionWorker:
@@ -2844,7 +2864,9 @@ class regressionWorker:
                     regression_results[iboot, idata_point, 0:n_additional] = \
                     beta_optimal[0:n_additional]
             del regression_data_sub_chunk
+        del sub_chunks, iterator_chunk
         self.update_parameters_on_server(parameter_server_handle)
+        gc.collect()
 
 
 @ray.remote
