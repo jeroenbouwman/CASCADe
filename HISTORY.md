@@ -102,3 +102,6 @@
  - Updated build_archive module to allow for skipping of archive incase of no connection.
  - Fixed depreciation warnings for methods used in HST and exoplanet_tools modules.
  - Removed regression matrix from data needed by post_proceccing step in the cpm_model module.
+
+**version 1.2.0**
+ - Major update to the cpm_model module, with the processing step now completely parallel.
