@@ -1701,12 +1701,12 @@ class TSOSuite:
             Controler.process_regression_fit()
             Controler.post_process_regression_fit()
             fit_parameters = Controler.get_fit_parameters_from_server()
+            processed_parameters = \
+                Controler.get_processed_parameters_from_server()
             regularization = \
                 Controler.get_regularization_parameters_from_server()
             control_parameters = Controler.get_control_parameters()
-            lightcurve_model, ld_correction, ld_coefficients, \
-                dilution_correction, lc_parameters, mid_transit_time = \
-                Controler.get_lightcurve_model()
+            lightcurve_model = Controler.get_lightcurve_model()
         else:
             num_cpus = psutil.cpu_count(logical=True)
             print('Number of CPUs: {}'.format(num_cpus))
@@ -1716,27 +1716,32 @@ class TSOSuite:
             print('Total number of workers: {}'.format(num_workers))
             ray.init(num_cpus=cpus_use, ignore_reinit_error=True)
             rayControler = \
-                rayRegressionControler.remote(self.cascade_parameters,
-                                              dataset, cleaned_dataset,
-                                              number_of_workers=num_workers,
-                                              number_of_data_servers=NumberOfDataServers)
-#            nchunks = num_workers
+                rayRegressionControler.remote(
+                    self.cascade_parameters,
+                    dataset, cleaned_dataset,
+                    number_of_workers=num_workers,
+                    number_of_data_servers=NumberOfDataServers)
             future = rayControler.run_regression_model.remote()
             ray.get(future)
             future = rayControler.process_regression_fit.remote()
             ray.get(future)
             future = rayControler.post_process_regression_fit.remote()
             ray.get(future)
-            fit_parameters = \
-                ray.get(rayControler.get_fit_parameters_from_server.remote())
-            regularization = \
-                ray.get(rayControler.
-                        get_regularization_parameters_from_server.remote())
-            control_parameters = \
-                ray.get(rayControler.get_control_parameters.remote())
-            lightcurve_model, ld_correction, ld_coefficients, \
-                dilution_correction, lc_parameters, mid_transit_time = \
-                ray.get(rayControler.get_lightcurve_model.remote())
+            fit_parameters = ray.get(
+                rayControler.get_fit_parameters_from_server.remote()
+                )
+            processed_parameters = ray.get(
+                rayControler.get_processed_parameters_from_server.remote()
+                )
+            regularization = ray.get(
+                rayControler.get_regularization_parameters_from_server.remote()
+                )
+            control_parameters = ray.get(
+                rayControler.get_control_parameters.remote()
+                )
+            lightcurve_model = ray.get(
+                rayControler.get_lightcurve_model.remote()
+                )
 
         elapsed_time = time_module.time() - start_time
         print('elapsed time regression analysis: {}'.format(elapsed_time))
@@ -1746,13 +1751,19 @@ class TSOSuite:
         except AttributeError:
             self.model = SimpleNamespace()
         finally:
-            self.model.light_curve_interpolated = lightcurve_model
-            self.model.limbdarkning_correction = ld_correction
-            self.model.limbdarkning_coefficients = ld_coefficients
-            self.model.dilution_correction = dilution_correction
-            self.model.model_parameters = lc_parameters
-            self.model.transittype = lc_parameters['transittype']
-            self.model.mid_transit_time = mid_transit_time
+            self.model.light_curve_interpolated = \
+                lightcurve_model.lightcurve_model
+            self.model.limbdarkning_correction = \
+                lightcurve_model.ld_correction
+            self.model.limbdarkning_coefficients = \
+                lightcurve_model.ld_coefficients
+            self.model.dilution_correction = \
+                lightcurve_model.dilution_correction
+            self.model.model_parameters = \
+                lightcurve_model.lightcurve_parameters
+            self.model.transittype = \
+                lightcurve_model.lightcurve_parameters['transittype']
+            self.model.mid_transit_time = lightcurve_model.mid_transit_time
 
         try:
             self.calibration_results
@@ -1762,11 +1773,11 @@ class TSOSuite:
             self.calibration_results.regression_results = \
                 fit_parameters.regression_results
             self.calibration_results.normed_fitted_spectra = \
-                fit_parameters.normed_fitted_spectrum
+                processed_parameters.normed_fitted_spectrum
             self.calibration_results.corrected_fitted_spectrum = \
-                fit_parameters.corrected_fitted_spectrum
+                processed_parameters.corrected_fitted_spectrum
             self.calibration_results.wavelength_normed_fitted_spectrum = \
-                fit_parameters.wavelength_normed_fitted_spectrum
+                processed_parameters.wavelength_normed_fitted_spectrum
             self.calibration_results.mse = fit_parameters.fitted_mse
             self.calibration_results.aic = fit_parameters.fitted_aic
             self.calibration_results.dof = fit_parameters.degrees_of_freedom
@@ -1774,15 +1785,16 @@ class TSOSuite:
                 fit_parameters.fitted_model
             self.calibration_results.time_model = \
                 fit_parameters.fitted_time
-            self.calibration_results.baseline = fit_parameters.fitted_baseline
+            self.calibration_results.baseline = \
+                processed_parameters.fitted_baseline
             self.calibration_results.fitted_systematics_bootstrap = \
                 fit_parameters.fitted_systematics_bootstrap
             self.calibration_results.fitted_residuals_bootstrap = \
                 fit_parameters.fitted_residuals_bootstrap
             self.calibration_results.residuals = \
-                fit_parameters.fit_residuals
+                processed_parameters.fit_residuals
             self.calibration_results.normed_residuals = \
-                fit_parameters.normed_fit_residuals
+                processed_parameters.normed_fit_residuals
             self.calibration_results.regularization = \
                 np.array(regularization.optimal_alpha)
             self.calibration_results.used_control_parameters = \
@@ -1833,7 +1845,8 @@ class TSOSuite:
         ray.shutdown()
         vrbs = Verbose()
         if hasattr(self, "stellar_modeling"):
-            dataset_uncal = self.exoplanet_spectrum.non_normalized_stellar_spectrum_bootstrap
+            dataset_uncal = \
+                self.exoplanet_spectrum.non_normalized_stellar_spectrum_bootstrap
             stellar_spectrum = \
                 dataset_uncal.data
             wavelength_stellar_spectrum = \
@@ -1841,8 +1854,9 @@ class TSOSuite:
             error_stellar_spectrum = \
                 dataset_uncal.uncertainty
             try:
-                data_scaling = \
-                    np.ma.mean(cleaned_dataset.return_masked_array('scaling'), axis=-1)
+                data_scaling = np.ma.mean(
+                    cleaned_dataset.return_masked_array('scaling'), axis=-1
+                    )
             except:
                 data_scaling = 1.0
             stellar_spectrum = stellar_spectrum/data_scaling
@@ -2045,8 +2059,9 @@ class TSOSuite:
         write_dataset_to_fits(
             cal_results.fitted_residuals_bootstrap, save_path,
             filename, header_data)
-        cleaned_dataset.mask = np.logical_or(cleaned_dataset.mask,
-                                             cal_results.fitted_systematics_bootstrap.mask)
+        cleaned_dataset.mask = np.logical_or(
+            cleaned_dataset.mask, cal_results.fitted_systematics_bootstrap.mask
+            )
         filename = save_name_base+'_cleaned_dataset.fits'
         write_dataset_to_fits(cleaned_dataset, save_path,
                               filename, header_data)
