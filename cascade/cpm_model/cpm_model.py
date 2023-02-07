@@ -1387,31 +1387,56 @@ class regressionParameterServer:
             new_parameters.degrees_of_freedom
         self.fitted_parameters = fitted_parameters
 
-    def update_processed_parameters(self, new_parameters):
+    def update_processed_parameters(self, new_parameters, bootstrap_chunk=None):
+        """
+        Update processed parameters
+
+        Parameters
+        ----------
+        new_parameters : TYPE
+            DESCRIPTION.
+        bootstrap_chunk : TYPE, optional
+            DESCRIPTION. The default is None.
+
+        Returns
+        -------
+        None.
+
+        """
         processed_parameters = copy.deepcopy(self.processed_parameters)
 
-        processed_parameters.corrected_fitted_spectrum +=\
+        if bootstrap_chunk is None:
+            bootstrap_chunk = list(
+                np.arange(processed_parameters.corrected_fitted_spectrum.shape[0])
+                )
+
+        processed_parameters.corrected_fitted_spectrum[bootstrap_chunk, ...] +=\
             new_parameters.corrected_fitted_spectrum
-        processed_parameters.fitted_baseline  +=\
+        processed_parameters.fitted_baseline[bootstrap_chunk, ...] +=\
             new_parameters.fitted_baseline
-        processed_parameters.fit_residuals  +=\
+        processed_parameters.fit_residuals[bootstrap_chunk, ...] +=\
             new_parameters.fit_residuals
-        processed_parameters.normed_fit_residuals  +=\
+        processed_parameters.normed_fit_residuals[bootstrap_chunk, ...] +=\
             new_parameters.normed_fit_residuals
-        processed_parameters.normed_fitted_spectrum  +=\
+        processed_parameters.normed_fitted_spectrum[bootstrap_chunk, ...] +=\
             new_parameters.normed_fitted_spectrum
-        processed_parameters.error_normed_fitted_spectrum  +=\
+        processed_parameters.error_normed_fitted_spectrum[bootstrap_chunk, ...] +=\
             new_parameters.error_normed_fitted_spectrum
-        processed_parameters.wavelength_normed_fitted_spectrum  +=\
+        processed_parameters.wavelength_normed_fitted_spectrum[bootstrap_chunk, ...] +=\
             new_parameters.wavelength_normed_fitted_spectrum
-        processed_parameters.stellar_spectrum  +=\
+        processed_parameters.stellar_spectrum[bootstrap_chunk, ...] +=\
             new_parameters.stellar_spectrum
 
         self.processed_parameters = processed_parameters
 
-    def get_fitted_parameters(self):
+    def get_fitted_parameters(self, bootstrap_chunk=None):
         """
         Return the fitted parameters.
+
+        Parameters
+        ----------
+        bootstrap_chunk: 'list'
+            list of indici of subset of bootstrap samples
 
         Returns
         -------
@@ -1419,11 +1444,25 @@ class regressionParameterServer:
             Returns a namespace containing all fitted parameters.
 
         """
-        return self.fitted_parameters
+        if bootstrap_chunk is None:
+            return self.fitted_parameters
+        else:
+            fitted_parameters_chunk = SimpleNamespace()
+            for k in self.fitted_parameters.__dict__:
+                setattr(
+                    fitted_parameters_chunk, k,
+                    self.fitted_parameters.__dict__[k][bootstrap_chunk, ...]
+                    )
+            return fitted_parameters_chunk
 
-    def get_processed_parameters(self):
+    def get_processed_parameters(self, bootstrap_chunk=None):
         """
         Return the fitted parameters.
+
+        Parameters
+        ----------
+        bootstrap_chunk: 'list'
+            list of indici of subset of bootstrap samples
 
         Returns
         -------
@@ -1431,7 +1470,16 @@ class regressionParameterServer:
             Returns a namespace containing all fitted parameters.
 
         """
-        return self.processed_parameters
+        if bootstrap_chunk is None:
+            return self.processed_parameters
+        else:
+            processed_parameters_chunk = SimpleNamespace()
+            for k in self.processed_parameters.__dict__:
+                setattr(
+                    processed_parameters_chunk, k,
+                    self.processed_parameters.__dict__[k][bootstrap_chunk, ...]
+                    )
+            return processed_parameters_chunk
 
     def add_new_parameters(self, new_parameters):
         """
@@ -1448,7 +1496,8 @@ class regressionParameterServer:
         None.
 
         """
-        for key, value in new_parameters.items():
+        temp = copy.deepcopy(new_parameters)
+        for key, value in temp.items():
             setattr(self.fitted_parameters, key, value)
 
     def reset_parameters(self):
@@ -1611,9 +1660,14 @@ class regressionControler:
         self.parameter_server_handle.initialize_parameter_server(
             self.data_server_handle[0])
 
-    def get_fit_parameters_from_server(self):
+    def get_fit_parameters_from_server(self, bootstrap_chunk=None):
         """
         Get the regression fit parameters from the parameter server.
+
+        Parameter
+        ---------
+        bootstrap_chunk:  'list'
+            indici of a subset of all bootstrap samples
 
         Returns
         -------
@@ -1622,9 +1676,11 @@ class regressionControler:
             the extraction and calibration of the planetary signal.
 
         """
-        return self.parameter_server_handle.get_fitted_parameters()
+        return self.parameter_server_handle.get_fitted_parameters(
+            bootstrap_chunk=bootstrap_chunk
+            )
 
-    def get_processed_parameters_from_server(self):
+    def get_processed_parameters_from_server(self, bootstrap_chunk=None):
         """
         Get the processed regression fit parameters from the parameter server.
 
@@ -1635,7 +1691,9 @@ class regressionControler:
             the extraction and calibration of the planetary signal.
 
         """
-        return self.parameter_server_handle.get_processed_parameters()
+        return self.parameter_server_handle.get_processed_parameters(
+            bootstrap_chunk=bootstrap_chunk
+            )
 
     def get_regularization_parameters_from_server(self):
         """
@@ -1819,66 +1877,66 @@ class regressionControler:
         """
         self.parameter_server_handle.add_new_parameters(new_parameters)
 
-    @staticmethod
-    def get_data_chunck(data_server_handle, regression_selection,
-                        bootstrap_selection):
-        """
-        Get a chunk of the data to be used in the regression analysis.
+    # @staticmethod
+    # def get_data_chunck(data_server_handle, regression_selection,
+    #                     bootstrap_selection):
+    #     """
+    #     Get a chunk of the data to be used in the regression analysis.
 
-        Parameters
-        ----------
-        data_server_handle : 'regressioDataServer'
-            Instance of the regressionDataServer class.
-        regression_selection : 'tuple'
-            tuple containing indici defing the data and regression matrix for
-            all wavelength indici.
-        bootstrap_selection : 'ndarray'
-            indici defining the bootstrap sampling.
+    #     Parameters
+    #     ----------
+    #     data_server_handle : 'regressioDataServer'
+    #         Instance of the regressionDataServer class.
+    #     regression_selection : 'tuple'
+    #         tuple containing indici defing the data and regression matrix for
+    #         all wavelength indici.
+    #     bootstrap_selection : 'ndarray'
+    #         indici defining the bootstrap sampling.
 
-        Returns
-        -------
-        regression_data_selection : 'ndarray'
-            Selected data to be modeled.
-        regression_matirx_selection : 'ndarray'
-            data used as design matrix in regression modeling of the
-            selected data.
+    #     Returns
+    #     -------
+    #     regression_data_selection : 'ndarray'
+    #         Selected data to be modeled.
+    #     regression_matirx_selection : 'ndarray'
+    #         data used as design matrix in regression modeling of the
+    #         selected data.
 
-        """
-        regression_data_selection, regression_matirx_selection = \
-            data_server_handle.get_regression_data(
-                regression_selection,
-                bootstrap_indici=bootstrap_selection)
-        return regression_data_selection, regression_matirx_selection
+    #     """
+    #     regression_data_selection, regression_matirx_selection = \
+    #         data_server_handle.get_regression_data(
+    #             regression_selection,
+    #             bootstrap_indici=bootstrap_selection)
+    #     return regression_data_selection, regression_matirx_selection
 
-    @staticmethod
-    def get_data_per_bootstrap_step(data_server_handle, regression_selections,
-                        bootstrap_selection, return_data_only=True):
-        """
-        Get all data chunks to be used in the regression analysis per bootstrap step.
+    # @staticmethod
+    # def get_data_per_bootstrap_step(data_server_handle, regression_selections,
+    #                     bootstrap_selection, return_data_only=True):
+    #     """
+    #     Get all data chunks to be used in the regression analysis per bootstrap step.
 
-        Parameters
-        ----------
-        data_server_handle : 'regressioDataServer'
-            Instance of the regressionDataServer class.
-        regression_selections : TYPE
-            DESCRIPTION.
-        bootstrap_selection : 'ndarray'
-            indici defining the bootstrap sampling.
-        return_data_only : 'bool', optional
-            If set, the design matrix is not determined and returned as None.
+    #     Parameters
+    #     ----------
+    #     data_server_handle : 'regressioDataServer'
+    #         Instance of the regressionDataServer class.
+    #     regression_selections : TYPE
+    #         DESCRIPTION.
+    #     bootstrap_selection : 'ndarray'
+    #         indici defining the bootstrap sampling.
+    #     return_data_only : 'bool', optional
+    #         If set, the design matrix is not determined and returned as None.
 
-        Returns
-        -------
-        selection_list: 'list'
-            List with all data and regression matrix selections
+    #     Returns
+    #     -------
+    #     selection_list: 'list'
+    #         List with all data and regression matrix selections
 
-        """
-        selection_list = \
-            data_server_handle.get_all_regression_data(
-                regression_selections, bootstrap_indici=bootstrap_selection,
-                return_data_only=return_data_only)
+    #     """
+    #     selection_list = \
+    #         data_server_handle.get_all_regression_data(
+    #             regression_selections, bootstrap_indici=bootstrap_selection,
+    #             return_data_only=return_data_only)
 
-        return selection_list
+    #     return selection_list
 
     def run_regression_model(self):
         """
@@ -1954,49 +2012,66 @@ class regressionControler:
         None.
 
         """
-        fit_parameters = self.get_fit_parameters_from_server()
         control_parameters = self.get_control_parameters()
         lightcurve_model = self.get_lightcurve_model()
 
+        # correction for transit depth when using the lightcurve models from
+        # other wavelengths
         corr_matrix = self.calculate_correction_matrix(lightcurve_model)
 
-        initial_processed_parameters = \
-            copy.deepcopy(self.get_processed_parameters_from_server())
-        workers = [
-            processWorker(initial_processed_parameters, control_parameters,
-                          fit_parameters, lightcurve_model, corr_matrix,
-                          self.iterators.bootsptrap_indici)
-            for _ in range(self.number_of_workers)
-                   ]
-
-        chunked_boot_indici = self.grouper_it(
+        # chunked index number of the bootstrap samples
+        boostrap_sample_index_chunk = list(self.grouper_it(
             np.arange(control_parameters.cpm_parameters.nboot+1),
             self.number_of_workers,
             control_parameters.cpm_parameters.nboot+1
-            )
-        features = [
-            w.depth_correction(indici)
-            for w, indici in zip(workers,chunked_boot_indici)
+            ))
+        # chunked time sample indici of the bootstrap
+        boostrap_indici_chunk = list(self.grouper_it(
+           self.iterators.bootsptrap_indici,
+           self.number_of_workers,
+           control_parameters.cpm_parameters.nboot+1
+           ))
+
+        # create and initialize workers
+        workers = [
+            processWorker(
+                self.get_processed_parameters_from_server(bootstrap_chunk=bsic[0]),
+                control_parameters,
+                self.get_fit_parameters_from_server(bootstrap_chunk=bsic[0]),
+                lightcurve_model, corr_matrix,
+                bic[0],
+                bsic[0]
+                )
+            for bic, bsic in zip(boostrap_indici_chunk, boostrap_sample_index_chunk)
             ]
 
+        # step 1: depth correction
+        features = [
+            w.depth_correction(indici)
+            for w, indici in zip(workers,boostrap_sample_index_chunk)
+            ]
+
+        # step 2 refitting and baseline determination
         ndata_server=len(self.data_server_handle)
-        chunked_boot_indici = \
-            self.grouper_it(
-                np.arange(control_parameters.cpm_parameters.nboot+1),
-                self.number_of_workers,
-                control_parameters.cpm_parameters.nboot+1
-                )
         features = [
             w.process_lightcurve_fit(
                 indici, self.iterators.regressor_indici,
-                self.data_server_handle[iserver%ndata_server])
-            for iserver, (w, indici) in enumerate(zip(workers,chunked_boot_indici))
+                self.data_server_handle[iserver%ndata_server]
+                )
+            for iserver, (w, indici) in enumerate(
+                    zip(workers,boostrap_sample_index_chunk)
+                    )
             ]
 
+        # step 3: storing processed results
         features = [
             w.update_parameters_on_server(self.parameter_server_handle)
             for w in workers
             ]
+
+        del features, workers, ndata_server,
+        del boostrap_sample_index_chunk,control_parameters, lightcurve_model
+        gc.collect()
 
     # def process_regression_fit(self):
     #     """
@@ -2155,10 +2230,10 @@ class regressionControler:
         None.
 
         """
-        fit_parameters = self.get_fit_parameters_from_server()
-        processed_parameters = self.get_processed_parameters_from_server()
-        control_parameters = self.get_control_parameters()
-        lightcurve_model = self.get_lightcurve_model()
+        fit_parameters = copy.deepcopy(self.get_fit_parameters_from_server())
+        processed_parameters = copy.deepcopy(self.get_processed_parameters_from_server())
+        control_parameters = copy.deepcopy(self.get_control_parameters())
+        lightcurve_model = copy.deepcopy(self.get_lightcurve_model())
 
         sigma_cut = control_parameters.cpm_parameters.sigma_mse_cut
         bad_wavelength_mask = \
@@ -2464,7 +2539,7 @@ class rayRegressionControler(regressionControler):
             initialize_parameter_server.remote(self.data_server_handle[0])
         ray.get(ftr)
 
-    def get_fit_parameters_from_server(self):
+    def get_fit_parameters_from_server(self,  bootstrap_chunk=None):
         """
         Grab fitted regression parameters from the parameter server.
 
@@ -2475,21 +2550,29 @@ class rayRegressionControler(regressionControler):
 
         """
         return ray.get(
-            self.parameter_server_handle.get_fitted_parameters.remote()
+            self.parameter_server_handle.get_fitted_parameters.remote(
+                bootstrap_chunk=bootstrap_chunk
+                )
                        )
 
-    def get_processed_parameters_from_server(self):
+    def get_processed_parameters_from_server(self, bootstrap_chunk=None):
         """
         Grab fitted regression parameters from the parameter server.
 
+        Parameters
+        ----------
+        bootstrap_chunk ;
+
         Returns
         -------
-        TYPE
-            DESCRIPTION.
+        Simplenamespace
+            Simple namespace containing all processed parameters.
 
         """
         return ray.get(
-            self.parameter_server_handle.get_processed_parameters.remote()
+            self.parameter_server_handle.get_processed_parameters.remote(
+                bootstrap_chunk=bootstrap_chunk
+                )
                        )
 
     def get_regularization_parameters_from_server(self):
@@ -2588,65 +2671,65 @@ class rayRegressionControler(regressionControler):
         """
         ray.get(self.parameter_server_handle.reset_parameters.remote())
 
-    @staticmethod
-    def get_data_chunck(data_server_handle, regression_selection,
-                        bootstrap_selection):
-        """
-        Get a chunk of the data to be used in the regression analysis.
+    # @staticmethod
+    # def get_data_chunck(data_server_handle, regression_selection,
+    #                     bootstrap_selection):
+    #     """
+    #     Get a chunk of the data to be used in the regression analysis.
 
-        Parameters
-        ----------
-        data_server_handle : 'regressioDataServer'
-            Instance of the regressionDataServer class.
-        regression_selection : 'tuple'
-            tuple containing indici defing the data and regression matrix for
-            all wavelength indici.
-        bootstrap_selection : 'ndarray'
-            indici defining the bootstrap sampling.
+    #     Parameters
+    #     ----------
+    #     data_server_handle : 'regressioDataServer'
+    #         Instance of the regressionDataServer class.
+    #     regression_selection : 'tuple'
+    #         tuple containing indici defing the data and regression matrix for
+    #         all wavelength indici.
+    #     bootstrap_selection : 'ndarray'
+    #         indici defining the bootstrap sampling.
 
-        Returns
-        -------
-        regression_data_selection : 'ndarray'
-            Selected data to be modeled.
-        regression_matirx_selection : 'ndarray'
-            data used as design matrix in regression modeling of the
-            selected data.
+    #     Returns
+    #     -------
+    #     regression_data_selection : 'ndarray'
+    #         Selected data to be modeled.
+    #     regression_matirx_selection : 'ndarray'
+    #         data used as design matrix in regression modeling of the
+    #         selected data.
 
-        """
-        regression_data_selection, regression_matirx_selection = \
-            ray.get(data_server_handle.get_regression_data.remote(
-                regression_selection,
-                bootstrap_indici=bootstrap_selection))
-        return regression_data_selection, regression_matirx_selection
+    #     """
+    #     regression_data_selection, regression_matirx_selection = \
+    #         ray.get(data_server_handle.get_regression_data.remote(
+    #             regression_selection,
+    #             bootstrap_indici=bootstrap_selection))
+    #     return regression_data_selection, regression_matirx_selection
 
-    @staticmethod
-    def get_data_per_bootstrap_step(data_server_handle, regression_selections,
-                        bootstrap_selection, return_data_only=True):
-        """
-        Get all data chunks to be used in the regression analysis per bootstrap step.
+    # @staticmethod
+    # def get_data_per_bootstrap_step(data_server_handle, regression_selections,
+    #                     bootstrap_selection, return_data_only=True):
+    #     """
+    #     Get all data chunks to be used in the regression analysis per bootstrap step.
 
-        Parameters
-        ----------
-        data_server_handle : 'regressioDataServer'
-            Instance of the regressionDataServer class.
-        regression_selections : TYPE
-            DESCRIPTION.
-        bootstrap_selection : 'ndarray'
-            indici defining the bootstrap sampling.
+    #     Parameters
+    #     ----------
+    #     data_server_handle : 'regressioDataServer'
+    #         Instance of the regressionDataServer class.
+    #     regression_selections : TYPE
+    #         DESCRIPTION.
+    #     bootstrap_selection : 'ndarray'
+    #         indici defining the bootstrap sampling.
 
 
-        Returns
-        -------
-        selection_list: 'list'
-            List with all data and regression matrix selections
+    #     Returns
+    #     -------
+    #     selection_list: 'list'
+    #         List with all data and regression matrix selections
 
-        """
-        selection_list = \
-            ray.get(data_server_handle.get_all_regression_data.remote(
-                regression_selections, bootstrap_indici=bootstrap_selection,
-                return_data_only=return_data_only))
+    #     """
+    #     selection_list = \
+    #         ray.get(data_server_handle.get_all_regression_data.remote(
+    #             regression_selections, bootstrap_indici=bootstrap_selection,
+    #             return_data_only=return_data_only))
 
-        return selection_list
+    #     return selection_list
 
     def add_fit_parameters_to_parameter_server(self, new_parameters):
         """
@@ -2662,10 +2745,10 @@ class rayRegressionControler(regressionControler):
         None.
 
         """
-        ray.get(
+        copy.deepcopy(ray.get(
             self.parameter_server_handle.
             add_new_parameters.remote(new_parameters)
-                )
+                ))
 
     def run_regression_model(self):
         """
@@ -2690,7 +2773,7 @@ class rayRegressionControler(regressionControler):
         initial_fit_parameters = \
             copy.deepcopy(self.get_fit_parameters_from_server())
         initial_regularization = \
-            self.get_regularization_parameters_from_server()
+            copy.deepcopy(self.get_regularization_parameters_from_server())
         workers = [
             rayRegressionWorker.remote(initial_fit_parameters,
                                        initial_regularization,
@@ -2702,6 +2785,7 @@ class rayRegressionControler(regressionControler):
                    self.data_server_handle[iserver%ndata_servers])
                    for iserver, w in enumerate(workers)]
         ray.get(futures)
+
         # This launches workers on the bootstrapped data set + original data
         # and determines the fit parameters and error there on
         updated_regularization = \
@@ -2714,12 +2798,17 @@ class rayRegressionControler(regressionControler):
                        workers, self.iterators.chunked_bootstrap_model_iterator
                                                 )]
         ray.get(futures)
+
         # reset parameters on server for final run.
         self.reset_fit_parameters()
         futures = [w.async_update_loop.remote(self.parameter_server_handle,
                    self.data_server_handle[iserver%ndata_servers])
                    for iserver, w in enumerate(workers)]
         ray.get(futures)
+
+        del futures, workers
+        del ndata_servers
+        gc.collect()
 
     def process_regression_fit(self):
         """
@@ -2730,54 +2819,70 @@ class rayRegressionControler(regressionControler):
         None.
 
         """
-        fit_parameters = self.get_fit_parameters_from_server()
+
         control_parameters = self.get_control_parameters()
         lightcurve_model = self.get_lightcurve_model()
 
+        # correction for transit depth when using the lightcurve models from
+        # other wavelengths
         corr_matrix = self.calculate_correction_matrix(lightcurve_model)
 
-        initial_processed_parameters = \
-            copy.deepcopy(self.get_processed_parameters_from_server())
-        workers = [
-            rayProcessWorker.remote(initial_processed_parameters,
-                                    control_parameters, fit_parameters,
-                                    lightcurve_model, corr_matrix,
-                                    self.iterators.bootsptrap_indici)
-            for _ in range(self.number_of_workers)
-            ]
-
-        chunked_boot_indici = self.grouper_it(
+        # chunked index number of the bootstrap samples
+        boostrap_sample_index_chunk = list(self.grouper_it(
             np.arange(control_parameters.cpm_parameters.nboot+1),
             self.number_of_workers,
             control_parameters.cpm_parameters.nboot+1
-            )
+            ))
+        # chunked time sample indici of the bootstrap
+        boostrap_indici_chunk = list(self.grouper_it(
+           self.iterators.bootsptrap_indici,
+           self.number_of_workers,
+           control_parameters.cpm_parameters.nboot+1
+           ))
 
+        # create and initialize workers
+        workers = [
+            rayProcessWorker.remote(
+                self.get_processed_parameters_from_server(bootstrap_chunk=bsic[0]),
+                control_parameters,
+                self.get_fit_parameters_from_server(bootstrap_chunk=bsic[0]),
+                lightcurve_model, corr_matrix,
+                bic[0],
+                bsic[0]
+                )
+            for bic, bsic in zip(boostrap_indici_chunk, boostrap_sample_index_chunk)
+            ]
+
+        # step 1: depth correction
         features = [
             w.depth_correction.remote(indici)
-            for w, indici in zip(workers,chunked_boot_indici)
+            for w, indici in zip(workers,boostrap_sample_index_chunk)
             ]
         ray.get(features)
 
+        # step 2 refitting and baseline determination
         ndata_server=len(self.data_server_handle)
-        chunked_boot_indici = self.grouper_it(
-            np.arange(control_parameters.cpm_parameters.nboot+1),
-            self.number_of_workers,
-            control_parameters.cpm_parameters.nboot+1
-            )
         features = [
             w.process_lightcurve_fit.remote(
                 indici, self.iterators.regressor_indici,
                 self.data_server_handle[iserver%ndata_server]
                 )
-            for iserver, (w, indici) in enumerate(zip(workers,chunked_boot_indici))
+            for iserver, (w, indici) in enumerate(
+                    zip(workers,boostrap_sample_index_chunk)
+                    )
             ]
         ray.get(features)
 
+        # step 3: storing processed results
         features = [
             w.update_parameters_on_server.remote(self.parameter_server_handle)
             for w in workers
             ]
         ray.get(features)
+
+        del features, workers, ndata_server,
+        del boostrap_sample_index_chunk,control_parameters, lightcurve_model
+        gc.collect()
 
 class processWorker:
     """
@@ -2788,12 +2893,14 @@ class processWorker:
     """
     def __init__(self, initial_processed_parameters, control_parameters,
                  fit_parameters, lightcurve_model,  correction_matrix,
-                 bootsptrap_indici):
-
+                 bootsptrap_indici, boostrap_sample_index_chunk):
         self.processed_parameters= copy.deepcopy(initial_processed_parameters)
         self.control_parameters = control_parameters
         self.bootsptrap_indici = bootsptrap_indici
-        self.fit_parameters = fit_parameters
+        self.boostrap_sample_index_chunk = boostrap_sample_index_chunk
+        self.regression_results = fit_parameters.regression_results
+        self.fitted_spectrum = fit_parameters.fitted_spectrum
+        self.fitted_model = fit_parameters.fitted_model
         self.lightcurve_model = lightcurve_model
         self.correction_matrix = correction_matrix
 
@@ -2812,13 +2919,18 @@ class processWorker:
 
         """
         ftrs = parameter_server_handle.\
-            update_processed_parameters(self.processed_parameters)
+            update_processed_parameters(
+                self.processed_parameters,
+                bootstrap_chunk=self.boostrap_sample_index_chunk
+                )
 
     def depth_correction(self, bootstrap_chunck):
-
-        for iboot in bootstrap_chunck[0]:
-            fit_results = self.fit_parameters.regression_results[iboot,...]
-            spectrum = self.fit_parameters.fitted_spectrum[iboot]
+        #return
+        #for iboot in bootstrap_chunck[0]:
+        #    fit_results = self.regression_results[iboot,...]
+       #     spectrum = self.fitted_spectrum[iboot]
+        for iboot, (fit_results, spectrum) in enumerate(
+                zip(self.regression_results, self.fitted_spectrum)):
 
             W1 = np.delete(
                 fit_results,
@@ -2858,6 +2970,7 @@ class processWorker:
 
             self.processed_parameters.corrected_fitted_spectrum[iboot,:] = \
                 corrected_spectrum
+
         gc.collect()
 
     @staticmethod
@@ -2892,12 +3005,17 @@ class processWorker:
 
     def process_lightcurve_fit(self, bootstrap_chunck, regressor_indici,
                                data_server_handle):
-
-        for iboot in bootstrap_chunck[0]:
-            bootstrap_selection = self.bootsptrap_indici[iboot,...]
-            models = self.fit_parameters.fitted_model[iboot, ...]
-            corrected_spectrum = \
-                self.processed_parameters.corrected_fitted_spectrum[iboot,:]
+        #return
+        #for iboot in bootstrap_chunck[0]:
+        #    bootstrap_selection = self.bootsptrap_indici[iboot,...]
+        #    models = self.fitted_model[iboot, ...]
+        #    corrected_spectrum = \
+        #        self.processed_parameters.corrected_fitted_spectrum[iboot,:]
+        for iboot, (bootstrap_selection, models, corrected_spectrum) in enumerate(
+                zip(self.bootsptrap_indici, self.fitted_model,
+                    self.processed_parameters.corrected_fitted_spectrum
+                    )
+                ):
 
             baseline_model = np.zeros(
                 self.control_parameters.data_parameters.shape)
@@ -2915,7 +3033,7 @@ class processWorker:
                 self.control_parameters.data_parameters.max_spectral_points))
 
             regression_data_selections = \
-                self.get_data_per_bootstrap_step(data_server_handle,
+               self.get_data_per_bootstrap_step(data_server_handle,
                                                  regressor_indici,
                                                  bootstrap_selection)
 
@@ -2946,6 +3064,9 @@ class processWorker:
                     error_normed_depth*self.lightcurve_model.dilution_correction[il, 0]
                 wavelength_normed_spectrum[ipixel] = wavelength
 
+            del regression_data_selections, regression_selection, regression_data_selection
+            del data_unscaled, wavelength, phase, covariance, mask, il, nwave
+            gc.collect()
             self.processed_parameters.fitted_baseline[iboot,:] = baseline_model
             self.processed_parameters.fit_residuals[iboot,:] = residual
             self.processed_parameters.normed_fit_residuals[iboot,:] = \
@@ -2967,10 +3088,10 @@ class rayProcessWorker(processWorker):
 
     def __init__(self, initial_processed_parameters, control_parameters,
                  fit_parameters, lightcurve_model,  correction_matrix,
-                 bootsptrap_indici):
+                 bootsptrap_indici, boostrap_sample_index_chunk):
         super().__init__(initial_processed_parameters, control_parameters,
                      fit_parameters, lightcurve_model,  correction_matrix,
-                     bootsptrap_indici)
+                     bootsptrap_indici, boostrap_sample_index_chunk)
 
     def update_parameters_on_server(self, parameter_server_handle):
         """
@@ -2987,7 +3108,10 @@ class rayProcessWorker(processWorker):
 
         """
         ftrs = parameter_server_handle.\
-            update_processed_parameters.remote(self.processed_parameters)
+            update_processed_parameters.remote(
+                self.processed_parameters,
+                bootstrap_chunk=self.boostrap_sample_index_chunk
+                )
         ray.get(ftrs)
 
     @staticmethod
@@ -3014,9 +3138,9 @@ class rayProcessWorker(processWorker):
 
         """
         selection_list = \
-            ray.get(data_server_handle.get_all_regression_data.remote(
+            copy.deepcopy(ray.get(data_server_handle.get_all_regression_data.remote(
                 regression_selections, bootstrap_indici=bootstrap_selection,
-                return_data_only=return_data_only))
+                return_data_only=return_data_only)))
 
         return selection_list
 
@@ -3058,7 +3182,7 @@ class regressionWorker:
         """
         self.fit_parameters = copy.deepcopy(updated_fit_parameters)
         self.regularization = copy.deepcopy(updated_regularization)
-        self.iterator = updated_iterator_chunk
+        self.iterator = copy.deepcopy(updated_iterator_chunk)
 
     def compute_model(self, regression_data, regularization_method, alpha):
         """
@@ -3150,33 +3274,33 @@ class regressionWorker:
                 bootstrap_indici=bootstrap_selection)
         return regression_data_selection, regression_matirx_selection
 
-    @staticmethod
-    def get_data_per_bootstrap_step(data_server_handle, regression_selections,
-                        bootstrap_selection):
-        """
-        Get all data chunks to be used in the regression analysis per bootstrap step.
+    # @staticmethod
+    # def get_data_per_bootstrap_step(data_server_handle, regression_selections,
+    #                     bootstrap_selection):
+    #     """
+    #     Get all data chunks to be used in the regression analysis per bootstrap step.
 
-        Parameters
-        ----------
-        data_server_handle : 'regressioDataServer'
-            Instance of the regressionDataServer class.
-        regression_selections : TYPE
-            DESCRIPTION.
-        bootstrap_selection : 'ndarray'
-            indici defining the bootstrap sampling.
+    #     Parameters
+    #     ----------
+    #     data_server_handle : 'regressioDataServer'
+    #         Instance of the regressionDataServer class.
+    #     regression_selections : TYPE
+    #         DESCRIPTION.
+    #     bootstrap_selection : 'ndarray'
+    #         indici defining the bootstrap sampling.
 
 
-        Returns
-        -------
-        selection_list: 'list'
-            List with all data and regression matrix selections
+    #     Returns
+    #     -------
+    #     selection_list: 'list'
+    #         List with all data and regression matrix selections
 
-        """
-        selection_list = \
-            data_server_handle.get_all_regression_data(
-                regression_selections, bootstrap_indici=bootstrap_selection)
+    #     """
+    #     selection_list = \
+    #         data_server_handle.get_all_regression_data(
+    #             regression_selections, bootstrap_indici=bootstrap_selection)
 
-        return selection_list
+    #     return selection_list
 
     @staticmethod
     def get_regression_data_chunk(data_server_handle, iterator_chunk):
@@ -3276,9 +3400,10 @@ class regressionWorker:
         sub_chunks = self.chunks(iterator_chunk, n_sub_chunks)
 
         for sub_chunk in sub_chunks:
-            regression_data_sub_chunk = self.get_regression_data_chunk(data_server_handle, sub_chunk)
-            for ((iboot, bootstrap_selection),\
-                    (idata_point, regression_selection)), regression_data in zip(sub_chunk,regression_data_sub_chunk) :
+            regression_data_sub_chunk = \
+                self.get_regression_data_chunk(data_server_handle, sub_chunk)
+            for ((iboot, bootstrap_selection), (idata_point, regression_selection)),\
+                regression_data in zip(sub_chunk,regression_data_sub_chunk) :
 
                 (_, _), (index_disp_regressors, _), nwave = regression_selection
 
@@ -3309,6 +3434,7 @@ class regressionWorker:
                     regression_results[iboot, idata_point, 0:n_additional] = \
                     beta_optimal[0:n_additional]
             del regression_data_sub_chunk
+            gc.collect()
         del sub_chunks, iterator_chunk
         self.update_parameters_on_server(parameter_server_handle)
         gc.collect()
@@ -3348,38 +3474,38 @@ class rayRegressionWorker(regressionWorker):
 
         """
         regression_data_selection, regression_matirx_selection = \
-            ray.get(data_server_handle.get_regression_data.remote(
+            copy.deepcopy(ray.get(data_server_handle.get_regression_data.remote(
                 regression_selection,
-                bootstrap_indici=bootstrap_selection))
+                bootstrap_indici=bootstrap_selection)))
         return regression_data_selection, regression_matirx_selection
 
-    @staticmethod
-    def get_data_per_bootstrap_step(data_server_handle, regression_selections,
-                        bootstrap_selection):
-        """
-        Get all data chunks to be used in the regression analysis per bootstrap step.
+    # @staticmethod
+    # def get_data_per_bootstrap_step(data_server_handle, regression_selections,
+    #                     bootstrap_selection):
+    #     """
+    #     Get all data chunks to be used in the regression analysis per bootstrap step.
 
-        Parameters
-        ----------
-        data_server_handle : 'regressioDataServer'
-            Instance of the regressionDataServer class.
-        regression_selections : TYPE
-            DESCRIPTION.
-        bootstrap_selection : 'ndarray'
-            indici defining the bootstrap sampling.
+    #     Parameters
+    #     ----------
+    #     data_server_handle : 'regressioDataServer'
+    #         Instance of the regressionDataServer class.
+    #     regression_selections : TYPE
+    #         DESCRIPTION.
+    #     bootstrap_selection : 'ndarray'
+    #         indici defining the bootstrap sampling.
 
 
-        Returns
-        -------
-        selection_list: 'list'
-            List with all data and regression matrix selections
+    #     Returns
+    #     -------
+    #     selection_list: 'list'
+    #         List with all data and regression matrix selections
 
-        """
-        selection_list = \
-            ray.get(data_server_handle.get_all_regression_data.remote(
-                regression_selections, bootstrap_indici=bootstrap_selection))
+    #     """
+    #     selection_list = \
+    #         ray.get(data_server_handle.get_all_regression_data.remote(
+    #             regression_selections, bootstrap_indici=bootstrap_selection))
 
-        return selection_list
+    #     return selection_list
 
     @staticmethod
     def get_regression_data_chunk(data_server_handle, iterator_chunk):
@@ -3400,8 +3526,8 @@ class rayRegressionWorker(regressionWorker):
 
         """
         selection_list = \
-            ray.get(data_server_handle.get_regression_data_chunk.remote(
-                iterator_chunk))
+            copy.deepcopy(ray.get(data_server_handle.get_regression_data_chunk.remote(
+                iterator_chunk)))
         return selection_list
 
     @staticmethod
@@ -3425,11 +3551,11 @@ class rayRegressionWorker(regressionWorker):
             with a size corresponding to the total data volume.
         """
         regression_par = \
-            ray.get(parameter_server_handle.get_regression_parameters.remote())
+            copy.deepcopy(ray.get(parameter_server_handle.get_regression_parameters.remote()))
         n_additional = regression_par.n_additional_regressors
         n_sub_chunks = regression_par.number_of_sub_chunks_per_load
         data_par = \
-            ray.get(parameter_server_handle.get_data_parameters.remote())
+            copy.deepcopy(ray.get(parameter_server_handle.get_data_parameters.remote()))
         ncorrect = data_par.ncorrect
         return n_additional, ncorrect, n_sub_chunks
 
