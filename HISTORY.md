@@ -107,5 +107,8 @@
  - Major update to the cpm_model module, with the processing step now completely parallel.
  - Updated the responce of JWST/LRS for the exotethys package.
 
-**version 1.1.1**
+**version 1.2.1**
  - Fixed a memory issue with the parallel proseeeing of the fit results.
+
+**version 1.2.2**
+ - Fixed further memory issues with the parallel fitting and parameter storage.

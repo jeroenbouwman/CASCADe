@@ -171,6 +171,9 @@ def ols(design_matrix, data, covariance=None):
     return fit_parameters, err_fit_parameters, sigma_hat_sqr
 
 
+rayOls = ray.remote(ols)
+
+
 def ridge(input_regression_matrix, input_data, input_covariance,
           input_delta, input_alpha):
     r"""
@@ -313,7 +316,7 @@ def ridge(input_regression_matrix, input_data, input_covariance,
         optimal_regularization, aicc
 
 
-rayRidge = ray.remote(num_returns=6)(ridge)
+rayRidge = ray.remote(ridge)
 
 
 def check_causality():
@@ -1366,26 +1369,75 @@ class regressionParameterServer:
             np.zeros((self.cpm_parameters.nboot+1,
                       self.data_parameters.max_spectral_points))
 
-    def update_fitted_parameters(self, new_parameters):
+    def update_fitted_parameters(self, new_parameters, data_chunk):
         """Apply new update and returns weights."""
-        fitted_parameters = copy.deepcopy(self.fitted_parameters)
-        fitted_parameters.regression_results += \
-            new_parameters.regression_results
-        fitted_parameters.fitted_spectrum += \
+        # fitted_parameters = copy.deepcopy(self.fitted_parameters)
+        # fitted_parameters.regression_results += \
+        #     new_parameters.regression_results
+        # fitted_parameters.fitted_spectrum += \
+        #     new_parameters.fitted_spectrum
+        # fitted_parameters.wavelength_fitted_spectrum += \
+        #     new_parameters.wavelength_fitted_spectrum
+        # fitted_parameters.fitted_time += \
+        #     new_parameters.fitted_time
+        # fitted_parameters.fitted_model += \
+        #     new_parameters.fitted_model
+        # fitted_parameters.fitted_mse += \
+        #     new_parameters.fitted_mse
+        # fitted_parameters.fitted_aic += \
+        #     new_parameters.fitted_aic
+        # fitted_parameters.degrees_of_freedom += \
+        #     new_parameters.degrees_of_freedom
+
+        bootstrap_sample_index = data_chunk[0]
+        wavelength_index = data_chunk[1]
+        index_disp_regressors, n_additional = data_chunk[2]
+
+        self.fitted_parameters.fitted_spectrum[bootstrap_sample_index, wavelength_index] = \
             new_parameters.fitted_spectrum
-        fitted_parameters.wavelength_fitted_spectrum += \
-            new_parameters.wavelength_fitted_spectrum
-        fitted_parameters.fitted_time += \
-            new_parameters.fitted_time
-        fitted_parameters.fitted_model += \
+        self.fitted_parameters.fitted_model[bootstrap_sample_index, wavelength_index, :] = \
             new_parameters.fitted_model
-        fitted_parameters.fitted_mse += \
+        self.fitted_parameters.fitted_time[bootstrap_sample_index, wavelength_index, :] = \
+            new_parameters.fitted_time
+        self.fitted_parameters.wavelength_fitted_spectrum[bootstrap_sample_index, wavelength_index] = \
+            new_parameters.wavelength_fitted_spectrum
+        self.fitted_parameters.fitted_mse[bootstrap_sample_index, wavelength_index] = \
             new_parameters.fitted_mse
-        fitted_parameters.fitted_aic += \
+        self.fitted_parameters.fitted_aic[bootstrap_sample_index, wavelength_index] = \
             new_parameters.fitted_aic
-        fitted_parameters.degrees_of_freedom += \
+        self.fitted_parameters.degrees_of_freedom[bootstrap_sample_index, wavelength_index] = \
             new_parameters.degrees_of_freedom
-        self.fitted_parameters = fitted_parameters
+
+        for j, (i1, i2, i3) in enumerate(zip(bootstrap_sample_index, wavelength_index, index_disp_regressors)):
+            self.fitted_parameters.regression_results[i1, i2, i3] =\
+                new_parameters.regression_results[0][j]
+        self.fitted_parameters.regression_results[i1, i2, 0:n_additional] =\
+            new_parameters.regression_results[1][j]
+
+        #self.fitted_parameters = fitted_parameters
+
+
+                # self.fit_parameters.\
+                #     fitted_spectrum[iboot, idata_point] = beta_optimal[1]
+                # self.fit_parameters.\
+                #     fitted_model[iboot, idata_point, :] = model_unscaled
+                # self.fit_parameters.\
+                #     fitted_time[iboot, idata_point, :] = phase
+                # self.fit_parameters.\
+                #     wavelength_fitted_spectrum[iboot, idata_point] = wavelength
+                # self.fit_parameters.fitted_mse[iboot, idata_point] = mse
+                # self.fit_parameters.fitted_aic[iboot, idata_point] = aic
+                # self.fit_parameters.\
+                #     degrees_of_freedom[iboot, idata_point] = degrees_of_freedom
+                # self.fit_parameters.\
+                #     regression_results[
+                #         iboot, idata_point,
+                #         index_disp_regressors+n_additional-ncorrect
+                #                       ] = beta_optimal[n_additional:]
+                # self.fit_parameters.\
+                #     regression_results[iboot, idata_point, 0:n_additional] = \
+                #     beta_optimal[0:n_additional]
+
 
     def update_processed_parameters(self, new_parameters, bootstrap_chunk=None):
         """
@@ -1409,9 +1461,14 @@ class regressionParameterServer:
             bootstrap_chunk = list(
                 np.arange(processed_parameters.corrected_fitted_spectrum.shape[0])
                 )
+            bootstrap_sample_counter = list(
+                np.arange(processed_parameters.corrected_fitted_spectrum.shape[0])
+                )
+        else:
+            bootstrap_chunk, bootstrap_sample_counter = bootstrap_chunk
 
         processed_parameters.corrected_fitted_spectrum[bootstrap_chunk, ...] +=\
-            new_parameters.corrected_fitted_spectrum
+            new_parameters.corrected_fitted_spectrum[bootstrap_sample_counter, ...]
         processed_parameters.fitted_baseline[bootstrap_chunk, ...] +=\
             new_parameters.fitted_baseline
         processed_parameters.fit_residuals[bootstrap_chunk, ...] +=\
@@ -1958,12 +2015,12 @@ class regressionControler:
 
         # This launches workers on the full (non bootstrapped) data set
         # and determines the optimal regularization
-        initial_fit_parameters = \
-            copy.deepcopy(self.get_fit_parameters_from_server())
+        #initial_fit_parameters = \
+        #    copy.deepcopy(self.get_fit_parameters_from_server())
         initial_regularization = \
             self.get_regularization_parameters_from_server()
         workers = [
-            regressionWorker(initial_fit_parameters,
+            regressionWorker(#initial_fit_parameters,
                              initial_regularization,
                              iterator_chunk)
             for iterator_chunk in self.iterators.chunked_full_model_iterator
@@ -1978,7 +2035,7 @@ class regressionControler:
         updated_regularization = \
             copy.deepcopy(self.get_regularization_parameters_from_server())
         # re-initialize workers with optimal regularization
-        futures = [w.update_initial_parameters(initial_fit_parameters,
+        futures = [w.update_initial_parameters(#initial_fit_parameters,
                                                updated_regularization,
                                                iterator_chunk)
                    for w, iterator_chunk in zip(
@@ -2035,7 +2092,7 @@ class regressionControler:
         # create and initialize workers
         workers = [
             processWorker(
-                self.get_processed_parameters_from_server(bootstrap_chunk=bsic[0]),
+                #self.get_processed_parameters_from_server(bootstrap_chunk=bsic[0]),
                 control_parameters,
                 self.get_fit_parameters_from_server(bootstrap_chunk=bsic[0]),
                 lightcurve_model, corr_matrix,
@@ -2056,18 +2113,18 @@ class regressionControler:
         features = [
             w.process_lightcurve_fit(
                 indici, self.iterators.regressor_indici,
-                self.data_server_handle[iserver%ndata_server]
-                )
+                self.data_server_handle[iserver%ndata_server],
+                self.parameter_server_handle)
             for iserver, (w, indici) in enumerate(
                     zip(workers,boostrap_sample_index_chunk)
                     )
             ]
 
-        # step 3: storing processed results
-        features = [
-            w.update_parameters_on_server(self.parameter_server_handle)
-            for w in workers
-            ]
+        # # step 3: storing processed results
+        # features = [
+        #     w.update_parameters_on_server(self.parameter_server_handle)
+        #     for w in workers
+        #     ]
 
         del features, workers, ndata_server,
         del boostrap_sample_index_chunk,control_parameters, lightcurve_model
@@ -2770,12 +2827,12 @@ class rayRegressionControler(regressionControler):
 
         # This launches workers on the full (non bootstrapped) data set
         # and determines the optimal regularization
-        initial_fit_parameters = \
-            copy.deepcopy(self.get_fit_parameters_from_server())
+        #initial_fit_parameters = \
+        #    self.get_fit_parameters_from_server()
         initial_regularization = \
-            copy.deepcopy(self.get_regularization_parameters_from_server())
+            self.get_regularization_parameters_from_server()
         workers = [
-            rayRegressionWorker.remote(initial_fit_parameters,
+            rayRegressionWorker.remote(#initial_fit_parameters,
                                        initial_regularization,
                                        iterator_chunk)
             for iterator_chunk in self.iterators.chunked_full_model_iterator
@@ -2789,9 +2846,9 @@ class rayRegressionControler(regressionControler):
         # This launches workers on the bootstrapped data set + original data
         # and determines the fit parameters and error there on
         updated_regularization = \
-            copy.deepcopy(self.get_regularization_parameters_from_server())
+            self.get_regularization_parameters_from_server()
         # re-initialize workers with optimal regularization
-        futures = [w.update_initial_parameters.remote(initial_fit_parameters,
+        futures = [w.update_initial_parameters.remote(#initial_fit_parameters,
                                                       updated_regularization,
                                                       iterator_chunk)
                    for w, iterator_chunk in zip(
@@ -2809,6 +2866,25 @@ class rayRegressionControler(regressionControler):
         del futures, workers
         del ndata_servers
         gc.collect()
+
+
+    @staticmethod
+    def calculate_correction_matrix(lightcurve_model):
+        # correction matricx for limb darkening correction
+        nwave = lightcurve_model.lightcurve_model.shape[0]
+        corr_matrix = np.zeros((nwave, nwave)) + np.identity(nwave)
+        refs = []
+        index = []
+        for i in zip(*np.triu_indices(nwave, k=1)):
+            refs.append(rayOls.remote(lightcurve_model.lightcurve_model[i[0], :, None],
+                        lightcurve_model.lightcurve_model[i[1], :]))
+            index.append(i)
+        returns = ray.get(refs)
+        for (i), (coeff, _, _) in zip(index, returns):
+            corr_matrix[i] = coeff
+            corr_matrix[i[::-1]] = 1/coeff
+        return corr_matrix
+
 
     def process_regression_fit(self):
         """
@@ -2843,7 +2919,7 @@ class rayRegressionControler(regressionControler):
         # create and initialize workers
         workers = [
             rayProcessWorker.remote(
-                self.get_processed_parameters_from_server(bootstrap_chunk=bsic[0]),
+                #self.get_processed_parameters_from_server(bootstrap_chunk=bsic[0]),
                 control_parameters,
                 self.get_fit_parameters_from_server(bootstrap_chunk=bsic[0]),
                 lightcurve_model, corr_matrix,
@@ -2865,7 +2941,8 @@ class rayRegressionControler(regressionControler):
         features = [
             w.process_lightcurve_fit.remote(
                 indici, self.iterators.regressor_indici,
-                self.data_server_handle[iserver%ndata_server]
+                self.data_server_handle[iserver%ndata_server],
+                self.parameter_server_handle
                 )
             for iserver, (w, indici) in enumerate(
                     zip(workers,boostrap_sample_index_chunk)
@@ -2873,12 +2950,12 @@ class rayRegressionControler(regressionControler):
             ]
         ray.get(features)
 
-        # step 3: storing processed results
-        features = [
-            w.update_parameters_on_server.remote(self.parameter_server_handle)
-            for w in workers
-            ]
-        ray.get(features)
+        # # step 3: storing processed results
+        # features = [
+        #     w.update_parameters_on_server.remote(self.parameter_server_handle)
+        #     for w in workers
+        #     ]
+        # ray.get(features)
 
         del features, workers, ndata_server,
         del boostrap_sample_index_chunk,control_parameters, lightcurve_model
@@ -2891,20 +2968,23 @@ class processWorker:
     This class defines the workers used in the post-processing of the
     regression analysis to determine the final systematics and error.
     """
-    def __init__(self, initial_processed_parameters, control_parameters,
+    def __init__(self, #initial_processed_parameters,
+                 control_parameters,
                  fit_parameters, lightcurve_model,  correction_matrix,
                  bootsptrap_indici, boostrap_sample_index_chunk):
-        self.processed_parameters= copy.deepcopy(initial_processed_parameters)
+        #self.processed_parameters= copy.deepcopy(initial_processed_parameters)
         self.control_parameters = control_parameters
         self.bootsptrap_indici = bootsptrap_indici
-        self.boostrap_sample_index_chunk = boostrap_sample_index_chunk
+        self.boostrap_sample_index_chunk = copy.deepcopy(boostrap_sample_index_chunk)
         self.regression_results = fit_parameters.regression_results
         self.fitted_spectrum = fit_parameters.fitted_spectrum
         self.fitted_model = fit_parameters.fitted_model
         self.lightcurve_model = lightcurve_model
         self.correction_matrix = correction_matrix
 
-    def update_parameters_on_server(self, parameter_server_handle):
+        self.processed_parameters=SimpleNamespace()
+
+    def update_parameters_on_server(self, parameter_server_handle, bootstrap_chunk=None):
         """
         Update parameters on parameter server.
 
@@ -2912,16 +2992,22 @@ class processWorker:
         ----------
         parameter_server_handle : 'regressionParameterServer''
             Instane of the parameter server class
+        bootstrap_chunk : 'tuple' of 'lists'
+            tuple containing the list of processed bootstrap samples and list with
+            index counter of the processed bootstep step.
 
         Returns
         -------
         None.
 
         """
+        if bootstrap_chunk is None:
+            bootstrap_chunk = (self.boostrap_sample_index_chunk,
+                               list(np.arange(len(self.boostrap_sample_index_chunk))))
         ftrs = parameter_server_handle.\
             update_processed_parameters(
                 self.processed_parameters,
-                bootstrap_chunk=self.boostrap_sample_index_chunk
+                bootstrap_chunk=bootstrap_chunk
                 )
 
     def depth_correction(self, bootstrap_chunck):
@@ -2929,6 +3015,7 @@ class processWorker:
         #for iboot in bootstrap_chunck[0]:
         #    fit_results = self.regression_results[iboot,...]
        #     spectrum = self.fitted_spectrum[iboot]
+        corrected_fitted_spectrum = []
         for iboot, (fit_results, spectrum) in enumerate(
                 zip(self.regression_results, self.fitted_spectrum)):
 
@@ -2968,8 +3055,10 @@ class processWorker:
             else:
                 corrected_spectrum, _, _ = ols(K, spectrum)
 
-            self.processed_parameters.corrected_fitted_spectrum[iboot,:] = \
-                corrected_spectrum
+            corrected_fitted_spectrum.append(corrected_spectrum)
+
+        self.processed_parameters.corrected_fitted_spectrum = \
+                np.array(corrected_fitted_spectrum)
 
         gc.collect()
 
@@ -3004,15 +3093,15 @@ class processWorker:
         return selection_list
 
     def process_lightcurve_fit(self, bootstrap_chunck, regressor_indici,
-                               data_server_handle):
+                               data_server_handle, parameter_server_handle):
         #return
         #for iboot in bootstrap_chunck[0]:
         #    bootstrap_selection = self.bootsptrap_indici[iboot,...]
         #    models = self.fitted_model[iboot, ...]
         #    corrected_spectrum = \
         #        self.processed_parameters.corrected_fitted_spectrum[iboot,:]
-        for iboot, (bootstrap_selection, models, corrected_spectrum) in enumerate(
-                zip(self.bootsptrap_indici, self.fitted_model,
+        for bootstrap_counter, (iboot, bootstrap_selection, models, corrected_spectrum) in enumerate(
+                zip(self.boostrap_sample_index_chunk, self.bootsptrap_indici, self.fitted_model,
                     self.processed_parameters.corrected_fitted_spectrum
                     )
                 ):
@@ -3067,18 +3156,36 @@ class processWorker:
             del regression_data_selections, regression_selection, regression_data_selection
             del data_unscaled, wavelength, phase, covariance, mask, il, nwave
             gc.collect()
-            self.processed_parameters.fitted_baseline[iboot,:] = baseline_model
-            self.processed_parameters.fit_residuals[iboot,:] = residual
-            self.processed_parameters.normed_fit_residuals[iboot,:] = \
+            # self.processed_parameters.fitted_baseline[iboot,:] = baseline_model
+            # self.processed_parameters.fit_residuals[iboot,:] = residual
+            # self.processed_parameters.normed_fit_residuals[iboot,:] = \
+            #     normed_residual
+            # self.processed_parameters.normed_fitted_spectrum[iboot,:] = \
+            #     normed_spectrum
+            # self.processed_parameters.error_normed_fitted_spectrum[iboot,:] = \
+            #     error_normed_spectrum
+            # self.processed_parameters.wavelength_normed_fitted_spectrum[iboot,:] = \
+            #     wavelength_normed_spectrum
+            # self.processed_parameters.stellar_spectrum[iboot,:] = \
+            #     corrected_spectrum/normed_spectrum
+
+
+            self.processed_parameters.fitted_baseline = baseline_model
+            self.processed_parameters.fit_residuals = residual
+            self.processed_parameters.normed_fit_residuals = \
                 normed_residual
-            self.processed_parameters.normed_fitted_spectrum[iboot,:] = \
+            self.processed_parameters.normed_fitted_spectrum = \
                 normed_spectrum
-            self.processed_parameters.error_normed_fitted_spectrum[iboot,:] = \
+            self.processed_parameters.error_normed_fitted_spectrum = \
                 error_normed_spectrum
-            self.processed_parameters.wavelength_normed_fitted_spectrum[iboot,:] = \
+            self.processed_parameters.wavelength_normed_fitted_spectrum = \
                 wavelength_normed_spectrum
-            self.processed_parameters.stellar_spectrum[iboot,:] = \
+            self.processed_parameters.stellar_spectrum = \
                 corrected_spectrum/normed_spectrum
+
+            self.update_parameters_on_server(parameter_server_handle,
+                                             bootstrap_chunk=([iboot,], [bootstrap_counter,]))
+            #bootstrap_counter += 1
         gc.collect()
 
 
@@ -3086,14 +3193,16 @@ class processWorker:
 class rayProcessWorker(processWorker):
     """Ray wrapper regressionDataServer class."""
 
-    def __init__(self, initial_processed_parameters, control_parameters,
+    def __init__(self, #initial_processed_parameters,
+                 control_parameters,
                  fit_parameters, lightcurve_model,  correction_matrix,
                  bootsptrap_indici, boostrap_sample_index_chunk):
-        super().__init__(initial_processed_parameters, control_parameters,
+        super().__init__(#initial_processed_parameters,
+                         control_parameters,
                      fit_parameters, lightcurve_model,  correction_matrix,
                      bootsptrap_indici, boostrap_sample_index_chunk)
 
-    def update_parameters_on_server(self, parameter_server_handle):
+    def update_parameters_on_server(self, parameter_server_handle, bootstrap_chunk=None):
         """
         Update parameters on parameter server.
 
@@ -3101,16 +3210,22 @@ class rayProcessWorker(processWorker):
         ----------
         parameter_server_handle : 'regressionParameterServer''
             Instane of the parameter server class
+        bootstrap_chunk : 'tuple' of 'lists'
+            tuple containing the list of processed bootstrap samples and list with
+            index counter of the processed bootstep step.
 
         Returns
         -------
         None.
 
         """
+        if bootstrap_chunk is None:
+            bootstrap_chunk = (self.boostrap_sample_index_chunk,
+                               list(np.arange(len(self.boostrap_sample_index_chunk))))
         ftrs = parameter_server_handle.\
             update_processed_parameters.remote(
                 self.processed_parameters,
-                bootstrap_chunk=self.boostrap_sample_index_chunk
+                bootstrap_chunk=bootstrap_chunk
                 )
         ray.get(ftrs)
 
@@ -3153,14 +3268,17 @@ class regressionWorker:
     determine the systematics and transit model parameters.
     """
 
-    def __init__(self, initial_fit_parameters, initial_regularization,
+    def __init__(self, #initial_fit_parameters,
+                 initial_regularization,
                  iterator_chunk):
-        self.fit_parameters = copy.deepcopy(initial_fit_parameters)
+        #self.fit_parameters = copy.deepcopy(initial_fit_parameters)
         self.regularization = copy.deepcopy(initial_regularization)
         self.iterator = iterator_chunk
 
+        self.fit_parameters = SimpleNamespace()
+
     def update_initial_parameters(self,
-                                  updated_fit_parameters,
+                                  #updated_fit_parameters,
                                   updated_regularization,
                                   updated_iterator_chunk):
         """
@@ -3180,7 +3298,7 @@ class regressionWorker:
         None.
 
         """
-        self.fit_parameters = copy.deepcopy(updated_fit_parameters)
+        #self.fit_parameters = copy.deepcopy(updated_fit_parameters)
         self.regularization = copy.deepcopy(updated_regularization)
         self.iterator = copy.deepcopy(updated_iterator_chunk)
 
@@ -3351,7 +3469,7 @@ class regressionWorker:
         ncorrect = data_par.ncorrect
         return n_additional, ncorrect, n_sub_chunks
 
-    def update_parameters_on_server(self, parameter_server_handle):
+    def update_parameters_on_server(self, parameter_server_handle, data_chunk):
         """
         Update parameters on parameter server.
 
@@ -3366,7 +3484,7 @@ class regressionWorker:
 
         """
         ftrs = parameter_server_handle.\
-            update_fitted_parameters(self.fit_parameters)
+            update_fitted_parameters(self.fit_parameters, data_chunk)
         ftrs = parameter_server_handle.\
             update_optimal_regulatization(self.regularization)
 
@@ -3400,6 +3518,19 @@ class regressionWorker:
         sub_chunks = self.chunks(iterator_chunk, n_sub_chunks)
 
         for sub_chunk in sub_chunks:
+            bootstrap_sample_index = []
+            wavelength_index = []
+            regressor_index = []
+
+            self.fit_parameters.fitted_spectrum = []
+            self.fit_parameters.fitted_model = []
+            self.fit_parameters.fitted_time = []
+            self.fit_parameters.wavelength_fitted_spectrum = []
+            self.fit_parameters.fitted_mse = []
+            self.fit_parameters.fitted_aic = []
+            self.fit_parameters.degrees_of_freedom = []
+            self.fit_parameters.regression_results = [[],[]]
+
             regression_data_sub_chunk = \
                 self.get_regression_data_chunk(data_server_handle, sub_chunk)
             for ((iboot, bootstrap_selection), (idata_point, regression_selection)),\
@@ -3407,36 +3538,55 @@ class regressionWorker:
 
                 (_, _), (index_disp_regressors, _), nwave = regression_selection
 
+                bootstrap_sample_index.append(iboot)
+                wavelength_index.append(idata_point)
+                regressor_index.append(index_disp_regressors+n_additional-ncorrect)
+
                 (beta_optimal, rss, mse, degrees_of_freedom, model_unscaled,
                  alpha, aic, phase, wavelength) = self.compute_model(
                      regression_data,regularization_method,
                      self.regularization.optimal_alpha[idata_point])
 
                 self.regularization.optimal_alpha[idata_point] = alpha
-                self.fit_parameters.\
-                    fitted_spectrum[iboot, idata_point] = beta_optimal[1]
-                self.fit_parameters.\
-                    fitted_model[iboot, idata_point, :] = model_unscaled
-                self.fit_parameters.\
-                    fitted_time[iboot, idata_point, :] = phase
-                self.fit_parameters.\
-                    wavelength_fitted_spectrum[iboot, idata_point] = wavelength
-                self.fit_parameters.fitted_mse[iboot, idata_point] = mse
-                self.fit_parameters.fitted_aic[iboot, idata_point] = aic
-                self.fit_parameters.\
-                    degrees_of_freedom[iboot, idata_point] = degrees_of_freedom
-                self.fit_parameters.\
-                    regression_results[
-                        iboot, idata_point,
-                        index_disp_regressors+n_additional-ncorrect
-                                      ] = beta_optimal[n_additional:]
-                self.fit_parameters.\
-                    regression_results[iboot, idata_point, 0:n_additional] = \
-                    beta_optimal[0:n_additional]
+                # self.fit_parameters.\
+                #     fitted_spectrum[iboot, idata_point] = beta_optimal[1]
+                # self.fit_parameters.\
+                #     fitted_model[iboot, idata_point, :] = model_unscaled
+                # self.fit_parameters.\
+                #     fitted_time[iboot, idata_point, :] = phase
+                # self.fit_parameters.\
+                #     wavelength_fitted_spectrum[iboot, idata_point] = wavelength
+                # self.fit_parameters.fitted_mse[iboot, idata_point] = mse
+                # self.fit_parameters.fitted_aic[iboot, idata_point] = aic
+                # self.fit_parameters.\
+                #     degrees_of_freedom[iboot, idata_point] = degrees_of_freedom
+                # self.fit_parameters.\
+                #     regression_results[
+                #         iboot, idata_point,
+                #         index_disp_regressors+n_additional-ncorrect
+                #                       ] = beta_optimal[n_additional:]
+                # self.fit_parameters.\
+                #     regression_results[iboot, idata_point, 0:n_additional] = \
+                #     beta_optimal[0:n_additional]
+                self.fit_parameters.fitted_spectrum.append(beta_optimal[1])
+                self.fit_parameters.fitted_model.append(model_unscaled)
+                self.fit_parameters.fitted_time.append(phase)
+                self.fit_parameters.wavelength_fitted_spectrum.append(wavelength)
+                self.fit_parameters.fitted_mse.append(mse)
+                self.fit_parameters.fitted_aic.append(aic)
+                self.fit_parameters.degrees_of_freedom.append(degrees_of_freedom)
+                self.fit_parameters.regression_results[0].append(beta_optimal[n_additional:])
+                self.fit_parameters.regression_results[1].append(beta_optimal[0:n_additional])
+
+
+            self.update_parameters_on_server(parameter_server_handle,
+                                             data_chunk=(bootstrap_sample_index,
+                                                         wavelength_index,
+                                                         (regressor_index, n_additional)))
             del regression_data_sub_chunk
             gc.collect()
         del sub_chunks, iterator_chunk
-        self.update_parameters_on_server(parameter_server_handle)
+        #self.update_parameters_on_server(parameter_server_handle)
         gc.collect()
 
 
@@ -3444,9 +3594,11 @@ class regressionWorker:
 class rayRegressionWorker(regressionWorker):
     """Ray wrapper regressionDataServer class."""
 
-    def __init__(self, initial_fit_parameters, initial_regularization,
+    def __init__(self, #initial_fit_parameters,
+                 initial_regularization,
                  iterator_chunk):
-        super().__init__(initial_fit_parameters, initial_regularization,
+        super().__init__(#initial_fit_parameters,
+                         initial_regularization,
                          iterator_chunk)
 
     @staticmethod
@@ -3559,7 +3711,7 @@ class rayRegressionWorker(regressionWorker):
         ncorrect = data_par.ncorrect
         return n_additional, ncorrect, n_sub_chunks
 
-    def update_parameters_on_server(self, parameter_server_handle):
+    def update_parameters_on_server(self, parameter_server_handle, data_chunk):
         """
         Update parameters on parameter server.
 
@@ -3574,7 +3726,7 @@ class rayRegressionWorker(regressionWorker):
 
         """
         ftrs = parameter_server_handle.\
-            update_fitted_parameters.remote(self.fit_parameters)
+            update_fitted_parameters.remote(self.fit_parameters, data_chunk)
         ray.get(ftrs)
         ftrs = parameter_server_handle.\
             update_optimal_regulatization.remote(self.regularization)
