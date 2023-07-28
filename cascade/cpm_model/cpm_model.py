@@ -46,6 +46,7 @@ from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
 
 from ..exoplanet_tools import lightcurve
+from ..exoplanet_tools import  spotprofile
 from ..data_model import SpectralData
 from ..data_model import SpectralDataTimeSeries
 from cascade import __version__
@@ -675,6 +676,7 @@ class regressionDataServer:
 
         """
         self.lightcurve_model = lightcurve(self.cascade_configuration)
+        self.spot_model = spotprofile(self.cascade_configuration)
         try:
             time_offset = \
                 ast.literal_eval(self.cascade_configuration.model_time_offset)
@@ -688,11 +690,15 @@ class regressionDataServer:
             self.lightcurve_model.return_mid_transit(
                 self.fit_dataset, time_offset=time_offset
                                                      )
+
+        fit_spot_model = self.spot_model.return_spot_profile(self.fit_dataset)
+
         self.fit_lightcurve_model = fit_lightcurve_model
         self.fit_ld_correcton = fit_ld_correcton
         self.fit_dilution_correction = fit_dilution_correction
         self.mid_transit_time = mid_transit_time
         self.fit_ld_coefficients = self.lightcurve_model.limbdarkning_model.ld
+        self.fit_spot_model = fit_spot_model
 
     def get_lightcurve_model(self):
         """
@@ -912,6 +918,12 @@ class regressionDataServer:
                                  selection,
                                  bootstrap_indici=bootstrap_indici)
                                         )
+        if self.fit_spot_model is not np.nan:
+             additional_regressors.append(
+                 self.select_data(self.fit_spot_model, selection,
+                                  bootstrap_indici=bootstrap_indici)
+                                         )
+
         n_additional = len(additional_regressors) + 2
         regression_matrix = \
             np.vstack(additional_regressors+[regression_matrix])
@@ -1192,8 +1204,19 @@ class regressionParameterServer:
 
         self.cpm_parameters.additional_regressor_list = \
             additional_regressor_list
-        self.cpm_parameters.n_additional_regressors = \
-            2 + len(additional_regressor_list)
+
+        try:
+            self.cpm_parameters.add_spot_profile = \
+                ast.literal_eval(self.cascade_configuration.cpm_add_spot_profile)
+        except AttributeError:
+            self.cpm_parameters.add_spot_profile = False
+
+        if self.cpm_parameters.add_spot_profile:
+            self.cpm_parameters.n_additional_regressors = \
+                3 + len(additional_regressor_list)
+        else:
+            self.cpm_parameters.n_additional_regressors = \
+                2 + len(additional_regressor_list)
 
     def get_regression_parameters(self):
         """
@@ -1455,36 +1478,36 @@ class regressionParameterServer:
         None.
 
         """
-        processed_parameters = copy.deepcopy(self.processed_parameters)
+        #processed_parameters = copy.deepcopy(self.processed_parameters)
 
         if bootstrap_chunk is None:
             bootstrap_chunk = list(
-                np.arange(processed_parameters.corrected_fitted_spectrum.shape[0])
+                np.arange(self.processed_parameters.corrected_fitted_spectrum.shape[0])
                 )
             bootstrap_sample_counter = list(
-                np.arange(processed_parameters.corrected_fitted_spectrum.shape[0])
+                np.arange(self.processed_parameters.corrected_fitted_spectrum.shape[0])
                 )
         else:
             bootstrap_chunk, bootstrap_sample_counter = bootstrap_chunk
 
-        processed_parameters.corrected_fitted_spectrum[bootstrap_chunk, ...] +=\
+        self.processed_parameters.corrected_fitted_spectrum[bootstrap_chunk, ...] =\
             new_parameters.corrected_fitted_spectrum[bootstrap_sample_counter, ...]
-        processed_parameters.fitted_baseline[bootstrap_chunk, ...] +=\
+        self.processed_parameters.fitted_baseline[bootstrap_chunk, ...] =\
             new_parameters.fitted_baseline
-        processed_parameters.fit_residuals[bootstrap_chunk, ...] +=\
+        self.processed_parameters.fit_residuals[bootstrap_chunk, ...] =\
             new_parameters.fit_residuals
-        processed_parameters.normed_fit_residuals[bootstrap_chunk, ...] +=\
+        self.processed_parameters.normed_fit_residuals[bootstrap_chunk, ...] =\
             new_parameters.normed_fit_residuals
-        processed_parameters.normed_fitted_spectrum[bootstrap_chunk, ...] +=\
+        self.processed_parameters.normed_fitted_spectrum[bootstrap_chunk, ...] =\
             new_parameters.normed_fitted_spectrum
-        processed_parameters.error_normed_fitted_spectrum[bootstrap_chunk, ...] +=\
+        self.processed_parameters.error_normed_fitted_spectrum[bootstrap_chunk, ...] =\
             new_parameters.error_normed_fitted_spectrum
-        processed_parameters.wavelength_normed_fitted_spectrum[bootstrap_chunk, ...] +=\
+        self.processed_parameters.wavelength_normed_fitted_spectrum[bootstrap_chunk, ...] =\
             new_parameters.wavelength_normed_fitted_spectrum
-        processed_parameters.stellar_spectrum[bootstrap_chunk, ...] +=\
+        self.processed_parameters.stellar_spectrum[bootstrap_chunk, ...] =\
             new_parameters.stellar_spectrum
 
-        self.processed_parameters = processed_parameters
+        #self.processed_parameters = processed_parameters
 
     def get_fitted_parameters(self, bootstrap_chunk=None):
         """
@@ -2606,11 +2629,11 @@ class rayRegressionControler(regressionControler):
             DESCRIPTION.
 
         """
-        return ray.get(
+        return copy.deepcopy(ray.get(
             self.parameter_server_handle.get_fitted_parameters.remote(
                 bootstrap_chunk=bootstrap_chunk
                 )
-                       )
+                       ))
 
     def get_processed_parameters_from_server(self, bootstrap_chunk=None):
         """
@@ -2626,11 +2649,11 @@ class rayRegressionControler(regressionControler):
             Simple namespace containing all processed parameters.
 
         """
-        return ray.get(
+        return copy.deepcopy(ray.get(
             self.parameter_server_handle.get_processed_parameters.remote(
                 bootstrap_chunk=bootstrap_chunk
                 )
-                       )
+                       ))
 
     def get_regularization_parameters_from_server(self):
         """
@@ -2975,7 +2998,7 @@ class processWorker:
         #self.processed_parameters= copy.deepcopy(initial_processed_parameters)
         self.control_parameters = control_parameters
         self.bootsptrap_indici = bootsptrap_indici
-        self.boostrap_sample_index_chunk = copy.deepcopy(boostrap_sample_index_chunk)
+        self.boostrap_sample_index_chunk = boostrap_sample_index_chunk
         self.regression_results = fit_parameters.regression_results
         self.fitted_spectrum = fit_parameters.fitted_spectrum
         self.fitted_model = fit_parameters.fitted_model
@@ -3105,20 +3128,19 @@ class processWorker:
                     self.processed_parameters.corrected_fitted_spectrum
                     )
                 ):
-
-            baseline_model = np.zeros(
+            self.processed_parameters.fitted_baseline = np.zeros(
                 self.control_parameters.data_parameters.shape)
-            residual = np.ma.zeros(
+            self.processed_parameters.fit_residuals = np.ma.zeros(
                 self.control_parameters.data_parameters.shape)
-            normed_residual = np.ma.zeros(
+            self.processed_parameters.normed_fit_residuals = np.ma.zeros(
                 self.control_parameters.data_parameters.shape)
             lc_model = \
                 self.lightcurve_model.lightcurve_model[..., bootstrap_selection]
-            normed_spectrum = np.zeros((
+            self.processed_parameters.normed_fitted_spectrum = np.zeros((
                 self.control_parameters.data_parameters.max_spectral_points))
-            error_normed_spectrum = np.zeros(
+            self.processed_parameters.error_normed_fitted_spectrum = np.zeros(
                 self.control_parameters.data_parameters.max_spectral_points)
-            wavelength_normed_spectrum = np.zeros((
+            self.processed_parameters.wavelength_normed_fitted_spectrum = np.zeros((
                 self.control_parameters.data_parameters.max_spectral_points))
 
             regression_data_selections = \
@@ -3136,22 +3158,22 @@ class processWorker:
                     regression_data_selection
                 lc = lc_model[il, :]
                 base = models[ipixel] - (corrected_spectrum)[ipixel]*lc
-                baseline_model[il, :] = base
-                residual[il, :] = np.ma.array(data_unscaled - models[ipixel],
-                                  mask=mask)
+                self.processed_parameters.fitted_baseline[il, :] = base
+                self.processed_parameters.fit_residuals[il, :] = \
+                    np.ma.array(data_unscaled - models[ipixel], mask=mask)
 
                 data_normed = data_unscaled/base
                 covariance_normed = covariance*np.diag(base**-2)
                 normed_depth, error_normed_depth, sigma_hat = \
                     ols(lc[:, np.newaxis], data_normed-1.0,
                         covariance=covariance_normed)
-                normed_residual[il, :] = \
+                self.processed_parameters.normed_fit_residuals[il, :] = \
                     np.ma.array(data_normed-1.0-normed_depth*lc, mask=mask)
-                normed_spectrum[ipixel] = \
+                self.processed_parameters.normed_fitted_spectrum[ipixel] = \
                     normed_depth*self.lightcurve_model.dilution_correction[il, 0]
-                error_normed_spectrum[ipixel] = \
+                self.processed_parameters.error_normed_fitted_spectrum[ipixel] = \
                     error_normed_depth*self.lightcurve_model.dilution_correction[il, 0]
-                wavelength_normed_spectrum[ipixel] = wavelength
+                self.processed_parameters.wavelength_normed_fitted_spectrum[ipixel] = wavelength
 
             del regression_data_selections, regression_selection, regression_data_selection
             del data_unscaled, wavelength, phase, covariance, mask, il, nwave
@@ -3170,18 +3192,18 @@ class processWorker:
             #     corrected_spectrum/normed_spectrum
 
 
-            self.processed_parameters.fitted_baseline = baseline_model
-            self.processed_parameters.fit_residuals = residual
-            self.processed_parameters.normed_fit_residuals = \
-                normed_residual
-            self.processed_parameters.normed_fitted_spectrum = \
-                normed_spectrum
-            self.processed_parameters.error_normed_fitted_spectrum = \
-                error_normed_spectrum
-            self.processed_parameters.wavelength_normed_fitted_spectrum = \
-                wavelength_normed_spectrum
+            #self.processed_parameters.fitted_baseline = baseline_model
+            #self.processed_parameters.fit_residuals = residual
+            #self.processed_parameters.normed_fit_residuals = \
+            #    normed_residual
+            #self.processed_parameters.normed_fitted_spectrum = \
+            #    normed_spectrum
+            #self.processed_parameters.error_normed_fitted_spectrum = \
+            #    error_normed_spectrum
+            #self.processed_parameters.wavelength_normed_fitted_spectrum = \
+            #    wavelength_normed_spectrum
             self.processed_parameters.stellar_spectrum = \
-                corrected_spectrum/normed_spectrum
+                corrected_spectrum/self.processed_parameters.normed_fitted_spectrum
 
             self.update_parameters_on_server(parameter_server_handle,
                                              bootstrap_chunk=([iboot,], [bootstrap_counter,]))

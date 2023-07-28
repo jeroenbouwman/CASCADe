@@ -112,3 +112,6 @@
 
 **version 1.2.2**
  - Fixed further memory issues with the parallel fitting and parameter storage.
+
+**version 1.2.4**
+ - Added spot model

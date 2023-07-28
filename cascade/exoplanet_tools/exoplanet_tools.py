@@ -71,7 +71,8 @@ __all__ = ['Vmag', 'Kmag', 'Rho_jup', 'Rho_jup', 'kmag_to_jy', 'jy_to_kmag',
            'masked_array_input', 'eclipse_to_transit', 'transit_to_eclipse',
            'exotethys_model', 'limbdarkning', 'exotethys_stellar_model',
            'SpectralModel', 'rayLightcurve', 'rayLimbdarkning',
-           'DilutionCorrection', 'rayDilutionCorrection']
+           'DilutionCorrection', 'rayDilutionCorrection', 'spotprofile',
+           'raySpotprofile']
 
 
 # enable cds to be able to use certain quantities defined in this system
@@ -1461,7 +1462,8 @@ class exotethys_model:
 
     __valid_ld_laws = {'linear', 'quadratic', 'nonlinear'}
     __valid_model_grid = {'Atlas_2000', 'Phoenix_2012_13', 'Phoenix_2018',
-                          'Stagger_2015', 'Stagger_2018', 'Phoenix_drift_2012'}
+                          'Stagger_2015', 'Stagger_2018', 'Phoenix_drift_2012',
+                          'MPS_Atlas_set1_2023', 'MPS_Atlas_set2_2023'}
 
     def __init__(self, cascade_configuration):
         self.cascade_configuration = cascade_configuration
@@ -1865,6 +1867,106 @@ class rayLimbdarkning(limbdarkning):
         super().__init__(cascade_configuration)
 
 
+class spotprofile:
+    """
+    Class defining the profile of a spot crossing
+
+    This class defines the light curve of a spot crossing. It implemets a
+    flattened Gaussian function suggested y Fraine et al 2014 to simulated
+    the planet crossing a star spot.
+
+    Attributes
+    ----------
+    lc : 'array_like'
+        The lightcurve model
+    par : 'ordered_dict'
+        The lightcurve parameters
+
+    """
+
+    def __init__(self, cascade_configuration):
+        self.cascade_configuration = cascade_configuration
+        # check if cascade is initialized
+        if self.cascade_configuration.isInitialized:
+            self.par = self.get_spot_parameters(self.cascade_configuration)
+        else:
+            raise ValueError("CASCADe not initialized, \
+                              aborting creation of lightcurve")
+
+    @staticmethod
+    def get_spot_parameters(cascade_configuration):
+        """
+        Get the relevant parameters for the spot profile.
+
+        Parameters
+        ----------
+        cascade_configuration : 'cascade.configuration'
+            The cascade configuration.
+
+        Returns
+        -------
+        par : 'collections.OrderedDict'
+            configuration parameters for spot profile.
+
+        """
+        try:
+            add_spot_profile = \
+                ast.literal_eval(cascade_configuration.cpm_add_spot_profile)
+        except AttributeError:
+            warnings.warn("Warning: starspot parameters not defined.")
+            add_spot_profile = False
+        try:
+            spot_offset = ast.literal_eval(cascade_configuration.cpm_spot_offset)
+            spot_width = ast.literal_eval(cascade_configuration.cpm_spot_width)
+            profile_power = \
+                ast.literal_eval(cascade_configuration.cpm_spot_profile_power)
+        except AttributeError:
+            warnings.warn("Warning: starspot parameters not defined.")
+            spot_offset = 0.0
+            spot_width = 0.001
+            profile_power = 2.0
+
+        par = collections.OrderedDict(asp=add_spot_profile,
+                                      offset=spot_offset,
+                                      width=spot_width,
+                                      power=profile_power)
+        return par
+
+    def return_spot_profile(self, dataset):
+        """
+        Spot profile function.
+
+        Parameters
+        ----------
+        dataset : : 'cascade.data_model.SpectralDataTimeSeries'
+            Input dataset.
+
+        Returns
+        -------
+        spot_lc : 'ndarray'
+             Normalized spot lightcuve model.
+
+        """
+        if  self.par['asp']:
+            spot_lc = np.exp(
+                -1*np.abs(
+                    (dataset.time.data.value - self.par['offset']) /
+                    self.par['width'])**self.par['power']
+                )
+            spot_lc = spot_lc/np.max(spot_lc)
+        else:
+            warnings.warn('Spot profile not set to active.')
+            spot_lc = np.nan
+        return spot_lc
+
+@ray.remote
+class raySpotprofile(spotprofile):
+    """Ray wrapper spotprofile class."""
+
+    def __init__(self, cascade_configuration):
+        super().__init__(cascade_configuration)
+
+
 class lightcurve:
     """
     Class defining lightcurve model.
@@ -2043,7 +2145,8 @@ class exotethys_stellar_model:
     """
 
     __valid_model_grid = {'Atlas_2000', 'Phoenix_2012_13', 'Phoenix_2018',
-                          'Stagger_2015', 'Stagger_2018', 'Phoenix_drift_2012'}
+                          'Stagger_2015', 'Stagger_2018', 'Phoenix_drift_2012',
+                          'MPS_Atlas_set1_2023', 'MPS_Atlas_set2_2023'}
 
     def __init__(self, cascade_configuration):
         self.cascade_configuration = cascade_configuration
@@ -2112,7 +2215,9 @@ class exotethys_stellar_model:
                                      star_database_interpolation='seq_linear')
 
         # bug fix for poor wavelength resolution of stellar model at mid-IR
-        if InputParameter['stellar_models_grids'] == 'Atlas_2000':
+        if InputParameter['stellar_models_grids'] in  ['Atlas_2000',
+                                                       'MPS_Atlas_set1_2023',
+                                                       'MPS_Atlas_set2_2023']:
             grid_step = 5*u.Angstrom
             grid_max = (40.0*u.micron).to(u.Angstrom)
             ngrid = int((grid_max - model_wavelengths[0])/grid_step)
