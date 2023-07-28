@@ -35,7 +35,7 @@ config = {
     'url': 'https://jbouwman.gitlab.io/CASCADe/',
     'download_url': 'https://gitlab.com/jbouwman/CASCADe',
     'author_email': 'bouwman@mpia.de',
-    'version': '1.2.4',
+    'version': '1.2.5',
     'python_requires': '>=3.8, <3.10',
     'license': 'GNU General Public License v3 (GPLv3)',
     'classifiers': ["Programming Language :: Python :: 3",
@@ -53,7 +53,7 @@ config = {
                          'pytest', 'scikit-image>=0.19', 'sphinx', 'alabaster',
                          'networkx', 'cython', 'astroquery', 'numba',
                          'ray[default]', 'pyfiglet', 'termcolor',
-                         'statsmodels', 'h5py'
+                         'statsmodels', 'h5py',
                          'exotethys'],
     'scripts': scripts,
     'data_files': [('', [(HERE / 'README.md').as_posix(),
