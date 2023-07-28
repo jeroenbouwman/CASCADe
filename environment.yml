@@ -34,6 +34,7 @@ dependencies:
   - termcolor
   - statsmodels
   - configparser
+  - h5py
   - pip:
     - 'ray[default]'
     - batman-package

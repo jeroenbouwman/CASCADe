@@ -53,7 +53,7 @@ config = {
                          'pytest', 'scikit-image>=0.19', 'sphinx', 'alabaster',
                          'networkx', 'cython', 'astroquery', 'numba',
                          'ray[default]', 'pyfiglet', 'termcolor',
-                         'statsmodels',
+                         'statsmodels', 'h5py'
                          'exotethys'],
     'scripts': scripts,
     'data_files': [('', [(HERE / 'README.md').as_posix(),
