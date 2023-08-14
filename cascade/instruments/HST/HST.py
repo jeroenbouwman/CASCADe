@@ -554,12 +554,11 @@ class HSTWFC3(InstrumentBase):
         # orbital phase
         phase = (time - self.par['obj_ephemeris']) / self.par['obj_period']
         phase = phase - int(np.max(phase))
-# Bug fix
- #       if np.max(phase) < 0.0:
- #           phase = phase + 1.0
- #       phase = phase - np.rint(phase)
- #       if self.par['obs_type'] == 'ECLIPSE':
- #           phase[phase < 0] = phase[phase < 0] + 1.0
+        if np.max(phase) < 0.0:
+            phase = phase + 1.0
+        phase = phase - np.rint(phase)
+        if self.par['obs_type'] == 'ECLIPSE':
+            phase[phase < 0] = phase[phase < 0] + 1.0
 
         idx = np.argsort(phase)
         phase = phase[idx]

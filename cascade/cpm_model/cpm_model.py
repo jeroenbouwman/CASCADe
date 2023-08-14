@@ -918,6 +918,7 @@ class regressionDataServer:
                                  selection,
                                  bootstrap_indici=bootstrap_indici)
                                         )
+        # add spot model
         if self.fit_spot_model is not np.nan:
              additional_regressors.append(
                  self.select_data(self.fit_spot_model, selection,
@@ -928,6 +929,15 @@ class regressionDataServer:
         regression_matrix = \
             np.vstack(additional_regressors+[regression_matrix])
         regression_matrix = self.RS.fit_transform(regression_matrix.T).T
+
+        # no scaling for spot model
+        if self.fit_spot_model is not np.nan:
+            regression_matrix[n_additional-2-1, :] = \
+                 regression_matrix[n_additional-2-1, :] * \
+                 self.RS.scale_[n_additional-2-1] + \
+                 self.RS.mean_[n_additional-2-1]
+            self.RS.scale_[n_additional-2-1] = 1.0
+            self.RS.mean_[n_additional-2-1] = 0.0
 
         lc = self.select_data(self.fit_lightcurve_model, selection,
                               bootstrap_indici=bootstrap_indici)
@@ -1394,23 +1404,6 @@ class regressionParameterServer:
 
     def update_fitted_parameters(self, new_parameters, data_chunk):
         """Apply new update and returns weights."""
-        # fitted_parameters = copy.deepcopy(self.fitted_parameters)
-        # fitted_parameters.regression_results += \
-        #     new_parameters.regression_results
-        # fitted_parameters.fitted_spectrum += \
-        #     new_parameters.fitted_spectrum
-        # fitted_parameters.wavelength_fitted_spectrum += \
-        #     new_parameters.wavelength_fitted_spectrum
-        # fitted_parameters.fitted_time += \
-        #     new_parameters.fitted_time
-        # fitted_parameters.fitted_model += \
-        #     new_parameters.fitted_model
-        # fitted_parameters.fitted_mse += \
-        #     new_parameters.fitted_mse
-        # fitted_parameters.fitted_aic += \
-        #     new_parameters.fitted_aic
-        # fitted_parameters.degrees_of_freedom += \
-        #     new_parameters.degrees_of_freedom
 
         bootstrap_sample_index = data_chunk[0]
         wavelength_index = data_chunk[1]
@@ -1436,30 +1429,6 @@ class regressionParameterServer:
                 new_parameters.regression_results[0][j]
         self.fitted_parameters.regression_results[i1, i2, 0:n_additional] =\
             new_parameters.regression_results[1][j]
-
-        #self.fitted_parameters = fitted_parameters
-
-
-                # self.fit_parameters.\
-                #     fitted_spectrum[iboot, idata_point] = beta_optimal[1]
-                # self.fit_parameters.\
-                #     fitted_model[iboot, idata_point, :] = model_unscaled
-                # self.fit_parameters.\
-                #     fitted_time[iboot, idata_point, :] = phase
-                # self.fit_parameters.\
-                #     wavelength_fitted_spectrum[iboot, idata_point] = wavelength
-                # self.fit_parameters.fitted_mse[iboot, idata_point] = mse
-                # self.fit_parameters.fitted_aic[iboot, idata_point] = aic
-                # self.fit_parameters.\
-                #     degrees_of_freedom[iboot, idata_point] = degrees_of_freedom
-                # self.fit_parameters.\
-                #     regression_results[
-                #         iboot, idata_point,
-                #         index_disp_regressors+n_additional-ncorrect
-                #                       ] = beta_optimal[n_additional:]
-                # self.fit_parameters.\
-                #     regression_results[iboot, idata_point, 0:n_additional] = \
-                #     beta_optimal[0:n_additional]
 
 
     def update_processed_parameters(self, new_parameters, bootstrap_chunk=None):
@@ -1957,67 +1926,6 @@ class regressionControler:
         """
         self.parameter_server_handle.add_new_parameters(new_parameters)
 
-    # @staticmethod
-    # def get_data_chunck(data_server_handle, regression_selection,
-    #                     bootstrap_selection):
-    #     """
-    #     Get a chunk of the data to be used in the regression analysis.
-
-    #     Parameters
-    #     ----------
-    #     data_server_handle : 'regressioDataServer'
-    #         Instance of the regressionDataServer class.
-    #     regression_selection : 'tuple'
-    #         tuple containing indici defing the data and regression matrix for
-    #         all wavelength indici.
-    #     bootstrap_selection : 'ndarray'
-    #         indici defining the bootstrap sampling.
-
-    #     Returns
-    #     -------
-    #     regression_data_selection : 'ndarray'
-    #         Selected data to be modeled.
-    #     regression_matirx_selection : 'ndarray'
-    #         data used as design matrix in regression modeling of the
-    #         selected data.
-
-    #     """
-    #     regression_data_selection, regression_matirx_selection = \
-    #         data_server_handle.get_regression_data(
-    #             regression_selection,
-    #             bootstrap_indici=bootstrap_selection)
-    #     return regression_data_selection, regression_matirx_selection
-
-    # @staticmethod
-    # def get_data_per_bootstrap_step(data_server_handle, regression_selections,
-    #                     bootstrap_selection, return_data_only=True):
-    #     """
-    #     Get all data chunks to be used in the regression analysis per bootstrap step.
-
-    #     Parameters
-    #     ----------
-    #     data_server_handle : 'regressioDataServer'
-    #         Instance of the regressionDataServer class.
-    #     regression_selections : TYPE
-    #         DESCRIPTION.
-    #     bootstrap_selection : 'ndarray'
-    #         indici defining the bootstrap sampling.
-    #     return_data_only : 'bool', optional
-    #         If set, the design matrix is not determined and returned as None.
-
-    #     Returns
-    #     -------
-    #     selection_list: 'list'
-    #         List with all data and regression matrix selections
-
-    #     """
-    #     selection_list = \
-    #         data_server_handle.get_all_regression_data(
-    #             regression_selections, bootstrap_indici=bootstrap_selection,
-    #             return_data_only=return_data_only)
-
-    #     return selection_list
-
     def run_regression_model(self):
         """
         Run the regression model.
@@ -2143,163 +2051,9 @@ class regressionControler:
                     )
             ]
 
-        # # step 3: storing processed results
-        # features = [
-        #     w.update_parameters_on_server(self.parameter_server_handle)
-        #     for w in workers
-        #     ]
-
         del features, workers, ndata_server,
         del boostrap_sample_index_chunk,control_parameters, lightcurve_model
         gc.collect()
-
-    # def process_regression_fit(self):
-    #     """
-    #     Process the fitted parameters from the regression anlysis.
-
-    #     Returns
-    #     -------
-    #     None.
-
-    #     """
-    #     fit_parameters = self.get_fit_parameters_from_server()
-    #     control_parameters = self.get_control_parameters()
-    #     lightcurve_model = self.get_lightcurve_model()
-
-    #     # correction matricx for limb darkening correction
-    #     nwave = lightcurve_model.lightcurve_model.shape[0]
-    #     corr_matrix = np.zeros((nwave, nwave)) + np.identity(nwave)
-    #     for i in zip(*np.triu_indices(nwave, k=1)):
-    #         coeff, _, _ = ols(lightcurve_model.lightcurve_model[i[0], :, None],
-    #                           lightcurve_model.lightcurve_model[i[1], :])
-    #         corr_matrix[i] = coeff
-    #         corr_matrix[i[::-1]] = 1/coeff
-
-    #     fitted_baseline_list = []
-    #     residuals_list = []
-    #     normed_residuals_list = []
-    #     corrected_fitted_spectrum_list = []
-    #     normed_fitted_spectrum_list = []
-    #     error_normed_fitted_spectrum_list = []
-    #     wavelength_normed_fitted_spectrum_list = []
-    #     stellar_spectrum_list = []
-
-    #     for (bootstrap_selection, models, fit_results,
-    #          spectrum) in zip(self.iterators.bootsptrap_indici,
-    #                           fit_parameters.fitted_model,
-    #                           fit_parameters.regression_results,
-    #                           fit_parameters.fitted_spectrum):
-    #         W1 = np.delete(
-    #             fit_results,
-    #             list(np.arange(
-    #                 control_parameters.cpm_parameters.n_additional_regressors
-    #                            )
-    #                  ), 1)
-    #         K = np.identity(W1.shape[0]) - W1 * corr_matrix
-    #         # note spectrum is already corrected for LD using renormalized LC
-    #         # correction for differenc in band shape is the corr_matrix
-    #         if control_parameters.cpm_parameters.regularize_depth_correction:
-    #             input_covariance = np.diag(np.ones_like(spectrum))
-    #             input_delta = create_regularization_matrix(
-    #                 control_parameters.cpm_parameters.reg_type_depth_correction,
-    #                 len(spectrum), 0)
-
-    #             reg_min = control_parameters.cpm_parameters.alpha_min_depth_correction
-    #             reg_max = control_parameters.cpm_parameters.alpha_max_depth_correction
-    #             nreg = control_parameters.cpm_parameters.n_alpha_depth_correction
-    #             input_alpha = return_lambda_grid(reg_min, reg_max, nreg)
-
-    #             results = ridge(K, spectrum, input_covariance,
-    #                             input_delta, input_alpha)
-    #             corrected_spectrum = results[0]
-    #             if (results[-2] <= reg_min) | (results[-2] >= reg_max):
-    #                 warnings.warn("optimal regularization value of {} used in "
-    #                               "TD subtraction correction outside the "
-    #                               "range [{}, {}]".format(results[-2], reg_min,
-    #                                                       reg_max))
-    #         else:
-    #             corrected_spectrum, _, _ = ols(K, spectrum)
-
-    #         corrected_fitted_spectrum_list.append(corrected_spectrum)
-
-    #         baseline_model = np.zeros(control_parameters.data_parameters.shape)
-    #         residual = np.ma.zeros(control_parameters.data_parameters.shape)
-    #         normed_residual = np.ma.zeros(control_parameters.data_parameters.shape)
-    #         lc_model = lightcurve_model.lightcurve_model[..., bootstrap_selection]
-    #         normed_spectrum = \
-    #             np.zeros((control_parameters.
-    #                       data_parameters.max_spectral_points))
-    #         error_normed_spectrum = \
-    #             np.zeros(control_parameters.
-    #                      data_parameters.max_spectral_points)
-    #         wavelength_normed_spectrum = \
-    #             np.zeros((control_parameters.
-    #                       data_parameters.max_spectral_points))
-
-    #         regression_data_selections = \
-    #             self.get_data_per_bootstrap_step(self.data_server_handle[0],
-    #                                               self.iterators.regressor_indici,
-    #                                               bootstrap_selection)
-
-    #         for ipixel, (regression_selection, (regression_data_selection, _)) in\
-    #                 enumerate(zip(self.iterators.regressor_indici,
-    #                               regression_data_selections)):
-
-    #             (il, _), (_, _), nwave = regression_selection
-
-    #             data_unscaled, wavelength, phase, covariance, mask= \
-    #                 regression_data_selection
-    #             lc = lc_model[il, :]
-    #             base = models[ipixel] - (corrected_spectrum)[ipixel]*lc
-    #             baseline_model[il, :] = base
-    #             residual[il, :] = np.ma.array(data_unscaled - models[ipixel],
-    #                               mask=mask)
-
-    #             data_normed = data_unscaled/base
-    #             covariance_normed = covariance*np.diag(base**-2)
-    #             normed_depth, error_normed_depth, sigma_hat = \
-    #                 ols(lc[:, np.newaxis], data_normed-1.0,
-    #                     covariance=covariance_normed)
-    #             normed_residual[il, :] = np.ma.array(data_normed-1.0-normed_depth*lc,
-    #                                                  mask=mask)
-    #             normed_spectrum[ipixel] = \
-    #                 normed_depth*lightcurve_model.dilution_correction[il, 0]
-    #             error_normed_spectrum[ipixel] = \
-    #                 error_normed_depth*lightcurve_model.dilution_correction[il, 0]
-    #             wavelength_normed_spectrum[ipixel] = wavelength
-
-    #         fitted_baseline_list.append(baseline_model)
-    #         residuals_list.append(residual)
-    #         normed_residuals_list.append(normed_residual)
-    #         normed_fitted_spectrum_list.append(normed_spectrum)
-    #         error_normed_fitted_spectrum_list.append(
-    #             error_normed_spectrum)
-    #         wavelength_normed_fitted_spectrum_list.append(
-    #             wavelength_normed_spectrum)
-    #         stellar_spectrum_list.append(corrected_spectrum/normed_spectrum)
-
-    #     corrected_fitted_spectrum = np.array(corrected_fitted_spectrum_list)
-    #     fitted_baseline = np.array(fitted_baseline_list)
-    #     fit_residuals = np.ma.array(residuals_list)
-    #     normed_fit_residuals = np.ma.array(normed_residuals_list)
-    #     normed_fitted_spectrum = np.array(normed_fitted_spectrum_list)
-    #     error_normed_fitted_spectrum = \
-    #         np.array(error_normed_fitted_spectrum_list)
-    #     wavelength_normed_fitted_spectrum =\
-    #         np.array(wavelength_normed_fitted_spectrum_list)
-    #     stellar_spectrum = np.array(stellar_spectrum_list)
-
-    #     prosessed_results = \
-    #         {'corrected_fitted_spectrum': corrected_fitted_spectrum,
-    #          'fitted_baseline': fitted_baseline,
-    #          'fit_residuals': fit_residuals,
-    #          'normed_fit_residuals': normed_fit_residuals,
-    #          'normed_fitted_spectrum': normed_fitted_spectrum,
-    #          'error_normed_fitted_spectrum': error_normed_fitted_spectrum,
-    #          'wavelength_normed_fitted_spectrum':
-    #              wavelength_normed_fitted_spectrum,
-    #          'stellar_spectrum': stellar_spectrum}
-    #     self.add_fit_parameters_to_parameter_server(prosessed_results)
 
     def post_process_regression_fit(self):
         """

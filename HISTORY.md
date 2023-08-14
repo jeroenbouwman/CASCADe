@@ -115,3 +115,7 @@
 
 **version 1.2.4**
  - Added spot model
+
+**version 1.2.5**
+ - Changed normalization of spot model
+ - Small bug fix to orbital phase calcjulation of HST data.
