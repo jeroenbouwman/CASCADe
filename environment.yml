@@ -1,9 +1,9 @@
 name: cascade
 channels:
-  - conda-forge
   - defaults
+  - conda-forge
 dependencies:
-  - python>=3.8, <3.10
+  - python>=3.8, <3.11
   - ipython
   - pip
   - qt
@@ -25,11 +25,13 @@ dependencies:
   - networkx
   - pytest
   - tqdm
+  - ipywidgets
+  - jupyter
+  - ipython
   - numba
   - aiohttp
   - psutil
   - setproctitle
-  - grpcio
   - pyfiglet
   - termcolor
   - statsmodels
@@ -39,3 +41,4 @@ dependencies:
     - 'ray[default]'
     - batman-package
     - exotethys
+    - jwst

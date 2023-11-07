@@ -119,3 +119,10 @@
 **version 1.2.5**
  - Changed normalization of spot model
  - Small bug fix to orbital phase calcjulation of HST data.
+
+**version 1.2.6**
+ - Upgraded to python 3.10
+ - Added new data to exeptions.ini file
+ - Made small changes to the initialize module.
+ - Changed autoAdjustRebinFactor in the TSO module
+ - Changed np.bool to bool in instrument module

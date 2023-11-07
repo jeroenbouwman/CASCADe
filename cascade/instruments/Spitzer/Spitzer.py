@@ -162,7 +162,7 @@ class SpitzerIRS(InstrumentBase):
     def name(self):
         """Reteurn instrument name."""
         return "IRS"
-    
+
     @property
     def dispersion_scale(self):
         __all_scales = {'SL1': '604.5 Angstrom', 'SL2': '371.7 Angstrom',
@@ -643,7 +643,7 @@ class SpitzerIRS(InstrumentBase):
         order_masks = fits.getdata(order_mask_file_name, ext=0)
 
         if self.par['inst_order'] == '1':
-            mask = np.ones(shape=order_masks.shape, dtype=np.bool)
+            mask = np.ones(shape=order_masks.shape, dtype=bool)
             mask[order_masks == 1] = False
             # as there are often problems at the edge of the detector array,
             # cut first and last row
@@ -657,11 +657,11 @@ class SpitzerIRS(InstrumentBase):
             if self.par['inst_mode'] == 'LL':
                 mask[idx_row[np.logical_not(row_check)][:50], :] = True
                 mask[idx_row[np.logical_not(row_check)][-5:], :] = True
-            
+
         elif (self.par['inst_order'] == '2') or \
                 (self.par['inst_order'] == '3'):
             # SL2 or LL2
-            mask1 = np.ones(shape=order_masks.shape, dtype=np.bool)
+            mask1 = np.ones(shape=order_masks.shape, dtype=bool)
             mask1[order_masks == 2] = False
             # as there are often problems at the edge of the detector array,
             # cut first and last row
@@ -671,12 +671,12 @@ class SpitzerIRS(InstrumentBase):
             mask1[idx_row[np.logical_not(row_check)][-1], :] = True
             # remove first row
             mask1[idx_row[np.logical_not(row_check)][0], :] = True
-            
+
             if self.par['inst_mode'] == 'LL':
                 mask1[idx_row[np.logical_not(row_check)][79:83], :] = True
                 mask1[idx_row[np.logical_not(row_check)][:5], :] = True
             # SL3 or LL3
-            mask2 = np.ones(shape=order_masks.shape, dtype=np.bool)
+            mask2 = np.ones(shape=order_masks.shape, dtype=bool)
             mask2[order_masks == 3] = False
             # as there are often problems at the edge of the detector array,
             # cut first and last row

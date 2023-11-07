@@ -2658,8 +2658,8 @@ class rayRegressionControler(regressionControler):
             index.append(i)
         returns = ray.get(refs)
         for (i), (coeff, _, _) in zip(index, returns):
-            corr_matrix[i] = coeff
-            corr_matrix[i[::-1]] = 1/coeff
+            corr_matrix[i] = coeff[0]
+            corr_matrix[i[::-1]] = 1/coeff[0]
         return corr_matrix
 
 
@@ -2924,9 +2924,9 @@ class processWorker:
                 self.processed_parameters.normed_fit_residuals[il, :] = \
                     np.ma.array(data_normed-1.0-normed_depth*lc, mask=mask)
                 self.processed_parameters.normed_fitted_spectrum[ipixel] = \
-                    normed_depth*self.lightcurve_model.dilution_correction[il, 0]
+                    normed_depth[0]*self.lightcurve_model.dilution_correction[il, 0]
                 self.processed_parameters.error_normed_fitted_spectrum[ipixel] = \
-                    error_normed_depth*self.lightcurve_model.dilution_correction[il, 0]
+                    error_normed_depth[0]*self.lightcurve_model.dilution_correction[il, 0]
                 self.processed_parameters.wavelength_normed_fitted_spectrum[ipixel] = wavelength
 
             del regression_data_selections, regression_selection, regression_data_selection

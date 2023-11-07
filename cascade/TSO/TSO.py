@@ -1469,9 +1469,11 @@ class TSOSuite:
             nsamplesRebinned = 0
             for nscan, nsample in zip(nscans, nscanSamples):
                 nsamplesRebinned += nscan//nsample
+            # drop additional 18 integrations to have the posibility to add
+            # regressors and drop innitial integrations.
             rebinFactor = \
                 np.max([rebinFactor,
-                        data_shape[0]/(nsamplesRebinned*0.9)])
+                        data_shape[0]/(nsamplesRebinned-18)])
         verboseSaveFile = 'rebin_to_common_wavelength_grid' + \
             '_optimally_extracted_data.png'
         verboseSaveFile = os.path.join(savePathVerbose, verboseSaveFile)

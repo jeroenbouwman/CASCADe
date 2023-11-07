@@ -1465,7 +1465,7 @@ class HSTWFC3(InstrumentBase):
                 int((roi_width//2)*self.par['proc_extend_roi'][2])
             max_idx_pix = center_pix + \
                 int((roi_width//2)*self.par['proc_extend_roi'][3])
-            roi = np.ones((dim[:-1]), dtype=np.bool)
+            roi = np.ones((dim[:-1]), dtype=bool)
             roi[idx_min:idx_max, min_idx_pix:max_idx_pix] = False
         try:
             self.wfc3_cal

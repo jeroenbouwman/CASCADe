@@ -571,7 +571,7 @@ def generate_default_initialization(observatory='HST', data='SPECTRUM',
     """
     __valid_observing_strategy = {'STARING', 'NODDED', 'SCANNING'}
     __valid_data = {'SPECTRUM', 'SPECTRAL_IMAGE', 'SPECTRAL_DETECTOR_CUBE'}
-    __valid_observatory = {"SPITZER", "HST", "Generic"}
+    __valid_observatory = {"SPITZER", "HST", "JWST", "Generic"}
     __valid_observations = {'TRANSIT', 'ECLIPSE'}
 
     if not (mode in __valid_observing_strategy):
@@ -615,6 +615,16 @@ def generate_default_initialization(observatory='HST', data='SPECTRUM',
         else:
             data_product = 'lnz'
             hasBackground = 'True'
+    elif observatory == 'JWST':
+        if data == 'SPECTRUM':
+            data_product = 'x1d'
+            hasBackground = 'False'
+        elif data == 'SPECTRAL_IMAGE':
+            data_product = 'rateints'
+            hasBackground = 'True'
+        else:
+            data_product = 'uncal'
+            hasBackground = 'True'
 
     path = cascade_default_initialization_path
     path.mkdir(parents=True, exist_ok=True)
@@ -624,6 +634,7 @@ def generate_default_initialization(observatory='HST', data='SPECTRUM',
     config['CASCADE'] = {'cascade_save_path': 'HD189733b_'+observation+'/',
                          'cascade_use_multi_processes': 'True',
                          'cascade_max_number_of_cpus': '6',
+                         'cascade_number_of_data_servers':  '1',
                          'cascade_verbose': 'True',
                          'cascade_save_verbose': 'True'}
 
@@ -714,6 +725,22 @@ def generate_default_initialization(observatory='HST', data='SPECTRUM',
              'observations_data_product': data_product,
              'observations_has_background': hasBackground,
              'observations_uses_background_model': 'True'}
+    elif observatory == 'JWST':
+
+        config['INSTRUMENT'] = {'instrument_observatory': observatory,
+                                'instrument': 'MIRILRS',
+                                'instrument_filter': 'P750L',
+                                }
+        config['OBSERVATIONS'] = \
+            {'observations_type': observation,
+             'observations_mode': mode,
+             'observations_data': data,
+             'observations_path': './',
+             'observations_target_name': 'HD189733b',
+             'observations_id': '',
+             'observations_data_product': data_product,
+             'observations_has_background': hasBackground,
+             'observations_uses_background_model': 'False'}
     else:
         config['INSTRUMENT'] = {'instrument_observatory': observatory,
                                 'instrument': 'GenericSpectrograph'}
