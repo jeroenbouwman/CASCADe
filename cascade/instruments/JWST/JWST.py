@@ -430,7 +430,7 @@ class JWSTMIRILRS(InstrumentBase):
     JWST MIRI low resolution spectrograph  class.
 
     This instrument class defines the properties for the LRS spectrograph,
-    which is part of the MIRI intrument of the JWST.
+    which is part of the MIRI intrument of JWST.
 
     For the instrument and observations the following valid options are
     available:
@@ -464,8 +464,7 @@ class JWSTMIRILRS(InstrumentBase):
 
     @property
     def dispersion_scale(self):
-       # __all_scales = {'P750L': '789.47368 Angstrom'}
-        __all_scales = {'P750L': '777 Angstrom'}
+        __all_scales = {'P750L': '343.247 Angstrom'}
         return __all_scales[self.par["inst_filter"]]
 
     @property
@@ -492,9 +491,9 @@ class JWSTMIRILRS(InstrumentBase):
             if self.par['obs_has_backgr']:
                 data_back = self.get_spectra(is_background=True)
         else:
-            raise ValueError("MIRI/LRS instrument can currently only be used \
-                              with observational data parameter \
-                              set to 'SPECTRUM'")
+            raise ValueError("The MIRI/LRS insrtrument can currently only be "
+                             "used with the observational data parameter "
+                             f"set to {self.__valid_data}")
         if self.par['obs_has_backgr']:
             return data, data_back
         else:
@@ -621,7 +620,8 @@ class JWSTMIRILRS(InstrumentBase):
 
 
         # orbital phase
-        phase = (time_bjd+2400000.5 - self.par['obj_ephemeris']) / self.par['obj_period']
+        phase = ((time_bjd+2400000.5 - self.par['obj_ephemeris']) /
+                 self.par['obj_period'])
         phase = phase - int(np.max(phase))
 # BUG FIX
         #if np.max(phase) < 0.0:
@@ -778,8 +778,17 @@ class JWSTMIRILRS(InstrumentBase):
 class JWSTNIRSPEC(InstrumentBase):
     """
     NIRSPEC instrument module.
+
+    This instrument class defines the properties for the NIRSPEC intrument
+    of JWST.
+
+    For the instrument and observations the following valid options are
+    available:
+
+       - data type : {'SPECTRUM'}
+       - observing strategy : {'STARING'}
     """
-    __valid_data = {'SPECTRUM', 'SPECTRAL_IMAGE'}
+    __valid_data = {'SPECTRUM'}
     __valid_observing_strategy = {'STARING'}
 
     def __init__(self):
@@ -804,9 +813,21 @@ class JWSTNIRSPEC(InstrumentBase):
 
     @property
     def dispersion_scale(self):
-        __all_scales = {'PRISM/CLEAR': '100.0 Angstrom'}
+        __all_scales = {'PRISM-CLEAR': '121.3 Angstrom',
+                        'G395M-F290LP': '17.4 Angstrom'}
         return __all_scales[self.par["inst_filter"]]
 
+
+    @property
+    def detector_gain(self):
+        """
+        Detector gain of the miri detectors.
+
+        Returns
+        -------
+        0.996 * u.electron / u.DN
+        """
+        return 0.996 * u.electron / u.DN
 
     def load_data(self):
         """
@@ -816,14 +837,17 @@ class JWSTNIRSPEC(InstrumentBase):
         parameters defined during the initialization of the TSO object.
         """
         if self.par["obs_data"] == 'SPECTRUM':
-            return self.get_spectra()
-        elif self.par["obs_data"] == 'SPECTRAL_IMAGE':
-            return self.get_spectral_images()
-
+            data = self.get_spectra()
+            if self.par['obs_has_backgr']:
+                data_back = self.get_spectra(is_background=True)
         else:
-            raise ValueError("NIRSPEC insrtrument can currently only be used "
-                             "with observational data parameter "
+            raise ValueError("The NIRSPEC insrtrument can currently only be "
+                             "used with the observational data parameter "
                              f"set to {self.__valid_data}")
+        if self.par['obs_has_backgr']:
+            return data, data_back
+        else:
+            return data
 
     def get_instrument_setup(self):
         """
@@ -845,167 +869,7 @@ class JWSTNIRSPEC(InstrumentBase):
 
         return par
 
-    # def get_spectra(self, is_background=False):
-    #     """
-    #     Get the 1D spectra.
-
-    #     This function combines all functionallity to read fits files
-    #     containing the (uncalibrated) spectral timeseries, including
-    #     orbital phase and wavelength information
-
-    #     Parameters
-    #     ----------
-    #     is_background : `bool`
-    #         if `True` the data represents an observaton of the IR background
-    #         to be subtracted of the data of the transit spectroscopy target.
-
-    #     Returns
-    #     -------
-    #     SpectralTimeSeries : `cascade.data_model.SpectralDataTimeSeries`
-    #         Instance of `SpectralDataTimeSeries` containing all spectroscopic
-    #         data including uncertainties, time, wavelength and bad pixel mask.
-
-    #     Raises
-    #     ------
-    #     AssertionError, KeyError
-    #         Raises an error if no data is found or if certain expected
-    #         fits keywords are not present in the data files.
-    #     """
-    #     # get data files
-    #     if is_background:
-    #         target_name = self.par['obs_backgr_target_name']
-    #     else:
-    #         target_name = self.par['obs_target_name']
-
-    #     path_to_files = os.path.join(self.par['obs_path'],
-    #                                  self.par['inst_obs_name'],
-    #                                  self.par['inst_inst_name'],
-    #                                  target_name,
-    #                                  'SPECTRA/')
-    #     data_files = find('*' + self.par['obs_id'] + '*' +
-    #                       self.par['obs_data_product']+'.fits', path_to_files)
-
-    #     # number of integrations
-    #     nintegrations = len(data_files)
-    #     if nintegrations < 2:
-    #         raise AssertionError("No Timeseries data found in dir " +
-    #                              path_to_files)
-
-    #     if self.par['obs_data_product'] == 'x1dints':
-    #         bits_not_to_flag = []
-    #         (wavelength_data, spectral_data, uncertainty_spectral_data, time_bjd,
-    #          mask, all_data_files) = read_x1dints_files(data_files, bits_not_to_flag)
-    #     else:
-
-    #         data_list = ['LAMBDA', 'FLUX', 'FERROR', 'MASK']
-    #         auxilary_list = ["POSITION", "MEDPOS", "PUNIT", "MPUNIT", "TIME_BJD",
-    #                          "DISP_POS", "ANGLE", "SCALE", "DPUNIT", "AUNIT",
-    #                          "SUNIT"]
-
-    #         data_dict, auxilary_dict = \
-    #             get_data_from_fits(data_files, data_list, auxilary_list)
-
-    #         if (not auxilary_dict['TIME_BJD']['flag']):
-    #             raise KeyError("No TIME_BJD keyword found in fits files")
-
-    #         wavelength_data = np.array(data_dict['LAMBDA']['data']).T
-    #         wave_unit = data_dict['LAMBDA']['data'][0].unit
-    #         spectral_data = np.array(data_dict['FLUX']['data']).T
-    #         flux_unit = data_dict['FLUX']['data'][0].unit
-    #         uncertainty_spectral_data = np.array(data_dict['FERROR']['data']).T
-    #         if data_dict['MASK']['flag']:
-    #             mask = np.array(data_dict['MASK']['data']).T
-    #         else:
-    #             mask = np.zeros_like(spectral_data, dtype=bool)
-    #         if auxilary_dict['TIME_BJD']['flag']:
-    #             time = np.array(auxilary_dict['TIME_BJD']['data']) * u.day
-    #             phase = (time.value - self.par['obj_ephemeris']) / \
-    #                 self.par['obj_period']
-    #             phase = phase - int(np.max(phase))
-    #             if np.max(phase) < 0.0:
-    #                 phase = phase + 1.0
-
-    #         position = np.array(auxilary_dict['POSITION']['data'])
-    #         posUnit =  auxilary_dict['PUNIT']['data_unit']
-    #         angle =  np.array(auxilary_dict['ANGLE']['data'])
-    #         angleUnit = auxilary_dict['AUNIT']['data_unit']
-    #         scaling = np.array(auxilary_dict['SCALE']['data'])
-    #         scaleUnit = auxilary_dict['SUNIT']['data_unit']
-    #         dispersion_position = np.array(auxilary_dict['DISP_POS']['data'])
-    #         dispPosUnit = auxilary_dict['DPUNIT']['data_unit']
-
-    #         idx = np.argsort(time)[self.par["cpm_ncut_first_int"]:]
-    #         time = time[idx]
-    #         spectral_data = spectral_data[:, idx]
-    #         uncertainty_spectral_data = uncertainty_spectral_data[:, idx]
-    #         wavelength_data = wavelength_data[:, idx]
-    #         mask = mask[:, idx]
-    #         data_files = [data_files[i] for i in idx]
-    #         phase = phase[idx]
-    #         position = position[idx]
-    #         angle = angle[idx]
-    #         scaling = scaling[idx]
-    #         dispersion_position = dispersion_position[idx]
-
-    #     SpectralTimeSeries = \
-    #         SpectralDataTimeSeries(wavelength=wavelength_data,
-    #                                wavelength_unit=wave_unit,
-    #                                data=spectral_data,
-    #                                data_unit=flux_unit,
-    #                                uncertainty=uncertainty_spectral_data,
-    #                                time=phase,
-    #                                time_unit=u.dimensionless_unscaled,
-    #                                mask=mask,
-    #                                time_bjd=time,
-    #                                position=position,
-    #                                position_unit=posUnit,
-    #                                isRampFitted=True,
-    #                                isNodded=False,
-    #                                target_name=target_name,
-    #                                dataProduct=self.par['obs_data_product'],
-    #                                dataFiles=data_files)
-    #     # Standardize signal to mean value.
-    #     mean_signal, _, _ = \
-    #         sigma_clipped_stats(SpectralTimeSeries.return_masked_array("data"),
-    #                             sigma=3, maxiters=10)
-    #     data_unit = u.Unit(mean_signal*SpectralTimeSeries.data_unit)
-    #     SpectralTimeSeries.data_unit = data_unit
-    #     SpectralTimeSeries.wavelength_unit = u.micron
-    #     SpectralTimeSeries.add_measurement(
-    #         disp_position=dispersion_position,
-    #         disp_position_unit=dispPosUnit,
-    #         angle=angle,
-    #         angle_unit=angleUnit,
-    #         scale=scaling,
-    #         scale_unit=scaleUnit)
-
-    #     if spectral_data.shape[-1] > 512:
-    #         scanDict = {}
-    #         idx_scandir = np.ones(spectral_data.shape[-1], dtype=bool)
-    #         scanDict[0] = \
-    #                 {'nsamples': 16,
-    #                  'nscans': sum(idx_scandir),
-    #                  'index': idx_scandir}
-
-    #         from cascade.spectral_extraction import combine_scan_samples
-    #         SpectralTimeSeries = \
-    #             combine_scan_samples(SpectralTimeSeries,
-    #                                  scanDict, verbose=False)
-
-
-
-    #     nrebin =  (spectral_data.shape[0]+10) / spectral_data.shape[1]
-    #     if nrebin > 1.0:
-    #         SpectralTimeSeries = \
-    #             rebin_to_common_wavelength_grid(SpectralTimeSeries, 0,
-    #                                             nrebin=nrebin, verbose=False,
-    #                                             verboseSaveFile=None)
-
-    #     self._define_convolution_kernel()
-
-    #     return SpectralTimeSeries
-
-    def get_spectra(self):
+    def get_spectra(self, is_background=False):
         """
         Read the input spectra.
 
@@ -1015,7 +879,9 @@ class JWSTNIRSPEC(InstrumentBase):
 
         Parameters
         ----------
-        None
+        is_background : `bool`
+            if `True` the data represents an observaton of the IR background
+            to be subtracted of the data of the transit spectroscopy target.
 
         Returns
         -------
@@ -1030,7 +896,12 @@ class JWSTNIRSPEC(InstrumentBase):
             fits keywords are not present in the data files.
         """
         # get data files
-        target_name = self.par['obs_target_name']
+        if is_background:
+            # obsid = self.par['obs_backgr_id']
+            target_name = self.par['obs_backgr_target_name']
+        else:
+            # obsid = self.par['obs_id']
+            target_name = self.par['obs_target_name']
 
         path_to_files = os.path.join(self.par['obs_path'],
                                      self.par['inst_obs_name'],
@@ -1038,7 +909,8 @@ class JWSTNIRSPEC(InstrumentBase):
                                      target_name,
                                      'SPECTRA/')
 
-        data_files = find('*' + self.par['obs_id'] + '*x1dints.fits',
+        data_files = find('*' + self.par['obs_id'] + '*' +
+                          self.par['obs_data_product']+'.fits',
                           path_to_files)
 
         # number of integrations
@@ -1051,19 +923,70 @@ class JWSTNIRSPEC(InstrumentBase):
         (wavelength_data, spectral_data, uncertainty_spectral_data, time_bjd,
          mask, all_data_files) = \
             read_x1dints_files(data_files, bits_not_to_flag,
-                               self.par["cpm_ncut_first_int"])
+                               self.par["cpm_ncut_first_int"],
+                               self.par["cpm_ncut_last_int"])
+
+        # positon info
+        position_file = find('target_trace_position.fits', path_to_files)
+        if len(position_file) == 0:
+            position = np.ones((len(time_bjd)))
+            position_unit = u.pix
+            median_position = np.median(position)
+        else:
+            position_dict = read_position_file(position_file[0],
+                                      self.par["cpm_ncut_first_int"],
+                                      self.par["cpm_ncut_last_int"])
+            position = position_dict['POSITION']
+            try:
+                median_position = position_dict['MEDPOS']
+            except:
+                median_position = np.median(position)
+                position = position - median_position
+            try:
+                position_unit =  position_dict['PUNIT']
+            except:
+                position_unit = u.pix
+
+        # FWHM info
+        fwhm_file = find('target_FWHM.fits', path_to_files)
+        if len(fwhm_file) == 0:
+            fwhm = np.ones((len(time_bjd)))
+            fwhm_unit = u.pix
+            median_fwhm = np.median(fwhm)
+        else:
+            fwhm_dict = read_FWHM_file(fwhm_file[0],
+                                      self.par["cpm_ncut_first_int"],
+                                      self.par["cpm_ncut_last_int"])
+            fwhm = fwhm_dict['FWHM']
+            try:
+                median_fwhm = fwhm_dict['MEDFWHM']
+            except:
+                median_fwhm = np.median(fwhm)
+                fwhm = fwhm - median_fwhm
+            try:
+                fwhm_unit =  fwhm_dict['FWHMUNIT']
+            except:
+                fwhm_unit = u.pix
 
         # orbital phase
-        phase = (time_bjd - self.par['obj_ephemeris']) / self.par['obj_period']
+        phase = ((time_bjd+2400000.5 - self.par['obj_ephemeris']) /
+                 self.par['obj_period'])
         phase = phase - int(np.max(phase))
-        if np.max(phase) < 0.0:
-            phase = phase + 1.0
-        phase = phase - np.rint(phase)
-        if self.par['obs_type'] == 'ECLIPSE':
-            phase[phase < 0] = phase[phase < 0] + 1.0
+#        if np.max(phase) < 0.0:
+#            phase = phase + 1.0
+#        phase = phase - np.rint(phase)
+#        if self.par['obs_type'] == 'ECLIPSE':
+#            phase[phase < 0] = phase[phase < 0] + 1.0
+
+        detector_gain = self.detector_gain
+
+        scaling = (wavelength_data/3.0)**4
+        scaling_unit = u.dimensionless_unscaled
+        spectral_data *= detector_gain.value * scaling
+        uncertainty_spectral_data *= detector_gain.value * scaling
 
         wave_unit = u.micron
-        flux_unit = u.Jy
+        flux_unit = u.electron / u.s
 
         SpectralTimeSeries = \
             SpectralDataTimeSeries(
@@ -1076,17 +999,25 @@ class JWSTNIRSPEC(InstrumentBase):
                                    time_unit=u.dimensionless_unscaled,
                                    mask=mask,
                                    time_bjd=time_bjd,
+                                   position=position,
+                                   position_unit=position_unit,
+                                   fwhm=fwhm,
+                                   fwhm_unit=fwhm_unit,
+                                   scaling=scaling,
+                                   scaling_unit=scaling_unit,
                                    isRampFitted=True,
                                    isNodded=False,
                                    target_name=target_name,
                                    dataProduct=self.par['obs_data_product'],
                                    dataFiles=all_data_files
                                    )
+
         # make sure that the date units are as "standard" as posible
         data_unit = (1.0*SpectralTimeSeries.data_unit).decompose().unit
         SpectralTimeSeries.data_unit = data_unit
         wave_unit = (1.0*SpectralTimeSeries.wavelength_unit).decompose().unit
         SpectralTimeSeries.wavelength_unit = wave_unit
+
         # To make the as standard as posible, by defaut change to
         # mean nomalized data units and use micron as wavelength unit
         mean_signal, _, _ = \
@@ -1099,11 +1030,12 @@ class JWSTNIRSPEC(InstrumentBase):
         SpectralTimeSeries.period = self.par['obj_period']
         SpectralTimeSeries.ephemeris = self.par['obj_ephemeris']
 
-        if spectral_data.shape[-1] > 512:
+        # rebin in time
+        if self.par['proc_rebin_time'] != 1:
             scanDict = {}
             idx_scandir = np.ones(spectral_data.shape[-1], dtype=bool)
             scanDict[0] = \
-                    {'nsamples': 16,
+                    {'nsamples': self.par['proc_rebin_time'],
                      'nscans': sum(idx_scandir),
                      'index': idx_scandir}
 
@@ -1112,7 +1044,11 @@ class JWSTNIRSPEC(InstrumentBase):
                 combine_scan_samples(SpectralTimeSeries,
                                      scanDict, verbose=False)
 
-        nrebin =  (spectral_data.shape[0]+10) / spectral_data.shape[1]
+        # rebin spectra
+        if self.par['proc_auto_adjust_rebin_factor']:
+            nrebin =  (spectral_data.shape[0]+10) / spectral_data.shape[1]
+        else:
+            nrebin=self.par['proc_rebin_factor']
         if nrebin > 1.0:
             SpectralTimeSeries = \
                 rebin_to_common_wavelength_grid(SpectralTimeSeries, 0,
@@ -1291,8 +1227,8 @@ class JWSTNIRSPEC(InstrumentBase):
 
         roi = np.ones((dim[0:ndim-1]), dtype=bool)
 
-        wavelength_min = 1.161*u.micron
-        wavelength_max = 4.91*u.micron
+        wavelength_min = 2.85*u.micron
+        wavelength_max = 5.15*u.micron
 
         idx = np.where((self.data.wavelength[..., 0].data > wavelength_min) &
                        (self.data.wavelength[..., 0].data < wavelength_max))

@@ -126,3 +126,6 @@
  - Made small changes to the initialize module.
  - Changed autoAdjustRebinFactor in the TSO module
  - Changed np.bool to bool in instrument module
+
+ **version 1.2.7**
+  - Bug fix in the verbose output of the spectral_extraction module

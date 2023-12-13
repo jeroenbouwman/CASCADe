@@ -2130,8 +2130,8 @@ def correct_wavelength_for_source_movent(datasetIn, spectral_movement,
         index_valid = np.ma.all(wnew[..., 0].mask, axis=1)
         index_valid = ~index_valid.data
         wnew = np.ma.median(wnew[index_valid, ...][1:8, ...], axis=1)
-        wold = np.ma.median(datasetIn.wavelength[index_valid, ...][1:8, ...],
-                            axis=1)
+        wold = datasetIn.return_masked_array('wavelength')
+        wold = np.ma.median(wold[index_valid, ...][1:8, ...], axis=1)
         sns.set_context("talk", font_scale=1.5, rc={"lines.linewidth": 2.5})
         sns.set_style("white", {"xtick.bottom": True, "ytick.left": True})
         fig, ax0 = plt.subplots(figsize=(6, 5), nrows=1, ncols=1)
