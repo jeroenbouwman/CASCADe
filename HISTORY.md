@@ -129,3 +129,4 @@
 
  **version 1.2.7**
   - Bug fix in the verbose output of the spectral_extraction module
+  - Added capability for JWST/NIRSPEC data
