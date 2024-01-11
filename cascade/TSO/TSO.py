@@ -288,6 +288,31 @@ class TSOSuite:
                                                processing_compress_data)
         except AttributeError:
             proc_compr_data = False
+
+        try:
+            proc_rebin_time = int(ast.literal_eval(
+                self.cascade_parameters.processing_rebin_number_time_steps))
+        except AttributeError:
+            proc_rebin_time = 1
+        try:
+            proc_rebin_factor = ast.literal_eval(
+                self.cascade_parameters.
+                processing_rebin_factor_spectral_channels)
+        except AttributeError:
+            proc_rebin_factor = 1
+        try:
+            proc_auto_adjust_rebin_factor = ast.literal_eval(
+                self.cascade_parameters.
+                processing_auto_adjust_rebin_factor_spectral_channels)
+        except AttributeError:
+            proc_auto_adjust_rebin_factor = False
+
+        try:
+            observationDataType = self.cascade_parameters.observations_data
+        except AttributeError as par_err:
+            raise AttributeError("No observation data type set. "
+                                 "Aborting filtering of data.") from par_err
+
         self.observation = Observation()
         if proc_compr_data:
             datasetIn = self.observation.dataset
@@ -307,6 +332,52 @@ class TSOSuite:
                 self.observation.dataset_background = compressedDataset
             except AttributeError:
                 pass
+
+        if observationDataType == 'SPECTRUM':
+            # rebin in time
+            if proc_rebin_time != 1:
+                datasetIn = self.observation.dataset
+                scanDict = {}
+                idx_scandir = np.ones(datasetIn.data.shape[-1], dtype=bool)
+                scanDict[0] = \
+                        {'nsamples': proc_rebin_time,
+                         'nscans': sum(idx_scandir),
+                         'index': idx_scandir}
+                from cascade.spectral_extraction import combine_scan_samples
+                self.observation.dataset = \
+                    combine_scan_samples(datasetIn,
+                                         scanDict, verbose=False)
+
+            # rebin spectra
+            if proc_auto_adjust_rebin_factor:
+                datasetIn = self.observation.dataset
+                nrebin =  (datasetIn.data.shape[0]+10) / datasetIn.data.shape[1]
+            else:
+                nrebin=proc_rebin_factor
+            if nrebin > 1.0:
+                datasetIn = self.observation.dataset
+                self.observation.dataset, rebin_weights = \
+                    rebin_to_common_wavelength_grid(datasetIn, 0,
+                                                    nrebin=nrebin, verbose=False,
+                                                    verboseSaveFile=None,
+                                                    return_weights=True)
+                # also need to update ROI and Trace
+                from ..utilities import _rebin_spectra
+                ROI = self.observation.instrument_calibration.roi[:, None]
+                ROI_new, _ = _rebin_spectra(ROI, ROI*0, rebin_weights[:, :, 0:1])
+                self.observation.instrument_calibration.roi = ROI_new[:, 0].astype(bool)
+                spectral_trace = self.observation.spectral_trace
+                new_trace_wavelength, _ = _rebin_spectra(
+                    spectral_trace['wavelength'], spectral_trace['wavelength']*0,
+                    rebin_weights[:, :, 0:1])
+                spectral_trace['wavelength'] = new_trace_wavelength[:, 0]
+                spectral_trace['positional_pixel'] = \
+                    np.zeros_like(spectral_trace['wavelength'])
+                spectral_trace['wavelength_pixel'] = \
+                    np.arange(len(spectral_trace['wavelength'])) * \
+                        spectral_trace['wavelength_pixel'].unit
+                self.observation.spextral_trace = spectral_trace
+
         vrbs = Verbose()
         vrbs.execute("load_data", plot_data=self.observation)
 

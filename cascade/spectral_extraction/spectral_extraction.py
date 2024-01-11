@@ -2147,7 +2147,8 @@ def correct_wavelength_for_source_movent(datasetIn, spectral_movement,
 
 
 def rebin_to_common_wavelength_grid(dataset, referenceIndex, nrebin=None,
-                                    verbose=False, verboseSaveFile=None):
+                                    verbose=False, verboseSaveFile=None,
+                                    return_weights=False):
     """
     Rebin the spectra to single wavelength per row.
 
@@ -2164,6 +2165,8 @@ def rebin_to_common_wavelength_grid(dataset, referenceIndex, nrebin=None,
         If True, diagnostic plots will be created
     verboseSaveFile : 'str', optional
         If not None, verbose output will be saved to the specified file.
+    return_weights : 'bool', optional
+        If set, returns weights used in rebinning.
 
     Returns
     -------
@@ -2195,7 +2198,7 @@ def rebin_to_common_wavelength_grid(dataset, referenceIndex, nrebin=None,
     idx_max_select = np.where(referenceWavelength <= max_wavelength)[0][-1]
     referenceWavelength = referenceWavelength[idx_min_select:idx_max_select]
 
-    lr, ur = _define_band_limits(wavelength)
+    lr, ur = _define_band_limits(wavelength.data)
 
     if nrebin is not None:
         referenceWavelength = \
@@ -2266,7 +2269,10 @@ def rebin_to_common_wavelength_grid(dataset, referenceIndex, nrebin=None,
         plt.show()
         if verboseSaveFile is not None:
             fig.savefig(verboseSaveFile, bbox_inches='tight')
-    return rebinnedDataset
+    if return_weights:
+        return rebinnedDataset, weights
+    else:
+        return rebinnedDataset
 
 
 def combine_scan_samples(datasetIn, scanDictionary, verbose=False):
@@ -2281,7 +2287,7 @@ def combine_scan_samples(datasetIn, scanDictionary, verbose=False):
     datasetIn : 'SpectralDataTimeSeries'
         Input dataset
     scanDictionary : 'dict'
-        Dictionary containg relevant indormation about the scans
+        Dictionary containg relevant information about the scans
     verbose : 'bool', optional
         If True, diagnostic plots will be created (default False).
 

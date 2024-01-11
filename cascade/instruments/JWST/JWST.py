@@ -682,30 +682,30 @@ class JWSTMIRILRS(InstrumentBase):
         SpectralTimeSeries.period = self.par['obj_period']
         SpectralTimeSeries.ephemeris = self.par['obj_ephemeris']
 
-        # rebin in time
-        if self.par['proc_rebin_time'] != 1:
-            scanDict = {}
-            idx_scandir = np.ones(spectral_data.shape[-1], dtype=bool)
-            scanDict[0] = \
-                    {'nsamples': self.par['proc_rebin_time'],
-                     'nscans': sum(idx_scandir),
-                     'index': idx_scandir}
+        # # rebin in time
+        # if self.par['proc_rebin_time'] != 1:
+        #     scanDict = {}
+        #     idx_scandir = np.ones(spectral_data.shape[-1], dtype=bool)
+        #     scanDict[0] = \
+        #             {'nsamples': self.par['proc_rebin_time'],
+        #              'nscans': sum(idx_scandir),
+        #              'index': idx_scandir}
 
-            from cascade.spectral_extraction import combine_scan_samples
-            SpectralTimeSeries = \
-                combine_scan_samples(SpectralTimeSeries,
-                                     scanDict, verbose=False)
+        #     from cascade.spectral_extraction import combine_scan_samples
+        #     SpectralTimeSeries = \
+        #         combine_scan_samples(SpectralTimeSeries,
+        #                              scanDict, verbose=False)
 
-        # rebin spectra
-        if self.par['proc_auto_adjust_rebin_factor']:
-            nrebin =  (spectral_data.shape[0]+10) / spectral_data.shape[1]
-        else:
-            nrebin=self.par['proc_rebin_factor']
-        if nrebin > 1.0:
-            SpectralTimeSeries = \
-                rebin_to_common_wavelength_grid(SpectralTimeSeries, 0,
-                                                nrebin=nrebin, verbose=False,
-                                                verboseSaveFile=None)
+        # # rebin spectra
+        # if self.par['proc_auto_adjust_rebin_factor']:
+        #     nrebin =  (spectral_data.shape[0]+10) / spectral_data.shape[1]
+        # else:
+        #     nrebin=self.par['proc_rebin_factor']
+        # if nrebin > 1.0:
+        #     SpectralTimeSeries = \
+        #         rebin_to_common_wavelength_grid(SpectralTimeSeries, 0,
+        #                                         nrebin=nrebin, verbose=False,
+        #                                         verboseSaveFile=None)
 
         self._define_convolution_kernel()
 
@@ -1030,30 +1030,30 @@ class JWSTNIRSPEC(InstrumentBase):
         SpectralTimeSeries.period = self.par['obj_period']
         SpectralTimeSeries.ephemeris = self.par['obj_ephemeris']
 
-        # rebin in time
-        if self.par['proc_rebin_time'] != 1:
-            scanDict = {}
-            idx_scandir = np.ones(spectral_data.shape[-1], dtype=bool)
-            scanDict[0] = \
-                    {'nsamples': self.par['proc_rebin_time'],
-                     'nscans': sum(idx_scandir),
-                     'index': idx_scandir}
+        # # rebin in time
+        # if self.par['proc_rebin_time'] != 1:
+        #     scanDict = {}
+        #     idx_scandir = np.ones(spectral_data.shape[-1], dtype=bool)
+        #     scanDict[0] = \
+        #             {'nsamples': self.par['proc_rebin_time'],
+        #              'nscans': sum(idx_scandir),
+        #              'index': idx_scandir}
 
-            from cascade.spectral_extraction import combine_scan_samples
-            SpectralTimeSeries = \
-                combine_scan_samples(SpectralTimeSeries,
-                                     scanDict, verbose=False)
+        #     from cascade.spectral_extraction import combine_scan_samples
+        #     SpectralTimeSeries = \
+        #         combine_scan_samples(SpectralTimeSeries,
+        #                              scanDict, verbose=False)
 
-        # rebin spectra
-        if self.par['proc_auto_adjust_rebin_factor']:
-            nrebin =  (spectral_data.shape[0]+10) / spectral_data.shape[1]
-        else:
-            nrebin=self.par['proc_rebin_factor']
-        if nrebin > 1.0:
-            SpectralTimeSeries = \
-                rebin_to_common_wavelength_grid(SpectralTimeSeries, 0,
-                                                nrebin=nrebin, verbose=False,
-                                                verboseSaveFile=None)
+        # # rebin spectra
+        # if self.par['proc_auto_adjust_rebin_factor']:
+        #     nrebin =  (spectral_data.shape[0]+10) / spectral_data.shape[1]
+        # else:
+        #     nrebin=self.par['proc_rebin_factor']
+        # if nrebin > 1.0:
+        #     SpectralTimeSeries = \
+        #         rebin_to_common_wavelength_grid(SpectralTimeSeries, 0,
+        #                                         nrebin=nrebin, verbose=False,
+        #                                         verboseSaveFile=None)
 
         self._define_convolution_kernel()
 
