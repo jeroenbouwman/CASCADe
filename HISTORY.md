@@ -131,3 +131,7 @@
   - Bug fix in the verbose output of the spectral_extraction module
   - Added capability for JWST/NIRSPEC data
   - Moved spectral and time rebinning for spectra from instruments to TSO module.
+
+**Version 1.2.8**
+  - Changed the normalization for wavelength shift determination
+  - Added NIRISS SOSS capabilities.

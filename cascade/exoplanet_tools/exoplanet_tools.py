@@ -2543,14 +2543,14 @@ class SpectralModel:
         if not self.calculatate_shift:
             return 0.0, 0.0
         try:
-            scaling = dataset.return_masked_array('scaling')
-            if scaling is None:
-                scaling = 1.0
+            scaling_data = dataset.return_masked_array('scaling')
+            if scaling_data is None:
+                scaling_data = 1.0
         except AttributeError:
-            scaling = 1.0
+            scaling_data = 1.0
 
-        data = np.mean(dataset.return_masked_array('data')/scaling, axis=-1)
-        wavelength = np.mean(dataset.return_masked_array('wavelength'),
+        data = np.ma.median(dataset.return_masked_array('data')/scaling_data, axis=-1)
+        wavelength = np.ma.median(dataset.return_masked_array('wavelength'),
                              axis=-1)
         wavelength_unit = dataset.wavelength_unit
         data_unit = dataset.data_unit
@@ -2590,7 +2590,7 @@ class SpectralModel:
             model_observation = (spectrum_star * calibration).decompose()
             model_observation = model_observation.to(data_unit)
 
-            scaling = np.median(data)/np.median(model_observation.value)
+            scaling = np.sum(data)/np.sum(model_observation.value)
             shift = phase_cross_correlation(
                 (model_observation*scaling)[:, np.newaxis],
                 data[:, np.newaxis], upsample_factor=11, space='real',
