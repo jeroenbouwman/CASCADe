@@ -1238,8 +1238,8 @@ class JWSTNIRSPEC(InstrumentBase):
 
         roi = np.ones((dim[0:ndim-1]), dtype=bool)
 
-        wavelength_min = 2.85*u.micron
-        wavelength_max = 5.15*u.micron
+        wavelength_min = 2.82*u.micron
+        wavelength_max = 5.172*u.micron
 
         idx = np.where((self.data.wavelength[..., 0].data > wavelength_min) &
                        (self.data.wavelength[..., 0].data < wavelength_max))

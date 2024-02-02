@@ -135,3 +135,8 @@
 **Version 1.2.8**
   - Changed the normalization for wavelength shift determination
   - Added NIRISS SOSS capabilities.
+
+**Version 1.2.9**
+  - Modified the NISPEC BOTS G395M/F290LP passband for forward modeling
+  - Updated the valid wavelength range for NIRSPEC G395M/F290LP data
+  - Modefied the wavelength bands used in rebinning of extracted NIRSPEC data.
