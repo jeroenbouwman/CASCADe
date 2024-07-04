@@ -2081,6 +2081,11 @@ class TSOSuite:
                   "Aborting saving results")
             raise
         try:
+            instrument_spectral_order = ast.literal_eval(
+                self.cascade_parameters.instrument_spectral_order)
+        except AttributeError:
+            instrument_spectral_order = None
+        try:
             object_target_name = \
                 self.cascade_parameters.object_name
         except AttributeError:
@@ -2117,6 +2122,7 @@ class TSOSuite:
                        'FACILITY': observatory,
                        'INSTRMNT': instrument,
                        'FILTER': instrument_filter,
+                       'ORDER': str(instrument_spectral_order),
                        'NAME': object_target_name,
                        'OBSTYPE': transittype}
 
@@ -2252,6 +2258,11 @@ def combine_observations(target_name, observations_ids, path=None,
             observatory = hdul[0].header['FACILITY']
             instrument = hdul[0].header['INSTRMNT']
             instrument_filter = hdul[0].header['FILTER']
+            instrument_spectral_order = hdul[0].header['ORDER']
+            if instrument_spectral_order == 'None':
+                spectral_order_extension=''
+            else:
+                spectral_order_extension = '-order'+instrument_spectral_order
             observation_type = hdul[0].header['OBSTYPE']
             data_product = hdul[0].header['DATAPROD']
             version = hdul[0].header['VERSION']
@@ -2268,6 +2279,7 @@ def combine_observations(target_name, observations_ids, path=None,
                                 'error': error, 'observatory': observatory,
                                 'instrument': instrument,
                                 'instrument_filter': instrument_filter,
+                                'spectral_order': instrument_spectral_order,
                                 'observation_type': observation_type,
                                 'data_product': data_product,
                                 'version': version,
@@ -2287,6 +2299,7 @@ def combine_observations(target_name, observations_ids, path=None,
         (observations[target_list[0]]['observatory'] + '_' +
          observations[target_list[0]]['instrument'] + '_' +
          observations[target_list[0]]['instrument_filter'] +
+         spectral_order_extension +
          '_wavelength_bins'+file_name_extension+'.txt')
     wavelength_bins = ascii.read(os.path.join(wavelength_bins_path,
                                               wavelength_bins_file))
@@ -2332,6 +2345,7 @@ def combine_observations(target_name, observations_ids, path=None,
                    'FACILITY': observations[target_list[0]]['observatory'],
                    'INSTRMNT': observations[target_list[0]]['instrument'],
                    'FILTER': observations[target_list[0]]['instrument_filter'],
+                   'ORDER': observations[target_list[0]]['spectral_order'],
                    'NAME': target_name.strip(),
                    'OBSTYPE': observations[target_list[0]]['observation_type']}
 
@@ -2481,12 +2495,18 @@ def combine_timeseries(target_name, observations_ids, file_extension,
         temp_dict['time'] = dataset.return_masked_array('time')
         datasets_dict[target] = temp_dict
 
+    if datasets_dict[target_list[0]]['ORDER'] == 'None':
+        spectral_order_extension=''
+    else:
+        spectral_order_extension = '-order'+datasets_dict[target_list[0]]['ORDER']
+
     wavelength_bins_path = \
         cascade_default_path / "exoplanet_data/cascade/wavelength_bins/"
     wavelength_bins_file = \
         (datasets_dict[target_list[0]]['FACILITY'] + '_' +
          datasets_dict[target_list[0]]['INSTRMNT'] + '_' +
          datasets_dict[target_list[0]]['FILTER'] +
+         spectral_order_extension +
          '_wavelength_bins.txt')
     wavelength_bins = ascii.read(wavelength_bins_path / wavelength_bins_file)
 
