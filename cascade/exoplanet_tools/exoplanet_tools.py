@@ -1497,6 +1497,8 @@ class exotethys_model:
             cascade_default_path / "exoplanet_data/exotethys/"
         passband = InputParameter['instrument'] + '_' +\
             InputParameter['instrument_filter']
+        if InputParameter['spectral_order'] is not None:
+            passband = passband+'-order'+str(InputParameter['spectral_order'])
 
         if InputParameter['limb_darkening_laws'] == 'nonlinear':
             ld_law = 'claret4'
@@ -1534,17 +1536,6 @@ class exotethys_model:
         wl_bands = \
             [(np.mean([float(j) for j in i])*u.Angstrom).to(u.micron).value
              for i in wl_bands]
-# # TEST for GJ1214b
-#         wl_bands = \
-#           [1.3840000, 1.031000000, 1.147, 1.17 , 1.193, 1.216, 1.239, 1.262, 1.285, 1.308, 1.331,
-#                     1.354, 1.377, 1.4  , 1.423, 1.447, 1.47 , 1.493, 1.516, 1.539,
-#                     1.562, 1.585, 1.608, 1.631, 1.715700000000]
-#         ld_coefficients = \
-#           [0.26287956,0.2974123, 0.27192, 0.25934, 0.24835, 0.26389, 0.26455, 0.25579, 0.22509,
-#                     0.23451, 0.25538, 0.30389, 0.28306, 0.28224, 0.29374, 0.28993,
-#                     0.31504, 0.27537, 0.27269, 0.2723 , 0.28077, 0.25901, 0.25706,
-#                     0.22291, 0.23587377]
-#         ld_coefficients = [np.array([i]) for i in ld_coefficients]
 
         return wl_bands, ld_coefficients
 
@@ -1563,6 +1554,11 @@ class exotethys_model:
         target_name = self.cascade_configuration.object_name
         instrument = self.cascade_configuration.instrument
         instrument_filter = self.cascade_configuration.instrument_filter
+        try:
+            spectral_order = ast.literal_eval(
+                self.cascade_configuration.instrument_spectral_order)
+        except AttributeError:
+            spectral_order = None
         logg_unit = \
             re.split("[\\(\\)]",
                      self.cascade_configuration.object_logg_host_star)[1]
@@ -1601,6 +1597,7 @@ class exotethys_model:
             target_name=target_name,
             instrument=instrument,
             instrument_filter=instrument_filter,
+            spectral_order=spectral_order,
             logg=logg,
             star_metallicity=star_metallicity,
             Tstar=Tstar,
@@ -1650,6 +1647,12 @@ class exotethys_model:
         target_name = self.cascade_configuration.object_name
         instrument = self.cascade_configuration.instrument
         instrument_filter = self.cascade_configuration.instrument_filter
+        try:
+            spectral_order = ast.literal_eval(
+                self.cascade_configuration.instrument_spectral_order)
+        except AttributeError:
+            spectral_order = None
+
         limb_darkening_laws = self.cascade_configuration.model_limb_darkening
         if not (limb_darkening_laws in self.__valid_ld_laws):
             raise ValueError("Limbdarkning model not recognized, \
@@ -1676,6 +1679,7 @@ class exotethys_model:
             target_name=target_name,
             instrument=instrument,
             instrument_filter=instrument_filter,
+            spectral_order=spectral_order,
             logg=logg,
             star_metallicity=star_metallicity,
             Tstar=Tstar,
@@ -2189,6 +2193,8 @@ class exotethys_stellar_model:
             cascade_default_path / "exoplanet_data/exotethys/passbands"
         passband = InputParameter['instrument'] + '_' +\
             InputParameter['instrument_filter']
+        if InputParameter['spectral_order'] is not None:
+            passband = passband+'-order'+str(InputParameter['spectral_order'])
 
         wave_pass, passband, _ = \
             sail.read_passband(exotethys_data_path,
@@ -2259,6 +2265,11 @@ class exotethys_stellar_model:
         instrument = self.cascade_configuration.instrument
         instrument_filter = self.cascade_configuration.instrument_filter
         try:
+            spectral_order = ast.literal_eval(
+                self.cascade_configuration.instrument_spectral_order)
+        except AttributeError:
+            spectral_order = None
+        try:
             telescope_collecting_area = u.Quantity(
                 self.cascade_configuration.telescope_collecting_area)
         except AttributeError:
@@ -2312,6 +2323,7 @@ class exotethys_stellar_model:
         par = collections.OrderedDict(
             instrument=instrument,
             instrument_filter=instrument_filter,
+            spectral_order=spectral_order,
             tel_coll_area=telescope_collecting_area,
             instrument_dispersion_scale=dispersion_scale,
             logg=logg,
@@ -2393,6 +2405,11 @@ class exotethys_stellar_model:
         instrument = self.cascade_configuration.instrument
         instrument_filter = self.cascade_configuration.instrument_filter
         try:
+            spectral_order = ast.literal_eval(
+                self.cascade_configuration.instrument_spectral_order)
+        except AttributeError:
+            spectral_order = None
+        try:
             telescope_collecting_area = u.Quantity(
                 self.cascade_configuration.telescope_collecting_area)
         except AttributeError:
@@ -2428,6 +2445,7 @@ class exotethys_stellar_model:
         par = collections.OrderedDict(
             instrument=instrument,
             instrument_filter=instrument_filter,
+            spectral_order=spectral_order,
             tel_coll_area=telescope_collecting_area,
             instrument_dispersion_scale=dispersion_scale,
             logg=logg,
@@ -2593,8 +2611,7 @@ class SpectralModel:
             scaling = np.sum(data)/np.sum(model_observation.value)
             shift = phase_cross_correlation(
                 (model_observation*scaling)[:, np.newaxis],
-                data[:, np.newaxis], upsample_factor=11, space='real',
-                return_error=True)
+                data[:, np.newaxis], upsample_factor=11, space='real')
             wavelength_shift = np.mean(np.diff(wavelength)) * shift[0][0]
             error_wavelength_shift = np.mean(np.diff(wavelength)) * shift[1]
 

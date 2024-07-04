@@ -5,7 +5,7 @@ CASCADe init file.
 @author: Jeroen Bouwman
 """
 
-__version__ = "1.2.9"
+__version__ = "1.2.10"
 __all__ = ['data_model', 'TSO', 'instruments', 'cpm_model',
            'initialize', 'exoplanet_tools', 'utilities',
            'spectral_extraction', 'build_archive', 'verbose']

@@ -1233,17 +1233,43 @@ class JWSTNIRSPEC(InstrumentBase):
         """
         Defines region on detector which containes the intended target star.
         """
+        # dim = self.data.data.shape
+        # ndim = self.data.data.ndim
+
+        # roi = np.ones((dim[0:ndim-1]), dtype=bool)
+
+        # wavelength_min = 2.82*u.micron
+        # wavelength_max = 5.172*u.micron
+
+        # idx = np.where((self.data.wavelength[..., 0].data > wavelength_min) &
+        #                (self.data.wavelength[..., 0].data < wavelength_max))
+        # roi[idx] = False
         dim = self.data.data.shape
-        ndim = self.data.data.ndim
 
-        roi = np.ones((dim[0:ndim-1]), dtype=bool)
+        if 'F290LP' in self.par['inst_filter']:
+            wavelength_min = \
+                self.par['proc_extend_roi'][0]*2.82*u.micron
+            wavelength_max = \
+                self.par['proc_extend_roi'][1]*5.172*u.micron
+        elif 'CLEAR' in self.par['inst_filter']:
+            wavelength_min = \
+                self.par['proc_extend_roi'][0]*0.7*u.micron
+            wavelength_max = \
+                self.par['proc_extend_roi'][1]*5.1*u.micron
+        else:
+            raise ValueError("NIRSPEC Filter not implemented in ROI definition")
 
-        wavelength_min = 2.82*u.micron
-        wavelength_max = 5.172*u.micron
+        trace = self.spectral_trace.copy()
+        mask_min = trace['wavelength'] > wavelength_min
+        mask_max = trace['wavelength'] < wavelength_max
+        mask_not_defined = trace['wavelength'] == 0.
+        idx_min = int(np.min(trace['wavelength_pixel'].value[mask_min]))
+        idx_max = int(np.max(trace['wavelength_pixel'].value[mask_max]))
+        roi = np.zeros((dim[0]), dtype=bool)
+        roi[0:idx_min] = True
+        roi[idx_max+1:] = True
+        roi[mask_not_defined] = True
 
-        idx = np.where((self.data.wavelength[..., 0].data > wavelength_min) &
-                       (self.data.wavelength[..., 0].data < wavelength_max))
-        roi[idx] = False
 
         try:
             self.nirspecbots_cal
@@ -1555,16 +1581,28 @@ class JWSTNIRISS(InstrumentBase):
         Defines region on detector which containes the intended target star.
         """
         dim = self.data.data.shape
-        ndim = self.data.data.ndim
 
-        roi = np.ones((dim[0:ndim-1]), dtype=bool)
+        if self.par['inst_spec_order'] == 1:
+            wavelength_min = \
+                self.par['proc_extend_roi'][0]*0.86*u.micron
+            wavelength_max = \
+                self.par['proc_extend_roi'][1]*2.80*u.micron
+        else:
+            wavelength_min = \
+                self.par['proc_extend_roi'][0]*0.65*u.micron
+            wavelength_max = \
+                self.par['proc_extend_roi'][1]*0.90*u.micron
 
-        wavelength_min = 0.86*u.micron
-        wavelength_max = 2.80*u.micron
-
-        idx = np.where((self.data.wavelength[..., 0].data > wavelength_min) &
-                       (self.data.wavelength[..., 0].data < wavelength_max))
-        roi[idx] = False
+        trace = self.spectral_trace.copy()
+        mask_min = trace['wavelength'] > wavelength_min
+        mask_max = trace['wavelength'] < wavelength_max
+        mask_not_defined = trace['wavelength'] == 0.
+        idx_min = int(np.min(trace['wavelength_pixel'].value[mask_min]))
+        idx_max = int(np.max(trace['wavelength_pixel'].value[mask_max]))
+        roi = np.zeros((dim[0]), dtype=bool)
+        roi[0:idx_min] = True
+        roi[idx_max+1:] = True
+        roi[mask_not_defined] = True
 
         try:
             self.nirisssoss_cal
