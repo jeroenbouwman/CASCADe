@@ -1584,12 +1584,12 @@ class JWSTNIRISS(InstrumentBase):
 
         if self.par['inst_spec_order'] == 1:
             wavelength_min = \
-                self.par['proc_extend_roi'][0]*0.86*u.micron
+                self.par['proc_extend_roi'][0]*0.85*u.micron
             wavelength_max = \
-                self.par['proc_extend_roi'][1]*2.80*u.micron
+                self.par['proc_extend_roi'][1]*2.83*u.micron
         else:
             wavelength_min = \
-                self.par['proc_extend_roi'][0]*0.65*u.micron
+                self.par['proc_extend_roi'][0]*0.60*u.micron
             wavelength_max = \
                 self.par['proc_extend_roi'][1]*0.90*u.micron
 
