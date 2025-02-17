@@ -1876,7 +1876,7 @@ class spotprofile:
     Class defining the profile of a spot crossing
 
     This class defines the light curve of a spot crossing. It implemets a
-    flattened Gaussian function suggested y Fraine et al 2014 to simulated
+    flattened Gaussian function suggested by Fraine et al 2014 to simulated
     the planet crossing a star spot.
 
     Attributes

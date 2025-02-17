@@ -37,10 +37,57 @@ import numba as nb
 
 from cascade.data_model import SpectralDataTimeSeries
 
-__all__ = ['write_timeseries_to_fits', 'find', 'get_data_from_fits',
+__all__ = ['write_fit_quality_indicators_to_fits',
+           'write_timeseries_to_fits', 'find', 'get_data_from_fits',
            'spectres', 'write_spectra_to_fits', '_define_band_limits',
            '_define_rebin_weights', '_rebin_spectra',
            'write_dataset_to_fits', 'read_dataset_from_fits']
+
+
+def write_fit_quality_indicators_to_fits(path, filename, wavelength, aic, mse,
+                                         dof, reg, header_meta):
+    """
+
+
+    Parameters
+    ----------
+    path:
+    filename:
+    wavelength:
+    aic : TYPE
+        DESCRIPTION.
+    mse : TYPE
+        DESCRIPTION.
+    dof : TYPE
+        DESCRIPTION.
+    reg: Type
+       DESCRIPTION
+    header_meta :  Type
+        DESCRIPTION
+
+    Returns
+    -------
+    None.
+
+    """
+
+    hdr = fits.Header()
+    for key, value in header_meta.items():
+        hdr[key] = value
+    primary_hdu = fits.PrimaryHDU(header=hdr)
+
+    hdu_wav = fits.ImageHDU(wavelength, name='WAVELENGTH')
+    hdu_aic = fits.ImageHDU(aic, name='AIC')
+    hdu_mse = fits.ImageHDU(mse, name='MSE')
+    hdu_dof = fits.ImageHDU(dof, name='DOF')
+    hdu_reg = fits.ImageHDU(reg, name='REG')
+
+    product_list = [primary_hdu, hdu_wav, hdu_aic, hdu_mse, hdu_dof, hdu_reg]
+
+    hdul = fits.HDUList(product_list)
+
+    os.makedirs(path, exist_ok=True)
+    hdul.writeto(os.path.join(path, filename), overwrite=True)
 
 
 def write_spectra_to_fits(spectral_dataset, path, filename, header_meta,
@@ -50,7 +97,7 @@ def write_spectra_to_fits(spectral_dataset, path, filename, header_meta,
 
     Parameters
     ----------
-    data : 'ndarray' or 'SpectralDataTimeSeries'
+    spectral_dataset : 'ndarray' or 'SpectralDataTimeSeries'
         The data cube which will be save to fits file. For each time step
         a fits file will be generated.
     path : 'str'

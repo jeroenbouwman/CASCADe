@@ -140,3 +140,8 @@
   - Modified the NISPEC BOTS G395M/F290LP passband for forward modeling
   - Updated the valid wavelength range for NIRSPEC G395M/F290LP data
   - Modefied the wavelength bands used in rebinning of extracted NIRSPEC data.
+
+**Version1.2.12**
+  - Enabled wavelenght rebinning on detector level.
+  - Changed regularization to include additional parameters.
+  - Changed bootstrap to moving block bootstrap.

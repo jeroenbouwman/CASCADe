@@ -41,6 +41,7 @@ import seaborn as sns
 import numpy as np
 from scipy import ndimage
 from scipy.ndimage import binary_dilation
+from astropy.io import ascii
 from astropy.convolution import convolve
 from astropy.convolution import Gaussian2DKernel
 from astropy.convolution import Kernel2D
@@ -2148,7 +2149,9 @@ def correct_wavelength_for_source_movent(datasetIn, spectral_movement,
 
 def rebin_to_common_wavelength_grid(dataset, referenceIndex, nrebin=None,
                                     verbose=False, verboseSaveFile=None,
-                                    return_weights=False):
+                                    return_weights=False,
+                                    rebin_type='uniform',
+                                    wavelength_grid_file=None):
     """
     Rebin the spectra to single wavelength per row.
 
@@ -2167,6 +2170,8 @@ def rebin_to_common_wavelength_grid(dataset, referenceIndex, nrebin=None,
         If not None, verbose output will be saved to the specified file.
     return_weights : 'bool', optional
         If set, returns weights used in rebinning.
+    rebin_type : 'string', optional
+        Either 'uniform','detector' or 'grid'
 
     Returns
     -------
@@ -2200,12 +2205,41 @@ def rebin_to_common_wavelength_grid(dataset, referenceIndex, nrebin=None,
 
     lr, ur = _define_band_limits(wavelength.data)
 
-    if nrebin is not None:
-        referenceWavelength = \
-            np.linspace(referenceWavelength[0+int(nrebin/2)],
-                        referenceWavelength[-1-int(nrebin/2)],
-                        int(len(referenceWavelength)/nrebin))
-    lr0, ur0 = _define_band_limits(referenceWavelength)
+    if rebin_type == 'uniform':
+        if nrebin is not None:
+            referenceWavelength = \
+                np.linspace(referenceWavelength[0+int(nrebin/2)],
+                            referenceWavelength[-1-int(nrebin/2)],
+                            int(len(referenceWavelength)/nrebin))
+        lr0, ur0 = _define_band_limits(referenceWavelength)
+    elif rebin_type == 'detector':
+        delta_wave = np.diff(referenceWavelength)
+
+        lr0 = np.array(list(referenceWavelength[0:-1]-delta_wave) +
+        [referenceWavelength[-1]-delta_wave[-1]])[::int(nrebin)]
+
+        ur0 = np.array([referenceWavelength[0]+delta_wave[0]] +
+        list(referenceWavelength[1:]+delta_wave))[::int(nrebin)]
+
+        referenceWavelength = (lr0 + ur0)/2.0
+    elif rebin_type == 'grid':
+        try:
+            wavelength_bins = ascii.read(wavelength_grid_file)
+        except:
+            raise ValueError("Wavelength grid file not found or not "
+                             "correctly specified")
+        import astropy.units as u
+        lr0 = (wavelength_bins['lower limit'].data *
+               wavelength_bins['lower limit'].unit).to(u.micron).value
+        ur0 = (wavelength_bins['upper limit'].data *
+               wavelength_bins['upper limit'].unit).to(u.micron).value
+
+        referenceWavelength = 0.5*(ur0 + lr0)
+    else:
+        raise ValueError("Rebin type value not valid. "
+                        "Aborting rebin to a common wavelength grid.")
+
+
     weights = _define_rebin_weights(lr0, ur0, lr, ur)
     rebinnedSpectra, rebinnedUncertainty = \
         _rebin_spectra(spectra, uncertainty, weights)

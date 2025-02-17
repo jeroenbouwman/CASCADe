@@ -485,9 +485,9 @@ class JWSTMIRILRS(InstrumentBase):
 
         Returns
         -------
-        2.75 * u.electron / u.DN
+        4.0 * u.electron / u.DN
         """
-        return 2.75 * u.electron / u.DN
+        return 4.0 * u.electron / u.DN
 
 
     def load_data(self):
@@ -1233,17 +1233,6 @@ class JWSTNIRSPEC(InstrumentBase):
         """
         Defines region on detector which containes the intended target star.
         """
-        # dim = self.data.data.shape
-        # ndim = self.data.data.ndim
-
-        # roi = np.ones((dim[0:ndim-1]), dtype=bool)
-
-        # wavelength_min = 2.82*u.micron
-        # wavelength_max = 5.172*u.micron
-
-        # idx = np.where((self.data.wavelength[..., 0].data > wavelength_min) &
-        #                (self.data.wavelength[..., 0].data < wavelength_max))
-        # roi[idx] = False
         dim = self.data.data.shape
 
         if 'F290LP' in self.par['inst_filter']:

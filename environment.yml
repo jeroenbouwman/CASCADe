@@ -1,9 +1,9 @@
 name: cascade
 channels:
-  - defaults
   - conda-forge
+  - defaults
 dependencies:
-  - python>=3.8, <3.11
+  - python>=3.8, <3.12
   - ipython
   - pip
   - qt

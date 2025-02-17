@@ -38,6 +38,7 @@ import warnings
 import time as time_module
 import psutil
 import pathlib
+import math
 import ray
 import numpy as np
 from scipy import ndimage
@@ -53,6 +54,7 @@ from ..initialize import (cascade_configuration, configurator)
 from ..initialize import cascade_default_initialization_path
 from ..initialize import cascade_default_save_path
 from ..initialize import cascade_default_path
+from ..utilities import write_fit_quality_indicators_to_fits
 from ..utilities import write_timeseries_to_fits
 from ..utilities import write_spectra_to_fits
 from ..utilities import write_dataset_to_fits
@@ -313,6 +315,33 @@ class TSOSuite:
             raise AttributeError("No observation data type set. "
                                  "Aborting filtering of data.") from par_err
 
+        try:
+            spectral_rebin_type = self.cascade_parameters.processing_spectral_rebin_type
+        except AttributeError:
+            spectral_rebin_type = "uniform"
+        if spectral_rebin_type == 'grid':
+            # instrument parameters
+            inst_obs_name = self.cascade_parameters.instrument_observatory
+            inst_inst_name = self.cascade_parameters.instrument
+            inst_filter = self.cascade_parameters.instrument_filter
+            try:
+                inst_spec_order = \
+                  ast.literal_eval(cascade_configuration.instrument_spectral_order)
+            except AttributeError:
+                inst_spec_order = ""
+            wavelength_bins_path = \
+                cascade_default_path / "exoplanet_data/cascade/wavelength_bins"
+            wavelength_bins_file = \
+                (inst_obs_name + '_' +
+                 inst_inst_name + '_' +
+                 inst_filter +
+                 inst_spec_order +
+                 '_wavelength_bins'+'.txt')
+            wavelength_grid_file = os.path.join(wavelength_bins_path,wavelength_bins_file)
+
+        else:
+            wavelength_grid_file = None
+
         self.observation = Observation()
         if proc_compr_data:
             datasetIn = self.observation.dataset
@@ -354,13 +383,15 @@ class TSOSuite:
                 nrebin =  (datasetIn.data.shape[0]+10) / datasetIn.data.shape[1]
             else:
                 nrebin=proc_rebin_factor
-            if nrebin > 1.0:
+            if not math.isclose(nrebin, 1.0):
                 datasetIn = self.observation.dataset
                 self.observation.dataset, rebin_weights = \
                     rebin_to_common_wavelength_grid(datasetIn, 0,
                                                     nrebin=nrebin, verbose=False,
                                                     verboseSaveFile=None,
-                                                    return_weights=True)
+                                                    return_weights=True,
+                                                    rebin_type=spectral_rebin_type,
+                                                    wavelength_grid_file=wavelength_grid_file)
                 # also need to update ROI and Trace
                 from ..utilities import _rebin_spectra
                 ROI = self.observation.instrument_calibration.roi[:, None]
@@ -2148,6 +2179,13 @@ class TSOSuite:
         write_dataset_to_fits(cal_results.fitted_transit_model, save_path,
                               filename, header_data)
 
+        filename = save_name_base+'_bootstrapped_fit_quality.fits'
+        write_fit_quality_indicators_to_fits(save_path, filename,
+                              cal_results.wavelength_normed_fitted_spectrum,
+                              cal_results.aic, cal_results.mse, cal_results.dof,
+                              cal_results.regularization,
+                              header_data)
+
         header_data['TDDEPTH'] = results.spectrum.TDDEPTH[0]
         header_data.pop('TDCL005')
         header_data.pop('TDCL095')
@@ -2258,7 +2296,10 @@ def combine_observations(target_name, observations_ids, path=None,
             observatory = hdul[0].header['FACILITY']
             instrument = hdul[0].header['INSTRMNT']
             instrument_filter = hdul[0].header['FILTER']
-            instrument_spectral_order = hdul[0].header['ORDER']
+            try:
+                instrument_spectral_order = hdul[0].header['ORDER']
+            except KeyError:
+                instrument_spectral_order = 'None'
             if instrument_spectral_order == 'None':
                 spectral_order_extension=''
             else:

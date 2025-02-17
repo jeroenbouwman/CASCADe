@@ -38,6 +38,7 @@ import copy
 import gc
 import ray
 from numba import jit
+from numpy.lib.stride_tricks import as_strided
 from scipy.linalg import svd
 from scipy.linalg import solve_triangular
 from scipy.linalg import cholesky
@@ -176,7 +177,7 @@ rayOls = ray.remote(ols)
 
 
 def ridge(input_regression_matrix, input_data, input_covariance,
-          input_delta, input_alpha):
+          input_delta, input_alpha, use_gcv=True, use_rgcv=False, gamma=0.5):
     r"""
     Ridge regression.
 
@@ -193,6 +194,12 @@ def ridge(input_regression_matrix, input_data, input_covariance,
         Regularization matrix. For ridge regression this is the unity matrix.
     input_alpha : 'float' or 'numpy.ndarray'
         Regularization strength.
+    use_gvc : 'bool', optional
+        Use GCV to determine the optimal regularization.
+    use_rgvc : 'bool', optional
+        Use robust GCV to determine the optimal regularization.
+    gamma : 'float'
+        Robustness parameter for RGCV. Needs to be between 0 and 1.
 
     Returns
     -------
@@ -234,6 +241,8 @@ def ridge(input_regression_matrix, input_data, input_covariance,
            parameters for ill-posed porblems"
     .. [8] Krakauer et al "Using generalized cross-validationto select
            parameters in inversions for regional carbon fluxes"
+    .. [9] Mark A Lukas 2006, "Robust generalized cross-validation for choosing
+           the regularization parameter", Inverse Problems, 22, 1883
 
     Examples
     --------
@@ -270,7 +279,9 @@ def ridge(input_regression_matrix, input_data, input_covariance,
 
     if isinstance(input_alpha, Iterable):
         gcv_list = []
+        rgcv_list = []
         mse_list = []
+        aicc_list = []
         for alpha_try in input_alpha:
             F = np.diag(D**2) + alpha_try*delta
             G = cholesky(F, lower=True)
@@ -283,12 +294,26 @@ def ridge(input_regression_matrix, input_data, input_covariance,
             if (n_data-degrees_of_freedom) >= 1:
                 mse = rss/(n_data-degrees_of_freedom)
                 gcv = n_data*(np.trace(unity_matrix_ndata-H))**-2 * rss
+                gamma=0.5
+                rgcv = (gamma + (1-gamma)*np.trace(H**2)/n_data)*gcv
+                aicc = n_data*np.log(rss) + 2*degrees_of_freedom + \
+                    (2*degrees_of_freedom * (degrees_of_freedom+1)) / \
+                    (n_data-degrees_of_freedom-1)
             else:
                 mse = 1.e16
                 gcv = 1.e16
+                rgcv = 1.e16
+                aicc = 1.e16
             gcv_list.append(gcv)
+            rgcv_list.append(rgcv)
             mse_list.append(mse)
-        opt_idx = np.argmin(gcv_list)
+            aicc_list.append(aicc)
+        if use_gcv:
+            opt_idx = np.argmin(gcv_list)
+        elif use_rgcv:
+            opt_idx = np.argmin(rgcv_list)
+        else:
+            opt_idx = np.argmin(aicc_list)
         optimal_regularization = input_alpha[opt_idx]
     else:
         optimal_regularization = input_alpha
@@ -540,7 +565,7 @@ def return_lambda_grid(lambda_min, lambda_max, n_lambda):
     return lambda_grid
 
 
-def make_bootstrap_samples(ndata, nsamples):
+def make_bootstrap_samples(ndata, nsamples, nwindow=1):
     """
     Make bootstrap sample indicii.
 
@@ -550,6 +575,8 @@ def make_bootstrap_samples(ndata, nsamples):
         Number of data points.
     nsamples : 'int'
         Number of bootstrap samples.
+    nwindow : 'int'
+        Length of bootstrap window.
 
     Returns
     -------
@@ -560,16 +587,33 @@ def make_bootstrap_samples(ndata, nsamples):
         For ech nootstrap sampling, list of indici not sampled.
 
     """
+    possible_windows = [i for i in range(1,ndata+1) if (ndata % i) == 0]
+
+    if not nwindow in possible_windows:
+        nwindow = min(possible_windows, key=lambda x:abs(x-nwindow))
+        warnings.warn("WARNING: changed bootstrap window to {}".format(nwindow))
     all_indici = np.arange(ndata)
+
+    stride = all_indici.strides[0]
+    T = as_strided(all_indici, shape=(ndata-nwindow+1, nwindow),
+                   strides=(stride, stride))
+
     bootsptrap_indici = np.zeros((nsamples+1, ndata), dtype=int)
     non_common_indici = []
     bootsptrap_indici[0, :] = all_indici
     non_common_indici.append(np.setxor1d(all_indici, all_indici))
     np.random.seed(1984)
     for i in range(nsamples):
-        bootsptrap_indici[i+1, :] = np.sort(np.random.choice(ndata, ndata))
+        selection_index = np.sort(
+            np.random.choice(np.arange(T.shape[0]),
+                             size=ndata//nwindow, replace=True)
+                                  )
+        sample_index = T[selection_index, :].flatten()
+        bootsptrap_indici[i+1, :] = sample_index
+        #bootsptrap_indici[i+1, :] = np.sort(np.random.choice(ndata, ndata))
         non_common_indici.append(np.setxor1d(all_indici,
                                              bootsptrap_indici[i+1, :]))
+
     return bootsptrap_indici, non_common_indici
 
 
@@ -931,13 +975,13 @@ class regressionDataServer:
         regression_matrix = self.RS.fit_transform(regression_matrix.T).T
 
         # no scaling for spot model
-        if self.fit_spot_model is not np.nan:
-            regression_matrix[n_additional-2-1, :] = \
-                 regression_matrix[n_additional-2-1, :] * \
-                 self.RS.scale_[n_additional-2-1] + \
-                 self.RS.mean_[n_additional-2-1]
-            self.RS.scale_[n_additional-2-1] = 1.0
-            self.RS.mean_[n_additional-2-1] = 0.0
+        #if self.fit_spot_model is not np.nan:
+            #regression_matrix[n_additional-2-1, :] = \
+            #     regression_matrix[n_additional-2-1, :] * \
+            #     self.RS.scale_[n_additional-2-1] + \
+            #     self.RS.mean_[n_additional-2-1]
+            #self.RS.scale_[n_additional-2-1] = 1.0
+            #self.RS.mean_[n_additional-2-1] = 0.0
 
         lc = self.select_data(self.fit_lightcurve_model, selection,
                               bootstrap_indici=bootstrap_indici)
@@ -1144,6 +1188,11 @@ class regressionParameterServer:
             ast.literal_eval(self.cascade_configuration.cpm_deltapix)
         self.cpm_parameters.nboot = \
             ast.literal_eval(self.cascade_configuration.cpm_nbootstrap)
+        try:
+            self.cpm_parameters.boot_window = \
+                ast.literal_eval(self.cascade_configuration.cpm_boot_window)
+        except AttributeError:
+            self.cpm_parameters.boot_window = 1
         self.cpm_parameters.alpha_min = \
             ast.literal_eval(self.cascade_configuration.cpm_lam0)
         self.cpm_parameters.alpha_max = \
@@ -1815,7 +1864,8 @@ class regressionControler:
                               cpm_parameters.nwidth)
         self.iterators.bootsptrap_indici, _ = \
             make_bootstrap_samples(data_parameters.shape[-1],
-                                   cpm_parameters.nboot)
+                                   cpm_parameters.nboot,
+                                   nwindow=cpm_parameters.boot_window)
         self.iterators.combined_full_model_indici = itertools.product(
             enumerate(self.iterators.bootsptrap_indici[:1]),
             enumerate(self.iterators.regressor_indici))
@@ -2481,7 +2531,8 @@ class rayRegressionControler(regressionControler):
                               cpm_parameters.nwidth)
         self.iterators.bootsptrap_indici, _ = \
             make_bootstrap_samples(data_parameters.shape[-1],
-                                   cpm_parameters.nboot)
+                                   cpm_parameters.nboot,
+                                   nwindow=cpm_parameters.boot_window)
         self.iterators.combined_full_model_indici = itertools.product(
             enumerate(self.iterators.bootsptrap_indici[:1]),
             enumerate(self.iterators.regressor_indici))
@@ -3121,9 +3172,12 @@ class regressionWorker:
 
         # create regularization matrix
         n_data, n_parameter = regression_matrix_unscaled.shape
+        #delta = create_regularization_matrix(regularization_method,
+        #                                     n_parameter,
+        #                                     n_additional)
         delta = create_regularization_matrix(regularization_method,
                                              n_parameter,
-                                             n_additional)
+                                             2)
         # do ridge regression
         (beta_optimal, rss, mse, degrees_of_freedom,
          model_unscaled, alpha, aic) = \
