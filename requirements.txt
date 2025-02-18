@@ -1,4 +1,4 @@
-python>=3.8.0
+python>=3.10.0
 ipython>=7.20.0
 pip>=21.0.0
 qt>=5.9.7

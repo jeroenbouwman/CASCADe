@@ -177,7 +177,8 @@ rayOls = ray.remote(ols)
 
 
 def ridge(input_regression_matrix, input_data, input_covariance,
-          input_delta, input_alpha, use_gcv=True, use_rgcv=False, gamma=0.5):
+          input_delta, input_alpha, optimal_regularization_criterium='gcv',
+          rgcv_gamma=0.5):
     r"""
     Ridge regression.
 
@@ -194,11 +195,14 @@ def ridge(input_regression_matrix, input_data, input_covariance,
         Regularization matrix. For ridge regression this is the unity matrix.
     input_alpha : 'float' or 'numpy.ndarray'
         Regularization strength.
-    use_gvc : 'bool', optional
-        Use GCV to determine the optimal regularization.
-    use_rgvc : 'bool', optional
-        Use robust GCV to determine the optimal regularization.
-    gamma : 'float'
+    optimal_regularization_criterium : 'string', optional
+        Parameter which determines which criterium is used to determine the
+        optimal regularization strenght. Values can be 'gcv', 'rgcv', 'press',
+        'mse', and 'aicc', for respectively the 'generalized cross validation',
+        'robust generalized cross validation', 'Allen's predicted residual sum
+        of squares (PRESS)', the 'mean squared error', and the 'aikaike
+        information criterium'. Default is 'gcv'
+    rgcv_gamma : 'float'
         Robustness parameter for RGCV. Needs to be between 0 and 1.
 
     Returns
@@ -278,10 +282,12 @@ def ridge(input_regression_matrix, input_data, input_covariance,
     unity_matrix_ndata = np.identity(n_data)
 
     if isinstance(input_alpha, Iterable):
-        gcv_list = []
-        rgcv_list = []
-        mse_list = []
-        aicc_list = []
+        #press_list=[]
+        #gcv_list = []
+        #rgcv_list = []
+        #mse_list = []
+        #aicc_list = []
+        criterium_list = []
         for alpha_try in input_alpha:
             F = np.diag(D**2) + alpha_try*delta
             G = cholesky(F, lower=True)
@@ -291,29 +297,69 @@ def ridge(input_regression_matrix, input_data, input_covariance,
             residual = np.dot(unity_matrix_ndata-H, data)
             rss = np.dot(residual.T, residual)
             degrees_of_freedom = np.trace(H)
-            if (n_data-degrees_of_freedom) >= 1:
-                mse = rss/(n_data-degrees_of_freedom)
-                gcv = n_data*(np.trace(unity_matrix_ndata-H))**-2 * rss
-                gamma=0.5
-                rgcv = (gamma + (1-gamma)*np.trace(H**2)/n_data)*gcv
-                aicc = n_data*np.log(rss) + 2*degrees_of_freedom + \
-                    (2*degrees_of_freedom * (degrees_of_freedom+1)) / \
-                    (n_data-degrees_of_freedom-1)
-            else:
-                mse = 1.e16
-                gcv = 1.e16
-                rgcv = 1.e16
-                aicc = 1.e16
-            gcv_list.append(gcv)
-            rgcv_list.append(rgcv)
-            mse_list.append(mse)
-            aicc_list.append(aicc)
-        if use_gcv:
-            opt_idx = np.argmin(gcv_list)
-        elif use_rgcv:
-            opt_idx = np.argmin(rgcv_list)
-        else:
-            opt_idx = np.argmin(aicc_list)
+            match optimal_regularization_criterium:
+                case 'gcv':
+                    if (n_data-degrees_of_freedom) >= 1:
+                        gcv = n_data*(np.trace(unity_matrix_ndata-H))**-2 * rss
+                    else:
+                        gcv = 1.e16
+                    criterium_list.append(gcv)
+                case 'rgcv':
+                    if (n_data-degrees_of_freedom) >= 1:
+                        gcv = n_data*(np.trace(unity_matrix_ndata-H))**-2 * rss
+                        rgcv = (rgcv_gamma + (1-rgcv_gamma)*np.trace(H**2)/n_data)*gcv
+                    else:
+                        rgcv = 1.e16
+                    criterium_list.append(rgcv)
+                case 'press':
+                    if (n_data-degrees_of_freedom) >= 1:
+                        temp = residual/np.diagonal(unity_matrix_ndata-H)
+                        press = np.dot(temp.T, temp)/n_data
+                    else:
+                        press = 1.e16
+                    criterium_list.append(press)
+                case 'mse':
+                    if (n_data-degrees_of_freedom) >= 1:
+                        mse = rss/(n_data-degrees_of_freedom)
+                    else:
+                        mse = 1.e16
+                    criterium_list.append(mse)
+                case 'aicc':
+                    if (n_data-degrees_of_freedom) >= 1:
+                        aicc = n_data*np.log(rss) + 2*degrees_of_freedom + \
+                            (2*degrees_of_freedom * (degrees_of_freedom+1)) / \
+                            (n_data-degrees_of_freedom-1)
+                    else:
+                        aicc = 1.e16
+                    criterium_list.append(aicc)
+            #if (n_data-degrees_of_freedom) >= 1:
+                #temp = residual/np.diagonal(unity_matrix_ndata-H)
+                #press = np.dot(temp.T, temp)/n_data
+                #mse = rss/(n_data-degrees_of_freedom)
+                #gcv = n_data*(np.trace(unity_matrix_ndata-H))**-2 * rss
+                #gamma=0.5
+                #rgcv = (gamma + (1-gamma)*np.trace(H**2)/n_data)*gcv
+                #aicc = n_data*np.log(rss) + 2*degrees_of_freedom + \
+                #    (2*degrees_of_freedom * (degrees_of_freedom+1)) / \
+                #    (n_data-degrees_of_freedom-1)
+            #else:
+                #mse = 1.e16
+                #press = 1.e16
+                #gcv = 1.e16
+                #rgcv = 1.e16
+                #aicc = 1.e16
+            #press_list.append(press)
+            #gcv_list.append(gcv)
+            #rgcv_list.append(rgcv)
+            #mse_list.append(mse)
+            #aicc_list.append(aicc)
+        #if use_gcv:
+            #opt_idx = np.argmin(gcv_list)
+        #elif use_rgcv:
+            #opt_idx = np.argmin(rgcv_list)
+        #else:
+            #opt_idx = np.argmin(aicc_list)
+        opt_idx = np.argmin(criterium_list)
         optimal_regularization = input_alpha[opt_idx]
     else:
         optimal_regularization = input_alpha
@@ -1199,6 +1245,17 @@ class regressionParameterServer:
             ast.literal_eval(self.cascade_configuration.cpm_lam1)
         self.cpm_parameters.n_alpha = \
             ast.literal_eval(self.cascade_configuration.cpm_nlam)
+        try:
+            self.cpm_parameters.optimal_regularization_criterium =  \
+                self.cascade_configuration.cpm_optimal_regularization_criterium
+        except AttributeError:
+           self.cpm_parameters.optimal_regularization_criterium = 'gcv'
+        try:
+            self.cpm_parameters.rgcv_gamma = \
+            ast.literal_eval(self.cascade_configuration.cpm_rgcv_gamma)
+        except AttributeError:
+           self.cpm_parameters.rgcv_gamma = 0.5
+
         self.cpm_parameters.add_time = \
             ast.literal_eval(self.cascade_configuration.cpm_add_time)
         self.cpm_parameters.add_position = \
@@ -3129,37 +3186,45 @@ class regressionWorker:
         self.regularization = copy.deepcopy(updated_regularization)
         self.iterator = copy.deepcopy(updated_iterator_chunk)
 
-    def compute_model(self, regression_data, regularization_method, alpha):
+    def compute_model(self, regression_data, regularization_method, alpha,
+                      optimal_regularization_criterium='gcv',
+                      rgcv_gamma=0.5):
         """
         Compute the regression model.
 
         Parameters
         ----------
-        regression_selection : 'list'
-            DESCRIPTION.
+        regression_data : 'list'
+            List containing 2 lists (regression_data_selection
+            and regression_matirx_selection) which contain all idicy defining
+            the data to be fitted and the data to be used as a regression matrix.
         bootstrap_selection : 'list'
-            DESCRIPTION.
-        data_server_handle : 'regressionDataServer'
-            DESCRIPTION.
+            List containg all idicii for the bootstrap selection.
         regularization_method : 'str'
-            DESCRIPTION.
+            String describing the type of regularization. Normally used with
+            'value'
         alpha : 'float' or 'ndarray'
-            DESCRIPTION.
+            Regularization parameter.
+        used_optimization_method : 'str'
+            Method used to find the optimal regularization parameter. Default
+            is 'gcv'
+        gamma : 'float'
+            Parameter needed for the rubust GCV method. Default is 0.5
 
         Returns
         -------
         beta_optimal : 'ndarray'
-            DESCRIPTION.
+            Fitted parameters.
         rss : 'float'
-            DESCRIPTION.
+            Residual sum of squares.
         mse : 'float'
-            DESCRIPTION.
+            Mean squared error.
         degrees_of_freedom : 'float'
-            DESCRIPTION.
+            Degrees of freedom of the model fit.
         model_unscaled : 'ndarray'
-            DESCRIPTION.
+            Fitted model.
         alpha : 'float'
-            DESCRIPTION.
+            Regularization strenght.
 
         """
         # Get data and regression matrix
@@ -3182,7 +3247,8 @@ class regressionWorker:
         (beta_optimal, rss, mse, degrees_of_freedom,
          model_unscaled, alpha, aic) = \
             ridge(regression_matrix_unscaled, data_unscaled,
-                  covariance, delta, alpha)
+                  covariance, delta, alpha, optimal_regularization_criterium,
+                  rgcv_gamma)
 
         # scale coefficients back
         beta_optimal[0] -= np.sum(beta_optimal[2:]*feature_mean /
@@ -3295,9 +3361,13 @@ class regressionWorker:
         regression_par = parameter_server_handle.get_regression_parameters()
         n_additional = regression_par.n_additional_regressors
         n_sub_chunks = regression_par.number_of_sub_chunks_per_load
+        optimal_regularization_criterium = \
+            regression_par.optimal_regularization_criterium
+        rgcv_gamma = regression_par.rgcv_gamma
         data_par = parameter_server_handle.get_data_parameters()
         ncorrect = data_par.ncorrect
-        return n_additional, ncorrect, n_sub_chunks
+        return n_additional, ncorrect, n_sub_chunks, \
+            optimal_regularization_criterium, rgcv_gamma
 
     def update_parameters_on_server(self, parameter_server_handle, data_chunk):
         """
@@ -3340,7 +3410,8 @@ class regressionWorker:
         None.
 
         """
-        n_additional, ncorrect, n_sub_chunks = \
+        (n_additional, ncorrect, n_sub_chunks,
+         optimal_regularization_criterium, rgcv_gamma) = \
             self.get_regression_parameters(parameter_server_handle)
         regularization_method = 'value'
 
@@ -3375,7 +3446,8 @@ class regressionWorker:
                 (beta_optimal, rss, mse, degrees_of_freedom, model_unscaled,
                  alpha, aic, phase, wavelength) = self.compute_model(
                      regression_data,regularization_method,
-                     self.regularization.optimal_alpha[idata_point])
+                     self.regularization.optimal_alpha[idata_point],
+                     optimal_regularization_criterium, rgcv_gamma)
 
                 self.regularization.optimal_alpha[idata_point] = alpha
                 # self.fit_parameters.\
@@ -3536,10 +3608,14 @@ class rayRegressionWorker(regressionWorker):
             copy.deepcopy(ray.get(parameter_server_handle.get_regression_parameters.remote()))
         n_additional = regression_par.n_additional_regressors
         n_sub_chunks = regression_par.number_of_sub_chunks_per_load
+        optimal_regularization_criterium = \
+            regression_par.optimal_regularization_criterium
+        rgcv_gamma = regression_par.rgcv_gamma
         data_par = \
             copy.deepcopy(ray.get(parameter_server_handle.get_data_parameters.remote()))
         ncorrect = data_par.ncorrect
-        return n_additional, ncorrect, n_sub_chunks
+        return n_additional, ncorrect, n_sub_chunks,\
+            optimal_regularization_criterium, rgcv_gamma
 
     def update_parameters_on_server(self, parameter_server_handle, data_chunk):
         """

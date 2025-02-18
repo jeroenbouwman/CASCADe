@@ -145,3 +145,7 @@
   - Enabled wavelenght rebinning on detector level.
   - Changed regularization to include additional parameters.
   - Changed bootstrap to moving block bootstrap.
+
+**Version1.2.13**
+  - Changed functionality to determine the optimal regularization strenght.
+  - Updated MIRI LRS passband for exothetis pakage
