@@ -149,3 +149,6 @@
 **Version1.2.13**
   - Changed functionality to determine the optimal regularization strenght.
   - Updated MIRI LRS passband for exothetis pakage
+
+**Version1.2.14**
+  - Updated setup.py

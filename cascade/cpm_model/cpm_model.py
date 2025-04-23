@@ -282,11 +282,6 @@ def ridge(input_regression_matrix, input_data, input_covariance,
     unity_matrix_ndata = np.identity(n_data)
 
     if isinstance(input_alpha, Iterable):
-        #press_list=[]
-        #gcv_list = []
-        #rgcv_list = []
-        #mse_list = []
-        #aicc_list = []
         criterium_list = []
         for alpha_try in input_alpha:
             F = np.diag(D**2) + alpha_try*delta
@@ -332,33 +327,6 @@ def ridge(input_regression_matrix, input_data, input_covariance,
                     else:
                         aicc = 1.e16
                     criterium_list.append(aicc)
-            #if (n_data-degrees_of_freedom) >= 1:
-                #temp = residual/np.diagonal(unity_matrix_ndata-H)
-                #press = np.dot(temp.T, temp)/n_data
-                #mse = rss/(n_data-degrees_of_freedom)
-                #gcv = n_data*(np.trace(unity_matrix_ndata-H))**-2 * rss
-                #gamma=0.5
-                #rgcv = (gamma + (1-gamma)*np.trace(H**2)/n_data)*gcv
-                #aicc = n_data*np.log(rss) + 2*degrees_of_freedom + \
-                #    (2*degrees_of_freedom * (degrees_of_freedom+1)) / \
-                #    (n_data-degrees_of_freedom-1)
-            #else:
-                #mse = 1.e16
-                #press = 1.e16
-                #gcv = 1.e16
-                #rgcv = 1.e16
-                #aicc = 1.e16
-            #press_list.append(press)
-            #gcv_list.append(gcv)
-            #rgcv_list.append(rgcv)
-            #mse_list.append(mse)
-            #aicc_list.append(aicc)
-        #if use_gcv:
-            #opt_idx = np.argmin(gcv_list)
-        #elif use_rgcv:
-            #opt_idx = np.argmin(rgcv_list)
-        #else:
-            #opt_idx = np.argmin(aicc_list)
         opt_idx = np.argmin(criterium_list)
         optimal_regularization = input_alpha[opt_idx]
     else:
